@@ -1,0 +1,9 @@
+node_modules/ 
+.next/ 
+.env.local 
+pnpm-store/ 
+outputs/ 
+tmp/ 
+work/node_modules_unreadable/ 
+work/ 
+work/node_modules_auth_unreadable_*/ 

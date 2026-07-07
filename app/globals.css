@@ -1,0 +1,243 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #050816;
+  --secondary: #0b1020;
+  --panel: rgba(11, 16, 32, 0.72);
+  --panel-strong: rgba(16, 24, 45, 0.88);
+  --line: rgba(255, 255, 255, 0.11);
+  --text: #ffffff;
+  --muted: rgba(255, 255, 255, 0.68);
+  --soft: rgba(255, 255, 255, 0.08);
+  --blue: #5b8cff;
+  --purple: #7b5cff;
+  --green: #39d98a;
+  --amber: #ffd166;
+  --danger: #ff6b6b;
+  --radius: 24px;
+  --shadow: 0 24px 90px rgba(0, 0, 0, 0.38);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 8% -10%, rgba(91, 140, 255, 0.34), transparent 30rem),
+    radial-gradient(circle at 88% 8%, rgba(123, 92, 255, 0.28), transparent 28rem),
+    linear-gradient(180deg, #050816 0%, #080c1b 44%, #050816 100%);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(to bottom, black, transparent 78%);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgba(143, 176, 255, 0.95);
+  outline-offset: 4px;
+}
+
+.container {
+  width: min(1180px, calc(100% - 32px));
+  margin-inline: auto;
+}
+
+.glass {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(22px);
+}
+
+.surface {
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.045));
+  box-shadow: 0 18px 70px rgba(0, 0, 0, 0.24);
+}
+
+.surface:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-2px);
+}
+
+.reveal-card {
+  animation: pathzy-rise 520ms ease both;
+  transition: transform 220ms ease, border-color 220ms ease, background 220ms ease;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #ffffff 0%, #dfe7ff 38%, #aabfff 68%, #e0d8ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.blue-purple {
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+}
+
+.progress-fill {
+  transition: width 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tap-target {
+  min-height: 44px;
+}
+
+.soft-pulse {
+  animation: pathzy-soft-pulse 2.8s ease-in-out infinite;
+}
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  animation: pathzy-shimmer 1.4s ease-in-out infinite;
+}
+
+.field {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.07);
+  padding: 13px 15px;
+  outline: none;
+}
+
+.field::placeholder {
+  color: rgba(255, 255, 255, 0.38);
+}
+
+select.field option {
+  background: #0b1020;
+  color: #ffffff;
+}
+
+.field:focus {
+  border-color: rgba(91, 140, 255, 0.72);
+  box-shadow: 0 0 0 4px rgba(91, 140, 255, 0.16);
+}
+
+textarea.field {
+  min-height: 118px;
+  resize: vertical;
+}
+
+.label {
+  display: grid;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.page-pad {
+  padding-block: 34px 72px;
+}
+
+@media (min-width: 768px) {
+  .page-pad {
+    padding-block: 54px 96px;
+  }
+}
+
+@keyframes pathzy-confetti {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px) rotate(0deg) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(88vh) rotate(720deg) scale(1);
+  }
+}
+
+@keyframes pathzy-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pathzy-soft-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(91, 140, 255, 0);
+  }
+  50% {
+    box-shadow: 0 0 34px rgba(91, 140, 255, 0.22);
+  }
+}
+
+@keyframes pathzy-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+}
