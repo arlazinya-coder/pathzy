@@ -3,6 +3,14 @@ import { readFileSync } from "node:fs";
 
 const dashboard = readFileSync("app/dashboard/page.tsx", "utf8");
 const homepage = readFileSync("app/page.tsx", "utf8");
+const rootLayout = readFileSync("app/layout.tsx", "utf8");
+const roadmapLayout = readFileSync("app/roadmap/layout.tsx", "utf8");
+const professionalIdentityLayout = readFileSync("app/professional-identity/layout.tsx", "utf8");
+const opportunitiesLayout = readFileSync("app/opportunities/layout.tsx", "utf8");
+const applicationsLayout = readFileSync("app/applications/layout.tsx", "utf8");
+const skillsLayout = readFileSync("app/skills/layout.tsx", "utf8");
+const billingLayout = readFileSync("app/billing/layout.tsx", "utf8");
+const settingsLayout = readFileSync("app/settings/layout.tsx", "utf8");
 const progressEngine = readFileSync("lib/progress/progress-engine.ts", "utf8");
 const launchService = readFileSync("lib/launch/launch-service.ts", "utf8");
 const timeline = readFileSync("components/journey/pathzy-timeline.tsx", "utf8");
@@ -25,6 +33,18 @@ for (const section of ["Navigation", "Hero", "Features", "How PATHZY Works", "Ca
   assert.match(homepage, new RegExp(`data-home-section="${section}"`), `Homepage must include the ${section} landing section.`);
 }
 assert.match(homepage, /Do not remove landing sections without updating homepage regression test\./, "Homepage must warn maintainers to update the regression test before removing landing sections.");
+assert.doesNotMatch(rootLayout, /AppShell/, "Public root layout must not wrap the landing page in the authenticated app shell.");
+for (const [routeName, routeLayout] of [
+  ["/roadmap", roadmapLayout],
+  ["/professional-identity", professionalIdentityLayout],
+  ["/opportunities", opportunitiesLayout],
+  ["/applications", applicationsLayout],
+  ["/skills", skillsLayout],
+  ["/billing", billingLayout],
+  ["/settings", settingsLayout]
+]) {
+  assert.match(routeLayout, /<AppShell>\{children\}<\/AppShell>/, `${routeName} must render inside the authenticated app shell.`);
+}
 
 assert.match(dashboard, /const currentStep = getNextMilestone\(progressInputs\);/, "Dashboard journey CTA must use the Progress Engine next milestone.");
 assert.match(dashboard, /<ButtonLink href=\{currentStep\.href\}>Continue My Journey<\/ButtonLink>/, "Dashboard must send Continue My Journey to the current Progress Engine step.");
