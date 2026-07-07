@@ -32,8 +32,8 @@ const returnTargets = [
   { match: "Cover letter page", label: "Back to Cover Letter", href: "/professional-identity/cover-letter" },
   { match: "Career Plan page", label: "Back to Career Plan", href: "/roadmap" },
   { match: "Opportunities page", label: "Back to Opportunities", href: "/opportunities" },
-  { match: "Applications page", label: "Back to Applications", href: "/employment-tracker" },
-  { match: "Skills page", label: "Back to Skills", href: "/progress" },
+  { match: "Applications page", label: "Back to Applications", href: "/applications" },
+  { match: "Skills page", label: "Back to Skills", href: "/skills" },
   { match: "Professional Profile", label: "Back to Professional Profile", href: "/professional-identity" }
 ];
 

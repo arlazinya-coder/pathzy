@@ -1,41 +1,18 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { appRoutes, isAuthRoute, isProtectedRoute } from "@/lib/navigation/routes";
+import { redirectToLogin } from "@/lib/navigation/redirects";
 import { isSupabaseConfigured, supabaseAnonKey, supabaseUrl } from "@/lib/supabase/config";
-
-const protectedRoutes = [
-  "/dashboard",
-  "/onboarding",
-  "/discovery",
-  "/roadmap",
-  "/missions",
-  "/achievements",
-  "/mentor",
-  "/cv-builder",
-  "/progress",
-  "/settings",
-  "/opportunities",
-  "/professional-identity",
-  "/employment-tracker",
-  "/interview",
-  "/profile",
-  "/founding-members"
-];
-
-const authRoutes = ["/login", "/register", "/signup", "/auth/reset-password", "/auth/update-password"];
 
 export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  const isProtected = protectedRoutes.some((route) => path === route || path.startsWith(`${route}/`));
-  const isAuthRoute = authRoutes.some((route) => path === route || path.startsWith(`${route}/`));
+  const isProtected = isProtectedRoute(path);
+  const isAuthPage = isAuthRoute(path);
   let response = NextResponse.next({ request });
 
   if (!isSupabaseConfigured() || !supabaseUrl || !supabaseAnonKey) {
     if (isProtected) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      url.searchParams.set("message", "Please log in to continue.");
-      url.searchParams.set("redirectTo", path);
-      return NextResponse.redirect(url);
+      return NextResponse.redirect(new URL(redirectToLogin(path), request.url));
     }
     return response;
   }
@@ -58,16 +35,12 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (isProtected && !user) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("message", "Please log in to continue.");
-    url.searchParams.set("redirectTo", path);
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(new URL(redirectToLogin(path), request.url));
   }
 
-  if (isAuthRoute && user && path !== "/auth/update-password") {
+  if (isAuthPage && user && path !== appRoutes.authUpdatePassword) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = appRoutes.dashboard;
     url.search = "";
     return NextResponse.redirect(url);
   }

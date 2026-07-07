@@ -9,6 +9,10 @@ const timeline = readFileSync("components/journey/pathzy-timeline.tsx", "utf8");
 const navigation = readFileSync("lib/pathzy-data.ts", "utf8");
 const appShell = readFileSync("components/app-shell.tsx", "utf8");
 const journeyRouter = readFileSync("lib/progress/journey-router.ts", "utf8");
+const routes = readFileSync("lib/navigation/routes.ts", "utf8");
+const applicationsPage = readFileSync("app/applications/page.tsx", "utf8");
+const skillsPage = readFileSync("app/skills/page.tsx", "utf8");
+const billingPage = readFileSync("app/billing/page.tsx", "utf8");
 const exportStandard = readFileSync("docs/PATHZY_EXPORT_STANDARD.md", "utf8");
 const documentDownloads = readFileSync("components/professional-identity/document-downloads.ts", "utf8");
 const professionalIdentityTool = readFileSync("components/professional-identity/professional-identity-tool.tsx", "utf8");
@@ -33,6 +37,20 @@ assert.match(dashboard, /Later/, "Dashboard must show a short later list for ori
 assert.match(timeline, /PATHZY Timeline/, "Timeline must use the PATHZY Timeline name.");
 assert.doesNotMatch(timeline, /Coming soon/, "Timeline must not label normal journey steps as coming soon.");
 assert.match(appShell, /key=\{`\$\{item\.href\}-\$\{item\.label\}`\}/, "Navigation links must use a unique key fallback.");
+assert.match(navigation, /label: "My Employment Journey", href: appRoutes\.roadmap/, "My Employment Journey must route to /roadmap.");
+assert.match(navigation, /label: "My Professional Profile", href: appRoutes\.professionalIdentity/, "My Professional Profile must route to /professional-identity.");
+assert.match(navigation, /label: "Find Opportunities", href: appRoutes\.opportunities/, "Find Opportunities must route to /opportunities.");
+assert.match(navigation, /label: "My Applications", href: appRoutes\.applications/, "My Applications must route to /applications.");
+assert.match(navigation, /label: "Skills & Career Growth", href: appRoutes\.skills/, "Skills & Career Growth must route to /skills.");
+assert.match(navigation, /label: "Billing", href: appRoutes\.billing/, "Billing must route to /billing.");
+assert.match(navigation, /label: "Settings", href: appRoutes\.settings/, "Settings must route to /settings.");
+assert.match(routes, /applications: "\/applications"/, "The canonical Applications route must exist.");
+assert.match(routes, /skills: "\/skills"/, "The canonical Skills route must exist.");
+assert.match(routes, /billing: "\/billing"/, "The canonical Billing route must exist.");
+assert.match(applicationsPage, /EmploymentTrackerPage/, "The /applications entry point must reuse the existing application tracker implementation.");
+assert.match(skillsPage, /ProgressPage/, "The /skills entry point must reuse the existing skills and growth implementation.");
+assert.match(billingPage, /PricingPage/, "The /billing entry point must reuse the existing billing/pricing implementation.");
+assert.doesNotMatch(navigation, /label: "Profile"/, "Main navigation must not include a duplicate Profile label.");
 assert.ok(/profile: "\/onboarding"/.test(journeyRouter) || /profile: appRoutes\.onboarding/.test(journeyRouter), "Profile completion must route to the profile setup flow, not membership profile.");
 assert.doesNotMatch(journeyRouter, /founding-members|pricing|settings|\/profile"/, "Journey Router must not send Continue My Journey to Founder, Billing, Settings, or membership profile.");
 
@@ -45,9 +63,10 @@ const expectedOrder = [
   ["\"/professional-identity/linkedin\"", "appRoutes.professionalIdentityLinkedin"],
   ["\"/professional-identity/career-passport\"", "appRoutes.professionalIdentityCareerPassport"],
   ["\"/opportunities\"", "appRoutes.opportunities"],
-  ["\"/employment-tracker\"", "appRoutes.employmentTracker"],
+  ["\"/applications\"", "appRoutes.applications"],
   ["\"/interview\"", "appRoutes.interview"],
-  ["\"/employment-tracker\"", "appRoutes.employmentTracker"]
+  ["\"/skills\"", "appRoutes.skills"],
+  ["\"/applications\"", "appRoutes.applications"]
 ];
 
 let previousIndex = -1;

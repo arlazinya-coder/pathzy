@@ -1,3 +1,5 @@
+import { appRoutes } from "@/lib/navigation/routes";
+
 export type JourneyStepKey =
   | "profile"
   | "discovery"
@@ -13,18 +15,18 @@ export type JourneyStepKey =
   | "employment";
 
 export const journeyStepRoutes: Record<JourneyStepKey, string> = {
-  profile: "/onboarding",
-  discovery: "/discovery",
-  choose_career: "/roadmap",
-  cv: "/professional-identity/cv",
-  cover_letter: "/professional-identity/cover-letter",
-  linkedin: "/professional-identity/linkedin",
-  career_passport: "/professional-identity/career-passport",
-  opportunities: "/opportunities",
-  applications: "/employment-tracker",
-  interview_prep: "/interview",
-  skills: "/progress",
-  employment: "/employment-tracker"
+  profile: appRoutes.onboarding,
+  discovery: appRoutes.discovery,
+  choose_career: appRoutes.roadmap,
+  cv: appRoutes.professionalIdentityCv,
+  cover_letter: appRoutes.professionalIdentityCoverLetter,
+  linkedin: appRoutes.professionalIdentityLinkedin,
+  career_passport: appRoutes.professionalIdentityCareerPassport,
+  opportunities: appRoutes.opportunities,
+  applications: appRoutes.applications,
+  interview_prep: appRoutes.interview,
+  skills: appRoutes.skills,
+  employment: appRoutes.applications
 };
 
 export function getJourneyRoute(step: JourneyStepKey) {

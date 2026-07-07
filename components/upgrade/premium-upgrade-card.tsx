@@ -41,7 +41,7 @@ export function PremiumUpgradeCard({
           <p className="mt-4 max-w-2xl text-base leading-7 text-white/66 md:text-lg">{subtitle}</p>
           <p className="mt-3 text-sm font-bold text-white/48">Free users get limited Mentor messages each day. No credit card required.</p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Link href="/pricing" className="inline-flex min-h-12 items-center justify-center rounded-full blue-purple px-6 py-3 text-sm font-extrabold text-white shadow-[0_16px_42px_rgba(91,140,255,.32)] transition hover:-translate-y-0.5">
+            <Link href="/billing" className="inline-flex min-h-12 items-center justify-center rounded-full blue-purple px-6 py-3 text-sm font-extrabold text-white shadow-[0_16px_42px_rgba(91,140,255,.32)] transition hover:-translate-y-0.5">
               {primaryLabel}
             </Link>
             <button

@@ -421,7 +421,7 @@ export default async function RoadmapPage() {
             <ButtonLink href="#career-options" variant="secondary">Choose Another Career</ButtonLink>
             <ButtonLink href="#compare-careers" variant="secondary">Compare Careers</ButtonLink>
             <ButtonLink href="/professional-identity/cv" variant="secondary">Build My CV Instead</ButtonLink>
-            <ButtonLink href="/progress" variant="secondary">Improve Skills First</ButtonLink>
+            <ButtonLink href="/skills" variant="secondary">Improve Skills First</ButtonLink>
             <ButtonLink href="/mentor?context=Career%20Plan%20page%20-%20help%20me%20decide%20my%20next%20step" variant="secondary">Talk to Mentor</ButtonLink>
           </div>
           {readiness?.skillGaps?.length ? (
@@ -429,7 +429,7 @@ export default async function RoadmapPage() {
               <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-[#c7d6ff]/72">Skills and CV can move together</p>
               <p className="mt-2 leading-7 text-white/66">You can start your CV now and improve this skill at the same time.</p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <a href="/progress" className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Improve skills first</a>
+                <a href="/skills" className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Improve skills first</a>
                 <a href="/professional-identity/cv" className="rounded-full blue-purple px-4 py-2 text-sm font-extrabold text-white">Build CV now</a>
               </div>
             </div>

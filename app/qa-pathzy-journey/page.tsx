@@ -9,11 +9,11 @@ const journeyItems = [
   ["Logged out home", "/"],
   ["Signup", "/signup"],
   ["Login", "/login"],
-  ["My Employment Journey", "/dashboard"],
-  ["Continue My Journey opens current step", "/dashboard"],
-  ["Current step matches Journey Engine", "/dashboard"],
-  ["Up next appears once", "/dashboard"],
-  ["Founder does not interrupt journey", "/dashboard"],
+  ["My Employment Journey", "/roadmap"],
+  ["Continue My Journey opens current step", "/roadmap"],
+  ["Current step matches Journey Engine", "/roadmap"],
+  ["Up next appears once", "/roadmap"],
+  ["Founder does not interrupt journey", "/roadmap"],
   ["Your Mentor", "/mentor"],
   ["Career Discovery", "/discovery"],
   ["Create My CV", "/professional-identity/cv"],
@@ -22,12 +22,12 @@ const journeyItems = [
   ["Career Passport", "/professional-identity/career-passport"],
   ["My Documents", "/professional-identity/documents"],
   ["Find Opportunities", "/opportunities"],
-  ["My Applications", "/employment-tracker"],
+  ["My Applications", "/applications"],
   ["Interview Practice", "/interview"],
-  ["Billing", "/pricing"],
+  ["Billing", "/billing"],
   ["Logout/Login persistence", "/login"],
-  ["Mobile check", "/dashboard"],
-  ["Mobile journey is simple", "/dashboard"],
+  ["Mobile check", "/roadmap"],
+  ["Mobile journey is simple", "/roadmap"],
   ["No technical errors", "/qa-pathzy-journey"]
 ] as const;
 
@@ -92,7 +92,7 @@ export default async function QaPathzyJourneyPage() {
       </PageHeader>
       <div className="mb-6 flex flex-wrap gap-3">
         <ButtonLink href="/signup">Start Full Test Journey</ButtonLink>
-        <ButtonLink href="/dashboard" variant="secondary">Open My Employment Journey</ButtonLink>
+        <ButtonLink href="/roadmap" variant="secondary">Open My Employment Journey</ButtonLink>
       </div>
       {process.env.NODE_ENV !== "production" ? (
         <Card className="mb-6">

@@ -1,21 +1,23 @@
+import { appRoutes } from "@/lib/navigation/routes";
+
 export const navigation = [
-  { label: "Home", href: "/" },
-  { label: "My Employment Journey", href: "/dashboard" },
-  { label: "My Professional Profile", href: "/professional-identity" },
-  { label: "Find Opportunities", href: "/opportunities" },
-  { label: "My Applications", href: "/employment-tracker" },
-  { label: "Skills & Career Growth", href: "/progress" },
-  { label: "Billing", href: "/pricing" },
-  { label: "Settings", href: "/settings" }
+  { label: "Home", href: appRoutes.home },
+  { label: "My Employment Journey", href: appRoutes.roadmap },
+  { label: "My Professional Profile", href: appRoutes.professionalIdentity },
+  { label: "Find Opportunities", href: appRoutes.opportunities },
+  { label: "My Applications", href: appRoutes.applications },
+  { label: "Skills & Career Growth", href: appRoutes.skills },
+  { label: "Billing", href: appRoutes.billing },
+  { label: "Settings", href: appRoutes.settings }
 ] as const;
 
 export const productPages = [
-  { label: "Login", href: "/login" },
-  { label: "Register", href: "/register" },
-  { label: "Discover Your Path", href: "/discovery" },
-  { label: "Onboarding", href: "/onboarding" },
-  { label: "Interview Practice", href: "/interview" },
-  { label: "Pricing", href: "/pricing" }
+  { label: "Login", href: appRoutes.login },
+  { label: "Register", href: appRoutes.register },
+  { label: "Discover Your Path", href: appRoutes.discovery },
+  { label: "Onboarding", href: appRoutes.onboarding },
+  { label: "Interview Practice", href: appRoutes.interview },
+  { label: "Pricing", href: appRoutes.pricing }
 ] as const;
 
 export const roadmapPaths = [

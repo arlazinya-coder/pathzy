@@ -101,7 +101,7 @@ const tools = [
   },
   {
     title: "Job Readiness",
-    href: "/progress",
+    href: "/skills",
     button: "View Growth",
     statusKey: null,
     readiness: 15,

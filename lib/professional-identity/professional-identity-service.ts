@@ -3,6 +3,7 @@ import { cvModelFromUnknown, serializeCoverLetterData, serializeCvModel } from "
 import type { CoverLetterData, CvModel } from "@/components/professional-identity/document-downloads";
 import type { DiscoveryAnswers, GeneratedRoadmap } from "@/lib/discovery/types";
 import { isPremiumUser } from "@/lib/launch/launch-service";
+import { canExportProfessionalDocuments, canUseProfessionalIdentity } from "@/lib/navigation/permissions";
 import { getBrainContextForAI } from "@/lib/pathzy-brain/brain-service";
 import type {
   GenerateOptions,
@@ -89,20 +90,16 @@ function scoreLabel(score: number): ProfessionalIdentityLabel {
   return "Strong Professional Identity";
 }
 
-function planAllowsProfessionalTools(plan?: string | null, premiumStatus?: string | null) {
-  return true;
-}
-
 export function canUseProfessionalIdentityTools(profile: { plan?: string | null; premium_status?: string | null } | null) {
-  return planAllowsProfessionalTools(profile?.plan, profile?.premium_status);
+  return canUseProfessionalIdentity({ isAuthenticated: true, membership: profile?.plan, premiumStatus: profile?.premium_status });
 }
 
 export async function canCurrentUserUseProfessionalIdentityTools(supabase: Supabase, userId: string) {
-  return true;
+  return canUseProfessionalIdentity({ isAuthenticated: Boolean(userId), membership: "free" });
 }
 
 export async function canCurrentUserExportProfessionalDocuments(supabase: Supabase, userId: string) {
-  return isPremiumUser(supabase, userId);
+  return canExportProfessionalDocuments({ isAuthenticated: Boolean(userId), membership: (await isPremiumUser(supabase, userId)) ? "premium" : "free" });
 }
 
 function firstString(value: unknown, fallback = "Not provided") {
