@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const dashboard = readFileSync("app/dashboard/page.tsx", "utf8");
+const homepage = readFileSync("app/page.tsx", "utf8");
 const progressEngine = readFileSync("lib/progress/progress-engine.ts", "utf8");
 const launchService = readFileSync("lib/launch/launch-service.ts", "utf8");
 const timeline = readFileSync("components/journey/pathzy-timeline.tsx", "utf8");
@@ -16,6 +17,11 @@ const cvBuilderPage = readFileSync("app/cv-builder/page.tsx", "utf8");
 const professionalIdentityService = readFileSync("lib/professional-identity/professional-identity-service.ts", "utf8");
 const coverLetterGeneration = professionalIdentityService.match(/export async function generateCoverLetter[\s\S]*?export async function generateLinkedInProfile/)?.[0] ?? "";
 
+for (const section of ["Navigation", "Hero", "Features", "How PATHZY Works", "Career Journey", "Pricing", "Testimonials", "FAQ", "Footer"]) {
+  assert.match(homepage, new RegExp(`data-home-section="${section}"`), `Homepage must include the ${section} landing section.`);
+}
+assert.match(homepage, /Do not remove landing sections without updating homepage regression test\./, "Homepage must warn maintainers to update the regression test before removing landing sections.");
+
 assert.match(dashboard, /const currentStep = getNextMilestone\(progressInputs\);/, "Dashboard journey CTA must use the Progress Engine next milestone.");
 assert.match(dashboard, /<ButtonLink href=\{currentStep\.href\}>Continue My Journey<\/ButtonLink>/, "Dashboard must send Continue My Journey to the current Progress Engine step.");
 assert.doesNotMatch(progressEngine, /founding-members/, "Progress Engine must never send onboarding missions to the Founder flow.");
@@ -27,27 +33,28 @@ assert.match(dashboard, /Later/, "Dashboard must show a short later list for ori
 assert.match(timeline, /PATHZY Timeline/, "Timeline must use the PATHZY Timeline name.");
 assert.doesNotMatch(timeline, /Coming soon/, "Timeline must not label normal journey steps as coming soon.");
 assert.match(appShell, /key=\{`\$\{item\.href\}-\$\{item\.label\}`\}/, "Navigation links must use a unique key fallback.");
-assert.match(journeyRouter, /profile: "\/onboarding"/, "Profile completion must route to the profile setup flow, not membership profile.");
+assert.ok(/profile: "\/onboarding"/.test(journeyRouter) || /profile: appRoutes\.onboarding/.test(journeyRouter), "Profile completion must route to the profile setup flow, not membership profile.");
 assert.doesNotMatch(journeyRouter, /founding-members|pricing|settings|\/profile"/, "Journey Router must not send Continue My Journey to Founder, Billing, Settings, or membership profile.");
 
 const expectedOrder = [
-  "/onboarding",
-  "/discovery",
-  "/roadmap",
-  "/professional-identity/cv",
-  "/professional-identity/cover-letter",
-  "/professional-identity/linkedin",
-  "/professional-identity/career-passport",
-  "/opportunities",
-  "/employment-tracker",
-  "/interview",
-  "/employment-tracker"
+  ["\"/onboarding\"", "appRoutes.onboarding"],
+  ["\"/discovery\"", "appRoutes.discovery"],
+  ["\"/roadmap\"", "appRoutes.roadmap"],
+  ["\"/professional-identity/cv\"", "appRoutes.professionalIdentityCv"],
+  ["\"/professional-identity/cover-letter\"", "appRoutes.professionalIdentityCoverLetter"],
+  ["\"/professional-identity/linkedin\"", "appRoutes.professionalIdentityLinkedin"],
+  ["\"/professional-identity/career-passport\"", "appRoutes.professionalIdentityCareerPassport"],
+  ["\"/opportunities\"", "appRoutes.opportunities"],
+  ["\"/employment-tracker\"", "appRoutes.employmentTracker"],
+  ["\"/interview\"", "appRoutes.interview"],
+  ["\"/employment-tracker\"", "appRoutes.employmentTracker"]
 ];
 
 let previousIndex = -1;
-for (const [position, href] of expectedOrder.entries()) {
-  const index = journeyRouter.indexOf(`"${href}"`, previousIndex + 1);
-  assert.ok(index > previousIndex, `Journey route ${href} must appear in the expected onboarding order.`);
+for (const routeReferences of expectedOrder) {
+  const indexes = routeReferences.map((routeReference) => journeyRouter.indexOf(routeReference, previousIndex + 1)).filter((index) => index > previousIndex);
+  const index = indexes.length ? Math.min(...indexes) : -1;
+  assert.ok(index > previousIndex, `Journey route ${routeReferences.join(" or ")} must appear in the expected onboarding order.`);
   previousIndex = index;
 }
 
