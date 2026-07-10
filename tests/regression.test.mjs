@@ -26,7 +26,9 @@ const timeline = readFileSync("components/journey/pathzy-timeline.tsx", "utf8");
 const navigation = readFileSync("lib/pathzy-data.ts", "utf8");
 const appShell = readFileSync("components/app-shell.tsx", "utf8");
 const journeyRouter = readFileSync("lib/progress/journey-router.ts", "utf8");
+const nextActionEngine = readFileSync("lib/progress/next-action-engine.ts", "utf8");
 const routes = readFileSync("lib/navigation/routes.ts", "utf8");
+const roadmapPage = readFileSync("app/roadmap/page.tsx", "utf8");
 const applicationsPage = readFileSync("app/applications/page.tsx", "utf8");
 const skillsPage = readFileSync("app/skills/page.tsx", "utf8");
 const billingPage = readFileSync("app/billing/page.tsx", "utf8");
@@ -102,8 +104,23 @@ for (const [routeName, routeLayout] of [
   assert.match(routeLayout, /<AppShell>\{children\}<\/AppShell>/, `${routeName} must render inside the authenticated app shell.`);
 }
 
-assert.match(dashboard, /const currentStep = getNextMilestone\(progressInputs\);/, "Dashboard journey CTA must use the Progress Engine next milestone.");
-assert.match(dashboard, /<ButtonLink href=\{currentStep\.href\}>Continue My Journey<\/ButtonLink>/, "Dashboard must send Continue My Journey to the current Progress Engine step.");
+assert.match(nextActionEngine, /export async function getPathzyNextAction/, "PATHZY must expose one shared next action journey engine.");
+assert.match(dashboard, /getPathzyNextAction\(supabase, user\)/, "Dashboard must use the shared PATHZY next action engine.");
+assert.match(roadmapPage, /getPathzyNextAction\(supabase, user\)/, "My Employment Journey must use the shared PATHZY next action engine.");
+assert.match(dashboard, /<ButtonLink href=\{nextAction\.destinationRoute\}>Continue My Journey<\/ButtonLink>/, "Dashboard must send Continue My Journey to the shared next action route.");
+assert.match(roadmapPage, /<ButtonLink href=\{nextAction\.destinationRoute\}>Continue My Journey<\/ButtonLink>/, "My Employment Journey must send Continue My Journey to the shared next action route.");
+assert.match(nextActionEngine, /label: "Complete onboarding"[\s\S]*destinationRoute: appRoutes\.onboarding/, "Brand-new users must receive onboarding guidance.");
+assert.match(nextActionEngine, /if \(milestone\.key === "profile"\) return "Complete My Professional Profile";/, "Users with incomplete profile information must be guided to My Professional Profile.");
+assert.match(nextActionEngine, /if \(milestone\.key === "profile"\) return appRoutes\.professionalIdentity;/, "Profile gaps must route to My Professional Profile, not Billing.");
+assert.match(nextActionEngine, /cvComplete: hasCv/, "Users with completed profiles must receive CV guidance when CV is missing.");
+assert.match(nextActionEngine, /coverLetterComplete: hasCoverLetter/, "Users with a CV must receive cover letter guidance when cover letter is missing.");
+assert.match(nextActionEngine, /opportunitiesSaved: applicationActions\.filter\(\(action\) => action\.saved\)\.length/, "Users with documents must receive opportunity guidance.");
+assert.match(nextActionEngine, /if \(inputs\.opportunitiesSaved <= 0\) return milestoneByKey\(milestones, "opportunities"\);[\s\S]*if \(inputs\.applicationsSent <= 0\) return milestoneByKey\(milestones, "applications"\);/, "Users with documents must receive opportunity guidance before application guidance.");
+assert.match(nextActionEngine, /if \(inputs\.trackerEntries <= 0 \|\| !inputs\.activeApplicationTracked\) return milestoneByKey\(milestones, "applications"\);/, "Users with applications must receive tracking guidance before interview guidance.");
+assert.match(nextActionEngine, /if \(milestone\.key === "applications" && inputs\.applicationsSent > 0\) return "Track application";/, "Application guidance must become tracking guidance after an application is started.");
+assert.match(nextActionEngine, /interviewPrepComplete/, "Users with applications must receive interview guidance.");
+assert.match(nextActionEngine, /if \(inputs\.employmentReadinessScore < 80\) return skillsMilestone\(\);/, "The next action engine must guide users to improve missing skills after interview preparation.");
+assert.doesNotMatch(nextActionEngine, /billing|pricing|founding-members/, "The next action engine must not send users to Billing, Pricing, or Founder flows for incomplete information.");
 assert.doesNotMatch(progressEngine, /founding-members/, "Progress Engine must never send onboarding missions to the Founder flow.");
 assert.doesNotMatch(dashboard, /href="\/founding-members"/, "Dashboard must not link mission CTAs into the Founder flow.");
 assert.doesNotMatch(dashboard, /XP Progress|Career DNA|Smart Notifications|Founder Premium|Applications Sent/, "Dashboard must stay simple and avoid old control-center clutter.");

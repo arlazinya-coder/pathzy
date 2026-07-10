@@ -4,6 +4,7 @@ import { SelectCareerButton } from "@/components/roadmap/select-career-button";
 import type { CareerPathResult, GeneratedRoadmap } from "@/lib/discovery/types";
 import { calculateEmploymentReadiness, updatePathzyBrain } from "@/lib/pathzy-brain/brain-service";
 import { roadmapPaths } from "@/lib/pathzy-data";
+import { getPathzyNextAction } from "@/lib/progress/next-action-engine";
 import { createSupabaseServerClient, getCurrentUser } from "@/lib/supabase/server";
 
 const monthly = [
@@ -231,6 +232,7 @@ export default async function RoadmapPage() {
       .eq("user_id", user.id)
       .eq("completed", true)
     : { count: 0 };
+  const nextAction = user && supabase ? await getPathzyNextAction(supabase, user) : null;
   const discovery = discoveryResult.data;
   const profile = profileResult.data;
   const level = levelResult.data;
@@ -260,6 +262,23 @@ export default async function RoadmapPage() {
           ? "Choose one primary career goal, start your first mission, and keep moving from potential to employment."
           : "Complete Discovery to generate a personalized career plan. For now, this sample shows the experience."}
       </PageHeader>
+
+      {nextAction ? (
+        <Card className="mb-6">
+          <div className="grid gap-5 lg:grid-cols-[1.2fr_.8fr] lg:items-center">
+            <div>
+              <Badge>Recommended next action</Badge>
+              <h2 className="mt-4 text-3xl font-black md:text-4xl">{nextAction.label}</h2>
+              <p className="mt-3 max-w-3xl leading-7 text-white/66">{nextAction.reason}</p>
+              <p className="mt-3 text-sm font-bold capitalize text-white/48">Completion state: {nextAction.completionState.replace(/_/g, " ")}</p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
+              <ButtonLink href={nextAction.destinationRoute}>Continue My Journey</ButtonLink>
+              <ButtonLink href="/mentor?context=My%20Employment%20Journey%20-%20explain%20my%20next%20action" variant="secondary">Ask Mentor</ButtonLink>
+            </div>
+          </div>
+        </Card>
+      ) : null}
 
       <Card className="mb-6">
         <div className="grid gap-6 lg:grid-cols-[1.35fr_.65fr] lg:items-center">
