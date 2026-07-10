@@ -31,7 +31,7 @@ export default async function CoverLetterPage({ searchParams }: { searchParams?:
           followLabel: "Build CV first",
           continueLabel: "Continue with cover letter"
         } : null}
-        defaultOptions={{ role: params.role ?? "", company: params.company ?? "", language: "english", templateName: "ATS Friendly" }}
+        defaultOptions={{ role: params.role ?? "", company: params.company ?? "", language: "english", templateName: "Modern ATS" }}
         fields={[
           { name: "company", label: "Company", placeholder: "Example: Flutterwave" },
           { name: "role", label: "Role", placeholder: "Example: Junior Product Designer" },

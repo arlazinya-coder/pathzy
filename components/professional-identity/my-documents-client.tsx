@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui";
 import { PremiumUpgradeCard } from "@/components/upgrade/premium-upgrade-card";
 import { cvModelFromUnknown, downloadBlob, normalizeCvModelForExport, pathzyFilename, renderCvHtmlFromModel, simplePdfDocument, simplePdfDocumentFromModel } from "@/components/professional-identity/document-downloads";
+import { documentTemplateGallery, normalizeDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
 
 type DocumentTool = "cv" | "cover-letter" | "linkedin" | "recruiter-message" | "follow-up" | "career-passport" | "uploaded-document" | "supporting-document";
 
@@ -22,7 +23,7 @@ type SavedDocument = {
   updated_at?: string;
 };
 
-const cvDesignSystems = ["ATS Friendly", "Modern Blue", "Professional Green", "Graduate Fresh", "Executive Premium"] as const;
+const cvDesignSystems = documentTemplateGallery.map((template) => template.name);
 
 type CvVersionMetadata = {
   designSystem: string;
@@ -36,9 +37,9 @@ function cvVersionFromDocument(document: SavedDocument | null): CvVersionMetadat
   const raw = document?.contentJson?.cvVersion;
   const source = raw && typeof raw === "object" ? raw as Partial<CvVersionMetadata> : {};
   const now = new Date().toISOString();
-  const designSystem = typeof source.designSystem === "string" && source.designSystem.trim()
+  const designSystem = normalizeDocumentTemplate(typeof source.designSystem === "string" && source.designSystem.trim()
     ? source.designSystem
-    : document?.template_name || "ATS Friendly";
+    : document?.template_name || "Modern ATS");
   return {
     designSystem,
     versionName: typeof source.versionName === "string" && source.versionName.trim() ? source.versionName : document?.title || `${designSystem} CV`,
@@ -321,7 +322,7 @@ export function MyDocumentsClient({ initialDocuments, canExport = false }: { ini
                     </label>
                     <label className="label">
                       Design system
-                      <select className="field" value={selectedCvVersion?.designSystem ?? selected.template_name ?? "ATS Friendly"} onChange={(event) => saveCvVersionPatch({ designSystem: event.target.value })}>
+                      <select className="field" value={selectedCvVersion?.designSystem ?? normalizeDocumentTemplate(selected.template_name)} onChange={(event) => saveCvVersionPatch({ designSystem: normalizeDocumentTemplate(event.target.value) })}>
                         {cvDesignSystems.map((template) => (
                           <option key={template} value={template}>{template}</option>
                         ))}

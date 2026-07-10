@@ -26,6 +26,15 @@ export function professionalizeUserInput(value: unknown) {
   return capitalizeSentenceStarts(cleanUserInput(value));
 }
 
+export function formatRecruiterBullet(value: unknown) {
+  const cleaned = professionalizeUserInput(value);
+  if (!cleaned) return "";
+  const withoutWeakStart = cleaned.replace(/^(i was responsible for|responsible for|worked on|helped with)\s+/i, "");
+  const startsWithAction = /^(built|created|managed|supported|improved|organized|analyzed|designed|delivered|coordinated|assisted|developed|prepared|maintained|learned|completed)\b/i.test(withoutWeakStart);
+  const factualBullet = startsWithAction ? withoutWeakStart : `Delivered ${withoutWeakStart.charAt(0).toLowerCase()}${withoutWeakStart.slice(1)}`;
+  return factualBullet.replace(/[.]+$/, "");
+}
+
 export function prepareForProfessionalDocument(value: unknown) {
   const original = typeof value === "string" ? value : "";
   const cleaned = cleanUserInput(original);

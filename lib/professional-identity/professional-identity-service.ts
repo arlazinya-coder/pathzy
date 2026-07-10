@@ -5,6 +5,8 @@ import type { DiscoveryAnswers, GeneratedRoadmap } from "@/lib/discovery/types";
 import { isPremiumUser } from "@/lib/launch/launch-service";
 import { canExportProfessionalDocuments, canUseProfessionalIdentity } from "@/lib/navigation/permissions";
 import { getBrainContextForAI } from "@/lib/pathzy-brain/brain-service";
+import { documentTemplateGallery, normalizeDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
+import type { PremiumDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
 import type {
   GenerateOptions,
   GeneratedProfessionalDocument,
@@ -14,24 +16,17 @@ import type {
   ProfessionalIdentityRecord,
   ProfessionalIdentityScore,
   ProfessionalLanguage,
-  ProfessionalStatus,
-  PremiumDocumentTemplate
+  ProfessionalStatus
 } from "@/lib/professional-identity/professional-identity-types";
-import { prepareForProfessionalDocument, professionalizeUserInput } from "@/lib/writing/user-text";
+import { formatRecruiterBullet, prepareForProfessionalDocument, professionalizeUserInput } from "@/lib/writing/user-text";
 
 type Supabase = SupabaseClient;
 type StoredDocumentType = "cv" | "cover_letter" | "linkedin_profile" | "recruiter_message" | "follow_up_email" | "career_passport" | "old_cv";
 
-export const premiumDocumentTemplates: Array<{ name: PremiumDocumentTemplate; description: string }> = [
-  { name: "ATS Friendly", description: "Black and white, clean, recruiter-safe, best for corporate applications." },
-  { name: "Modern Blue", description: "Navy with soft blue accents, premium, clean, and confident." },
-  { name: "Professional Green", description: "Charcoal with deep green accents, mature, trusted, and elegant." },
-  { name: "Graduate Fresh", description: "White with soft blue and green accents, youthful but professional." },
-  { name: "Executive Premium", description: "Dark navy with muted gold accents, elegant, senior, and premium." }
-];
+export const premiumDocumentTemplates = documentTemplateGallery;
 
 function normalizeTemplate(value: unknown): PremiumDocumentTemplate {
-  return premiumDocumentTemplates.some((template) => template.name === value) ? value as PremiumDocumentTemplate : "ATS Friendly";
+  return normalizeDocumentTemplate(value);
 }
 
 function documentTypeForTool(tool: GeneratedProfessionalDocument["tool"]): StoredDocumentType {
@@ -397,8 +392,8 @@ export async function generateCV(supabase: Supabase, userId: string, options: Ge
     coreSkills: skills,
     technicalSkills: [],
     professionalSkills: [],
-    professionalExperience: oldCvText ? [{ role: oldCvText, company: "", location: "", startDate: "", endDate: "", current: false, achievements: [] }] : [],
-    projects: getRecommendedCareers(inputs.roadmap).length ? [{ projectName: `Portfolio focus linked to: ${getRecommendedCareers(inputs.roadmap).join(", ")}`, role: "", tools: [], description: "", impact: "" }] : [],
+    professionalExperience: oldCvText ? [{ role: "Previous CV experience", company: "", location: "", startDate: "", endDate: "", current: false, achievements: [formatRecruiterBullet(oldCvText)] }] : [],
+    projects: getRecommendedCareers(inputs.roadmap).length ? [{ projectName: `Portfolio focus linked to: ${getRecommendedCareers(inputs.roadmap).join(", ")}`, role: "", tools: [], description: formatRecruiterBullet("built practical proof for selected career direction"), impact: "" }] : [],
     education: education ? [{ qualification: education, institution: "", fieldOfStudy: "", year: "", status: "" }] : [],
     certifications: [],
     achievements: [],

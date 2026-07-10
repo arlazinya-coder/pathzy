@@ -1,4 +1,7 @@
-export type CvTemplateName = "ATS Friendly" | "Modern Blue" | "Professional Green" | "Graduate Fresh" | "Executive Premium";
+import { normalizeDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
+import type { PremiumDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
+
+export type CvTemplateName = PremiumDocumentTemplate;
 
 export type CvSection = {
   title: string;
@@ -175,7 +178,7 @@ const continuedPageTop = 116;
 
 type CvDesignSystem = {
   name: CvTemplateName;
-  identity: "ats" | "modern" | "professional" | "graduate" | "executive";
+  identity: "ats" | "modern" | "professional" | "graduate" | "executive" | "consulting" | "creative" | "healthcare" | "engineering" | "international";
   ink: string;
   muted: string;
   navy: string;
@@ -212,8 +215,8 @@ type CvDesignSystem = {
 };
 
 const pathzyEliteDesignSystem: Record<CvTemplateName, CvDesignSystem> = {
-  "ATS Friendly": {
-    name: "ATS Friendly",
+  "Modern ATS": {
+    name: "Modern ATS",
     identity: "ats",
     ink: "#1f2937",
     muted: "#667085",
@@ -249,8 +252,8 @@ const pathzyEliteDesignSystem: Record<CvTemplateName, CvDesignSystem> = {
     dividerWeight: 1,
     showHeroOrnaments: false
   },
-  "Modern Blue": {
-    name: "Modern Blue",
+  "Google Style": {
+    name: "Google Style",
     identity: "modern",
     ink: "#182235",
     muted: "#667085",
@@ -286,9 +289,9 @@ const pathzyEliteDesignSystem: Record<CvTemplateName, CvDesignSystem> = {
     dividerWeight: 1,
     showHeroOrnaments: true
   },
-  "Professional Green": {
-    name: "Professional Green",
-    identity: "professional",
+  "Healthcare Professional": {
+    name: "Healthcare Professional",
+    identity: "healthcare",
     ink: "#17231d",
     muted: "#66756d",
     navy: "#10231c",
@@ -323,8 +326,8 @@ const pathzyEliteDesignSystem: Record<CvTemplateName, CvDesignSystem> = {
     dividerWeight: 1,
     showHeroOrnaments: false
   },
-  "Graduate Fresh": {
-    name: "Graduate Fresh",
+  "Graduate Elite": {
+    name: "Graduate Elite",
     identity: "graduate",
     ink: "#1f2440",
     muted: "#667085",
@@ -360,8 +363,8 @@ const pathzyEliteDesignSystem: Record<CvTemplateName, CvDesignSystem> = {
     dividerWeight: 1,
     showHeroOrnaments: true
   },
-  "Executive Premium": {
-    name: "Executive Premium",
+  "Executive Black": {
+    name: "Executive Black",
     identity: "executive",
     ink: "#201f1d",
     muted: "#6c665f",
@@ -396,13 +399,198 @@ const pathzyEliteDesignSystem: Record<CvTemplateName, CvDesignSystem> = {
     titleLetterSpacing: 1.8,
     dividerWeight: 1.2,
     showHeroOrnaments: false
+  },
+  "Microsoft Professional": {
+    name: "Microsoft Professional",
+    identity: "professional",
+    ink: "#1f2937",
+    muted: "#64748b",
+    navy: "#102a56",
+    navyAlt: "#1e3a8a",
+    blue: "#2563eb",
+    sky: "#eff6ff",
+    line: "#dbe7fb",
+    paper: "#ffffff",
+    sidebar: "#f5f9ff",
+    sidebarInk: "#26364f",
+    card: "#ffffff",
+    cardBorder: "#dbe7fb",
+    cream: "#f8fbff",
+    success: "#166534",
+    amber: "#b7791f",
+    heroText: "#ffffff",
+    heroMuted: "#dbeafe",
+    headerHeight: 184,
+    sidebarWidth: 190,
+    columnGap: 42,
+    nameSize: 36,
+    roleSize: 14,
+    summarySize: 9.6,
+    sectionTitleSize: 10.3,
+    bodySize: 10.5,
+    bodyLineHeight: 15.8,
+    sideBodySize: 9,
+    sideLineHeight: 12,
+    cardRadius: 8,
+    chipRadius: 6,
+    titleLetterSpacing: 1,
+    dividerWeight: 1.1,
+    showHeroOrnaments: false
+  },
+  "Deloitte Consulting": {
+    name: "Deloitte Consulting",
+    identity: "consulting",
+    ink: "#152012",
+    muted: "#5f6f5c",
+    navy: "#0f1d0f",
+    navyAlt: "#193016",
+    blue: "#86bc25",
+    sky: "#f2f9e8",
+    line: "#dcebc9",
+    paper: "#ffffff",
+    sidebar: "#f8fff2",
+    sidebarInk: "#20321a",
+    card: "#ffffff",
+    cardBorder: "#dcebc9",
+    cream: "#fbfff7",
+    success: "#3f7d20",
+    amber: "#8a6a16",
+    heroText: "#ffffff",
+    heroMuted: "#e8f7d5",
+    headerHeight: 176,
+    sidebarWidth: 188,
+    columnGap: 46,
+    nameSize: 35,
+    roleSize: 13.5,
+    summarySize: 9.2,
+    sectionTitleSize: 9.8,
+    bodySize: 10,
+    bodyLineHeight: 14.8,
+    sideBodySize: 8.7,
+    sideLineHeight: 11.2,
+    cardRadius: 4,
+    chipRadius: 4,
+    titleLetterSpacing: 1.6,
+    dividerWeight: 1.4,
+    showHeroOrnaments: false
+  },
+  "Creative Premium": {
+    name: "Creative Premium",
+    identity: "creative",
+    ink: "#2b211c",
+    muted: "#75685f",
+    navy: "#321b13",
+    navyAlt: "#5a2d1e",
+    blue: "#f97316",
+    sky: "#fff1e8",
+    line: "#f2d6c4",
+    paper: "#fffaf6",
+    sidebar: "#fff3eb",
+    sidebarInk: "#3b261c",
+    card: "#fffdfa",
+    cardBorder: "#f2d6c4",
+    cream: "#fff8f2",
+    success: "#166534",
+    amber: "#f59e0b",
+    heroText: "#fffaf6",
+    heroMuted: "#ffedd5",
+    headerHeight: 206,
+    sidebarWidth: 236,
+    columnGap: 30,
+    nameSize: 39,
+    roleSize: 15.2,
+    summarySize: 9.7,
+    sectionTitleSize: 10.8,
+    bodySize: 10.4,
+    bodyLineHeight: 16.1,
+    sideBodySize: 9,
+    sideLineHeight: 12.1,
+    cardRadius: 20,
+    chipRadius: 999,
+    titleLetterSpacing: 1.1,
+    dividerWeight: 1,
+    showHeroOrnaments: true
+  },
+  "Engineering": {
+    name: "Engineering",
+    identity: "engineering",
+    ink: "#17212b",
+    muted: "#667085",
+    navy: "#0f172a",
+    navyAlt: "#1e293b",
+    blue: "#0f766e",
+    sky: "#ecfdfb",
+    line: "#d5e7e5",
+    paper: "#ffffff",
+    sidebar: "#f8fafc",
+    sidebarInk: "#1f2937",
+    card: "#ffffff",
+    cardBorder: "#d9e2e8",
+    cream: "#fbfefd",
+    success: "#0f766e",
+    amber: "#a16207",
+    heroText: "#ffffff",
+    heroMuted: "#ccfbf1",
+    headerHeight: 182,
+    sidebarWidth: 230,
+    columnGap: 34,
+    nameSize: 34,
+    roleSize: 13.8,
+    summarySize: 9.2,
+    sectionTitleSize: 10,
+    bodySize: 10.1,
+    bodyLineHeight: 15.1,
+    sideBodySize: 8.8,
+    sideLineHeight: 11.6,
+    cardRadius: 6,
+    chipRadius: 5,
+    titleLetterSpacing: 1.4,
+    dividerWeight: 1.2,
+    showHeroOrnaments: false
+  },
+  "International Standard": {
+    name: "International Standard",
+    identity: "international",
+    ink: "#1f2937",
+    muted: "#667085",
+    navy: "#ffffff",
+    navyAlt: "#f8fafc",
+    blue: "#334155",
+    sky: "#f8fafc",
+    line: "#d7dde6",
+    paper: "#ffffff",
+    sidebar: "#ffffff",
+    sidebarInk: "#1f2937",
+    card: "#ffffff",
+    cardBorder: "#d7dde6",
+    cream: "#ffffff",
+    success: "#166534",
+    amber: "#92400e",
+    heroText: "#111827",
+    heroMuted: "#475467",
+    headerHeight: 168,
+    sidebarWidth: 186,
+    columnGap: 42,
+    nameSize: 33,
+    roleSize: 13.5,
+    summarySize: 9.4,
+    sectionTitleSize: 9.8,
+    bodySize: 10.2,
+    bodyLineHeight: 15.6,
+    sideBodySize: 8.9,
+    sideLineHeight: 11.8,
+    cardRadius: 2,
+    chipRadius: 2,
+    titleLetterSpacing: 1.2,
+    dividerWeight: 1,
+    showHeroOrnaments: false
   }
 };
 
-let premiumTemplate = pathzyEliteDesignSystem["Modern Blue"];
+let premiumTemplate = pathzyEliteDesignSystem["Google Style"];
 
 function resolveCvTemplateDesign(templateName?: string): CvDesignSystem {
-  return pathzyEliteDesignSystem[(templateName as CvTemplateName) ?? "Modern Blue"] ?? pathzyEliteDesignSystem["Modern Blue"];
+  return pathzyEliteDesignSystem[normalizeDocumentTemplate(templateName)] ?? pathzyEliteDesignSystem["Modern ATS"];
 }
 
 type CoverLetterDesign = {
@@ -689,7 +877,7 @@ function emptyCoverLetterData(): CoverLetterData {
     closingParagraph: "",
     signature: "",
     tone: "professional",
-    designSystem: "ATS Friendly"
+    designSystem: "Modern ATS"
   };
 }
 
@@ -726,7 +914,7 @@ function normalizeCoverLetterData(data: CoverLetterData): CoverLetterData {
     closingParagraph: cleanFinalLine(data.closingParagraph),
     signature: cleanFinalLine(data.signature),
     tone: cleanFinalLine(data.tone) || "professional",
-    designSystem: data.designSystem || "ATS Friendly"
+    designSystem: normalizeDocumentTemplate(data.designSystem)
   };
 }
 

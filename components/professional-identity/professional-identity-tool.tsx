@@ -6,6 +6,7 @@ import { Card } from "@/components/ui";
 import { PremiumUpgradeCard } from "@/components/upgrade/premium-upgrade-card";
 import { coverLetterDataFromUnknown, coverLetterPdfFilename, cvModelFromUnknown, cvModelWithMissing, downloadBlob, normalizeCoverLetterDataForExport, normalizeCvModelForExport, pathzyFilename, renderCoverLetterHtmlFromData, renderCvHtml, renderCvHtmlFromModel, serializeCoverLetterData, serializeCvModel, simpleCoverLetterPdfDocument, simplePdfDocument, simplePdfDocumentFromModel } from "@/components/professional-identity/document-downloads";
 import type { CoverLetterData, CvModel } from "@/components/professional-identity/document-downloads";
+import { documentTemplateGallery, normalizeDocumentTemplate, templateMetadata } from "@/lib/professional-identity/document-template-engine";
 import type { GeneratedProfessionalDocument, GenerateOptions, ProfessionalLanguage } from "@/lib/professional-identity/professional-identity-types";
 
 type Field = {
@@ -68,7 +69,7 @@ const skillGroupSections = [
   { label: "Professional", title: "Professional Skills" }
 ];
 
-const cvDesignSystems = ["ATS Friendly", "Modern Blue", "Professional Green", "Graduate Fresh", "Executive Premium"] as const;
+const cvDesignSystems = documentTemplateGallery.map((template) => template.name);
 
 type CvVersionMetadata = {
   designSystem: string;
@@ -79,13 +80,13 @@ type CvVersionMetadata = {
   contentSourceId?: string | null;
 };
 
-function cvVersionFromDocument(document: GeneratedProfessionalDocument | null, fallbackDesign = "ATS Friendly"): CvVersionMetadata {
+function cvVersionFromDocument(document: GeneratedProfessionalDocument | null, fallbackDesign = "Modern ATS"): CvVersionMetadata {
   const raw = document?.contentJson?.cvVersion;
   const source = raw && typeof raw === "object" ? raw as Partial<CvVersionMetadata> : {};
   const now = new Date().toISOString();
-  const designSystem = typeof source.designSystem === "string" && source.designSystem.trim()
+  const designSystem = normalizeDocumentTemplate(typeof source.designSystem === "string" && source.designSystem.trim()
     ? source.designSystem
-    : document?.template_name || fallbackDesign;
+    : document?.template_name || fallbackDesign);
   return {
     designSystem,
     versionName: typeof source.versionName === "string" && source.versionName.trim() ? source.versionName : document?.title || `${designSystem} CV`,
@@ -213,7 +214,8 @@ export function ProfessionalIdentityTool({
 
   const outputTitle = useMemo(() => document?.title ?? "Your generated draft will appear here.", [document]);
   const recoveryKey = `pathzy-document-draft:${tool}`;
-  const templateName = values.templateName ?? "ATS Friendly";
+  const templateName = normalizeDocumentTemplate(values.templateName);
+  const selectedTemplateMetadata = templateMetadata(templateName);
   const parsedCv = useMemo(() => tool === "cv" && cvModel ? cvModelWithMissing(cvModel) : null, [cvModel, tool]);
   const activeCvVersion = useMemo(() => tool === "cv" ? cvVersionFromDocument(document, templateName) : null, [document, templateName, tool]);
 
@@ -276,7 +278,7 @@ export function ProfessionalIdentityTool({
   function setCvDocument(nextDocument: GeneratedProfessionalDocument, markSaved: boolean) {
     const nextModel = cvModelFromDocument(nextDocument);
     const content = serializeCvModel(nextModel);
-    const version = cvVersionFromDocument(nextDocument, nextDocument.template_name ?? values.templateName ?? "ATS Friendly");
+    const version = cvVersionFromDocument(nextDocument, nextDocument.template_name ?? values.templateName ?? "Modern ATS");
     const next = { ...nextDocument, title: version.versionName, content, template_name: version.designSystem, contentJson: { ...(nextDocument.contentJson ?? {}), cvModel: nextModel, cvVersion: version } };
     setDocument(next);
     setCvModel(nextModel);
@@ -677,10 +679,11 @@ export function ProfessionalIdentityTool({
   }
 
   function updateValue(name: keyof GenerateOptions, value: string) {
-    setValues((current) => ({ ...current, [name]: value }));
+    const nextValue = name === "templateName" ? normalizeDocumentTemplate(value) : value;
+    setValues((current) => ({ ...current, [name]: nextValue }));
     if (document && name === "templateName" && tool === "cv" && cvModel) {
-      const version = { ...cvVersionFromDocument(document, value), designSystem: value, updatedAt: new Date().toISOString() };
-      const next = { ...document, template_name: value, contentJson: { ...(document.contentJson ?? {}), cvModel, cvVersion: version } };
+      const version = { ...cvVersionFromDocument(document, nextValue), designSystem: nextValue, updatedAt: new Date().toISOString() };
+      const next = { ...document, template_name: nextValue, contentJson: { ...(document.contentJson ?? {}), cvModel, cvVersion: version } };
       setDocument(next);
       setPreviewCvModel(cvModel);
       window.localStorage.setItem(recoveryKey, JSON.stringify(next));
@@ -782,7 +785,7 @@ export function ProfessionalIdentityTool({
         const latest = (data.documents ?? []).find((item: GeneratedProfessionalDocument & { template_name?: string }) => item.tool === tool);
         if (!cancelled && latest?.content) {
           setCvDocument({ id: latest.id, tool, title: latest.title, content: latest.content, contentJson: latest.contentJson ?? null }, true);
-          setValues((current) => ({ ...current, templateName: latest.template_name ?? current.templateName ?? "ATS Friendly" }));
+          setValues((current) => ({ ...current, templateName: normalizeDocumentTemplate(latest.template_name ?? current.templateName ?? "Modern ATS") }));
           setCvEntryMode("profile");
           setViewMode("preview");
         }
@@ -1033,7 +1036,7 @@ export function ProfessionalIdentityTool({
               </label>
               <label className="label">
                 Template
-                <select className="field" value={values.templateName ?? "ATS Friendly"} onChange={(event) => updateValue("templateName", event.target.value)}>
+                <select className="field" value={templateName} onChange={(event) => updateValue("templateName", event.target.value)}>
                   {cvDesignSystems.map((template) => (
                     <option key={template} value={template}>{template}</option>
                   ))}
@@ -1098,6 +1101,51 @@ export function ProfessionalIdentityTool({
                 </label>
               </div>
             ) : null}
+            {tool === "cv" ? (
+              <div className="rounded-[22px] border border-white/10 bg-white/6 p-4 lg:col-span-5">
+                <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">Template gallery</p>
+                    <h3 className="mt-2 text-xl font-black">Choose a recruiter-ready design</h3>
+                    <p className="mt-2 text-sm leading-6 text-white/56">Template switching changes presentation only. Your CV model, edits, and saved content stay the same.</p>
+                  </div>
+                  <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-extrabold text-[#c7d6ff]">Selected: {selectedTemplateMetadata.name}</span>
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                  {documentTemplateGallery.map((template) => (
+                    <button
+                      key={template.name}
+                      type="button"
+                      onClick={() => updateValue("templateName", template.name)}
+                      className={`rounded-[18px] border p-3 text-left transition hover:-translate-y-0.5 ${templateName === template.name ? "border-[#8fb0ff] bg-[#5B8CFF]/16" : "border-white/10 bg-white/6"}`}
+                    >
+                      <div className="h-24 rounded-[14px] border border-white/10 p-3" style={{ background: template.thumbnail.background }}>
+                        <div className="h-2.5 w-14 rounded-full" style={{ background: template.thumbnail.accent }} />
+                        <div className="mt-3 grid gap-1.5">
+                          <div className="h-1.5 w-4/5 rounded-full bg-black/18" />
+                          <div className="h-1.5 w-2/3 rounded-full bg-black/14" />
+                          <div className="h-1.5 w-5/6 rounded-full bg-black/14" />
+                        </div>
+                        <div className={template.thumbnail.layout === "single" ? "mt-3 h-8 rounded bg-black/10" : "mt-3 grid grid-cols-[.42fr_1fr] gap-2"}>
+                          {template.thumbnail.layout === "single" ? null : (
+                            <>
+                              <div className="h-8 rounded bg-black/10" />
+                              <div className="h-8 rounded bg-black/10" />
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <p className="mt-3 text-sm font-black text-white">{template.name}</p>
+                      <p className="mt-1 text-xs leading-5 text-white/50">{template.bestFor}</p>
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] font-extrabold text-white/72">
+                        <span className="rounded-full bg-white/8 px-2 py-1">ATS {template.atsRating}%</span>
+                        <span className="rounded-full bg-white/8 px-2 py-1">Recruiter {template.recruiterRating}%</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : (
           <>
@@ -1129,7 +1177,7 @@ export function ProfessionalIdentityTool({
               {(tool === "cover-letter") ? (
                 <label className="label">
                   Premium template
-                  <select className="field" value={values.templateName ?? "ATS Friendly"} onChange={(event) => updateValue("templateName", event.target.value)}>
+                  <select className="field" value={templateName} onChange={(event) => updateValue("templateName", event.target.value)}>
                     {cvDesignSystems.map((template) => (
                       <option key={template} value={template}>{template}</option>
                     ))}
@@ -1195,7 +1243,8 @@ export function ProfessionalIdentityTool({
         {downloadNotice ? <p className="mt-5 rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{downloadNotice}</p> : null}
         {parsedCv?.missing.length ? (
           <div className="mt-5 rounded-[18px] border border-[#f8c45d]/25 bg-[#f8c45d]/10 p-4 text-sm font-bold text-[#ffe2a8]">
-            Missing before download: {parsedCv.missing.join(", ")}. Add this in edit mode so your final CV is complete.
+            <p className="text-xs uppercase tracking-[0.14em] text-[#ffe2a8]/70">Improve your CV</p>
+            <p className="mt-2 leading-6">Add {parsedCv.missing.join(", ").toLowerCase()} so recruiters can contact you and understand your target role quickly.</p>
           </div>
         ) : null}
 
