@@ -34,6 +34,36 @@ for (const section of ["Navigation", "Hero", "Features", "How PATHZY Works", "Ca
 }
 assert.match(homepage, /Do not remove landing sections without updating homepage regression test\./, "Homepage must warn maintainers to update the regression test before removing landing sections.");
 assert.doesNotMatch(rootLayout, /AppShell/, "Public root layout must not wrap the landing page in the authenticated app shell.");
+for (const [key, route] of [
+  ["WELCOME_HOME", "/"],
+  ["LOGIN", "/login"],
+  ["SIGNUP", "/signup"],
+  ["MY_EMPLOYMENT_JOURNEY", "/roadmap"],
+  ["MY_PROFESSIONAL_PROFILE", "/professional-identity"],
+  ["CV_BUILDER", "/professional-identity/cv"],
+  ["COVER_LETTER", "/professional-identity/cover-letter"],
+  ["LINKEDIN_OPTIMIZER", "/professional-identity/linkedin"],
+  ["MY_DOCUMENTS", "/professional-identity/documents"],
+  ["FIND_OPPORTUNITIES", "/opportunities"],
+  ["MY_APPLICATIONS", "/applications"],
+  ["SKILLS_CAREER_GROWTH", "/skills"],
+  ["BILLING", "/billing"],
+  ["SETTINGS", "/settings"]
+]) {
+  assert.match(routes, new RegExp(`${key}: "${route.replaceAll("/", "\\/")}"`), `PATHZY_ROUTES.${key} must be ${route}.`);
+}
+assert.match(routes, /MY_EMPLOYMENT_JOURNEY: "My Employment Journey"/, "The user-facing label for /roadmap must stay My Employment Journey.");
+assert.doesNotMatch(routes, /MY_EMPLOYMENT_JOURNEY: "Roadmap"/, "The product section name must not be Roadmap.");
+for (const [key, route] of [
+  ["dashboard", "/dashboard"],
+  ["cvBuilder", "/cv-builder"],
+  ["employmentTracker", "/employment-tracker"],
+  ["progress", "/progress"],
+  ["pricing", "/pricing"],
+  ["register", "/register"]
+]) {
+  assert.match(routes, new RegExp(`${key}: "${route.replaceAll("/", "\\/")}"`), `Legacy route ${route} must be reported centrally until it is redirected or removed in a later phase.`);
+}
 for (const [routeName, routeLayout] of [
   ["/roadmap", roadmapLayout],
   ["/professional-identity", professionalIdentityLayout],
@@ -64,9 +94,9 @@ assert.match(navigation, /label: "My Applications", href: appRoutes\.application
 assert.match(navigation, /label: "Skills & Career Growth", href: appRoutes\.skills/, "Skills & Career Growth must route to /skills.");
 assert.match(navigation, /label: "Billing", href: appRoutes\.billing/, "Billing must route to /billing.");
 assert.match(navigation, /label: "Settings", href: appRoutes\.settings/, "Settings must route to /settings.");
-assert.match(routes, /applications: "\/applications"/, "The canonical Applications route must exist.");
-assert.match(routes, /skills: "\/skills"/, "The canonical Skills route must exist.");
-assert.match(routes, /billing: "\/billing"/, "The canonical Billing route must exist.");
+assert.match(routes, /applications: PATHZY_ROUTES\.MY_APPLICATIONS/, "The Applications app route must use the canonical /applications definition.");
+assert.match(routes, /skills: PATHZY_ROUTES\.SKILLS_CAREER_GROWTH/, "The Skills app route must use the canonical /skills definition.");
+assert.match(routes, /billing: PATHZY_ROUTES\.BILLING/, "The Billing app route must use the canonical /billing definition.");
 assert.match(applicationsPage, /EmploymentTrackerPage/, "The /applications entry point must reuse the existing application tracker implementation.");
 assert.match(skillsPage, /ProgressPage/, "The /skills entry point must reuse the existing skills and growth implementation.");
 assert.match(billingPage, /PricingPage/, "The /billing entry point must reuse the existing billing/pricing implementation.");
