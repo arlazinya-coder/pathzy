@@ -4,7 +4,7 @@ import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "reac
 import Link from "next/link";
 import { Card } from "@/components/ui";
 import { PremiumUpgradeCard } from "@/components/upgrade/premium-upgrade-card";
-import { coverLetterDataFromUnknown, coverLetterPdfFilename, cvModelFromUnknown, cvModelWithMissing, downloadBlob, normalizeCoverLetterDataForExport, normalizeCvModelForExport, pathzyFilename, renderCoverLetterHtmlFromData, renderCvHtml, renderCvHtmlFromModel, serializeCoverLetterData, serializeCvModel, simpleCoverLetterPdfDocument, simplePdfDocument, simplePdfDocumentFromModel } from "@/components/professional-identity/document-downloads";
+import { coverLetterDataFromUnknown, coverLetterPdfFilename, cvModelFromUnknown, cvModelWithMissing, downloadBlob, normalizeCoverLetterDataForExport, normalizeCvModelForExport, pathzyFilename, renderCoverLetterHtmlFromData, renderCvHtmlFromModel, serializeCoverLetterData, serializeCvModel, simpleCoverLetterPdfDocument, simplePdfDocument, simplePdfDocumentFromModel } from "@/components/professional-identity/document-downloads";
 import { appRoutes } from "@/lib/navigation/routes";
 import type { CoverLetterData, CvModel } from "@/components/professional-identity/document-downloads";
 import type { GeneratedProfessionalDocument, GenerateOptions, ProfessionalLanguage } from "@/lib/professional-identity/professional-identity-types";
@@ -174,6 +174,70 @@ function LinkedInPreview({ document }: { document: GeneratedProfessionalDocument
             </ul>
           </section>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function splitDocumentLines(content: string) {
+  return content.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+}
+
+function PremiumDocumentPreview({ tool, document }: { tool: Tool; document: GeneratedProfessionalDocument }) {
+  const lines = splitDocumentLines(document.content);
+
+  if (tool === "recruiter-message") {
+    return (
+      <div className="mt-5 rounded-[24px] border border-white/10 bg-[#f8fbff] p-5 text-[#0d1630]">
+        <div className="rounded-[20px] bg-white p-6 shadow-[0_18px_55px_rgba(13,22,48,0.12)]">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#4d6bb3]">Recruiter Message</p>
+          <h3 className="mt-2 text-2xl font-black">{document.title}</h3>
+          <div className="mt-5 rounded-[18px] border border-[#dbe5f2] bg-[#f8fbff] p-5">
+            <p className="whitespace-pre-wrap text-sm leading-7 text-[#26344f]">{document.content}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (tool === "follow-up") {
+    return (
+      <div className="mt-5 rounded-[24px] bg-[#dfe7f3] p-3 text-[#0d1630]">
+        <div className="mx-auto min-h-[680px] max-w-[760px] bg-white px-12 py-14 shadow-[0_20px_60px_rgba(13,22,48,0.16)]">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#4d6bb3]">Follow-up Email</p>
+          <h3 className="mt-3 text-2xl font-black">{document.title}</h3>
+          <div className="mt-8 whitespace-pre-wrap text-[15px] leading-8 text-[#26344f]">{document.content}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (tool === "career-passport") {
+    const sectionNames = ["Professional Summary", "Career Goal", "Skills", "Experience", "Education", "Certifications", "Languages", "Portfolio", "Employment Readiness"];
+    return (
+      <div className="mt-5 rounded-[24px] border border-white/10 bg-[#f8fbff] p-5 text-[#0d1630]">
+        <div className="rounded-[20px] bg-white p-6 shadow-[0_18px_55px_rgba(13,22,48,0.12)]">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#4d6bb3]">Career Passport</p>
+          <h3 className="mt-2 text-3xl font-black">{document.title}</h3>
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            {sectionNames.map((section, index) => (
+              <section key={section} className="rounded-[18px] border border-[#dbe5f2] bg-[#f8fbff] p-4">
+                <h4 className="text-sm font-black uppercase tracking-[0.12em] text-[#4d6bb3]">{section}</h4>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-[#26344f]">{lines[index] || lines.find((line) => line.toLowerCase().includes(section.split(" ")[0].toLowerCase())) || "Add this information in My Professional Profile."}</p>
+              </section>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-5 rounded-[24px] border border-white/10 bg-[#f8fbff] p-5 text-[#0d1630]">
+      <div className="rounded-[20px] bg-white p-6 shadow-[0_18px_55px_rgba(13,22,48,0.12)]">
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-[#4d6bb3]">Professional Document</p>
+        <h3 className="mt-2 text-2xl font-black">{document.title}</h3>
+        <p className="mt-5 whitespace-pre-wrap text-sm leading-7 text-[#26344f]">{document.content}</p>
       </div>
     </div>
   );
@@ -896,6 +960,10 @@ export function ProfessionalIdentityTool({
   async function generate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (upgradeRequired) return;
+    if (document?.id && exportLocked) {
+      setExportUpgradeRequired(true);
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -939,6 +1007,10 @@ export function ProfessionalIdentityTool({
 
   async function regenerateCurrentDraft() {
     if (upgradeRequired) return;
+    if (exportLocked) {
+      setExportUpgradeRequired(true);
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -978,12 +1050,20 @@ export function ProfessionalIdentityTool({
 
   async function copyDocument() {
     if (!document?.content) return;
+    if (exportLocked) {
+      setExportUpgradeRequired(true);
+      return;
+    }
     await navigator.clipboard.writeText(document.content);
     setCopied(true);
   }
 
   async function copyTextValue(value: string) {
     if (!value.trim()) return;
+    if (exportLocked) {
+      setExportUpgradeRequired(true);
+      return;
+    }
     await navigator.clipboard.writeText(value);
     setCopied(true);
   }
@@ -1132,6 +1212,14 @@ export function ProfessionalIdentityTool({
   }
 
   const workspaceClass = tool === "cv" ? "grid gap-5 lg:grid-cols-4" : tool === "cover-letter" ? "grid gap-5 lg:grid-cols-2" : "grid gap-5 lg:grid-cols-[.82fr_1fr]";
+  const copyActionLabel =
+    tool === "linkedin"
+      ? "Copy Full LinkedIn Profile"
+      : tool === "recruiter-message"
+        ? "Copy Recruiter Message"
+        : tool === "follow-up"
+          ? "Copy Follow-up Email"
+          : "Copy Full Content";
 
   return (
     <div className={workspaceClass}>
@@ -1299,11 +1387,12 @@ export function ProfessionalIdentityTool({
               <>
                 <button onClick={() => setViewMode("preview")} disabled={!document?.content} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">Preview</button>
                 <button onClick={() => setViewMode("edit")} disabled={!document?.content} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">Edit</button>
+                <button onClick={regenerateCurrentDraft} disabled={!document?.content || loading} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">{loading ? "Improving..." : "AI Improve"}</button>
               </>
             )}
             {tool !== "cv" ? (
               <button onClick={copyDocument} disabled={!document?.content} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">
-                {copied ? "Copied" : "Copy"}
+                {copied ? "Copied" : copyActionLabel}
               </button>
             ) : null}
           </div>
@@ -1389,7 +1478,7 @@ export function ProfessionalIdentityTool({
           </div>
         ) : tool === "cover-letter" && coverLetterData ? (
           renderCoverLetterEditor()
-        ) : tool === "linkedin" && document?.content ? (
+        ) : tool === "linkedin" && document?.content && viewMode === "preview" ? (
           <>
             <LinkedInPreview document={document} />
             <div className="mt-4 flex flex-wrap gap-2">
@@ -1398,13 +1487,12 @@ export function ProfessionalIdentityTool({
               <button type="button" onClick={() => copyTextValue(getLinkedInFields(document).headline)} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Copy Headline</button>
               <button type="button" onClick={() => copyTextValue(getLinkedInFields(document).about)} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Copy About Section</button>
               <button type="button" onClick={() => copyTextValue(document.content)} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Copy Full LinkedIn Content</button>
+              <Link href={appRoutes.professionalIdentity} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Back to My Professional Profile</Link>
               <Link href={appRoutes.roadmap} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Back to My Employment Journey</Link>
             </div>
           </>
         ) : viewMode === "preview" && document?.content ? (
-          <div className="mt-5 overflow-hidden rounded-[22px] bg-white p-2 text-black">
-            <div dangerouslySetInnerHTML={{ __html: tool === "cover-letter" && coverLetterData ? renderCoverLetterHtmlFromData(coverLetterData) : renderCvHtml(document.content, templateName) }} />
-          </div>
+          <PremiumDocumentPreview tool={tool} document={document} />
         ) : (
           <textarea
             className="mt-5 min-h-[420px] w-full resize-y rounded-[22px] border border-white/10 bg-[#050816]/70 p-5 text-sm leading-7 text-white/76 outline-none transition focus:border-[#5B8CFF]/50"
@@ -1423,9 +1511,18 @@ export function ProfessionalIdentityTool({
               <button onClick={() => saveDocument(false)} disabled={!document?.id} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">
                 {saveState === "saving" ? "Saving..." : "Save Draft"}
               </button>
-              <button onClick={downloadPdf} disabled={!document?.content} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">
-                Download PDF
-              </button>
+              {tool === "follow-up" || tool === "career-passport" ? (
+                <button onClick={downloadPdf} disabled={!document?.content} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">
+                  Download PDF
+                </button>
+              ) : null}
+              {tool === "recruiter-message" ? (
+                <button onClick={regenerateCurrentDraft} disabled={!document?.content || loading} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">
+                  Regenerate
+                </button>
+              ) : null}
+              <Link href={appRoutes.professionalIdentity} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82">Back to My Professional Profile</Link>
+              <Link href={appRoutes.roadmap} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82">Back to My Employment Journey</Link>
             </>
           ) : null}
         </div>
@@ -1439,9 +1536,12 @@ export function ProfessionalIdentityTool({
               <h2 className="mt-2 text-2xl font-black">{outputTitle}</h2>
             </div>
             <div className="flex flex-wrap gap-2">
+              <button onClick={regenerateCurrentDraft} disabled={!document?.content || loading} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">{loading ? "Improving..." : "AI Improve"}</button>
               <button onClick={downloadPdf} disabled={!document?.content} className="rounded-full blue-purple px-5 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">
                 Download PDF
               </button>
+              <Link href={appRoutes.professionalIdentity} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82">Back to My Professional Profile</Link>
+              <Link href={appRoutes.roadmap} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82">Back to My Employment Journey</Link>
             </div>
           </div>
           <p className="mt-3 text-sm leading-6 text-white/58">This is the published version. Edit in the center panel; export only when the preview is ready.</p>
@@ -1470,6 +1570,9 @@ export function ProfessionalIdentityTool({
             <button onClick={downloadPdf} disabled={!document?.content} className="rounded-full blue-purple px-5 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">
               Download PDF
             </button>
+            <button onClick={regenerateCurrentDraft} disabled={!document?.content || loading} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">{loading ? "Improving..." : "AI Improve"}</button>
+            <Link href={appRoutes.professionalIdentity} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82">Back to My Professional Profile</Link>
+            <Link href={appRoutes.roadmap} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82">Back to My Employment Journey</Link>
           </div>
           <p className="mt-3 text-sm leading-6 text-white/58">This is the published A4 cover letter. Empty fields stay hidden.</p>
           {document?.content && previewCoverLetterData ? (
@@ -1494,6 +1597,7 @@ export function ProfessionalIdentityTool({
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href={appRoutes.professionalIdentityCoverLetter} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Build My Cover Letter</Link>
               <Link href={appRoutes.professionalIdentityLinkedin} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Improve My LinkedIn</Link>
+              <Link href={appRoutes.professionalIdentity} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Back to My Professional Profile</Link>
               <Link href={appRoutes.roadmap} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Back to My Employment Journey</Link>
               <Link href={appRoutes.opportunities} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Find Opportunities</Link>
               <Link href="/mentor?context=CV%20page%20-%20help%20with%20CV" className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Ask Your Mentor</Link>
@@ -1509,6 +1613,7 @@ export function ProfessionalIdentityTool({
             <h3 className="text-xl font-black">Your cover letter is ready. Keep moving.</h3>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href={appRoutes.roadmap} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Back to My Employment Journey</Link>
+              <Link href={appRoutes.professionalIdentity} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Back to My Professional Profile</Link>
               <Link href={appRoutes.professionalIdentityLinkedin} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Improve My LinkedIn</Link>
               <Link href={appRoutes.opportunities} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Find Opportunities</Link>
             </div>

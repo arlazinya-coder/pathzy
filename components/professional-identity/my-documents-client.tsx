@@ -90,6 +90,10 @@ export function MyDocumentsClient({ initialDocuments, canExport = false }: { ini
 
   async function copyText() {
     if (!selected) return;
+    if (!canExport) {
+      setUpgradeRequired(true);
+      return;
+    }
     await navigator.clipboard.writeText(selected.content);
     setNotice("Copied.");
   }
@@ -261,7 +265,7 @@ export function MyDocumentsClient({ initialDocuments, canExport = false }: { ini
     return (
       <PremiumUpgradeCard
         title="Your document is ready."
-        subtitle="Upgrade to download and export your documents. You can still preview, edit, and copy your work for free."
+        subtitle="You can still preview, edit, and save your work for free. Premium unlocks downloads and full-content copy."
         primaryLabel="Upgrade to Starter - $9.99/month"
         secondaryLabel="Keep previewing"
         onSecondary={() => setUpgradeRequired(false)}

@@ -47,7 +47,7 @@ const tools = [
   },
   {
     title: "Follow-up Email",
-    href: "/professional-identity/follow-up",
+    href: appRoutes.professionalIdentityFollowUpEmail,
     button: "Create Follow-up Email",
     statusKey: null,
     readiness: 10,
@@ -63,7 +63,7 @@ const tools = [
   },
   {
     title: "Supporting Documents",
-    href: "/professional-identity/documents",
+    href: appRoutes.professionalIdentitySupportingDocuments,
     button: "Open Documents",
     statusKey: null,
     readiness: 10,
@@ -71,7 +71,7 @@ const tools = [
   },
   {
     title: "Certificates",
-    href: "/professional-identity/documents",
+    href: appRoutes.professionalIdentitySupportingDocuments,
     button: "Add Certificates",
     statusKey: null,
     readiness: 10,
@@ -79,7 +79,7 @@ const tools = [
   },
   {
     title: "Diplomas",
-    href: "/professional-identity/documents",
+    href: appRoutes.professionalIdentitySupportingDocuments,
     button: "Add Diplomas",
     statusKey: null,
     readiness: 10,
@@ -87,7 +87,7 @@ const tools = [
   },
   {
     title: "References",
-    href: "/professional-identity/documents",
+    href: appRoutes.professionalIdentityReferences,
     button: "Add References",
     statusKey: null,
     readiness: 10,
@@ -95,7 +95,7 @@ const tools = [
   },
   {
     title: "Portfolio",
-    href: "/professional-identity/documents",
+    href: appRoutes.professionalIdentitySupportingDocuments,
     button: "Add Portfolio",
     statusKey: null,
     readiness: 10,

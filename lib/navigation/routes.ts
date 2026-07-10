@@ -8,6 +8,8 @@ export const PATHZY_ROUTES = {
   COVER_LETTER: "/professional-identity/cover-letter",
   LINKEDIN_OPTIMIZER: "/professional-identity/linkedin",
   MY_DOCUMENTS: "/professional-identity/documents",
+  REFERENCES: "/professional-identity/references",
+  SUPPORTING_DOCUMENTS: "/professional-identity/supporting-documents",
   FIND_OPPORTUNITIES: "/opportunities",
   MY_APPLICATIONS: "/applications",
   SKILLS_CAREER_GROWTH: "/skills",
@@ -22,6 +24,8 @@ export const PATHZY_ROUTE_LABELS = {
   COVER_LETTER: "Cover Letter",
   LINKEDIN_OPTIMIZER: "LinkedIn",
   MY_DOCUMENTS: "My Documents",
+  REFERENCES: "References",
+  SUPPORTING_DOCUMENTS: "Supporting Documents",
   FIND_OPPORTUNITIES: "Find Opportunities",
   MY_APPLICATIONS: "My Applications",
   SKILLS_CAREER_GROWTH: "Skills & Career Growth",
@@ -66,7 +70,10 @@ export const appRoutes = {
   professionalIdentityLinkedin: PATHZY_ROUTES.LINKEDIN_OPTIMIZER,
   professionalIdentityRecruiterMessage: "/professional-identity/recruiter-message",
   professionalIdentityFollowUp: "/professional-identity/follow-up",
+  professionalIdentityFollowUpEmail: "/professional-identity/follow-up-email",
   professionalIdentityCareerPassport: "/professional-identity/career-passport",
+  professionalIdentityReferences: PATHZY_ROUTES.REFERENCES,
+  professionalIdentitySupportingDocuments: PATHZY_ROUTES.SUPPORTING_DOCUMENTS,
   login: PATHZY_ROUTES.LOGIN,
   register: legacyRoutes.register,
   signup: PATHZY_ROUTES.SIGNUP,
@@ -136,7 +143,10 @@ export const professionalIdentityRoutes = [
   appRoutes.professionalIdentityLinkedin,
   appRoutes.professionalIdentityRecruiterMessage,
   appRoutes.professionalIdentityFollowUp,
+  appRoutes.professionalIdentityFollowUpEmail,
   appRoutes.professionalIdentityCareerPassport,
+  appRoutes.professionalIdentityReferences,
+  appRoutes.professionalIdentitySupportingDocuments,
   appRoutes.cvBuilder
 ] as const;
 
@@ -147,7 +157,10 @@ export const premiumActionRoutes = [
   appRoutes.professionalIdentityLinkedin,
   appRoutes.professionalIdentityRecruiterMessage,
   appRoutes.professionalIdentityFollowUp,
+  appRoutes.professionalIdentityFollowUpEmail,
   appRoutes.professionalIdentityCareerPassport,
+  appRoutes.professionalIdentityReferences,
+  appRoutes.professionalIdentitySupportingDocuments,
   appRoutes.mentor,
   appRoutes.interview
 ] as const;
