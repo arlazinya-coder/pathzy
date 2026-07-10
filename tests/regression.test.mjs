@@ -113,6 +113,8 @@ assert.match(dashboard, /Later/, "Dashboard must show a short later list for ori
 assert.match(timeline, /PATHZY Timeline/, "Timeline must use the PATHZY Timeline name.");
 assert.doesNotMatch(timeline, /Coming soon/, "Timeline must not label normal journey steps as coming soon.");
 assert.match(appShell, /key=\{`\$\{item\.href\}-\$\{item\.label\}`\}/, "Navigation links must use a unique key fallback.");
+assert.match(appShell, /<Link href=\{user \? appRoutes\.roadmap : appRoutes\.home\}/, "PATHZY logo must send logged-out visitors home and logged-in users to My Employment Journey.");
+assert.match(appShell, /<Link href=\{appRoutes\.roadmap\}[\s\S]*Back to My Employment Journey[\s\S]*<\/Link>/, "Authenticated pages must provide a clear universal return action to My Employment Journey.");
 assert.match(navigation, /label: "My Employment Journey", href: appRoutes\.roadmap/, "My Employment Journey must route to /roadmap.");
 assert.match(navigation, /label: "My Professional Profile", href: appRoutes\.professionalIdentity/, "My Professional Profile must route to /professional-identity.");
 assert.match(navigation, /label: "Find Opportunities", href: appRoutes\.opportunities/, "Find Opportunities must route to /opportunities.");

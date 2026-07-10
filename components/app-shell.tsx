@@ -50,6 +50,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2">
             {user ? (
               <>
+                <Link href={appRoutes.roadmap} className="hidden rounded-full border border-white/12 bg-white/8 px-4 py-2 text-sm font-bold text-white/72 transition hover:bg-white/12 hover:text-white sm:inline-flex">
+                  Back to My Employment Journey
+                </Link>
                 <LogoutButton />
               </>
             ) : (
