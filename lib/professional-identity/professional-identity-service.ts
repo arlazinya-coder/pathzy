@@ -510,10 +510,14 @@ export async function generateLinkedInProfile(supabase: Supabase, userId: string
   const headline = language === "french" ? `${goal} | Jeune talent en developpement | ${skills.slice(0, 3).join(" + ")}` : `${goal} | Early-career talent | ${skills.slice(0, 3).join(" + ")}`;
   const about =
     language === "french"
-      ? `Je construis mon parcours vers ${goal}. Je developpe mes competences, mon portfolio et ma preparation professionnelle avec PATHZY. Je recherche des opportunites ou je peux apprendre, contribuer et progresser avec integrite.`
-      : `I am building my path toward ${goal}. I am developing practical skills, portfolio proof, and employment readiness with PATHZY. I am looking for opportunities where I can learn, contribute, and grow with integrity.`;
+      ? `Je construis mon parcours vers ${goal}. Je developpe mes competences, mon portfolio et ma preparation professionnelle. Je recherche des opportunites ou je peux apprendre, contribuer et progresser avec integrite.`
+      : `I am building my path toward ${goal}. I am developing practical skills, portfolio proof, and employment readiness. I am looking for opportunities where I can learn, contribute, and grow with integrity.`;
   const experienceSummary = language === "french" ? "Ajoutez uniquement vos experiences reelles, projets, benevolat ou responsabilites." : "Add only real experience, projects, volunteering, or leadership responsibilities.";
-  const content = `${headline}\n\nABOUT\n${about}\n\nSKILLS\n${skills.map((skill) => `- ${skill}`).join("\n") || "- Add verified skills"}\n\nEXPERIENCE SUMMARY\n${experienceSummary}\n\nFEATURED SECTION IDEAS\n- Portfolio project\n- CV\n- Certificate you completed\n- Short case study\n\nPROFILE CHECKLIST\n- Professional photo\n- Clear headline\n- Honest About section\n- Skills aligned to your target role\n- Featured proof of work\n\nTrust note: PATHZY does not log into LinkedIn. You copy and apply suggestions yourself.`;
+  const education = professionalizeUserInput(inputs.profile?.education || inputs.profile?.highest_qualification || "");
+  const projects = getRecommendedCareers(inputs.roadmap).length
+    ? `Feature a practical project connected to ${getRecommendedCareers(inputs.roadmap).slice(0, 2).join(" or ")}.`
+    : "Feature one real project, certificate, CV, or short case study.";
+  const content = `${headline}\n\nABOUT\n${about}\n\nTARGET ROLE\n${goal}\n\nEXPERIENCE\n${experienceSummary}\n\nEDUCATION\n${education || "Add your real education when ready."}\n\nSKILLS\n${skills.map((skill) => `- ${skill}`).join("\n") || "- Add verified skills"}\n\nFEATURED PROJECTS\n${projects}\n\nKEYWORDS\n${skills.slice(0, 8).join(", ")}\n\nSUGGESTIONS\n- Use a professional profile photo\n- Keep your headline aligned to your target role\n- Add proof of work to Featured\n- Ask for recommendations when you have real work others can speak about`;
 
   const { data } = await supabase.from("linkedin_profiles").insert({ user_id: userId, language, headline, about, skills, experience_summary: experienceSummary, optimization_score: Math.min(100, 62 + skills.length * 3) }).select("id").maybeSingle();
   await refreshIdentity(supabase, userId);
@@ -521,7 +525,7 @@ export async function generateLinkedInProfile(supabase: Supabase, userId: string
   return saveUnifiedDocument(
     supabase,
     userId,
-    { id: data?.id, tool: "linkedin", title: "LinkedIn profile optimization", content, score: Math.min(100, 62 + skills.length * 3), fields: { headline, about, skills, experienceSummary } },
+    { id: data?.id, tool: "linkedin", title: "LinkedIn profile optimization", content, score: Math.min(100, 62 + skills.length * 3), fields: { headline, about, targetRole: goal, skills, experienceSummary, education, projects } },
     null
   );
 }

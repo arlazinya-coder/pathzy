@@ -1,9 +1,5 @@
 import type { ReadinessInputs, ReadinessLabel, ReadinessResult, SkillGap } from "@/lib/pathzy-brain/types";
 
-function clamp(value: number, max: number) {
-  return Math.max(0, Math.min(max, Math.round(value)));
-}
-
 function hasText(value: unknown) {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -18,7 +14,7 @@ function getLabel(score: number): ReadinessLabel {
 }
 
 function firstCareer(inputs: ReadinessInputs) {
-  return inputs.roadmap?.career_paths?.[0]?.title || inputs.discoveryAnswers?.preferred_career_direction || "Career starter";
+  return inputs.profile?.career_goal || inputs.roadmap?.career_paths?.[0]?.title || inputs.discoveryAnswers?.preferred_career_direction || "Career starter";
 }
 
 function allRoadmapSkills(inputs: ReadinessInputs) {
@@ -63,93 +59,74 @@ function confidence(score: number) {
   return "Early";
 }
 
+function statusCompleted(status: unknown) {
+  return typeof status === "string" && status !== "not_started" && status.trim().length > 0;
+}
+
+function profileCompleted(inputs: ReadinessInputs) {
+  const profile = inputs.profile;
+  if (!profile) return false;
+
+  return Boolean(
+    hasText(profile.full_name) &&
+      hasText(profile.country) &&
+      (hasText(profile.education) || hasText(profile.highest_qualification)) &&
+      hasText(profile.current_status) &&
+      (hasText(profile.career_goal) || hasText(inputs.discoveryAnswers?.preferred_career_direction))
+  );
+}
+
 export function calculateReadiness(inputs: ReadinessInputs): ReadinessResult {
   const answers = inputs.discoveryAnswers;
-  const completedMissions = inputs.dailyMissions.filter((mission) => mission.completed).length + (inputs.weeklyGoal?.completed ? 1 : 0);
   const roadmap = inputs.roadmap;
   const opportunities = inputs.opportunities;
-  const achievements = inputs.achievements;
-  const level = inputs.level;
   const skillGaps = calculateSkillGaps(inputs);
 
-  const careerClarity = clamp(
-    (hasText(answers?.preferred_career_direction) ? 5 : 0) +
-      (roadmap?.career_paths?.length ? 6 : 0) +
-      (hasText(answers?.dream_lifestyle) ? 2 : 0) +
-      (hasText(answers?.income_goal) ? 2 : 0),
-    15
-  );
+  const onboardingCompleted = Boolean(inputs.profile?.onboarding_completed || roadmap?.career_paths?.length || hasText(answers?.preferred_career_direction));
+  const profileComplete = profileCompleted(inputs);
+  const cvComplete = statusCompleted(inputs.professionalIdentity?.cv_status) || inputs.achievements.some((achievement) => achievement.achievement_key === "cv_master");
+  const coverLetterComplete = statusCompleted(inputs.professionalIdentity?.cover_letter_status);
+  const linkedinComplete = statusCompleted(inputs.professionalIdentity?.linkedin_status) || hasText(inputs.profile?.linkedin_url);
+  const opportunityStarted = opportunities.some((opportunity) => opportunity.action.saved || opportunity.action.applied);
+  const interviewComplete = inputs.interviewPrepCompleted || inputs.achievements.some((achievement) => achievement.achievement_key === "interview_ready");
 
-  const skillsReadiness = clamp(
-    (hasText(answers?.skills) ? 6 : 0) +
-      Math.min(6, allRoadmapSkills(inputs).length) +
-      (level ? Math.min(4, level.level) : 0) +
-      (achievements.length ? 4 : 0),
-    20
-  );
-
-  const cvReadiness = clamp(
-    (achievements.some((achievement) => achievement.achievement_key === "cv_master") ? 8 : 0) +
-      (inputs.dailyMissions.some((mission) => mission.category === "CV" && mission.completed) ? 4 : 0) +
-      (completedMissions ? 3 : 0),
-    15
-  );
-
-  const opportunityReadiness = clamp(
-    Math.min(6, opportunities.filter((opportunity) => opportunity.action.saved).length * 2) +
-      Math.min(6, opportunities.filter((opportunity) => opportunity.action.applied).length * 3) +
-      (opportunities.length ? 3 : 0),
-    15
-  );
-
-  const interviewReadiness = clamp(
-    (achievements.some((achievement) => achievement.achievement_key === "interview_ready") ? 8 : 0) +
-      (inputs.mentorMessagesCount > 2 ? 4 : 0) +
-      (completedMissions > 3 ? 3 : 0),
-    15
-  );
-
-  const consistency = clamp(
-    Math.min(5, completedMissions * 2) +
-      (level ? Math.min(5, level.daily_streak + level.weekly_streak) : 0),
-    10
-  );
-
-  const digitalProfessionalism = clamp(
-    (inputs.profile?.full_name ? 2 : 0) +
-      (inputs.profile?.country ? 1 : 0) +
-      (hasText(answers?.personality) ? 2 : 0) +
-      (hasText(answers?.work_style) ? 2 : 0) +
-      (inputs.mentorMessagesCount ? 3 : 0),
-    10
-  );
+  const onboardingScore = onboardingCompleted ? 10 : 0;
+  const professionalProfileScore = profileComplete ? 25 : 0;
+  const cvScore = cvComplete ? 25 : 0;
+  const coverLetterScore = coverLetterComplete ? 15 : 0;
+  const linkedinScore = linkedinComplete ? 10 : 0;
+  const opportunityScore = opportunityStarted ? 10 : 0;
+  const interviewScore = interviewComplete ? 5 : 0;
 
   const categoryScores = {
-    career_clarity_score: careerClarity,
-    skills_readiness_score: skillsReadiness,
-    cv_readiness_score: cvReadiness,
-    opportunity_readiness_score: opportunityReadiness,
-    interview_readiness_score: interviewReadiness,
-    consistency_score: consistency,
-    digital_professionalism_score: digitalProfessionalism
+    career_clarity_score: onboardingScore,
+    skills_readiness_score: 0,
+    cv_readiness_score: cvScore + coverLetterScore,
+    opportunity_readiness_score: opportunityScore,
+    interview_readiness_score: interviewScore,
+    consistency_score: 0,
+    digital_professionalism_score: professionalProfileScore + linkedinScore
   };
 
   const totalScore = Object.values(categoryScores).reduce((sum, value) => sum + value, 0);
   const strengths = [
-    careerClarity >= 10 ? "Clear career direction" : "",
-    skillsReadiness >= 12 ? "Growing skill base" : "",
-    opportunityReadiness >= 8 ? "Opportunity momentum" : "",
-    consistency >= 6 ? "Consistent daily action" : "",
-    digitalProfessionalism >= 6 ? "Professional self-awareness" : ""
+    onboardingCompleted ? "Onboarding completed" : "",
+    profileComplete ? "Professional profile completed" : "",
+    cvComplete ? "CV completed" : "",
+    coverLetterComplete ? "Cover letter completed" : "",
+    linkedinComplete ? "LinkedIn profile improved" : "",
+    opportunityStarted ? "Opportunity action started" : "",
+    interviewComplete ? "Interview preparation completed" : ""
   ].filter(Boolean);
 
   const weaknesses = [
-    careerClarity < 8 ? "Career clarity needs more focus" : "",
-    skillsReadiness < 10 ? "Skill gaps are blocking readiness" : "",
-    cvReadiness < 8 ? "CV and proof-of-work need strengthening" : "",
-    opportunityReadiness < 8 ? "More applications or saved opportunities needed" : "",
-    interviewReadiness < 8 ? "Interview preparation is still early" : "",
-    consistency < 5 ? "Consistency needs a stronger daily rhythm" : ""
+    !onboardingCompleted ? "Complete onboarding" : "",
+    !profileComplete ? "Complete My Professional Profile" : "",
+    !cvComplete ? "Build your CV" : "",
+    !coverLetterComplete ? "Build your cover letter" : "",
+    !linkedinComplete ? "Improve your LinkedIn profile" : "",
+    !opportunityStarted ? "Save or apply to your first opportunity" : "",
+    !interviewComplete ? "Complete interview preparation" : ""
   ].filter(Boolean);
 
   const topWeakness = weaknesses[0] ?? "Keep building proof of employability";

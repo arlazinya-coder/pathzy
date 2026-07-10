@@ -38,10 +38,25 @@ export type SkillGap = {
 export type ReadinessInputs = {
   profile: {
     full_name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    city?: string | null;
     country?: string | null;
     education?: string | null;
+    field_of_study?: string | null;
+    highest_qualification?: string | null;
     current_status?: string | null;
+    career_goal?: string | null;
+    linkedin_url?: string | null;
+    onboarding_completed?: boolean | null;
   } | null;
+  professionalIdentity: {
+    professional_identity_score?: number | null;
+    cv_status?: string | null;
+    cover_letter_status?: string | null;
+    linkedin_status?: string | null;
+  } | null;
+  interviewPrepCompleted: boolean;
   discoveryAnswers: Partial<DiscoveryAnswers> | null;
   roadmap: GeneratedRoadmap | null;
   dailyMissions: Mission[];

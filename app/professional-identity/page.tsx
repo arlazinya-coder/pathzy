@@ -1,4 +1,5 @@
-import { Card, PageHeader, ProgressBar, ButtonLink } from "@/components/ui";
+import { ProfileActionEditor, type ProfileActionRow } from "@/components/professional-identity/profile-action-editor";
+import { ButtonLink, Card, PageHeader, ProgressBar } from "@/components/ui";
 import { appRoutes } from "@/lib/navigation/routes";
 import { getProfessionalIdentityContext } from "@/lib/professional-identity/professional-identity-service";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
@@ -120,7 +121,7 @@ export default async function ProfessionalIdentityPage() {
     getProfessionalIdentityContext(supabase, user.id),
     supabase
       .from("user_profiles")
-      .select("full_name,email,phone,city,country,education,field_of_study,current_status,career_goal,linkedin_url,portfolio_url,language")
+      .select("full_name,email,phone,city,country,education,field_of_study,current_status,career_goal,linkedin_url,portfolio_url,language,has_certificates")
       .or(`user_id.eq.${user.id},id.eq.${user.id}`)
       .maybeSingle(),
     supabase
@@ -140,25 +141,34 @@ export default async function ProfessionalIdentityPage() {
   const identity = context?.identity;
   const score = context?.score;
   const answers = (discovery?.answers ?? {}) as Record<string, unknown>;
-  const profileRows = [
-    ["Name", profile?.full_name],
-    ["Email", profile?.email ?? user.email],
-    ["Phone", profile?.phone],
-    ["City/Country", [profile?.city, profile?.country].filter(Boolean).join(", ")],
-    ["Education", profile?.education],
-    ["Field of study", profile?.field_of_study],
-    ["Current status", profile?.current_status],
-    ["Selected career direction", profile?.career_goal ?? context?.score.nextRecommendedAction],
-    ["Skills", Array.isArray(answers.skills) ? answers.skills.join(", ") : typeof answers.skills === "string" ? answers.skills : ""],
-    ["Languages", profile?.language],
-    ["Experience", typeof answers.personal_background === "string" ? answers.personal_background : ""],
-    ["Projects", typeof answers.interests === "string" ? answers.interests : ""],
-    ["Certifications", ""],
-    ["Achievements", ""],
-    ["References", ""],
-    ["Uploaded documents", uploadedDocuments?.map((document) => document.document_title).join(", ")]
-  ] as const;
-  const missing = profileRows.filter(([, value]) => !String(value ?? "").trim()).map(([label]) => label);
+  const skillText = Array.isArray(answers.skills) ? answers.skills.join(", ") : typeof answers.skills === "string" ? answers.skills : "";
+  const profileRows: ProfileActionRow[] = [
+    { label: "Name", value: profile?.full_name ?? "", section: "name", fields: [{ name: "full_name", label: "Full name", value: profile?.full_name ?? "" }] },
+    { label: "Email", value: profile?.email ?? user.email ?? "", section: "email", fields: [{ name: "email", label: "Email", value: profile?.email ?? user.email ?? "" }] },
+    { label: "Phone", value: profile?.phone ?? "", section: "phone", fields: [{ name: "phone", label: "Phone", value: profile?.phone ?? "" }] },
+    {
+      label: "City/Country",
+      value: [profile?.city, profile?.country].filter(Boolean).join(", "),
+      section: "location",
+      fields: [
+        { name: "city", label: "City", value: profile?.city ?? "" },
+        { name: "country", label: "Country", value: profile?.country ?? "" }
+      ]
+    },
+    { label: "Education", value: profile?.education ?? "", section: "education", fields: [{ name: "education", label: "Education", value: profile?.education ?? "" }] },
+    { label: "Field of study", value: profile?.field_of_study ?? "", section: "field_of_study", fields: [{ name: "field_of_study", label: "Field of study", value: profile?.field_of_study ?? "" }] },
+    { label: "Current status", value: profile?.current_status ?? "", section: "current_status", fields: [{ name: "current_status", label: "Current status", value: profile?.current_status ?? "" }, { name: "employment_status", label: "Employment status", value: profile?.current_status ?? "" }] },
+    { label: "Selected career direction", value: profile?.career_goal ?? context?.score.nextRecommendedAction ?? "", section: "career_goal", fields: [{ name: "career_goal", label: "Career goal", value: profile?.career_goal ?? "" }, { name: "preferred_path", label: "Preferred path", value: profile?.career_goal ?? "" }] },
+    { label: "Skills", value: skillText, section: "skills", fields: [{ name: "skills", label: "Skills", value: skillText, type: "textarea" }] },
+    { label: "Languages", value: profile?.language ?? "", section: "languages", fields: [{ name: "language", label: "Language", value: profile?.language ?? "" }] },
+    { label: "Experience", value: typeof answers.personal_background === "string" ? answers.personal_background : "", section: "experience", fields: [{ name: "personal_background", label: "Experience", value: typeof answers.personal_background === "string" ? answers.personal_background : "", type: "textarea" }] },
+    { label: "Projects", value: typeof answers.interests === "string" ? answers.interests : "", section: "projects", fields: [{ name: "interests", label: "Projects or interests", value: typeof answers.interests === "string" ? answers.interests : "", type: "textarea" }] },
+    { label: "Certifications", value: profile?.has_certificates ? "Certificates available to upload later" : "", section: "certifications", fields: [{ name: "has_certificates", label: "Certificates or qualifications", value: profile?.has_certificates ? "Yes" : "" }] },
+    { label: "Achievements", value: typeof answers.achievements === "string" ? answers.achievements : "", section: "achievements", fields: [{ name: "achievements", label: "Achievements", value: typeof answers.achievements === "string" ? answers.achievements : "", type: "textarea" }] },
+    { label: "References", value: typeof answers.references === "string" ? answers.references : "", section: "references", fields: [{ name: "references", label: "References", value: typeof answers.references === "string" ? answers.references : "", type: "textarea" }] },
+    { label: "Uploaded documents", value: uploadedDocuments?.map((document) => document.document_title).join(", ") ?? "", section: "uploaded_documents", fields: [], href: appRoutes.documents }
+  ];
+  const missing = profileRows.filter((row) => !row.value.trim()).map((row) => row.label);
 
   return (
     <div className="container page-pad">
@@ -187,22 +197,8 @@ export default async function ProfessionalIdentityPage() {
             <h2 className="mt-3 text-3xl font-black">Check what PATHZY will use in your documents.</h2>
             <p className="mt-3 max-w-3xl leading-7 text-white/62">Your CV is stronger when your profile, education, skills, projects, and documents are complete. Missing items are shown clearly so PATHZY does not invent facts.</p>
           </div>
-          <ButtonLink href={appRoutes.settings} variant="secondary">Edit Profile</ButtonLink>
         </div>
-        <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {profileRows.map(([label, value]) => {
-            const cleanValue = String(value ?? "").trim();
-            return (
-              <div key={label} className="rounded-[18px] border border-white/10 bg-white/6 p-4">
-                <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/38">{label}</p>
-                <p className={`mt-2 text-sm leading-6 ${cleanValue ? "text-white/72" : "text-[#ffe2a8]"}`}>{cleanValue || "Missing - add this when available"}</p>
-                <div className="mt-3">
-                  <ButtonLink href={label === "Uploaded documents" ? appRoutes.documents : appRoutes.settings} variant="secondary">{cleanValue ? "Edit" : "Add missing info"}</ButtonLink>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <ProfileActionEditor rows={profileRows} />
         {missing.length ? (
           <p className="mt-5 rounded-[18px] border border-[#f8c45d]/25 bg-[#f8c45d]/10 px-4 py-3 text-sm font-bold leading-6 text-[#ffe2a8]">
             Missing important information: {missing.join(", ")}.

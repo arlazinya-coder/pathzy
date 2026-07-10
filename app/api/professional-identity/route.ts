@@ -9,6 +9,7 @@ import {
   generateRecruiterMessage
 } from "@/lib/professional-identity/professional-identity-service";
 import { levelFromXp } from "@/lib/missions/engine";
+import { updatePathzyBrain } from "@/lib/pathzy-brain/brain-service";
 import type { GenerateOptions } from "@/lib/professional-identity/professional-identity-types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -237,6 +238,7 @@ export async function POST(request: Request) {
     }
 
     await awardProfessionalIdentityXp(supabase, user.id, tool);
+    await updatePathzyBrain(supabase, user.id, `Professional Identity ${tool} generated`);
 
     return NextResponse.json({ document, xpAwarded: toolXp[tool] });
   } catch (error) {
@@ -394,6 +396,7 @@ export async function PATCH(request: Request) {
             .eq("user_id", auth.user.id);
         }
       }
+      await updatePathzyBrain(auth.supabase, auth.user.id, `Professional Identity ${body.tool} updated`);
       return NextResponse.json({ document: data });
     }
 
@@ -423,6 +426,7 @@ export async function PATCH(request: Request) {
 
     const { data, error } = await auth.supabase.from(config.table).update(update).eq("id", body.id).eq("user_id", auth.user.id).select("*").single();
     if (error) throw error;
+    await updatePathzyBrain(auth.supabase, auth.user.id, `Professional Identity ${body.tool} updated`);
     return NextResponse.json({ document: data });
   } catch (error) {
     console.error("[professional-identity] update failed", error);

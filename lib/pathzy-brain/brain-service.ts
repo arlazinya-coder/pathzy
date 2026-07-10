@@ -76,8 +76,12 @@ export async function getOrCreatePathzyBrain(supabase: Supabase, userId: string)
 }
 
 async function getInputs(supabase: Supabase, userId: string) {
-  const [{ data: profile }, { data: discovery }, { data: actions }, { count: mentorMessagesCount }, missionState] = await Promise.all([
-    supabase.from("user_profiles").select("full_name,country,education,current_status").or(`user_id.eq.${userId},id.eq.${userId}`).maybeSingle(),
+  const [{ data: profile }, { data: discovery }, { data: actions }, { count: mentorMessagesCount }, { data: professionalIdentity }, { data: interviewPreps }, missionState] = await Promise.all([
+    supabase
+      .from("user_profiles")
+      .select("full_name,email,phone,city,country,education,field_of_study,highest_qualification,current_status,career_goal,linkedin_url,onboarding_completed")
+      .or(`user_id.eq.${userId},id.eq.${userId}`)
+      .maybeSingle(),
     supabase
       .from("discovery_responses")
       .select("answers,generated_result")
@@ -87,6 +91,12 @@ async function getInputs(supabase: Supabase, userId: string) {
       .maybeSingle(),
     supabase.from("user_opportunity_actions").select("opportunity_id,saved,applied,completed,hidden").eq("user_id", userId),
     supabase.from("mentor_messages").select("id", { count: "exact", head: true }).eq("user_id", userId),
+    supabase
+      .from("professional_identity")
+      .select("professional_identity_score,cv_status,cover_letter_status,linkedin_status")
+      .eq("user_id", userId)
+      .maybeSingle(),
+    supabase.from("interview_preps").select("completed").eq("user_id", userId),
     ensureMissionState(supabase, userId)
   ]);
 
@@ -101,6 +111,8 @@ async function getInputs(supabase: Supabase, userId: string) {
 
   return {
     profile,
+    professionalIdentity,
+    interviewPrepCompleted: (interviewPreps ?? []).some((prep) => prep.completed),
     discoveryAnswers: answers,
     roadmap,
     dailyMissions: missionState.dailyMissions,

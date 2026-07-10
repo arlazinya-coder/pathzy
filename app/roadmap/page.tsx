@@ -2,6 +2,7 @@ import { Badge, ButtonLink, Card, PageHeader, ProgressBar } from "@/components/u
 import { SkillGapSummary } from "@/components/brain/skill-gap-summary";
 import { SelectCareerButton } from "@/components/roadmap/select-career-button";
 import type { CareerPathResult, GeneratedRoadmap } from "@/lib/discovery/types";
+import { appRoutes } from "@/lib/navigation/routes";
 import { calculateEmploymentReadiness, updatePathzyBrain } from "@/lib/pathzy-brain/brain-service";
 import { roadmapPaths } from "@/lib/pathzy-data";
 import { getPathzyNextAction } from "@/lib/progress/next-action-engine";
@@ -254,6 +255,7 @@ export default async function RoadmapPage() {
   const readiness = user && supabase
     ? await updatePathzyBrain(supabase, user.id, "Career plan refreshed").then(() => calculateEmploymentReadiness(supabase, user.id)).catch(() => null)
     : null;
+  const nextActionPrimaryLabel = nextAction?.destinationRoute === appRoutes.professionalIdentityCv ? "Build My CV" : "Continue My Journey";
 
   return (
     <div className="container page-pad">
@@ -273,7 +275,7 @@ export default async function RoadmapPage() {
               <p className="mt-3 text-sm font-bold capitalize text-white/48">Completion state: {nextAction.completionState.replace(/_/g, " ")}</p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
-              <ButtonLink href={nextAction.destinationRoute}>Continue My Journey</ButtonLink>
+              <ButtonLink href={nextAction.destinationRoute}>{nextActionPrimaryLabel}</ButtonLink>
               <ButtonLink href="/mentor?context=My%20Employment%20Journey%20-%20explain%20my%20next%20action" variant="secondary">Ask Mentor</ButtonLink>
             </div>
           </div>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui";
 import { PremiumUpgradeCard } from "@/components/upgrade/premium-upgrade-card";
 import { coverLetterDataFromUnknown, coverLetterPdfFilename, cvModelFromUnknown, cvModelWithMissing, downloadBlob, normalizeCoverLetterDataForExport, normalizeCvModelForExport, pathzyFilename, renderCoverLetterHtmlFromData, renderCvHtml, renderCvHtmlFromModel, serializeCoverLetterData, serializeCvModel, simpleCoverLetterPdfDocument, simplePdfDocument, simplePdfDocumentFromModel } from "@/components/professional-identity/document-downloads";
+import { appRoutes } from "@/lib/navigation/routes";
 import type { CoverLetterData, CvModel } from "@/components/professional-identity/document-downloads";
 import type { GeneratedProfessionalDocument, GenerateOptions, ProfessionalLanguage } from "@/lib/professional-identity/professional-identity-types";
 
@@ -102,6 +103,80 @@ function cvContentJson(document: GeneratedProfessionalDocument | null, cvModel: 
     cvModel: normalizeCvModelForExport(cvModel),
     cvVersion: metadata
   };
+}
+
+function getLinkedInFields(document: GeneratedProfessionalDocument | null) {
+  const fields = document?.fields ?? {};
+  const skills = Array.isArray(fields.skills) ? fields.skills.filter((skill): skill is string => typeof skill === "string") : [];
+  const headline = typeof fields.headline === "string" ? fields.headline : document?.title ?? "";
+  return {
+    headline,
+    about: typeof fields.about === "string" ? fields.about : "",
+    targetRole: headline.split("|")[0]?.trim() || "Target role",
+    experience: typeof fields.experienceSummary === "string" ? fields.experienceSummary : "",
+    education: typeof fields.education === "string" ? fields.education : "",
+    projects: typeof fields.projects === "string" ? fields.projects : "",
+    skills,
+    keywords: skills.slice(0, 8),
+    suggestions: [
+      "Use a professional profile photo.",
+      "Keep the headline aligned with your target role.",
+      "Add real projects, certificates, or proof of work to Featured.",
+      "Ask for recommendations when you have real work others can speak about."
+    ]
+  };
+}
+
+function LinkedInPreview({ document }: { document: GeneratedProfessionalDocument }) {
+  const fields = getLinkedInFields(document);
+
+  return (
+    <div className="mt-5 overflow-hidden rounded-[24px] border border-white/10 bg-[#f8fbff] p-5 text-[#0d1630]">
+      <div className="rounded-[20px] bg-white p-5 shadow-[0_18px_55px_rgba(13,22,48,0.12)]">
+        <div className="border-b border-[#dbe5f2] pb-5">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#4d6bb3]">LinkedIn Preview</p>
+          <h3 className="mt-2 text-2xl font-black">{fields.headline || "Professional headline"}</h3>
+          <p className="mt-2 text-sm font-bold text-[#53617c]">Target Role: {fields.targetRole}</p>
+        </div>
+        <div className="mt-5 grid gap-5">
+          <section>
+            <h4 className="text-sm font-black uppercase tracking-[0.12em] text-[#4d6bb3]">About</h4>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-[#26344f]">{fields.about || "Write a clear About section after generating your LinkedIn profile."}</p>
+          </section>
+          <section>
+            <h4 className="text-sm font-black uppercase tracking-[0.12em] text-[#4d6bb3]">Experience</h4>
+            <p className="mt-2 text-sm leading-7 text-[#26344f]">{fields.experience || "Add real experience, projects, volunteering, or responsibilities."}</p>
+          </section>
+          <section>
+            <h4 className="text-sm font-black uppercase tracking-[0.12em] text-[#4d6bb3]">Education</h4>
+            <p className="mt-2 text-sm leading-7 text-[#26344f]">{fields.education || "Add your education when ready."}</p>
+          </section>
+          <section>
+            <h4 className="text-sm font-black uppercase tracking-[0.12em] text-[#4d6bb3]">Skills</h4>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {(fields.skills.length ? fields.skills : ["Communication", "Learning agility", "Reliability"]).map((skill) => (
+                <span key={skill} className="rounded-full bg-[#edf4ff] px-3 py-2 text-xs font-black text-[#2d4f9f]">{skill}</span>
+              ))}
+            </div>
+          </section>
+          <section>
+            <h4 className="text-sm font-black uppercase tracking-[0.12em] text-[#4d6bb3]">Featured Projects</h4>
+            <p className="mt-2 text-sm leading-7 text-[#26344f]">{fields.projects || "Feature your CV, a portfolio project, a certificate, or a short case study."}</p>
+          </section>
+          <section>
+            <h4 className="text-sm font-black uppercase tracking-[0.12em] text-[#4d6bb3]">Recommended Keywords</h4>
+            <p className="mt-2 text-sm leading-7 text-[#26344f]">{fields.keywords.join(", ") || "Add keywords from your target role and skills."}</p>
+          </section>
+          <section>
+            <h4 className="text-sm font-black uppercase tracking-[0.12em] text-[#4d6bb3]">Suggestions</h4>
+            <ul className="mt-2 grid gap-2 text-sm leading-6 text-[#26344f]">
+              {fields.suggestions.map((suggestion) => <li key={suggestion}>- {suggestion}</li>)}
+            </ul>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function CvRepeatableItem({
@@ -862,9 +937,54 @@ export function ProfessionalIdentityTool({
     }
   }
 
+  async function regenerateCurrentDraft() {
+    if (upgradeRequired) return;
+
+    setLoading(true);
+    setError("");
+    setCopied(false);
+
+    try {
+      const response = await fetch("/api/professional-identity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool, options: values, replaceDocumentId: document?.id })
+      });
+      const data = await response.json();
+
+      if (data?.upgradeRequired) {
+        setUpgradeRequired(true);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Could not improve this document.");
+      }
+
+      if (tool === "cv") setCvDocument(data.document, true);
+      else if (tool === "cover-letter") setCoverLetterDocument(data.document, true);
+      else setDocument(data.document);
+      setSaved(true);
+      setSaveState("saved");
+      setHasUnsavedChanges(false);
+      setViewMode("preview");
+      window.localStorage.removeItem(recoveryKey);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not improve this document.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function copyDocument() {
     if (!document?.content) return;
     await navigator.clipboard.writeText(document.content);
+    setCopied(true);
+  }
+
+  async function copyTextValue(value: string) {
+    if (!value.trim()) return;
+    await navigator.clipboard.writeText(value);
     setCopied(true);
   }
 
@@ -1269,6 +1389,18 @@ export function ProfessionalIdentityTool({
           </div>
         ) : tool === "cover-letter" && coverLetterData ? (
           renderCoverLetterEditor()
+        ) : tool === "linkedin" && document?.content ? (
+          <>
+            <LinkedInPreview document={document} />
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button type="button" onClick={() => setViewMode("edit")} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Edit</button>
+              <button type="button" onClick={regenerateCurrentDraft} disabled={loading} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">{loading ? "Improving..." : "AI Improve"}</button>
+              <button type="button" onClick={() => copyTextValue(getLinkedInFields(document).headline)} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Copy Headline</button>
+              <button type="button" onClick={() => copyTextValue(getLinkedInFields(document).about)} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Copy About Section</button>
+              <button type="button" onClick={() => copyTextValue(document.content)} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Copy Full LinkedIn Content</button>
+              <Link href={appRoutes.roadmap} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Back to My Employment Journey</Link>
+            </div>
+          </>
         ) : viewMode === "preview" && document?.content ? (
           <div className="mt-5 overflow-hidden rounded-[22px] bg-white p-2 text-black">
             <div dangerouslySetInnerHTML={{ __html: tool === "cover-letter" && coverLetterData ? renderCoverLetterHtmlFromData(coverLetterData) : renderCvHtml(document.content, templateName) }} />
@@ -1360,12 +1492,25 @@ export function ProfessionalIdentityTool({
           <div className="rounded-[20px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-5">
             <h3 className="text-xl font-black">Your CV is ready. What would you like to do next?</h3>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Link href="/professional-identity/cover-letter" className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Build Cover Letter</Link>
-              <Link href="/professional-identity/linkedin" className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Optimize LinkedIn</Link>
-              <Link href="/opportunities" className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Find Opportunities</Link>
+              <Link href={appRoutes.professionalIdentityCoverLetter} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Build My Cover Letter</Link>
+              <Link href={appRoutes.professionalIdentityLinkedin} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Improve My LinkedIn</Link>
+              <Link href={appRoutes.roadmap} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Back to My Employment Journey</Link>
+              <Link href={appRoutes.opportunities} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Find Opportunities</Link>
               <Link href="/mentor?context=CV%20page%20-%20help%20with%20CV" className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Ask Your Mentor</Link>
               <button type="button" onClick={() => setSaved(false)} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Improve This CV</button>
               <a href="#old-cv-upload" className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Upload Old CV</a>
+            </div>
+          </div>
+        </Card>
+      ) : null}
+      {tool === "cover-letter" && document?.content ? (
+        <Card>
+          <div className="rounded-[20px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-5">
+            <h3 className="text-xl font-black">Your cover letter is ready. Keep moving.</h3>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href={appRoutes.roadmap} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Back to My Employment Journey</Link>
+              <Link href={appRoutes.professionalIdentityLinkedin} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Improve My LinkedIn</Link>
+              <Link href={appRoutes.opportunities} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Find Opportunities</Link>
             </div>
           </div>
         </Card>
