@@ -1,7 +1,6 @@
 import { appRoutes } from "@/lib/navigation/routes";
 
 export const navigation = [
-  { label: "Home", href: appRoutes.home },
   { label: "My Employment Journey", href: appRoutes.roadmap },
   { label: "My Professional Profile", href: appRoutes.professionalIdentity },
   { label: "Find Opportunities", href: appRoutes.opportunities },

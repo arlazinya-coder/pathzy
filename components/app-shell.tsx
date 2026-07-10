@@ -22,10 +22,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     { label: "Home", href: appRoutes.home },
     { label: "Pricing", href: appRoutes.pricing }
   ];
-  const loggedInNavigation: NavigationItem[] = [
-    { label: "My Employment Journey", href: appRoutes.roadmap },
-    ...navigation.filter((item) => item.href !== appRoutes.home && item.href !== appRoutes.roadmap)
-  ];
+  const loggedInNavigation: NavigationItem[] = [...navigation];
   const primaryNavigation = uniqueByHref(user ? loggedInNavigation : loggedOutNavigation);
   const mobileNavigation = uniqueByHref(user ? loggedInNavigation : loggedOutNavigation);
 

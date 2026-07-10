@@ -120,6 +120,22 @@ assert.match(navigation, /label: "My Applications", href: appRoutes\.application
 assert.match(navigation, /label: "Skills & Career Growth", href: appRoutes\.skills/, "Skills & Career Growth must route to /skills.");
 assert.match(navigation, /label: "Billing", href: appRoutes\.billing/, "Billing must route to /billing.");
 assert.match(navigation, /label: "Settings", href: appRoutes\.settings/, "Settings must route to /settings.");
+const authenticatedNavigationBlock = navigation.match(/export const navigation = \[([\s\S]*?)\] as const;/)?.[1] ?? "";
+const authenticatedNavigationItems = [...authenticatedNavigationBlock.matchAll(/\{ label: "([^"]+)", href: appRoutes\.([a-zA-Z]+) \}/g)].map((match) => ({
+  label: match[1],
+  route: match[2]
+}));
+assert.deepEqual(authenticatedNavigationItems, [
+  { label: "My Employment Journey", route: "roadmap" },
+  { label: "My Professional Profile", route: "professionalIdentity" },
+  { label: "Find Opportunities", route: "opportunities" },
+  { label: "My Applications", route: "applications" },
+  { label: "Skills & Career Growth", route: "skills" },
+  { label: "Billing", route: "billing" },
+  { label: "Settings", route: "settings" }
+], "Authenticated navigation must contain exactly the seven canonical PATHZY sections in order.");
+assert.match(appShell, /const loggedInNavigation: NavigationItem\[\] = \[\.\.\.navigation\];/, "Desktop and mobile authenticated navigation must both read the same canonical seven-item list.");
+assert.doesNotMatch(appShell, /navigation\.filter/, "Authenticated navigation must not vary by hiding or reshaping shared navigation items in the shell.");
 assert.match(routes, /applications: PATHZY_ROUTES\.MY_APPLICATIONS/, "The Applications app route must use the canonical /applications definition.");
 assert.match(routes, /skills: PATHZY_ROUTES\.SKILLS_CAREER_GROWTH/, "The Skills app route must use the canonical /skills definition.");
 assert.match(routes, /billing: PATHZY_ROUTES\.BILLING/, "The Billing app route must use the canonical /billing definition.");
