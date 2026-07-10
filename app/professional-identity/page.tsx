@@ -1,4 +1,5 @@
 import { Card, PageHeader, ProgressBar, ButtonLink } from "@/components/ui";
+import { appRoutes } from "@/lib/navigation/routes";
 import { getProfessionalIdentityContext } from "@/lib/professional-identity/professional-identity-service";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
 
@@ -186,7 +187,7 @@ export default async function ProfessionalIdentityPage() {
             <h2 className="mt-3 text-3xl font-black">Check what PATHZY will use in your documents.</h2>
             <p className="mt-3 max-w-3xl leading-7 text-white/62">Your CV is stronger when your profile, education, skills, projects, and documents are complete. Missing items are shown clearly so PATHZY does not invent facts.</p>
           </div>
-          <ButtonLink href="/profile" variant="secondary">Edit Profile</ButtonLink>
+          <ButtonLink href={appRoutes.settings} variant="secondary">Edit Profile</ButtonLink>
         </div>
         <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {profileRows.map(([label, value]) => {
@@ -196,7 +197,7 @@ export default async function ProfessionalIdentityPage() {
                 <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/38">{label}</p>
                 <p className={`mt-2 text-sm leading-6 ${cleanValue ? "text-white/72" : "text-[#ffe2a8]"}`}>{cleanValue || "Missing - add this when available"}</p>
                 <div className="mt-3">
-                  <ButtonLink href={label === "Uploaded documents" ? "/professional-identity/documents" : "/profile"} variant="secondary">{cleanValue ? "Edit" : "Add missing info"}</ButtonLink>
+                  <ButtonLink href={label === "Uploaded documents" ? appRoutes.documents : appRoutes.settings} variant="secondary">{cleanValue ? "Edit" : "Add missing info"}</ButtonLink>
                 </div>
               </div>
             );

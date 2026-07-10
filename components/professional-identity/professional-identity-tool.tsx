@@ -999,7 +999,7 @@ export function ProfessionalIdentityTool({
     return (
       <PremiumUpgradeCard
         title={exportUpgradeRequired ? "Your document is ready." : "Upgrade when you are ready to export."}
-        subtitle={exportUpgradeRequired ? "Upgrade to download, save, and export your documents with confidence." : "Free users can build and preview core documents. Pro unlocks unlimited downloads, saves, advanced optimization, and application kits."}
+        subtitle={exportUpgradeRequired ? "Upgrade to download and export your documents with confidence. Your saved draft stays available." : "Free users can build, edit, save, and preview core documents. Pro unlocks premium downloads, exports, advanced optimization, and application kits."}
         benefits={upgradeBenefits}
         primaryLabel="Upgrade to Starter - $9.99/month"
         secondaryLabel="View pricing later"

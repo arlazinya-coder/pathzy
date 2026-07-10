@@ -52,7 +52,7 @@ export function canExportProfessionalDocuments(context: PermissionContext | null
 }
 
 export function canUsePremiumTemplates(context: PermissionContext | null | undefined) {
-  return hasPremiumAccess(context);
+  return normalizePermissionContext(context).isAuthenticated;
 }
 
 export function canUseMentor(context: PermissionContext | null | undefined) {

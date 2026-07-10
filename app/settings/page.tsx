@@ -61,7 +61,7 @@ export default async function SettingsPage() {
             <div className="rounded-[18px] border border-white/10 bg-white/7 p-4 sm:col-span-2"><p className="text-xs text-white/42">Career Goal</p><strong>{careerGoal}</strong></div>
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
-            <ButtonLink href="/dashboard">Back to My Journey</ButtonLink>
+            <ButtonLink href="/roadmap">Back to My Journey</ButtonLink>
             <ButtonLink href="/professional-identity/cv" variant="secondary">Create My CV</ButtonLink>
           </div>
         </Card>
