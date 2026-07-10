@@ -1,5 +1,7 @@
 import { ButtonLink, Card, PageHeader, ProgressBar } from "@/components/ui";
+import { appRoutes } from "@/lib/navigation/routes";
 import { dashboardMetrics } from "@/lib/pathzy-data";
+import { redirect } from "next/navigation";
 
 const goals = [
   ["Current Goal", "Keep moving toward the career direction PATHZY recommended."],
@@ -8,7 +10,7 @@ const goals = [
   ["Today's Advice", "Complete one useful step before opening another task."]
 ] as const;
 
-export default function ProgressPage() {
+export function ProgressPageContent() {
   return (
     <div className="container page-pad">
       <PageHeader eyebrow="Skills & Career Growth" title="Build skills that improve your employment chances.">
@@ -46,4 +48,8 @@ export default function ProgressPage() {
       </div>
     </div>
   );
+}
+
+export default function LegacyProgressRedirect() {
+  redirect(appRoutes.skills);
 }

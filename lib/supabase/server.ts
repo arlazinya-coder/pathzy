@@ -42,7 +42,7 @@ export async function getCurrentSession() {
   return data.session;
 }
 
-export async function requireAuthenticatedUser(redirectTo = "/dashboard") {
+export async function requireAuthenticatedUser(redirectTo = "/roadmap") {
   const supabase = await createSupabaseServerClient();
   if (!supabase) {
     redirect(`/login?message=${encodeURIComponent("Please log in to continue.")}&redirectTo=${encodeURIComponent(redirectTo)}`);

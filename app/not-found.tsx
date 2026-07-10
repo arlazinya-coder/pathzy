@@ -1,4 +1,5 @@
 import { ButtonLink, Card } from "@/components/ui";
+import { appRoutes } from "@/lib/navigation/routes";
 
 export default function NotFound() {
   return (
@@ -8,7 +9,7 @@ export default function NotFound() {
         <h1 className="mt-3 text-4xl font-black">This PATHZY page is not available.</h1>
         <p className="mt-4 leading-7 text-white/58">Return to your journey and continue with the next best career action.</p>
         <div className="mt-6">
-          <ButtonLink href="/dashboard">Open My Journey</ButtonLink>
+          <ButtonLink href={appRoutes.roadmap}>Open My Journey</ButtonLink>
         </div>
       </Card>
     </div>

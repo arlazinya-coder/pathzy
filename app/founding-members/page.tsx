@@ -1,6 +1,7 @@
 import { ClaimFounderButton } from "@/components/founding/claim-founder-button";
 import { ButtonLink, Card, PageHeader, ProgressBar } from "@/components/ui";
 import { getLaunchMembershipStats, getMembershipState } from "@/lib/launch/launch-service";
+import { appRoutes } from "@/lib/navigation/routes";
 import { createSupabaseServerClient, getCurrentUser } from "@/lib/supabase/server";
 
 const foundingBenefits = [
@@ -46,7 +47,7 @@ export default async function FoundingMembersPage() {
             <div className="rounded-[18px] border border-white/10 bg-white/7 p-4"><p className="text-xs text-white/42">Member number</p><strong>{membership.memberNumber ? `#${membership.memberNumber}` : "Assigned"}</strong></div>
           </div>
           <div className="mt-5">
-            <ButtonLink href="/dashboard">Open My Journey</ButtonLink>
+            <ButtonLink href={appRoutes.roadmap}>Open My Journey</ButtonLink>
           </div>
         </Card>
       ) : null}
@@ -61,11 +62,11 @@ export default async function FoundingMembersPage() {
             <div className="mt-5"><ProgressBar value={progress} /></div>
             <div className="mt-6">
               {hasFounderAccess ? (
-                <ButtonLink href="/dashboard">Founder Premium Active</ButtonLink>
+                <ButtonLink href={appRoutes.roadmap}>Founder Premium Active</ButtonLink>
               ) : user ? (
                 <ClaimFounderButton disabled={founderSpotsFull} />
               ) : (
-                <ButtonLink href="/signup">{founderSpotsFull ? "Join Waiting List" : "Create Account to Claim"}</ButtonLink>
+                <ButtonLink href={appRoutes.signup}>{founderSpotsFull ? "Join Waiting List" : "Create Account to Claim"}</ButtonLink>
               )}
             </div>
             <p className="mt-4 text-sm leading-6 text-white/48">Early Adopters will open automatically after the Founder beta period.</p>
@@ -88,7 +89,7 @@ export default async function FoundingMembersPage() {
             <h2 className="text-2xl font-black">What happens after claiming?</h2>
             <p className="mt-2 leading-7 text-white/58">PATHZY activates your Founder badge, premium access, 12-month expiry, and premium feature access immediately, then sends you back to My Journey.</p>
           </div>
-          <ButtonLink href={user ? "/dashboard" : "/signup"}>{user ? "Open My Journey" : "Start Free"}</ButtonLink>
+          <ButtonLink href={user ? appRoutes.roadmap : appRoutes.signup}>{user ? "Open My Journey" : "Start Free"}</ButtonLink>
         </div>
       </Card>
     </div>

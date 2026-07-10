@@ -1,5 +1,6 @@
 import { ProfessionalIdentityTool } from "@/components/professional-identity/professional-identity-tool";
 import { PageHeader } from "@/components/ui";
+import { appRoutes } from "@/lib/navigation/routes";
 import { canCurrentUserExportProfessionalDocuments, canCurrentUserUseProfessionalIdentityTools, getProfessionalIdentityContext } from "@/lib/professional-identity/professional-identity-service";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
 
@@ -26,7 +27,7 @@ export default async function LinkedinPage() {
           recommendation: "Choose a career direction first.",
           why: "You can improve LinkedIn now. A clear career direction helps PATHZY suggest stronger headline and About wording.",
           impact: "+7 Job Readiness",
-          followHref: "/roadmap",
+          followHref: appRoutes.roadmap,
           followLabel: "Choose direction first",
           continueLabel: "Improve LinkedIn now"
         } : null}

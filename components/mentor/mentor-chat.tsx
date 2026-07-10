@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Card, ProgressBar } from "@/components/ui";
 import { MarkdownMessage } from "@/components/mentor/markdown-message";
 import { PremiumUpgradeCard } from "@/components/upgrade/premium-upgrade-card";
+import { appRoutes } from "@/lib/navigation/routes";
 import type { MentorConversation, MentorMessage } from "@/lib/mentor/types";
 
 const quickStarts = [
@@ -28,13 +29,13 @@ type UpgradeResponse = {
 const PROFILE_SETUP_MESSAGE = "PATHZY is still setting up your profile. Please complete your profile or refresh the page.";
 
 const returnTargets = [
-  { match: "CV page", label: "Back to CV Builder", href: "/professional-identity/cv" },
-  { match: "Cover letter page", label: "Back to Cover Letter", href: "/professional-identity/cover-letter" },
-  { match: "Career Plan page", label: "Back to Career Plan", href: "/roadmap" },
-  { match: "Opportunities page", label: "Back to Opportunities", href: "/opportunities" },
-  { match: "Applications page", label: "Back to Applications", href: "/applications" },
-  { match: "Skills page", label: "Back to Skills", href: "/skills" },
-  { match: "Professional Profile", label: "Back to Professional Profile", href: "/professional-identity" }
+  { match: "CV page", label: "Back to CV Builder", href: appRoutes.professionalIdentityCv },
+  { match: "Cover letter page", label: "Back to Cover Letter", href: appRoutes.professionalIdentityCoverLetter },
+  { match: "Career Plan page", label: "Back to Career Plan", href: appRoutes.roadmap },
+  { match: "Opportunities page", label: "Back to Opportunities", href: appRoutes.opportunities },
+  { match: "Applications page", label: "Back to Applications", href: appRoutes.applications },
+  { match: "Skills page", label: "Back to Skills", href: appRoutes.skills },
+  { match: "Professional Profile", label: "Back to Professional Profile", href: appRoutes.professionalIdentity }
 ];
 
 function friendlyMentorError(message: string) {

@@ -13,11 +13,11 @@ const pageContext: Array<[string, string]> = [
   ["/roadmap", "Career Plan page - explain next step"],
   ["/opportunities", "Opportunities page - compare jobs and programs"],
   ["/applications", "Applications page - follow-up and interview help"],
-  ["/employment-tracker", "Applications page - follow-up and interview help"],
+  ["/applications", "Applications page - follow-up and interview help"],
   ["/skills", "Skills page - explain skill gaps"],
-  ["/progress", "Skills page - explain skill gaps"],
+  ["/skills", "Skills page - explain skill gaps"],
   ["/roadmap", "My Employment Journey - suggest the next action"],
-  ["/dashboard", "My Employment Journey - suggest the next action"]
+  ["/roadmap", "My Employment Journey - suggest the next action"]
 ];
 
 function contextForPath(pathname: string) {

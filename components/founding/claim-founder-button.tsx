@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { appRoutes } from "@/lib/navigation/routes";
 
 export function ClaimFounderButton({ disabled = false }: { disabled?: boolean }) {
   const router = useRouter();
@@ -20,7 +21,7 @@ export function ClaimFounderButton({ disabled = false }: { disabled?: boolean })
         setMessage(data.error ?? "Could not claim your Founder spot yet.");
         return;
       }
-      router.replace("/dashboard");
+      router.replace(appRoutes.roadmap);
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not claim your Founder spot yet.");

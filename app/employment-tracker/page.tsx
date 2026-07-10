@@ -1,8 +1,10 @@
 import { EmploymentTrackerClient } from "@/components/employment-tracker/employment-tracker-client";
 import { PageHeader } from "@/components/ui";
+import { appRoutes } from "@/lib/navigation/routes";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
-export async function EmploymentTrackerPage({ redirectTo = "/employment-tracker" }: { redirectTo?: string } = {}) {
+export async function EmploymentTrackerPage({ redirectTo = appRoutes.applications }: { redirectTo?: string } = {}) {
   const { user, supabase } = await requireAuthenticatedUser(redirectTo);
   const { data: applications } = await supabase.from("employment_applications").select("*").eq("user_id", user.id).order("updated_at", { ascending: false });
 
@@ -16,4 +18,6 @@ export async function EmploymentTrackerPage({ redirectTo = "/employment-tracker"
   );
 }
 
-export default EmploymentTrackerPage;
+export default function LegacyEmploymentTrackerRedirect() {
+  redirect(appRoutes.applications);
+}

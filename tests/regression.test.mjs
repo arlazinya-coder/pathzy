@@ -2,6 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const dashboard = readFileSync("app/dashboard/page.tsx", "utf8");
+const legacyCvBuilderPage = readFileSync("app/cv-builder/page.tsx", "utf8");
+const legacyEmploymentTrackerPage = readFileSync("app/employment-tracker/page.tsx", "utf8");
+const legacyProgressPage = readFileSync("app/progress/page.tsx", "utf8");
+const legacyProfilePage = readFileSync("app/profile/page.tsx", "utf8");
+const legacyRegisterPage = readFileSync("app/register/page.tsx", "utf8");
+const signupPage = readFileSync("app/signup/page.tsx", "utf8");
 const homepage = readFileSync("app/page.tsx", "utf8");
 const loginForm = readFileSync("components/auth/login-form.tsx", "utf8");
 const registerForm = readFileSync("components/auth/register-form.tsx", "utf8");
@@ -41,6 +47,8 @@ const documentDownloads = readFileSync("components/professional-identity/documen
 const professionalIdentityTool = readFileSync("components/professional-identity/professional-identity-tool.tsx", "utf8");
 const myDocumentsClient = readFileSync("components/professional-identity/my-documents-client.tsx", "utf8");
 const cvBuilderPage = readFileSync("app/cv-builder/page.tsx", "utf8");
+const supabaseServer = readFileSync("lib/supabase/server.ts", "utf8");
+const floatingMentorButton = readFileSync("components/mentor/floating-mentor-button.tsx", "utf8");
 const professionalIdentityService = readFileSync("lib/professional-identity/professional-identity-service.ts", "utf8");
 const coverLetterGeneration = professionalIdentityService.match(/export async function generateCoverLetter[\s\S]*?export async function generateLinkedInProfile/)?.[0] ?? "";
 
@@ -53,6 +61,7 @@ assert.match(homepage, /const loginHref = user \? PATHZY_ROUTES\.MY_EMPLOYMENT_J
 assert.match(homepage, /<a href=\{startHref\}[\s\S]*>Start Free<\/a>/, "Welcome navigation must include a Start Free link.");
 assert.match(homepage, /<a href=\{loginHref\}[\s\S]*>Login<\/a>/, "Welcome navigation must include a Login link.");
 assert.doesNotMatch(homepage, /href=\{appRoutes\.pricing\}|href=\{PATHZY_ROUTES\.BILLING\}|href="\/pricing"|href="\/billing"/, "Welcome Start Free/Login actions must not point to Pricing or Billing.");
+assert.match(signupPage, /<RegisterForm \/>/, "Canonical /signup must own the account creation form.");
 assert.match(loginForm, /redirectTo = searchParams\?\.get\("redirectTo"\) \|\| PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY/, "Login must default to My Employment Journey.");
 assert.match(loginForm, /encodeURIComponent\(PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY\)/, "Google login callback must return to My Employment Journey.");
 assert.match(registerForm, /emailRedirectTo: `\$\{window\.location\.origin\}\/auth\/callback\?next=\$\{encodeURIComponent\(appRoutes\.onboarding\)\}`/, "Signup confirmation must preserve new-user onboarding.");
@@ -66,6 +75,7 @@ assert.match(updatePasswordForm, /router\.replace\(PATHZY_ROUTES\.MY_EMPLOYMENT_
 assert.match(resetPasswordForm, /href=\{PATHZY_ROUTES\.LOGIN\}/, "Reset password should link back to canonical Login.");
 assert.doesNotMatch(`${homepage}\n${loginForm}\n${registerForm}\n${authCallback}\n${onboardingPage}\n${onboardingApi}\n${onboardingFlow}\n${supabaseMiddleware}\n${updatePasswordForm}`, /\/dashboard/, "Welcome/auth/onboarding entry flow must not use the old dashboard route.");
 assert.doesNotMatch(rootLayout, /AppShell/, "Public root layout must not wrap the landing page in the authenticated app shell.");
+assert.match(supabaseServer, /requireAuthenticatedUser\(redirectTo = "\/roadmap"\)/, "Protected-route login fallback must default to My Employment Journey.");
 for (const [key, route] of [
   ["WELCOME_HOME", "/"],
   ["LOGIN", "/login"],
@@ -109,10 +119,14 @@ for (const [routeName, routeLayout] of [
 }
 
 assert.match(nextActionEngine, /export async function getPathzyNextAction/, "PATHZY must expose one shared next action journey engine.");
-assert.match(dashboard, /getPathzyNextAction\(supabase, user\)/, "Dashboard must use the shared PATHZY next action engine.");
+assert.match(dashboard, /redirect\(appRoutes\.roadmap\)/, "Legacy /dashboard must redirect to My Employment Journey.");
 assert.match(roadmapPage, /getPathzyNextAction\(supabase, user\)/, "My Employment Journey must use the shared PATHZY next action engine.");
-assert.match(dashboard, /<ButtonLink href=\{nextAction\.destinationRoute\}>Continue My Journey<\/ButtonLink>/, "Dashboard must send Continue My Journey to the shared next action route.");
 assert.match(roadmapPage, /<ButtonLink href=\{nextAction\.destinationRoute\}>Continue My Journey<\/ButtonLink>/, "My Employment Journey must send Continue My Journey to the shared next action route.");
+assert.match(legacyCvBuilderPage, /redirect\(appRoutes\.professionalIdentityCv\)/, "Legacy /cv-builder must redirect to the canonical CV Builder.");
+assert.match(legacyEmploymentTrackerPage, /redirect\(appRoutes\.applications\)/, "Legacy /employment-tracker must redirect to My Applications.");
+assert.match(legacyProgressPage, /redirect\(appRoutes\.skills\)/, "Legacy /progress must redirect to Skills & Career Growth.");
+assert.match(legacyProfilePage, /redirect\(appRoutes\.settings\)/, "Legacy /profile must redirect to Settings.");
+assert.match(legacyRegisterPage, /redirect\(appRoutes\.signup\)/, "Legacy /register must redirect to Sign Up.");
 assert.match(nextActionEngine, /label: "Complete onboarding"[\s\S]*destinationRoute: appRoutes\.onboarding/, "Brand-new users must receive onboarding guidance.");
 assert.match(nextActionEngine, /if \(milestone\.key === "profile"\) return "Complete My Professional Profile";/, "Users with incomplete profile information must be guided to My Professional Profile.");
 assert.match(nextActionEngine, /if \(milestone\.key === "profile"\) return appRoutes\.professionalIdentity;/, "Profile gaps must route to My Professional Profile, not Billing.");
@@ -126,11 +140,8 @@ assert.match(nextActionEngine, /interviewPrepComplete/, "Users with applications
 assert.match(nextActionEngine, /if \(inputs\.employmentReadinessScore < 80\) return skillsMilestone\(\);/, "The next action engine must guide users to improve missing skills after interview preparation.");
 assert.doesNotMatch(nextActionEngine, /billing|pricing|founding-members/, "The next action engine must not send users to Billing, Pricing, or Founder flows for incomplete information.");
 assert.doesNotMatch(progressEngine, /founding-members/, "Progress Engine must never send onboarding missions to the Founder flow.");
-assert.doesNotMatch(dashboard, /href="\/founding-members"/, "Dashboard must not link mission CTAs into the Founder flow.");
-assert.doesNotMatch(dashboard, /XP Progress|Career DNA|Smart Notifications|Founder Premium|Applications Sent/, "Dashboard must stay simple and avoid old control-center clutter.");
-assert.doesNotMatch(dashboard, /PathzyTimeline/, "Dashboard must not repeat the journey with a second timeline block.");
-assert.match(dashboard, /Up next/, "Dashboard must show the next journey step without duplicating the current step.");
-assert.match(dashboard, /Later/, "Dashboard must show a short later list for orientation.");
+assert.doesNotMatch(roadmapPage, /href="\/founding-members"/, "My Employment Journey must not link CTAs into the Founder flow.");
+assert.doesNotMatch(roadmapPage, /XP Progress|Career DNA|Smart Notifications|Founder Premium|Applications Sent/, "My Employment Journey must avoid old dashboard/control-center clutter.");
 assert.match(timeline, /PATHZY Timeline/, "Timeline must use the PATHZY Timeline name.");
 assert.doesNotMatch(timeline, /Coming soon/, "Timeline must not label normal journey steps as coming soon.");
 assert.match(appShell, /key=\{`\$\{item\.href\}-\$\{item\.label\}`\}/, "Navigation links must use a unique key fallback.");
@@ -163,9 +174,10 @@ assert.match(routes, /applications: PATHZY_ROUTES\.MY_APPLICATIONS/, "The Applic
 assert.match(routes, /skills: PATHZY_ROUTES\.SKILLS_CAREER_GROWTH/, "The Skills app route must use the canonical /skills definition.");
 assert.match(routes, /billing: PATHZY_ROUTES\.BILLING/, "The Billing app route must use the canonical /billing definition.");
 assert.match(applicationsPage, /EmploymentTrackerPage/, "The /applications entry point must reuse the existing application tracker implementation.");
-assert.match(skillsPage, /ProgressPage/, "The /skills entry point must reuse the existing skills and growth implementation.");
+assert.match(skillsPage, /ProgressPageContent/, "The /skills entry point must reuse the existing skills and growth implementation.");
 assert.match(billingPage, /PricingPage/, "The /billing entry point must reuse the existing billing/pricing implementation.");
 assert.doesNotMatch(navigation, /label: "Profile"/, "Main navigation must not include a duplicate Profile label.");
+assert.doesNotMatch(floatingMentorButton, /\/dashboard|\/employment-tracker|\/progress/, "Contextual Mentor routing must not reference legacy app routes.");
 assert.ok(/profile: "\/onboarding"/.test(journeyRouter) || /profile: appRoutes\.onboarding/.test(journeyRouter), "Profile completion must route to the profile setup flow, not membership profile.");
 assert.doesNotMatch(journeyRouter, /founding-members|pricing|settings|\/profile"/, "Journey Router must not send Continue My Journey to Founder, Billing, Settings, or membership profile.");
 

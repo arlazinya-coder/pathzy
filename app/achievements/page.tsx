@@ -1,5 +1,6 @@
 import { ButtonLink, Card, PageHeader, ProgressBar } from "@/components/ui";
 import { achievementCatalog, ensureMissionState } from "@/lib/missions/engine";
+import { appRoutes } from "@/lib/navigation/routes";
 import { createSupabaseServerClient, getCurrentUser } from "@/lib/supabase/server";
 
 export default async function AchievementsPage() {
@@ -33,8 +34,8 @@ export default async function AchievementsPage() {
             </div>
           ) : null}
           <div className="mt-5 flex flex-wrap gap-3">
-            <ButtonLink href="/missions">Earn Next Badge</ButtonLink>
-            <ButtonLink href="/dashboard" variant="secondary">Back to Journey</ButtonLink>
+            <ButtonLink href={appRoutes.missions}>Earn Next Badge</ButtonLink>
+            <ButtonLink href={appRoutes.roadmap} variant="secondary">Back to Journey</ButtonLink>
           </div>
         </Card>
         <Card>

@@ -1,6 +1,7 @@
 import { ButtonLink, Card, PageHeader } from "@/components/ui";
 import { LanguageSettingsForm } from "@/components/settings/language-settings-form";
 import { getMembershipState } from "@/lib/launch/launch-service";
+import { appRoutes } from "@/lib/navigation/routes";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
 
 const settings = ["Profile visibility", "Mentor memory", "Next step reminders", "Opportunity alerts", "Data export"];
@@ -22,7 +23,7 @@ function membershipType(value?: string | null) {
 }
 
 export default async function SettingsPage() {
-  const { user, supabase } = await requireAuthenticatedUser("/profile");
+  const { user, supabase } = await requireAuthenticatedUser("/settings");
   const [{ data: profile }, { data: discovery }, membership] = await Promise.all([
     supabase.from("user_profiles").select("full_name,email,country,career_goal,created_at,language").or(`user_id.eq.${user.id},id.eq.${user.id}`).maybeSingle(),
     supabase.from("discovery_responses").select("answers,generated_result").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
@@ -61,8 +62,8 @@ export default async function SettingsPage() {
             <div className="rounded-[18px] border border-white/10 bg-white/7 p-4 sm:col-span-2"><p className="text-xs text-white/42">Career Goal</p><strong>{careerGoal}</strong></div>
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
-            <ButtonLink href="/roadmap">Back to My Journey</ButtonLink>
-            <ButtonLink href="/professional-identity/cv" variant="secondary">Create My CV</ButtonLink>
+            <ButtonLink href={appRoutes.roadmap}>Back to My Journey</ButtonLink>
+            <ButtonLink href={appRoutes.professionalIdentityCv} variant="secondary">Create My CV</ButtonLink>
           </div>
         </Card>
         <Card>

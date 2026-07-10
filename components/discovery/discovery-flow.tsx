@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AuthNotice } from "@/components/auth/auth-notice";
 import { Card, ProgressBar } from "@/components/ui";
 import type { DiscoveryAnswers } from "@/lib/discovery/types";
+import { appRoutes } from "@/lib/navigation/routes";
 
 const steps: Array<{ key: keyof DiscoveryAnswers; title: string; prompt: string; placeholder: string }> = [
   {
@@ -103,7 +104,7 @@ export function DiscoveryFlow() {
 
       if (response.status === 401) {
         setMessage(payload.error || "Please log in before completing Discovery.");
-        router.replace("/login?redirectTo=/discovery");
+        router.replace(`${appRoutes.login}?redirectTo=${appRoutes.discovery}`);
         return;
       }
 
@@ -112,7 +113,7 @@ export function DiscoveryFlow() {
         return;
       }
 
-      router.replace("/roadmap");
+      router.replace(appRoutes.roadmap);
       router.refresh();
     } catch (error) {
       setMessage("We could not complete this action yet. Your progress is safe. Please try again.");

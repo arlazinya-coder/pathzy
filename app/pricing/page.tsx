@@ -46,7 +46,7 @@ export default async function PricingPage() {
               ))}
             </div>
             <div className="mt-6">
-              <ButtonLink href="/register" variant={plan.featured ? "primary" : "secondary"}>
+              <ButtonLink href="/signup" variant={plan.featured ? "primary" : "secondary"}>
                 {plan.name === "Free" ? "Start Free" : "Choose Plan"}
               </ButtonLink>
             </div>

@@ -1,3 +1,3 @@
-import ProgressPage from "@/app/progress/page";
+import { ProgressPageContent } from "@/app/progress/page";
 
-export default ProgressPage;
+export default ProgressPageContent;
