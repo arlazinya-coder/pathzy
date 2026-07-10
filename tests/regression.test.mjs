@@ -120,8 +120,14 @@ for (const [routeName, routeLayout] of [
 
 assert.match(nextActionEngine, /export async function getPathzyNextAction/, "PATHZY must expose one shared next action journey engine.");
 assert.match(dashboard, /redirect\(appRoutes\.roadmap\)/, "Legacy /dashboard must redirect to My Employment Journey.");
-assert.match(roadmapPage, /getPathzyNextAction\(supabase, user\)/, "My Employment Journey must use the shared PATHZY next action engine.");
-assert.match(roadmapPage, /<ButtonLink href=\{nextAction\.destinationRoute\}>Continue My Journey<\/ButtonLink>/, "My Employment Journey must send Continue My Journey to the shared next action route.");
+assert.match(roadmapPage, /WELCOME TO PATHZY/, "My Employment Journey hero must welcome users warmly.");
+assert.match(roadmapPage, /Welcome, \$\{firstName\}!/, "My Employment Journey hero must use the authenticated user's first name when available.");
+assert.match(roadmapPage, /Welcome to PATHZY!/, "My Employment Journey hero must include the fallback welcome when first name is missing.");
+assert.match(roadmapPage, /Let's build your future together\./, "My Employment Journey hero must include the approved warm subheading.");
+assert.match(roadmapPage, /TODAY'S RECOMMENDATION/, "My Employment Journey hero must include Today's Recommendation.");
+assert.match(roadmapPage, /A professional CV is the foundation of every successful job application\./, "My Employment Journey hero must explain why the CV matters.");
+assert.match(roadmapPage, /<ButtonLink href=\{appRoutes\.professionalIdentityCv\}>Build My CV<\/ButtonLink>/, "My Employment Journey hero primary CTA must open the canonical CV Builder.");
+assert.doesNotMatch(roadmapPage, /Sample Career Plan|Your 90-day control center|Continue My Journey/, "My Employment Journey hero must not use the old cold wording.");
 assert.match(legacyCvBuilderPage, /redirect\(appRoutes\.professionalIdentityCv\)/, "Legacy /cv-builder must redirect to the canonical CV Builder.");
 assert.match(legacyEmploymentTrackerPage, /redirect\(appRoutes\.applications\)/, "Legacy /employment-tracker must redirect to My Applications.");
 assert.match(legacyProgressPage, /redirect\(appRoutes\.skills\)/, "Legacy /progress must redirect to Skills & Career Growth.");

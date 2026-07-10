@@ -1,10 +1,10 @@
-import { Badge, ButtonLink, Card, PageHeader, ProgressBar } from "@/components/ui";
+import { Badge, ButtonLink, Card, ProgressBar } from "@/components/ui";
 import { SkillGapSummary } from "@/components/brain/skill-gap-summary";
 import { SelectCareerButton } from "@/components/roadmap/select-career-button";
 import type { CareerPathResult, GeneratedRoadmap } from "@/lib/discovery/types";
+import { appRoutes } from "@/lib/navigation/routes";
 import { calculateEmploymentReadiness, updatePathzyBrain } from "@/lib/pathzy-brain/brain-service";
 import { roadmapPaths } from "@/lib/pathzy-data";
-import { getPathzyNextAction } from "@/lib/progress/next-action-engine";
 import { createSupabaseServerClient, getCurrentUser } from "@/lib/supabase/server";
 
 const monthly = [
@@ -214,7 +214,7 @@ export default async function RoadmapPage() {
   const profileResult = user && supabase
     ? await supabase
       .from("user_profiles")
-      .select("career_goal,preferred_path")
+      .select("full_name,career_goal,preferred_path")
       .or(`user_id.eq.${user.id},id.eq.${user.id}`)
       .maybeSingle()
     : { data: null };
@@ -232,7 +232,6 @@ export default async function RoadmapPage() {
       .eq("user_id", user.id)
       .eq("completed", true)
     : { count: 0 };
-  const nextAction = user && supabase ? await getPathzyNextAction(supabase, user) : null;
   const discovery = discoveryResult.data;
   const profile = profileResult.data;
   const level = levelResult.data;
@@ -254,31 +253,45 @@ export default async function RoadmapPage() {
   const readiness = user && supabase
     ? await updatePathzyBrain(supabase, user.id, "Career plan refreshed").then(() => calculateEmploymentReadiness(supabase, user.id)).catch(() => null)
     : null;
+  const rawName = typeof profile?.full_name === "string" && profile.full_name.trim()
+    ? profile.full_name
+    : typeof user?.user_metadata?.full_name === "string" && user.user_metadata.full_name.trim()
+      ? user.user_metadata.full_name
+      : typeof user?.user_metadata?.name === "string" && user.user_metadata.name.trim()
+        ? user.user_metadata.name
+        : "";
+  const firstName = rawName.trim().split(/\s+/)[0] || "";
 
   return (
     <div className="container page-pad">
-      <PageHeader eyebrow={hasPersonalizedRoadmap ? "My Career Plan" : "Sample Career Plan"} title="Your 90-day control center.">
-        {hasPersonalizedRoadmap
-          ? "Choose one primary career goal, start your first mission, and keep moving from potential to employment."
-          : "Complete Discovery to generate a personalized career plan. For now, this sample shows the experience."}
-      </PageHeader>
-
-      {nextAction ? (
-        <Card className="mb-6">
-          <div className="grid gap-5 lg:grid-cols-[1.2fr_.8fr] lg:items-center">
-            <div>
-              <Badge>Recommended next action</Badge>
-              <h2 className="mt-4 text-3xl font-black md:text-4xl">{nextAction.label}</h2>
-              <p className="mt-3 max-w-3xl leading-7 text-white/66">{nextAction.reason}</p>
-              <p className="mt-3 text-sm font-bold capitalize text-white/48">Completion state: {nextAction.completionState.replace(/_/g, " ")}</p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
-              <ButtonLink href={nextAction.destinationRoute}>Continue My Journey</ButtonLink>
-              <ButtonLink href="/mentor?context=My%20Employment%20Journey%20-%20explain%20my%20next%20action" variant="secondary">Ask Mentor</ButtonLink>
-            </div>
+      <section className="relative mb-6 overflow-hidden rounded-[28px] border border-white/10 bg-white/6 p-5 pb-24 shadow-[0_24px_80px_rgba(37,70,180,0.18)] sm:p-7 sm:pb-7 lg:p-8">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-[#5B8CFF]/30 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-8 h-48 w-48 rounded-full bg-[#9D7CFF]/20 blur-3xl" />
+        <div className="relative grid gap-6 lg:grid-cols-[1.15fr_.85fr] lg:items-center">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#9db8ff]">WELCOME TO PATHZY</p>
+            <h1 className="mt-4 text-4xl font-black leading-tight text-white sm:text-5xl lg:text-6xl">
+              {firstName ? `Welcome, ${firstName}!` : "Welcome to PATHZY!"}
+            </h1>
+            <p className="mt-4 text-xl font-extrabold text-[#dfe8ff]">Let's build your future together.</p>
+            <p className="mt-4 max-w-3xl text-base leading-7 text-white/68 sm:text-lg">
+              You've taken the first step toward employment. Every action you complete brings you closer to interviews, job offers, and the career you deserve.
+            </p>
           </div>
-        </Card>
-      ) : null}
+          <Card className="border-[#5B8CFF]/25 bg-[#5B8CFF]/10">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#c7d6ff]">TODAY'S RECOMMENDATION</p>
+              <h2 className="mt-4 text-3xl font-black leading-tight text-white">Build your CV</h2>
+              <p className="mt-3 text-sm leading-6 text-white/66 sm:text-base">
+                A professional CV is the foundation of every successful job application.
+              </p>
+              <div className="mt-5">
+                <ButtonLink href={appRoutes.professionalIdentityCv}>Build My CV</ButtonLink>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </section>
 
       <Card className="mb-6">
         <div className="grid gap-6 lg:grid-cols-[1.35fr_.65fr] lg:items-center">
