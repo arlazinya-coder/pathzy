@@ -40,7 +40,7 @@ export async function updateSession(request: NextRequest) {
 
   if (isAuthPage && user && path !== appRoutes.authUpdatePassword) {
     const url = request.nextUrl.clone();
-    url.pathname = appRoutes.dashboard;
+    url.pathname = appRoutes.roadmap;
     url.search = "";
     return NextResponse.redirect(url);
   }

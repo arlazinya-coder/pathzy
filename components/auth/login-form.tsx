@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { PATHZY_ROUTES } from "@/lib/navigation/routes";
 import { createSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 function friendlyLoginError(message: string) {
@@ -18,7 +19,7 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackMessage = searchParams?.get("message") || "";
-  const redirectTo = searchParams?.get("redirectTo") || "/dashboard";
+  const redirectTo = searchParams?.get("redirectTo") || PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY;
   const [message, setMessage] = useState(callbackMessage);
   const [loading, setLoading] = useState(false);
 
@@ -56,7 +57,7 @@ export function LoginForm() {
         return;
       }
 
-      router.replace(redirectTo.startsWith("/") ? redirectTo : "/dashboard");
+      router.replace(redirectTo.startsWith("/") ? redirectTo : PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY);
       router.refresh();
     } catch (error) {
       setMessage(friendlyLoginError(error instanceof Error ? error.message : "Unable to log in."));
@@ -76,7 +77,7 @@ export function LoginForm() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${origin}/auth/callback?next=${encodeURIComponent("/dashboard")}`
+          redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY)}`
         }
       });
 
@@ -106,7 +107,7 @@ export function LoginForm() {
       </button>
       <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-center text-sm text-white/58">
         <Link className="font-bold text-white" href="/auth/reset-password">Forgot password?</Link>
-        <span>New to PATHZY? <Link className="font-bold text-white" href="/register">Create an account</Link></span>
+        <span>New to PATHZY? <Link className="font-bold text-white" href={PATHZY_ROUTES.SIGNUP}>Create an account</Link></span>
       </div>
     </form>
   );

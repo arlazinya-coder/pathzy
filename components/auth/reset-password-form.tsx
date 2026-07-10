@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { PATHZY_ROUTES } from "@/lib/navigation/routes";
 import { createSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export function ResetPasswordForm() {
@@ -34,7 +35,7 @@ export function ResetPasswordForm() {
       <button disabled={loading || !isSupabaseConfigured()} className="mt-6 w-full rounded-full blue-purple px-6 py-4 text-sm font-extrabold disabled:cursor-not-allowed disabled:opacity-50">
         {loading ? "Sending..." : "Send Reset Link"}
       </button>
-      <p className="mt-5 text-center text-sm text-white/58">Remembered it? <Link className="font-bold text-white" href="/login">Login</Link></p>
+      <p className="mt-5 text-center text-sm text-white/58">Remembered it? <Link className="font-bold text-white" href={PATHZY_ROUTES.LOGIN}>Login</Link></p>
     </form>
   );
 }

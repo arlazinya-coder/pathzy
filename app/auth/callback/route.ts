@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureUserDefaults } from "@/lib/auth/bootstrap";
+import { PATHZY_ROUTES } from "@/lib/navigation/routes";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -7,13 +8,13 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get("code");
   const tokenHash = requestUrl.searchParams.get("token_hash");
   const type = requestUrl.searchParams.get("type");
-  const next = requestUrl.searchParams.get("next") || "/dashboard";
+  const next = requestUrl.searchParams.get("next") || PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY;
   const supabase = await createSupabaseServerClient();
 
   if (code) {
     const { error } = (await supabase?.auth.exchangeCodeForSession(code)) ?? { error: new Error("Auth callback unavailable.") };
     if (error) {
-      const url = new URL("/login", requestUrl.origin);
+      const url = new URL(PATHZY_ROUTES.LOGIN, requestUrl.origin);
       url.searchParams.set("message", "We could not confirm your login link. Please log in manually.");
       return NextResponse.redirect(url);
     }
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
       })) ?? { error: new Error("Auth callback unavailable.") };
 
     if (error) {
-      const url = new URL("/login", requestUrl.origin);
+      const url = new URL(PATHZY_ROUTES.LOGIN, requestUrl.origin);
       url.searchParams.set("message", "We could not confirm your login link. Please log in manually.");
       return NextResponse.redirect(url);
     }
@@ -62,11 +63,11 @@ export async function GET(request: Request) {
   } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
 
   if (!session) {
-    const url = new URL("/login", requestUrl.origin);
+    const url = new URL(PATHZY_ROUTES.LOGIN, requestUrl.origin);
     url.searchParams.set("message", "Please log in to continue.");
-    url.searchParams.set("redirectTo", next.startsWith("/") ? next : "/dashboard");
+    url.searchParams.set("redirectTo", next.startsWith("/") ? next : PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY);
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.redirect(new URL(next.startsWith("/") ? next : "/dashboard", requestUrl.origin));
+  return NextResponse.redirect(new URL(next.startsWith("/") ? next : PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY, requestUrl.origin));
 }

@@ -1,5 +1,6 @@
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
 import { PageHeader } from "@/components/ui";
+import { PATHZY_ROUTES } from "@/lib/navigation/routes";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -11,7 +12,7 @@ export default async function OnboardingPage() {
     .or(`user_id.eq.${user.id},id.eq.${user.id}`)
     .maybeSingle();
 
-  if (profile?.onboarding_completed) redirect("/dashboard");
+  if (profile?.onboarding_completed) redirect(PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY);
 
   return (
     <div className="container page-pad">

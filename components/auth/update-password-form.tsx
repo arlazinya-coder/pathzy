@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { PATHZY_ROUTES } from "@/lib/navigation/routes";
 import { createSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export function UpdatePasswordForm() {
@@ -23,7 +24,7 @@ export function UpdatePasswordForm() {
         return;
       }
 
-      router.replace("/dashboard");
+      router.replace(PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY);
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to update password.");

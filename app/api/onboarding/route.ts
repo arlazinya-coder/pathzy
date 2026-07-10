@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { PATHZY_ROUTES } from "@/lib/navigation/routes";
 import { updatePathzyBrain } from "@/lib/pathzy-brain/brain-service";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -161,5 +162,5 @@ export async function POST(request: Request) {
 
   await updatePathzyBrain(supabase, user.id, "Onboarding completed");
 
-  return NextResponse.json({ ok: true, redirectTo: "/dashboard" });
+  return NextResponse.json({ ok: true, redirectTo: PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY });
 }

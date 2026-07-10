@@ -3,6 +3,15 @@ import { readFileSync } from "node:fs";
 
 const dashboard = readFileSync("app/dashboard/page.tsx", "utf8");
 const homepage = readFileSync("app/page.tsx", "utf8");
+const loginForm = readFileSync("components/auth/login-form.tsx", "utf8");
+const registerForm = readFileSync("components/auth/register-form.tsx", "utf8");
+const resetPasswordForm = readFileSync("components/auth/reset-password-form.tsx", "utf8");
+const updatePasswordForm = readFileSync("components/auth/update-password-form.tsx", "utf8");
+const authCallback = readFileSync("app/auth/callback/route.ts", "utf8");
+const onboardingPage = readFileSync("app/onboarding/page.tsx", "utf8");
+const onboardingApi = readFileSync("app/api/onboarding/route.ts", "utf8");
+const onboardingFlow = readFileSync("components/onboarding/onboarding-flow.tsx", "utf8");
+const supabaseMiddleware = readFileSync("lib/supabase/middleware.ts", "utf8");
 const rootLayout = readFileSync("app/layout.tsx", "utf8");
 const roadmapLayout = readFileSync("app/roadmap/layout.tsx", "utf8");
 const professionalIdentityLayout = readFileSync("app/professional-identity/layout.tsx", "utf8");
@@ -33,6 +42,23 @@ for (const section of ["Navigation", "Hero", "Features", "How PATHZY Works", "Ca
   assert.match(homepage, new RegExp(`data-home-section="${section}"`), `Homepage must include the ${section} landing section.`);
 }
 assert.match(homepage, /Do not remove landing sections without updating homepage regression test\./, "Homepage must warn maintainers to update the regression test before removing landing sections.");
+assert.match(homepage, /const startHref = user \? PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY : PATHZY_ROUTES\.SIGNUP;/, "Welcome Start Free must send logged-out users to signup and logged-in users to My Employment Journey.");
+assert.match(homepage, /const loginHref = user \? PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY : PATHZY_ROUTES\.LOGIN;/, "Welcome Login must send logged-out users to login and logged-in users to My Employment Journey.");
+assert.match(homepage, /<a href=\{startHref\}[\s\S]*>Start Free<\/a>/, "Welcome navigation must include a Start Free link.");
+assert.match(homepage, /<a href=\{loginHref\}[\s\S]*>Login<\/a>/, "Welcome navigation must include a Login link.");
+assert.doesNotMatch(homepage, /href=\{appRoutes\.pricing\}|href=\{PATHZY_ROUTES\.BILLING\}|href="\/pricing"|href="\/billing"/, "Welcome Start Free/Login actions must not point to Pricing or Billing.");
+assert.match(loginForm, /redirectTo = searchParams\?\.get\("redirectTo"\) \|\| PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY/, "Login must default to My Employment Journey.");
+assert.match(loginForm, /encodeURIComponent\(PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY\)/, "Google login callback must return to My Employment Journey.");
+assert.match(registerForm, /emailRedirectTo: `\$\{window\.location\.origin\}\/auth\/callback\?next=\$\{encodeURIComponent\(appRoutes\.onboarding\)\}`/, "Signup confirmation must preserve new-user onboarding.");
+assert.match(registerForm, /router\.replace\(appRoutes\.onboarding\)/, "Immediate signup sessions must enter onboarding.");
+assert.match(authCallback, /requestUrl\.searchParams\.get\("next"\) \|\| PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY/, "Auth callback must default to My Employment Journey.");
+assert.match(supabaseMiddleware, /url\.pathname = appRoutes\.roadmap;/, "Logged-in users opening auth pages must go to My Employment Journey.");
+assert.match(onboardingPage, /redirect\(PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY\)/, "Completed onboarding visits must go to My Employment Journey.");
+assert.match(onboardingApi, /redirectTo: PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY/, "Onboarding completion API must send users to My Employment Journey.");
+assert.match(onboardingFlow, /router\.replace\(data\.redirectTo \?\? PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY\)/, "Onboarding UI must use the API redirect to My Employment Journey.");
+assert.match(updatePasswordForm, /router\.replace\(PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY\)/, "Password update should return to My Employment Journey.");
+assert.match(resetPasswordForm, /href=\{PATHZY_ROUTES\.LOGIN\}/, "Reset password should link back to canonical Login.");
+assert.doesNotMatch(`${homepage}\n${loginForm}\n${registerForm}\n${authCallback}\n${onboardingPage}\n${onboardingApi}\n${onboardingFlow}\n${supabaseMiddleware}\n${updatePasswordForm}`, /\/dashboard/, "Welcome/auth/onboarding entry flow must not use the old dashboard route.");
 assert.doesNotMatch(rootLayout, /AppShell/, "Public root layout must not wrap the landing page in the authenticated app shell.");
 for (const [key, route] of [
   ["WELCOME_HOME", "/"],

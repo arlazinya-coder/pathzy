@@ -1,5 +1,6 @@
 import { Badge, ButtonLink, Card } from "@/components/ui";
 import { Reveal } from "@/components/reveal";
+import { PATHZY_ROUTES } from "@/lib/navigation/routes";
 import { getCurrentUser } from "@/lib/supabase/server";
 
 const features = [
@@ -59,17 +60,20 @@ function SectionHeader({ eyebrow, title, body }: { eyebrow: string; title: strin
 
 export default async function LandingPage() {
   const user = await getCurrentUser();
-  const startHref = user ? "/dashboard" : "/signup";
+  const startHref = user ? PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY : PATHZY_ROUTES.SIGNUP;
+  const loginHref = user ? PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY : PATHZY_ROUTES.LOGIN;
 
   return (
     <div className="page-pad">
       {/* Do not remove landing sections without updating homepage regression test. */}
       <nav aria-label="Landing navigation" data-home-section="Navigation" className="container mb-8 flex flex-col gap-3 rounded-[24px] border border-white/10 bg-white/7 p-3 text-sm font-extrabold text-white/72 backdrop-blur md:flex-row md:items-center md:justify-between">
-        <a href="#top" className="rounded-full px-3 py-2 text-white">PATHZY</a>
+        <a href="#top" className="rounded-full px-3 py-2 text-white">Home</a>
         <div className="flex flex-wrap gap-2">
           {["Features", "How PATHZY Works", "Career Journey", "Pricing", "Testimonials", "FAQ"].map((item) => (
             <a key={item} href={`#${item.toLowerCase().replace(/\s+/g, "-")}`} className="rounded-full px-3 py-2 transition hover:bg-white/10">{item}</a>
           ))}
+          <a href={startHref} className="rounded-full px-3 py-2 text-white transition hover:bg-white/10">Start Free</a>
+          <a href={loginHref} className="rounded-full px-3 py-2 text-white transition hover:bg-white/10">Login</a>
         </div>
       </nav>
 
@@ -85,7 +89,7 @@ export default async function LandingPage() {
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <ButtonLink href={startHref}>Start Free</ButtonLink>
-              <ButtonLink href="/login" variant="secondary">Login</ButtonLink>
+              <ButtonLink href={loginHref} variant="secondary">Login</ButtonLink>
             </div>
             <p className="mt-4 text-sm font-bold text-white/48">No credit card required. We guide you every step of the way.</p>
           </div>

@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, ProgressBar } from "@/components/ui";
+import { appRoutes, PATHZY_ROUTES } from "@/lib/navigation/routes";
 
 const steps = ["Choose your language", "Who are you?", "Where are you?", "Education", "Career Goal", "Current Readiness"] as const;
 
@@ -169,7 +170,7 @@ export function OnboardingFlow({ initialProfile }: { initialProfile?: InitialPro
       body: JSON.stringify({ ...values, completed_step: nextStep + 1 })
     });
     if (response.status === 401) {
-      router.replace("/login?redirectTo=/onboarding");
+      router.replace(`${PATHZY_ROUTES.LOGIN}?redirectTo=${appRoutes.onboarding}`);
       return false;
     }
     if (!response.ok) {
@@ -223,12 +224,12 @@ export function OnboardingFlow({ initialProfile }: { initialProfile?: InitialPro
       });
       const data = await response.json();
       if (response.status === 401) {
-        router.replace("/login?redirectTo=/onboarding");
+        router.replace(`${PATHZY_ROUTES.LOGIN}?redirectTo=${appRoutes.onboarding}`);
         return;
       }
       if (!response.ok) throw new Error(data.error ?? "We could not save your profile yet. Please try again.");
       window.localStorage.removeItem(storageKey);
-      router.replace("/dashboard?welcome=onboarding");
+      router.replace(data.redirectTo ?? PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY);
       router.refresh();
     } catch (caught) {
       lastFailedAction.current = "submit";

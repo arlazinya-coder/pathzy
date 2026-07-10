@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { appRoutes, PATHZY_ROUTES } from "@/lib/navigation/routes";
 import { createSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 const statusOptions = [
@@ -49,7 +50,7 @@ export function RegisterForm() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(appRoutes.onboarding)}`,
           data: {
             full_name: fullName,
             country,
@@ -84,7 +85,7 @@ export function RegisterForm() {
       }
 
       if (data.session) {
-        router.replace("/dashboard");
+        router.replace(appRoutes.onboarding);
         router.refresh();
       } else {
         setMessage("Check your email to confirm your account.");
@@ -118,7 +119,7 @@ export function RegisterForm() {
       <button type="submit" disabled={loading || !isSupabaseConfigured()} className="mt-6 w-full rounded-full blue-purple px-6 py-4 text-sm font-extrabold disabled:cursor-not-allowed disabled:opacity-50">
         {loading ? "Creating..." : "Start Free"}
       </button>
-      <p className="mt-5 text-center text-sm text-white/58">Already have an account? <Link className="font-bold text-white" href="/login">Login</Link></p>
+      <p className="mt-5 text-center text-sm text-white/58">Already have an account? <Link className="font-bold text-white" href={PATHZY_ROUTES.LOGIN}>Login</Link></p>
     </form>
   );
 }
