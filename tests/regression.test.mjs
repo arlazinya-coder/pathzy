@@ -36,6 +36,8 @@ const nextActionEngine = readFileSync("lib/progress/next-action-engine.ts", "utf
 const routes = readFileSync("lib/navigation/routes.ts", "utf8");
 const roadmapPage = readFileSync("app/roadmap/page.tsx", "utf8");
 const professionalIdentityPage = readFileSync("app/professional-identity/page.tsx", "utf8");
+const profileActionEditor = readFileSync("components/professional-identity/profile-action-editor.tsx", "utf8");
+const professionalProfileApi = readFileSync("app/api/professional-profile/route.ts", "utf8");
 const professionalCvPage = readFileSync("app/professional-identity/cv/page.tsx", "utf8");
 const professionalCoverLetterPage = readFileSync("app/professional-identity/cover-letter/page.tsx", "utf8");
 const applicationsPage = readFileSync("app/applications/page.tsx", "utf8");
@@ -244,8 +246,26 @@ assert.match(professionalCvPage, /requireAuthenticatedUser\("\/professional-iden
 assert.match(professionalCoverLetterPage, /requireAuthenticatedUser\("\/professional-identity\/cover-letter"\)/, "All users must reach the same canonical Cover Letter route.");
 assert.match(professionalCvPage, /locked=\{!unlocked\}[\s\S]*exportLocked=\{!canExport\}/, "CV Builder must allow creation/editing while locking only export actions for free users.");
 assert.match(professionalCoverLetterPage, /locked=\{!unlocked\}[\s\S]*exportLocked=\{!canExport\}/, "Cover Letter Builder must allow creation/editing while locking only export actions for free users.");
-assert.match(professionalIdentityPage, /href=\{label === "Uploaded documents" \? appRoutes\.documents : appRoutes\.settings\}/, "Add Missing Info must open the account/profile section, never Billing.");
-assert.doesNotMatch(professionalIdentityPage, /Add missing info[\s\S]{0,180}billing|href="\/profile"/, "Add Missing Info must not use Billing or legacy profile routes.");
+assert.match(professionalIdentityPage, /<ProfileActionEditor rows=\{profileRows\} \/>/, "Professional Profile information rows must use the shared inline profile action editor.");
+assert.doesNotMatch(professionalIdentityPage, /appRoutes\.settings|href="\/settings"|href=\{appRoutes\.billing\}|href="\/billing"|href="\/profile"|href="\/roadmap"|href="\/onboarding"/, "Professional Profile Edit/Add Missing Info actions must not leave the profile workflow for Settings, Billing, legacy profile, Journey, or onboarding.");
+assert.match(profileActionEditor, /export const profileSectionActions/, "Professional Profile actions must be centralized in profileSectionActions.");
+for (const sectionName of ["name", "email", "phone", "location", "currentStatus", "education", "fieldOfStudy", "careerDirection", "experience", "skills", "languages", "projects", "certificates", "achievements", "references"]) {
+  assert.match(profileActionEditor, new RegExp(`${sectionName}: \\{`), `${sectionName} must open its own exact Professional Profile editor.`);
+}
+for (const editorName of ["Name editor", "Email editor", "Phone editor", "Location editor", "Current Status editor", "Education editor", "Field of Study editor", "Career Direction editor", "Experience editor", "Skills editor", "Languages editor", "Projects editor", "Certificates editor", "Achievements editor", "References editor"]) {
+  assert.match(profileActionEditor, new RegExp(editorName), `${editorName} must be available from My Professional Profile.`);
+}
+assert.match(profileActionEditor, /fetch\("\/api\/professional-profile"/, "Professional Profile Save must persist through the dedicated profile save endpoint.");
+assert.match(profileActionEditor, /router\.refresh\(\)/, "Professional Profile Save must refresh the page so updated data appears immediately.");
+assert.match(profileActionEditor, /Save returns to \/professional-identity/, "Professional Profile Save must return users to My Professional Profile.");
+assert.match(profileActionEditor, /Cancel returns to \/professional-identity without saving/, "Professional Profile Cancel must keep users on My Professional Profile without saving.");
+assert.match(profileActionEditor, /Open Documents/, "Uploaded documents must open My Documents rather than Settings.");
+assert.doesNotMatch(profileActionEditor, /appRoutes\.settings|\/settings|\/billing|membership|\/roadmap|\/onboarding/, "Profile action editor must not route profile fixes to Settings, Billing, membership, Journey, or onboarding.");
+assert.match(professionalProfileApi, /from\("user_profiles"\)\.upsert/, "Professional Profile save endpoint must create or update the user's profile row.");
+assert.match(professionalProfileApi, /from\("discovery_responses"\)/, "Professional Profile save endpoint must update discovery-backed profile sections.");
+assert.match(professionalProfileApi, /updatePathzyBrain/, "Professional Profile save endpoint must refresh employment readiness after saving.");
+assert.match(professionalProfileApi, /redirectTo: "\/professional-identity"/, "Professional Profile save endpoint must report the canonical return destination.");
+assert.doesNotMatch(professionalProfileApi, /\/settings|\/billing|\/roadmap|\/onboarding/, "Professional Profile save endpoint must not redirect profile edits to unrelated workflows.");
 assert.match(professionalIdentityTool, /Free users can build, edit, save, and preview core documents/, "Free users must not be told that saving is locked.");
 assert.doesNotMatch(professionalIdentityTool, /download, save, and export/, "Upgrade copy must not imply free users cannot save documents.");
 

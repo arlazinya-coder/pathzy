@@ -1,4 +1,5 @@
 import { Card, PageHeader, ProgressBar, ButtonLink } from "@/components/ui";
+import { ProfileActionEditor, type ProfileActionRow } from "@/components/professional-identity/profile-action-editor";
 import { appRoutes } from "@/lib/navigation/routes";
 import { getProfessionalIdentityContext } from "@/lib/professional-identity/professional-identity-service";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
@@ -120,7 +121,7 @@ export default async function ProfessionalIdentityPage() {
     getProfessionalIdentityContext(supabase, user.id),
     supabase
       .from("user_profiles")
-      .select("full_name,email,phone,city,country,education,field_of_study,current_status,career_goal,linkedin_url,portfolio_url,language")
+      .select("full_name,email,phone,city,country,education,field_of_study,current_status,career_goal,linkedin_url,portfolio_url,language,has_certificates")
       .or(`user_id.eq.${user.id},id.eq.${user.id}`)
       .maybeSingle(),
     supabase
@@ -140,25 +141,25 @@ export default async function ProfessionalIdentityPage() {
   const identity = context?.identity;
   const score = context?.score;
   const answers = (discovery?.answers ?? {}) as Record<string, unknown>;
-  const profileRows = [
-    ["Name", profile?.full_name],
-    ["Email", profile?.email ?? user.email],
-    ["Phone", profile?.phone],
-    ["City/Country", [profile?.city, profile?.country].filter(Boolean).join(", ")],
-    ["Education", profile?.education],
-    ["Field of study", profile?.field_of_study],
-    ["Current status", profile?.current_status],
-    ["Selected career direction", profile?.career_goal ?? context?.score.nextRecommendedAction],
-    ["Skills", Array.isArray(answers.skills) ? answers.skills.join(", ") : typeof answers.skills === "string" ? answers.skills : ""],
-    ["Languages", profile?.language],
-    ["Experience", typeof answers.personal_background === "string" ? answers.personal_background : ""],
-    ["Projects", typeof answers.interests === "string" ? answers.interests : ""],
-    ["Certifications", ""],
-    ["Achievements", ""],
-    ["References", ""],
-    ["Uploaded documents", uploadedDocuments?.map((document) => document.document_title).join(", ")]
-  ] as const;
-  const missing = profileRows.filter(([, value]) => !String(value ?? "").trim()).map(([label]) => label);
+  const profileRows: ProfileActionRow[] = [
+    { section: "name", label: "Name", value: profile?.full_name ?? "", helper: "Used in CV headers, cover letters, and professional messages." },
+    { section: "email", label: "Email", value: profile?.email ?? user.email ?? "", helper: "Used as the contact email in your documents." },
+    { section: "phone", label: "Phone", value: profile?.phone ?? "", helper: "Used when employers need to contact you quickly." },
+    { section: "location", label: "City/Country", value: [profile?.city, profile?.country].filter(Boolean).join(", "), helper: "Used in your CV header and opportunity matching." },
+    { section: "education", label: "Education", value: profile?.education ?? "", helper: "Used in CV, Career Passport, and application documents." },
+    { section: "fieldOfStudy", label: "Field of study", value: profile?.field_of_study ?? "", helper: "Helps PATHZY position your education clearly." },
+    { section: "currentStatus", label: "Current status", value: profile?.current_status ?? "", helper: "Helps documents match your real situation." },
+    { section: "careerDirection", label: "Selected career direction", value: profile?.career_goal ?? context?.score.nextRecommendedAction ?? "", helper: "Guides your CV, cover letter, and journey recommendations." },
+    { section: "skills", label: "Skills", value: Array.isArray(answers.skills) ? answers.skills.join(", ") : typeof answers.skills === "string" ? answers.skills : "", helper: "Used across your professional documents and readiness score." },
+    { section: "languages", label: "Languages", value: profile?.language ?? "", helper: "Adds useful language context to your profile." },
+    { section: "experience", label: "Experience", value: typeof answers.personal_background === "string" ? answers.personal_background : "", helper: "Used to write honest experience sections without inventing facts." },
+    { section: "projects", label: "Projects", value: typeof answers.interests === "string" ? answers.interests : "", helper: "Used for project and portfolio sections." },
+    { section: "certificates", label: "Certificates / Qualifications", value: typeof answers.certifications === "string" ? answers.certifications : profile?.has_certificates ? "Certificates available" : "", helper: "Used as evidence for skills, education, and applications." },
+    { section: "achievements", label: "Achievements", value: typeof answers.achievements === "string" ? answers.achievements : "", helper: "Used to strengthen your professional story." },
+    { section: "references", label: "References", value: typeof answers.references === "string" ? answers.references : "", helper: "Used when preparing reference-ready documents." },
+    { section: "uploadedDocuments", label: "Uploaded documents", value: uploadedDocuments?.map((document) => document.document_title).join(", ") ?? "", helper: "Open My Documents to manage files you upload." }
+  ];
+  const missing = profileRows.filter((row) => row.section !== "uploadedDocuments" && !row.value.trim()).map((row) => row.label);
 
   return (
     <div className="container page-pad">
@@ -187,22 +188,8 @@ export default async function ProfessionalIdentityPage() {
             <h2 className="mt-3 text-3xl font-black">Check what PATHZY will use in your documents.</h2>
             <p className="mt-3 max-w-3xl leading-7 text-white/62">Your CV is stronger when your profile, education, skills, projects, and documents are complete. Missing items are shown clearly so PATHZY does not invent facts.</p>
           </div>
-          <ButtonLink href={appRoutes.settings} variant="secondary">Edit Profile</ButtonLink>
         </div>
-        <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {profileRows.map(([label, value]) => {
-            const cleanValue = String(value ?? "").trim();
-            return (
-              <div key={label} className="rounded-[18px] border border-white/10 bg-white/6 p-4">
-                <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/38">{label}</p>
-                <p className={`mt-2 text-sm leading-6 ${cleanValue ? "text-white/72" : "text-[#ffe2a8]"}`}>{cleanValue || "Missing - add this when available"}</p>
-                <div className="mt-3">
-                  <ButtonLink href={label === "Uploaded documents" ? appRoutes.documents : appRoutes.settings} variant="secondary">{cleanValue ? "Edit" : "Add missing info"}</ButtonLink>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <ProfileActionEditor rows={profileRows} />
         {missing.length ? (
           <p className="mt-5 rounded-[18px] border border-[#f8c45d]/25 bg-[#f8c45d]/10 px-4 py-3 text-sm font-bold leading-6 text-[#ffe2a8]">
             Missing important information: {missing.join(", ")}.
