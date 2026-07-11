@@ -143,9 +143,11 @@ type CvImportSummary = {
     references: number;
     projects: number;
     achievements: number;
+    unclassifiedItems: number;
     excludedSensitiveFields: number;
   };
   reviewItems: string[];
+  unclassifiedItems: string[];
   confidence: "high" | "medium" | "low";
   message: string;
   excludedSensitiveNotice?: string | null;
@@ -1255,10 +1257,10 @@ export function ProfessionalIdentityTool({
 
   async function handleOldCvUpload(file: File | null) {
     if (!file) return;
-    const allowed = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+    const allowed = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/plain"];
     if (!allowed.includes(file.type)) {
       setCvImportStatus("error");
-      setOldCvNotice("This file format isn't supported yet. Please upload a PDF or DOCX CV.");
+      setOldCvNotice("This file format isn't supported yet. Please upload a PDF, DOCX, or TXT CV.");
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
@@ -1408,8 +1410,8 @@ export function ProfessionalIdentityTool({
                 {cvEntryMode === "upload" ? (
                   <div id="old-cv-upload" className="rounded-[18px] border border-white/10 bg-white/6 p-4 lg:col-span-5">
                     <p className="text-sm font-extrabold text-white">Upload old CV</p>
-                    <p className="mt-1 text-sm leading-6 text-white/58">Upload a text-based PDF or DOCX. PATHZY will read the content, organize it into your CV draft, then ask you to review before editing.</p>
-                    <input className="mt-3 block w-full text-sm text-white/62 file:mr-4 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-extrabold file:text-white" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => handleOldCvUpload(event.target.files?.[0] ?? null)} />
+                    <p className="mt-1 text-sm leading-6 text-white/58">Upload a text-based PDF, DOCX, or TXT CV. PATHZY will read the content, organize it into your CV draft, then ask you to review before editing.</p>
+                    <input className="mt-3 block w-full text-sm text-white/62 file:mr-4 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-extrabold file:text-white" type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={(event) => handleOldCvUpload(event.target.files?.[0] ?? null)} />
                     {oldCvNotice ? (
                       <p className={`mt-3 rounded-[16px] border px-4 py-3 text-sm font-bold ${cvImportStatus === "error" ? "border-[#ff6b7a]/25 bg-[#ff6b7a]/10 text-[#ffd5da]" : "border-[#5B8CFF]/25 bg-[#5B8CFF]/10 text-[#c7d6ff]"}`}>
                         {oldCvNotice}
@@ -1428,6 +1430,9 @@ export function ProfessionalIdentityTool({
                             <p className="mt-1 text-sm leading-6 text-[#b9f8d5]">
                               We found {cvImportSummary.counts.workExperiences} work experiences, {cvImportSummary.counts.educationRecords} education records, {cvImportSummary.counts.skills} skills, {cvImportSummary.counts.certifications} qualifications, {cvImportSummary.counts.languages} languages, and {cvImportSummary.counts.references} references.
                             </p>
+                            {cvImportSummary.counts.unclassifiedItems ? (
+                              <p className="mt-2 text-xs font-bold text-[#ffe2a8]">{cvImportSummary.counts.unclassifiedItems} item{cvImportSummary.counts.unclassifiedItems === 1 ? "" : "s"} stayed unclassified for review instead of being guessed.</p>
+                            ) : null}
                             {cvImportSummary.excludedSensitiveNotice ? (
                               <p className="mt-2 text-xs font-bold text-[#c7d6ff]">{cvImportSummary.excludedSensitiveNotice}</p>
                             ) : null}

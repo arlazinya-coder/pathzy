@@ -13,6 +13,7 @@ export type CvImportCounts = {
   references: number;
   projects: number;
   achievements: number;
+  unclassifiedItems: number;
   excludedSensitiveFields: number;
 };
 
@@ -25,6 +26,7 @@ export type ImportedCvResult = {
   confidence: CvImportConfidence;
   reviewItems: string[];
   counts: CvImportCounts;
+  unclassifiedItems: string[];
   excludedSensitiveNotice?: string;
 };
 
@@ -33,6 +35,34 @@ export type CvImportUpload = {
   fileType: string;
   fileSize: number;
   base64: string;
+};
+
+export type CvSourceFormat = "pdf" | "docx" | "txt";
+export type CvBlockType =
+  | "heading"
+  | "subheading"
+  | "paragraph"
+  | "bullet"
+  | "labelValue"
+  | "tableRow"
+  | "tableCell"
+  | "dateLine"
+  | "contactLine"
+  | "unknown";
+
+export type NormalizedCvBlock = {
+  id: string;
+  text: string;
+  normalizedText: string;
+  blockType: CvBlockType;
+  sourceFormat: CvSourceFormat;
+  order: number;
+  page: number | null;
+  styleHint: string | null;
+  indentation: number;
+  tableContext: string | null;
+  bulletContext: string | null;
+  confidence: CvImportConfidence;
 };
 
 export class CvImportError extends Error {
@@ -61,26 +91,28 @@ type SectionKey =
   | "publications"
   | "conferences"
   | "memberships"
-  | "interests";
+  | "interests"
+  | "unclassified";
 
 const supportedTypes = new Set([
   "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain"
 ]);
 const maxFileSize = 8 * 1024 * 1024;
 const minReadableCharacters = 160;
-const sensitiveLabelPattern = /\b(identity|id\s*number|passport|date\s*of\s*birth|birth\s*date|marital|gender|health|criminal|offence|residential\s+address|street\s+address)\b/i;
-const valueSeparator = /\s*[:]\s*/;
+const sensitiveLabelPattern = /\b(identity|id\s*number|passport|date\s*of\s*birth|birth\s*date|age|gender|marital|religion|health|criminal|offence|photo|photograph|residential\s+address|street\s+address)\b/i;
+const valueSeparator = /\s*(?::|\s+-\s+|\t+|\s{3,})\s*/;
 
 const headingAliases: Array<[SectionKey, RegExp]> = [
   ["summary", /^(professional\s+)?(summary|profile|objective|career\s+objective|personal\s+statement)$/i],
-  ["experience", /^(professional\s+)?(experience|work\s+experience|employment\s+history|career\s+history|work\s+history|employment|career\s+experience|experiential\s+training|internship|practical\s+training)$/i],
-  ["education", /^(education|academic\s+details|academic\s+background|educational\s+background|qualifications|secondary\s+school\s+education|secondary\s+education|tertiary\s+education|education\s+and\s+training|training)$/i],
-  ["skills", /^(skills|core\s+skills|technical\s+skills|competencies|core\s+competencies|technical\s+competencies|duties|responsibilities|key\s+functions|laboratory\s+duties|expertise)$/i],
-  ["projects", /^(projects|portfolio\s+projects|selected\s+projects)$/i],
-  ["certifications", /^(certifications|certificates|qualification|professional\s+qualification|registration|professional\s+registration|licenses|licences|license|licence|professional\s+certifications)$/i],
-  ["languages", /^(languages|home\s+language|other\s+languages|language\s+skills|language\s+proficiency)$/i],
-  ["references", /^(references?|referees|professional\s+references)$/i],
+  ["experience", /^(professional\s+)?(experience|work\s+experience|employment\s+history|career\s+history|work\s+history|employment|career\s+experience|experiential\s+training|internship|practical\s+training|expérience\s+professionnelle|parcours\s+professionnel|stages?)$/i],
+  ["education", /^(education|academic\s+details|academic\s+background|educational\s+background|qualifications|secondary\s+school\s+education|secondary\s+education|tertiary\s+education|education\s+and\s+training|training|formation|études|etudes|parcours\s+académique|parcours\s+academique|diplômes|diplomes)$/i],
+  ["skills", /^(skills|core\s+skills|technical\s+skills|competencies|core\s+competencies|technical\s+competencies|duties|responsibilities|key\s+functions|expertise|compétences|competences|compétences\s+techniques|competences\s+techniques)$/i],
+  ["projects", /^(projects|portfolio\s+projects|selected\s+projects|projets)$/i],
+  ["certifications", /^(certifications|certificates|qualification|professional\s+qualification|registration|professional\s+registration|licenses|licences|license|licence|professional\s+certifications|accreditations|certifications\s+et\s+licences)$/i],
+  ["languages", /^(languages|home\s+language|other\s+languages|language\s+skills|language\s+proficiency|langues)$/i],
+  ["references", /^(references?|referees|professional\s+references|références|references)$/i],
   ["achievements", /^(achievements|accomplishments|awards\s+and\s+achievements)$/i],
   ["volunteer", /^(volunteer|volunteering|volunteer\s+experience|community\s+work)$/i],
   ["awards", /^awards$/i],
@@ -92,7 +124,7 @@ const headingAliases: Array<[SectionKey, RegExp]> = [
 
 export function validateCvImportFile(upload: Pick<CvImportUpload, "fileName" | "fileType" | "fileSize">) {
   if (!upload.fileName?.trim()) throw new CvImportError("Missing file.", "Please choose a CV file to import.");
-  if (!supportedTypes.has(upload.fileType)) throw new CvImportError("Unsupported file type.", "This file format isn't supported yet. Please upload a PDF or DOCX CV.");
+  if (!supportedTypes.has(upload.fileType)) throw new CvImportError("Unsupported file type.", "This file format isn't supported yet. Please upload a PDF, DOCX, or TXT CV.");
   if (!upload.fileSize || upload.fileSize <= 0) throw new CvImportError("Empty file.", "This CV file appears to be empty.");
   if (upload.fileSize > maxFileSize) throw new CvImportError("File too large.", "This CV is too large. Please upload a PDF or DOCX smaller than 8MB.");
 }
@@ -126,6 +158,12 @@ function normalizeExtractedText(text: string) {
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+function sourceFormatFromType(fileType: string): CvSourceFormat {
+  if (fileType === "application/pdf") return "pdf";
+  if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return "docx";
+  return "txt";
 }
 
 function decodePdfLiteral(value: string) {
@@ -232,11 +270,75 @@ export function extractTextFromUploadedCv(upload: CvImportUpload) {
   validateCvImportFile(upload);
   const buffer = decodeBase64File(upload.base64);
   if (!buffer.length) throw new CvImportError("Empty decoded file.", "This CV file appears to be empty.");
-  const text = upload.fileType === "application/pdf" ? extractPdfText(buffer) : extractDocxText(buffer);
+  const text = upload.fileType === "application/pdf"
+    ? extractPdfText(buffer)
+    : upload.fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      ? extractDocxText(buffer)
+      : normalizeExtractedText(buffer.toString("utf8"));
   if (text.replace(/\s/g, "").length < minReadableCharacters) {
-    throw new CvImportError("Insufficient readable text.", "We couldn't read enough text from this CV. If it is scanned, please upload a text-based PDF or DOCX.");
+    throw new CvImportError("Insufficient readable text.", "We couldn't read enough text from this CV. If it is scanned, please upload a text-based PDF, DOCX, or TXT version.");
   }
   return text;
+}
+
+function classifyBlock(line: string): CvBlockType {
+  if (headingFor(line)) return "heading";
+  if (lineToPair(line)) return "labelValue";
+  if (/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(line) || /linkedin\.com|github\.com|https?:\/\//i.test(line)) return "contactLine";
+  if (parseDateRange(line).startDate || /\b(19|20)\d{2}\b/.test(line)) return "dateLine";
+  if (/^[•*\-\u2022\u25cf\u25e6\u2043]/i.test(line.trim())) return "bullet";
+  if (/^[A-Z][A-Z\s/&()-]{3,}$/.test(line.trim()) && line.length <= 72) return "subheading";
+  return line.length > 0 ? "paragraph" : "unknown";
+}
+
+export function createNormalizedBlocksFromText(text: string, sourceFormat: CvSourceFormat): NormalizedCvBlock[] {
+  const lines = normalizeExtractedText(text).split("\n");
+  const blocks: NormalizedCvBlock[] = [];
+  let page = 1;
+  lines.forEach((rawLine, index) => {
+    const line = rawLine.trim();
+    if (!line) return;
+    if (/^page\s+\d+/i.test(line)) page = Number(line.match(/\d+/)?.[0] ?? page);
+    const blockType = classifyBlock(line);
+    blocks.push({
+      id: `${sourceFormat}-${blocks.length + 1}`,
+      text: line,
+      normalizedText: line.toLowerCase().replace(/\s+/g, " ").trim(),
+      blockType,
+      sourceFormat,
+      order: index,
+      page: sourceFormat === "pdf" ? page : null,
+      styleHint: blockType === "heading" ? "semantic-heading" : blockType === "subheading" ? "heading-like" : null,
+      indentation: rawLine.search(/\S|$/),
+      tableContext: line.includes(" : ") ? "possible-table-row" : null,
+      bulletContext: blockType === "bullet" ? "list-item" : null,
+      confidence: blockType === "unknown" ? "low" : blockType === "paragraph" ? "medium" : "high"
+    });
+  });
+  return blocks;
+}
+
+export function createNormalizedBlocksFromDocxText(text: string) {
+  return createNormalizedBlocksFromText(text, "docx");
+}
+
+export function createNormalizedBlocksFromPdfText(text: string) {
+  return createNormalizedBlocksFromText(text, "pdf");
+}
+
+export function createNormalizedBlocksFromTxtText(text: string) {
+  return createNormalizedBlocksFromText(text, "txt");
+}
+
+export function extractBlocksFromUploadedCv(upload: CvImportUpload) {
+  const text = extractTextFromUploadedCv(upload);
+  const sourceFormat = sourceFormatFromType(upload.fileType);
+  const blocks = sourceFormat === "pdf"
+    ? createNormalizedBlocksFromPdfText(text)
+    : sourceFormat === "docx"
+      ? createNormalizedBlocksFromDocxText(text)
+      : createNormalizedBlocksFromTxtText(text);
+  return { text, blocks };
 }
 
 function cleanBullet(line: string) {
@@ -278,7 +380,7 @@ function removeSensitiveLines(lines: string[]) {
   return { safeLines, excludedSensitiveFields };
 }
 
-function sectionize(lines: string[]) {
+function sectionize(blocks: NormalizedCvBlock[]) {
   const sections: Record<SectionKey, string[]> = {
     header: [],
     summary: [],
@@ -295,10 +397,12 @@ function sectionize(lines: string[]) {
     publications: [],
     conferences: [],
     memberships: [],
-    interests: []
+    interests: [],
+    unclassified: []
   };
   let current: SectionKey = "header";
-  for (const line of lines) {
+  for (const block of blocks) {
+    const line = block.text;
     const heading = headingFor(line);
     if (heading) {
       if (isSpecificSubheading(line)) sections[heading].push(line);
@@ -308,7 +412,8 @@ function sectionize(lines: string[]) {
     const pair = lineToPair(line);
     if (pair && /language/i.test(pair.label)) current = "languages";
     else if (pair && /^(qualification|professional\s+qualification|registration|reference\s+number|year\s+qualified)$/i.test(pair.label)) current = "certifications";
-    sections[current].push(line);
+    if (current === "header" && block.order > 18 && block.blockType !== "contactLine" && block.blockType !== "labelValue") sections.unclassified.push(line);
+    else sections[current].push(line);
   }
   return sections;
 }
@@ -329,7 +434,7 @@ function splitList(lines: string[]) {
 }
 
 function splitSkillGroups(skills: string[]) {
-  const technicalPattern = /\b(sql|excel|python|javascript|typescript|react|node|figma|power\s*bi|tableau|html|css|java|c\+\+|aws|azure|git|github|linux|api|crm|sap|salesforce|microsoft|word|powerpoint|cobas|advia|calibration|quality\s+control|centrifugation|full\s+blood\s+count|coagulation|malaria|api\s*20e|genexpert|blood\s+culture|gram\s+stain|auramine|ziehl|neelsen|antimicrobial|microscopy|haematology|hematology|microbiology|chemistry|clinical\s+pathology)\b/i;
+  const technicalPattern = /\b(sql|excel|python|javascript|typescript|react|node|figma|power\s*bi|tableau|html|css|java|c\+\+|aws|azure|git|github|linux|api|crm|sap|salesforce|microsoft|word|powerpoint|testing|analysis|analytics|reporting|database|cloud|network|security|design|research|quality\s+control|calibration|automation|machine|equipment|software|hardware|engineering|architecture)\b/i;
   const professionalPattern = /\b(communication|leadership|teamwork|customer|problem|planning|research|analysis|management|coordination|presentation|collaboration|time\s+management)\b/i;
   return {
     technicalSkills: skills.filter((skill) => technicalPattern.test(skill)),
@@ -392,7 +497,7 @@ function parseExperience(lines: string[]) {
     const label = pair?.label ?? "";
     const value = pair?.value ?? "";
 
-    if (headingFor(line) === "skills" || /^(chemistry|haematology|hematology|microbiology)$/i.test(line)) {
+    if (headingFor(line) === "skills" || (!pair && current && /^[A-Za-z][A-Za-z /&-]{2,42}$/.test(line) && !parseDateRange(line).startDate)) {
       inDuties = true;
       if (current) current.achievements.push(line);
       continue;
@@ -582,7 +687,7 @@ function compactParagraph(lines: string[]) {
   return lines.map(cleanBullet).filter(Boolean).join(" ").replace(/\s{2,}/g, " ").trim();
 }
 
-function importCounts(cv: CvModel, excludedSensitiveFields: number): CvImportCounts {
+function importCounts(cv: CvModel, excludedSensitiveFields: number, unclassifiedItems: string[] = []): CvImportCounts {
   return {
     workExperiences: cv.professionalExperience.length,
     educationRecords: cv.education.length,
@@ -592,6 +697,7 @@ function importCounts(cv: CvModel, excludedSensitiveFields: number): CvImportCou
     references: cv.references.items.length,
     projects: cv.projects.length,
     achievements: cv.achievements.length,
+    unclassifiedItems: unclassifiedItems.length,
     excludedSensitiveFields
   };
 }
@@ -600,26 +706,11 @@ function explicitHeadingExists(lines: string[], section: SectionKey) {
   return lines.some((line) => headingFor(line) === section || (section === "languages" && /language/i.test(lineToPair(line)?.label ?? "")));
 }
 
-function extractTechnicalTermsFromDuties(lines: string[]) {
-  const terms = [
-    "Cobas 6000",
-    "ADVIA 2120",
-    "calibration",
-    "quality control",
-    "sample centrifugation",
-    "full blood count",
-    "coagulation testing",
-    "malaria testing",
-    "API 20E",
-    "GeneXpert",
-    "blood culture processing",
-    "Gram staining",
-    "Auramine staining",
-    "Ziehl-Neelsen staining",
-    "antimicrobial sensitivity testing"
-  ];
-  const source = lines.join("\n");
-  return terms.filter((term) => new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(source));
+function extractSkillsFromBlocks(lines: string[]) {
+  return splitList(lines)
+    .flatMap((item) => item.split(/\s+\/\s+|\s+and\s+/i))
+    .map((item) => item.trim())
+    .filter((item) => item.length > 1 && item.length < 90);
 }
 
 function assertPlausibleImport(cv: CvModel, lines: string[], excludedSensitiveFields: number) {
@@ -651,14 +742,16 @@ function reviewItemsFor(cv: CvModel, textLength: number, excludedSensitiveFields
   ].filter(Boolean);
 }
 
-function mapImportedTextToCvModelWithMeta(text: string) {
-  const normalizedText = normalizeExtractedText(text);
-  const rawLines = normalizedText.split("\n").map((line) => line.trim()).filter(Boolean);
+function mapImportedBlocksToCvModelWithMeta(blocks: NormalizedCvBlock[]) {
+  const normalizedText = normalizeExtractedText(blocks.map((block) => block.text).join("\n"));
+  const rawLines = blocks.map((block) => block.text).filter(Boolean);
   const { safeLines, excludedSensitiveFields } = removeSensitiveLines(rawLines);
-  const sections = sectionize(safeLines);
+  const safeSet = new Set(safeLines);
+  const safeBlocks = blocks.filter((block) => safeSet.has(block.text));
+  const sections = sectionize(safeBlocks);
   const contacts = extractContacts(sections.header.length ? sections.header : safeLines.slice(0, 14));
-  const explicitSkills = splitList(sections.skills);
-  const dutySkills = extractTechnicalTermsFromDuties([...sections.experience, ...sections.skills]);
+  const explicitSkills = extractSkillsFromBlocks(sections.skills);
+  const dutySkills: string[] = [];
   const skills = splitSkillGroups(Array.from(new Set([...explicitSkills, ...dutySkills])));
   const base = cvModelFromUnknown(null, "");
   const cvModel: CvModel = {
@@ -689,7 +782,11 @@ function mapImportedTextToCvModelWithMeta(text: string) {
   };
   const normalizedCv = normalizeCvModelForExport(cvModel);
   assertPlausibleImport(normalizedCv, safeLines, excludedSensitiveFields);
-  return { cvModel: normalizedCv, normalizedText, excludedSensitiveFields };
+  return { cvModel: normalizedCv, normalizedText, excludedSensitiveFields, unclassifiedItems: sections.unclassified };
+}
+
+function mapImportedTextToCvModelWithMeta(text: string, sourceFormat: CvSourceFormat = "txt") {
+  return mapImportedBlocksToCvModelWithMeta(createNormalizedBlocksFromText(text, sourceFormat));
 }
 
 export function mapImportedTextToCvModel(text: string) {
@@ -697,8 +794,8 @@ export function mapImportedTextToCvModel(text: string) {
 }
 
 export function buildCvImportResult(upload: Pick<CvImportUpload, "fileName" | "fileType" | "fileSize">, normalizedText: string): ImportedCvResult {
-  const mapped = mapImportedTextToCvModelWithMeta(normalizedText);
-  const counts = importCounts(mapped.cvModel, mapped.excludedSensitiveFields);
+  const mapped = mapImportedTextToCvModelWithMeta(normalizedText, sourceFormatFromType(upload.fileType));
+  const counts = importCounts(mapped.cvModel, mapped.excludedSensitiveFields, mapped.unclassifiedItems);
   const reviewItems = reviewItemsFor(mapped.cvModel, mapped.normalizedText.length, mapped.excludedSensitiveFields);
   const confidence: CvImportConfidence = reviewItems.length <= 1 ? "high" : reviewItems.length <= 3 ? "medium" : "low";
   return {
@@ -710,11 +807,27 @@ export function buildCvImportResult(upload: Pick<CvImportUpload, "fileName" | "f
     confidence,
     reviewItems,
     counts,
+    unclassifiedItems: mapped.unclassifiedItems,
     excludedSensitiveNotice: mapped.excludedSensitiveFields ? "We found personal information that is usually unnecessary in a modern CV. It was not added." : undefined
   };
 }
 
 export function importCvFromUpload(upload: CvImportUpload) {
-  const text = extractTextFromUploadedCv(upload);
-  return buildCvImportResult(upload, text);
+  const { text, blocks } = extractBlocksFromUploadedCv(upload);
+  const mapped = mapImportedBlocksToCvModelWithMeta(blocks);
+  const counts = importCounts(mapped.cvModel, mapped.excludedSensitiveFields, mapped.unclassifiedItems);
+  const reviewItems = reviewItemsFor(mapped.cvModel, mapped.normalizedText.length, mapped.excludedSensitiveFields);
+  const confidence: CvImportConfidence = reviewItems.length + mapped.unclassifiedItems.length <= 1 ? "high" : reviewItems.length <= 3 ? "medium" : "low";
+  return {
+    cvModel: mapped.cvModel,
+    normalizedText: text,
+    fileName: upload.fileName,
+    fileType: upload.fileType,
+    fileSize: upload.fileSize,
+    confidence,
+    reviewItems,
+    counts,
+    unclassifiedItems: mapped.unclassifiedItems,
+    excludedSensitiveNotice: mapped.excludedSensitiveFields ? "We found personal information that is usually unnecessary in a modern CV. It was not added." : undefined
+  };
 }

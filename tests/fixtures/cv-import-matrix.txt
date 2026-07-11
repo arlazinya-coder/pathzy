@@ -1,0 +1,113 @@
+FIXTURE 1 - LEGACY DOCX TABLE STYLE
+NAME: A Candidate
+Email: candidate@example.com
+Institution    City Business College
+Course
+Diploma in Office Administration
+Period: 2018-2020
+
+FIXTURE 2 - MODERN ONE COLUMN
+Professional Summary
+Operations coordinator with customer support and reporting experience.
+Experience
+Operations Coordinator | Bright Services | 2021-Present
+- Coordinated daily service requests
+- Prepared weekly reports
+
+FIXTURE 3 - TWO COLUMN PDF STYLE EXTRACTION
+CONTACT
+person@example.com
+SKILLS
+Excel, SQL, Customer Support
+EXPERIENCE
+2020-2023
+Support Analyst - Northwind
+
+FIXTURE 4 - PLAIN TEXT CV
+Work Experience
+Sales Assistant
+Store Group
+2019-2022
+Helped customers and handled stock counts.
+
+FIXTURE 5 - GRADUATE CV
+Education
+Bachelor of Commerce
+University Example
+2024
+Projects
+Market research project
+Skills
+Research, Excel, Presentation
+
+FIXTURE 6 - EXECUTIVE CV
+Chief Operating Officer | ScaleCo | 2016-2024
+Vice President Operations | BuildCo | 2010-2016
+Board Advisory
+Growth strategy and operational leadership
+
+FIXTURE 7 - TECHNICAL CV
+Projects
+Inventory API
+Tools: Node.js, SQL, Azure
+Impact: Improved stock visibility
+Skills
+TypeScript, React, APIs, Cloud
+
+FIXTURE 8 - HEALTHCARE CV
+Professional Registration
+Registered Health Professional
+Year Qualified: 2017
+Duties
+Quality control, sample processing, equipment calibration
+
+FIXTURE 9 - FRENCH CV
+Expérience professionnelle
+Assistant administratif | Mairie Example | 2020-2023
+Formation
+Licence en gestion
+Langues
+Français, Anglais
+
+FIXTURE 10 - MISSING HEADINGS
+Jordan Smith
+Data Analyst
+jordan@example.com
+Data Assistant - Insight Co
+2021-2024
+Built dashboards and cleaned reporting data.
+
+FIXTURE 11 - REFERENCES
+References
+Name: Pat Manager
+Position: Team Lead
+Organisation: Example Co
+Phone: 0712345678
+
+FIXTURE 12 - SENSITIVE PERSONAL INFORMATION
+Identity Number: 9001015000000
+Date of Birth: 1 January 1990
+Religion: Private
+Gender: Private
+Email: safe@example.com
+
+FIXTURE 13 - EMPLOYER BEFORE TITLE
+Global Retail | 2018-2022
+Customer Service Supervisor
+- Trained new staff
+
+FIXTURE 14 - DATES ON SEPARATE LINE
+Marketing Assistant
+Creative Studio
+March 2020-Present
+- Managed content calendars
+
+FIXTURE 15 - REPEATED HEADER FOOTER
+Jane Candidate CV
+Page 1
+Experience
+Analyst | DataCo | 2020-2024
+Jane Candidate CV
+Page 2
+Education
+BSc Information Systems

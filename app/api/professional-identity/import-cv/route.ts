@@ -73,6 +73,7 @@ export async function POST(request: Request) {
         counts: imported.counts,
         reviewItems: imported.reviewItems,
         confidence: imported.confidence,
+        unclassifiedItems: imported.unclassifiedItems,
         excludedSensitiveNotice: imported.excludedSensitiveNotice ?? null,
         message: "We've prepared your CV."
       }
