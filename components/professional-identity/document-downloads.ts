@@ -1389,6 +1389,103 @@ function drawMainSection(layout: CvLayout, pageEntry: LayoutPage, cursor: number
   return { pageEntry: currentPage, y: y + 8 };
 }
 
+function printableCvSections(cv: CvRenderModel) {
+  const order = [
+    "Professional Summary",
+    "Core Competencies / Skills",
+    "Core Skills",
+    "Technical Skills",
+    "Professional Skills",
+    "Professional Experience",
+    "Work Experience",
+    "Experience",
+    "Internships",
+    "Freelance Work",
+    "Projects",
+    "Volunteer Experience",
+    "Education",
+    "Certifications",
+    "Achievements",
+    "Awards",
+    "Publications",
+    "Conferences",
+    "Professional Memberships",
+    "Portfolio Links",
+    "Languages",
+    "Interests",
+    "References"
+  ];
+  return order.map((title) => section(cv, title)).filter((item) => item?.items.length) as CvSection[];
+}
+
+function drawSingleColumnTitle(elements: LayoutElement[], title: string, x: number, y: number, width: number, activeSection?: string) {
+  if (isActiveCvSection(activeSection, title)) elements.push({ kind: "rounded", x: x - 10, y: y - 13, width: width + 20, height: 42, radius: 8, color: premiumTemplate.sky, borderColor: premiumTemplate.blue, className: "cv-active-section", sectionId: "cv-section-active" });
+  elements.push({ kind: "text", x, y, width, text: title, size: premiumTemplate.sectionTitleSize, color: premiumTemplate.ink, weight: "bold", uppercase: true, letterSpacing: premiumTemplate.titleLetterSpacing });
+  elements.push({ kind: "line", x, y: y + 20, width, color: premiumTemplate.identity === "ats" ? "#111827" : premiumTemplate.line, thickness: premiumTemplate.dividerWeight });
+  return y + 36;
+}
+
+function drawSingleColumnSection(layout: CvLayout, pageEntry: LayoutPage, cursor: number, cv: CvRenderModel, sectionData: CvSection, x: number, width: number, activeSection?: string) {
+  let currentPage = pageEntry;
+  let y = cursor;
+  const bottom = page.height - 76;
+  const top = continuedPageTop;
+  const ensure = (needed = 70) => {
+    if (y + needed <= bottom) return;
+    currentPage = addPage(layout, cv.name || "CV");
+    y = top;
+  };
+  const firstLineCount = sectionData.items[0] ? wrapText(sectionData.items[0], width - 18, premiumTemplate.bodySize).length : 1;
+  ensure(40 + firstLineCount * premiumTemplate.bodyLineHeight);
+  y = drawSingleColumnTitle(currentPage.elements, sectionData.title, x, y, width, activeSection);
+  for (const item of sectionData.items) {
+    const itemSize = timelineSection(sectionData.title) ? premiumTemplate.bodySize + 0.2 : premiumTemplate.bodySize;
+    const lines = wrapText(item, width - 18, itemSize);
+    const maxLinesPerBlock = Math.max(1, Math.floor((bottom - top - 20) / premiumTemplate.bodyLineHeight));
+    for (const chunk of chunkLines(lines, maxLinesPerBlock)) {
+      ensure(chunk.length * premiumTemplate.bodyLineHeight + 18);
+      currentPage.elements.push({ kind: "circle", x: x + 2, y: y + 7, radius: premiumTemplate.identity === "ats" ? 1.8 : 2.4, color: premiumTemplate.blue });
+      chunk.forEach((line, index) => {
+        currentPage.elements.push({ kind: "text", x: x + 16, y: y + index * premiumTemplate.bodyLineHeight, width: width - 18, text: line, size: itemSize, color: premiumTemplate.ink, weight: timelineSection(sectionData.title) && index === 0 ? "bold" : "regular" });
+      });
+      y += chunk.length * premiumTemplate.bodyLineHeight + 8;
+    }
+  }
+  return { pageEntry: currentPage, y: y + 10 };
+}
+
+function buildSingleColumnCvLayout(cvInput: CvModel, activeSection?: string): CvLayout {
+  const cv = cvModelToRenderModel(cvInput);
+  const layout: CvLayout = { width: page.width, height: page.height, pages: [] };
+  let currentPage = addPage(layout);
+  const marginX = premiumTemplate.identity === "ats" ? 64 : 72;
+  const contentW = page.width - marginX * 2;
+  const headerTop = premiumTemplate.identity === "ats" ? 58 : 64;
+  if (premiumTemplate.identity !== "ats") currentPage.elements.push({ kind: "line", x: marginX, y: 44, width: contentW, color: premiumTemplate.blue, thickness: 4 });
+  if (isActiveCvSection(activeSection, "Professional Header")) currentPage.elements.push({ kind: "rounded", x: marginX - 12, y: headerTop - 18, width: contentW + 24, height: 126, radius: premiumTemplate.cardRadius, color: premiumTemplate.sky, borderColor: premiumTemplate.blue, className: "cv-active-section", sectionId: "cv-section-active" });
+  currentPage.elements.push({ kind: "text", x: marginX, y: headerTop, width: contentW, text: cv.name || "", size: premiumTemplate.nameSize, color: premiumTemplate.ink, weight: "bold" });
+  let y = headerTop + 46;
+  if (cv.targetRole) {
+    currentPage.elements.push({ kind: "text", x: marginX, y, width: contentW, text: cv.targetRole, size: premiumTemplate.roleSize, color: premiumTemplate.muted, weight: "bold", uppercase: premiumTemplate.identity === "international", letterSpacing: premiumTemplate.identity === "international" ? 1.1 : 0 });
+    y += 24;
+  }
+  if (cv.contact.length) {
+    y = pushWrappedText(currentPage.elements, cv.contact.join("  |  "), marginX, y, contentW, 9.2, premiumTemplate.muted, 13);
+    y += 18;
+  }
+  currentPage.elements.push({ kind: "line", x: marginX, y, width: contentW, color: premiumTemplate.line, thickness: 1 });
+  y += 32;
+  for (const item of printableCvSections(cv)) {
+    const result = drawSingleColumnSection(layout, currentPage, y, cv, item, marginX, contentW, activeSection);
+    currentPage = result.pageEntry;
+    y = result.y;
+  }
+  layout.pages.forEach((pageEntry, index) => {
+    pageEntry.elements.push({ kind: "text", x: page.width - marginX - 30, y: 1084, width: 30, text: String(index + 1), size: 8, color: "#98a2b3" });
+  });
+  return layout;
+}
+
 function estimateSideSectionHeight(sectionData: CvSection, width: number) {
   let height = 42;
   if (skillSection(sectionData.title)) {
@@ -1458,6 +1555,7 @@ function buildCvLayoutFromModel(cvInput: CvModel, templateName?: string, activeS
 }
 
 function buildCvLayoutFromModelWithDesign(cvInput: CvModel, activeSection?: string): CvLayout {
+  if (premiumTemplate.identity === "ats" || premiumTemplate.identity === "international") return buildSingleColumnCvLayout(cvInput, activeSection);
   const cv = cvModelToRenderModel(cvInput);
   const layout: CvLayout = { width: page.width, height: page.height, pages: [] };
   const first = addPage(layout);
@@ -1468,14 +1566,14 @@ function buildCvLayoutFromModelWithDesign(cvInput: CvModel, activeSection?: stri
   const headerHeight = premiumTemplate.headerHeight;
 
   first.elements.push({ kind: "rect", x: 0, y: 0, width: page.width, height: headerHeight, color: premiumTemplate.navy });
-  if (premiumTemplate.identity !== "ats") first.elements.push({ kind: "rect", x: 0, y: 0, width: sidebarW + 62, height: headerHeight, color: premiumTemplate.navyAlt });
+  first.elements.push({ kind: "rect", x: 0, y: 0, width: sidebarW + 62, height: headerHeight, color: premiumTemplate.navyAlt });
   if (premiumTemplate.showHeroOrnaments) {
     first.elements.push({ kind: "circle", x: 642, y: 32, radius: 56, color: premiumTemplate.identity === "graduate" ? "#373a8a" : "#173c70" });
     first.elements.push({ kind: "circle", x: 704, y: 78, radius: 28, color: premiumTemplate.identity === "graduate" ? "#4f46e5" : "#255b9b" });
   }
-  first.elements.push({ kind: "rect", x: 0, y: headerHeight - 8, width: page.width, height: premiumTemplate.identity === "ats" ? 4 : 8, color: premiumTemplate.blue });
+  first.elements.push({ kind: "rect", x: 0, y: headerHeight - 8, width: page.width, height: 8, color: premiumTemplate.blue });
   first.elements.push({ kind: "rounded", x: 38, y: headerHeight + 32, width: sidebarW + 34, height: page.height - headerHeight - 95, radius: premiumTemplate.identity === "executive" ? 8 : 18, color: premiumTemplate.sidebar, borderColor: premiumTemplate.cardBorder });
-  if (isActiveCvSection(activeSection, "Professional Header")) first.elements.push({ kind: "rounded", x: 42, y: 32, width: 512, height: 136, radius: premiumTemplate.cardRadius + 6, color: premiumTemplate.identity === "ats" ? "#f8fafc" : premiumTemplate.navyAlt, borderColor: premiumTemplate.blue, className: "cv-active-section", sectionId: "cv-section-active" });
+  if (isActiveCvSection(activeSection, "Professional Header")) first.elements.push({ kind: "rounded", x: 42, y: 32, width: 512, height: 136, radius: premiumTemplate.cardRadius + 6, color: premiumTemplate.navyAlt, borderColor: premiumTemplate.blue, className: "cv-active-section", sectionId: "cv-section-active" });
   first.elements.push({ kind: "text", x: 52, y: 42, width: 500, text: cv.name || "", size: premiumTemplate.nameSize, color: premiumTemplate.heroText, weight: "bold" });
   if (cv.targetRole) first.elements.push({ kind: "text", x: 54, y: 96, width: 480, text: cv.targetRole, size: premiumTemplate.roleSize, color: premiumTemplate.heroMuted, weight: "bold" });
   first.elements.push({ kind: "line", x: 54, y: 128, width: premiumTemplate.identity === "executive" ? 190 : 138, color: premiumTemplate.blue, thickness: premiumTemplate.identity === "executive" ? 2 : 4 });
@@ -1562,18 +1660,19 @@ export function renderAtsCvHtmlFromModel(cvInput: CvModel) {
 
 function renderCvLayoutHtml(layout: CvLayout) {
   return `
-    <div class="cv-render-shell">
-      ${layout.pages.map((layoutPage) => `<article class="cv-render-page">${layoutPage.elements.map(elementHtml).join("")}</article>`).join("")}
+    <div class="cv-render-shell" data-a4-preview="true">
+      ${layout.pages.map((layoutPage) => `<div class="cv-render-page-frame"><article class="cv-render-page">${layoutPage.elements.map(elementHtml).join("")}</article></div>`).join("")}
     </div>
     <style>
-      .cv-render-shell{display:grid;gap:24px;justify-items:center;background:#e8edf5;padding:18px;border-radius:18px}
-      .cv-render-page{position:relative;width:${layout.width}px;height:${layout.height}px;background:#fff;box-shadow:0 28px 90px rgba(15,23,42,.20);overflow:hidden;font-family:Inter,Arial,Helvetica,sans-serif;transform-origin:top center}
+      .cv-render-shell{display:grid;gap:28px;justify-items:center;background:linear-gradient(180deg,#edf3fb,#dfe7f3);padding:clamp(10px,2vw,24px);border-radius:22px;overflow:hidden}
+      .cv-render-page-frame{container-type:inline-size;position:relative;width:min(100%,${layout.width}px);aspect-ratio:210/297;filter:drop-shadow(0 28px 64px rgba(15,23,42,.28))}
+      .cv-render-page{position:absolute;left:0;top:0;width:${layout.width}px;height:${layout.height}px;background:#fff;overflow:hidden;font-family:Inter,Arial,Helvetica,sans-serif;transform-origin:top left;transform:scale(calc(100cqw / ${layout.width}px))}
       .cv-el{position:absolute;box-sizing:border-box}
       .cv-text{line-height:1.25;white-space:normal}
       .cv-active-section{box-shadow:0 0 0 3px rgba(47,128,237,.28),0 18px 46px rgba(47,128,237,.18);animation:cvSectionPulse 1.15s ease-out 1}
       @keyframes cvSectionPulse{0%{transform:scale(.985);opacity:.74}55%{transform:scale(1.01);opacity:1}100%{transform:scale(1);opacity:1}}
-      @media(max-width:920px){.cv-render-shell{padding:8px}.cv-render-page{width:${layout.width}px;height:${layout.height}px;transform:scale(min(1,calc((100vw - 48px)/${layout.width})));margin-bottom:calc(${layout.height}px * (min(1,calc((100vw - 48px)/${layout.width})) - 1));}}
-      @media print{.cv-render-shell{padding:0;background:#fff}.cv-render-page{box-shadow:none;page-break-after:always}}
+      @media(max-width:640px){.cv-render-shell{gap:18px;padding:8px;border-radius:18px}.cv-render-page-frame{width:100%}}
+      @media print{.cv-render-shell{padding:0;background:#fff}.cv-render-page-frame{width:${layout.width}px;filter:none;page-break-after:always}.cv-render-page{transform:none}}
     </style>
   `;
 }

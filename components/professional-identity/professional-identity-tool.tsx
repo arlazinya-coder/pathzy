@@ -1155,20 +1155,31 @@ export function ProfessionalIdentityTool({
                       onClick={() => updateValue("templateName", template.name)}
                       className={`group flex min-h-[330px] flex-col rounded-[20px] border p-4 text-left transition hover:-translate-y-0.5 ${templateName === template.name ? "border-[#8fb0ff] bg-[#5B8CFF]/16 shadow-[0_18px_54px_rgba(91,140,255,.22)]" : "border-white/10 bg-white/6 hover:border-white/18"}`}
                     >
-                      <div className="h-28 rounded-[16px] border border-white/10 p-3" style={{ background: template.thumbnail.background }}>
-                        <div className="h-2.5 w-14 rounded-full" style={{ background: template.thumbnail.accent }} />
-                        <div className="mt-3 grid gap-1.5">
-                          <div className="h-1.5 w-4/5 rounded-full bg-black/18" />
-                          <div className="h-1.5 w-2/3 rounded-full bg-black/14" />
-                          <div className="h-1.5 w-5/6 rounded-full bg-black/14" />
-                        </div>
-                        <div className={template.thumbnail.layout === "single" ? "mt-3 h-8 rounded bg-black/10" : "mt-3 grid grid-cols-[.42fr_1fr] gap-2"}>
+                      <div className="cv-template-mini-preview h-32 overflow-hidden rounded-[16px] border border-white/10 p-3" style={{ background: template.thumbnail.background }}>
+                        <div className={template.thumbnail.layout === "single" ? "grid gap-2" : "grid h-full grid-cols-[.36fr_1fr] gap-3"}>
                           {template.thumbnail.layout === "single" ? null : (
-                            <>
-                              <div className="h-8 rounded bg-black/10" />
-                              <div className="h-8 rounded bg-black/10" />
-                            </>
+                            <div className="rounded-lg p-2" style={{ background: `${template.thumbnail.accent}24` }}>
+                              <div className="h-2 w-8 rounded-full" style={{ background: template.thumbnail.accent }} />
+                              <div className="mt-3 grid gap-1.5">
+                                <div className="h-1.5 w-full rounded-full bg-black/16" />
+                                <div className="h-1.5 w-3/4 rounded-full bg-black/12" />
+                                <div className="h-1.5 w-5/6 rounded-full bg-black/12" />
+                              </div>
+                            </div>
                           )}
+                          <div className="grid content-start gap-2">
+                            <div className="h-2.5 w-20 rounded-full" style={{ background: template.thumbnail.accent }} />
+                            <div className={template.thumbnail.layout === "consulting" ? "h-1 w-12 rounded-full" : "h-1.5 w-4/5 rounded-full bg-black/18"} style={template.thumbnail.layout === "consulting" ? { background: template.thumbnail.accent } : undefined} />
+                            <div className="grid gap-1.5">
+                              <div className="h-1.5 w-full rounded-full bg-black/16" />
+                              <div className="h-1.5 w-5/6 rounded-full bg-black/12" />
+                              <div className="h-1.5 w-3/4 rounded-full bg-black/12" />
+                            </div>
+                            <div className={template.thumbnail.layout === "technical" ? "grid grid-cols-2 gap-1.5" : template.thumbnail.layout === "creative" ? "mt-1 grid grid-cols-[1fr_.48fr] gap-1.5" : "grid gap-1.5"}>
+                              <div className="h-5 rounded bg-black/10" />
+                              <div className="h-5 rounded bg-black/10" />
+                            </div>
+                          </div>
                         </div>
                       </div>
                       <div className="mt-4 flex items-start justify-between gap-3">
