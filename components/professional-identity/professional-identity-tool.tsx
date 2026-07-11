@@ -464,13 +464,7 @@ export function ProfessionalIdentityTool({
   }
 
   function selectCvSection(section: string) {
-    setActiveCvSection(section);
-  }
-
-  function activeCvNavLabel() {
-    if (cvMoreSections.includes(activeCvSection)) return "More";
-    if (skillGroupSections.some((group) => group.title === activeCvSection)) return "Skills";
-    return cvPrimaryNavigation.find((item) => item.section === activeCvSection)?.label ?? "More";
+    setActiveCvSection((current) => current === section ? "" : section);
   }
 
   function cvSectionStatusForNav(section: string) {
@@ -495,6 +489,24 @@ export function ProfessionalIdentityTool({
     if (saveState === "error") return "border-[#ff6b6b]/30 bg-[#ff6b6b]/10 text-[#ffc5c5]";
     if (saveState === "saving" || hasUnsavedChanges) return "border-[#f8c45d]/25 bg-[#f8c45d]/10 text-[#ffe2a8]";
     return "border-[#39d98a]/25 bg-[#39d98a]/10 text-[#b9f8d5]";
+  }
+
+  function accordionId(section: string) {
+    return `cv-accordion-${section.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "section"}`;
+  }
+
+  function isCvPrimaryOpen(item: { label: string; section: string }) {
+    if (item.label === "More") return activeCvSection === "More" || cvMoreSections.includes(activeCvSection);
+    if (item.label === "Skills") return activeCvSection === "Core Competencies / Skills" || skillGroupSections.some((group) => group.title === activeCvSection);
+    return activeCvSection === item.section;
+  }
+
+  function toggleCvPrimarySection(item: { label: string; section: string }) {
+    if (isCvPrimaryOpen(item)) {
+      setActiveCvSection("");
+      return;
+    }
+    setActiveCvSection(item.section);
   }
 
   function renderRepeatableSection(title: string, options: { optional?: boolean } = {}) {
@@ -652,27 +664,37 @@ export function ProfessionalIdentityTool({
   }
 
   function renderCvSectionNavigator() {
-    const activeLabel = activeCvNavLabel();
-
     return (
-      <div className="rounded-[20px] border border-white/10 bg-white/6 p-3">
-        <div className="flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
-          {cvPrimaryNavigation.map((item) => {
-            const status = cvSectionStatusForNav(item.section);
-            const isActive = activeLabel === item.label;
-            return (
+      <div className="grid gap-3" data-cv-editor-accordion="primary">
+        {cvPrimaryNavigation.map((item, index) => {
+          const status = cvSectionStatusForNav(item.section);
+          const isOpen = isCvPrimaryOpen(item);
+          const panelId = accordionId(item.section);
+          return (
+            <div key={item.label} className={`overflow-hidden rounded-[20px] border ${isOpen ? "border-[#8fb0ff]/45 bg-[#5B8CFF]/10" : "border-white/10 bg-white/6"}`}>
               <button
-                key={item.label}
                 type="button"
-                onClick={() => selectCvSection(item.section)}
-                className={`min-w-[118px] rounded-[16px] border px-3 py-3 text-left transition ${isActive ? "border-[#8fb0ff] bg-[#5B8CFF]/18 text-white shadow-[0_14px_38px_rgba(91,140,255,.16)]" : "border-white/10 bg-white/6 text-white/70 hover:border-white/18 hover:bg-white/8"}`}
+                aria-expanded={isOpen}
+                aria-controls={panelId}
+                onClick={() => toggleCvPrimarySection(item)}
+                className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8fb0ff]"
               >
-                <span className="block text-sm font-black">{item.label}</span>
-                <span className={`mt-2 inline-flex rounded-full border px-2 py-1 text-[10px] font-extrabold ${statusClasses(status)}`}>{status}</span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-black leading-5 text-white">{index + 1}. {item.label}</span>
+                  <span className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${statusClasses(status)}`}>{status}</span>
+                </span>
+                <span className="shrink-0 rounded-full border border-white/10 bg-white/8 px-3 py-1 text-xs font-black text-white/70" aria-hidden="true">
+                  {isOpen ? "Collapse" : "Expand"}
+                </span>
               </button>
-            );
-          })}
-        </div>
+              {isOpen ? (
+                <div id={panelId} className="border-t border-white/10 p-3">
+                  {renderCvAccordionContent(item)}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
     );
   }
@@ -757,51 +779,63 @@ export function ProfessionalIdentityTool({
   }
 
   function renderMoreEditor() {
-    const currentMoreSection = cvMoreSections.includes(activeCvSection) ? activeCvSection : "Achievements";
-    const optional = optionalCvSections.includes(currentMoreSection);
     return (
-      <div className="grid gap-4">
-        <div className="rounded-[20px] border border-white/10 bg-white/6 p-4">
-          <p className="text-sm font-extrabold text-white">More CV sections</p>
-          <p className="mt-1 text-xs font-bold text-white/48">Choose one supported section to edit. Empty sections stay out of the preview and PDF.</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {cvMoreSections.map((title) => {
-              const status = sectionStatus(title, cvSectionItems(title), optionalCvSections.includes(title));
-              return (
-                <button
-                  key={title}
-                  type="button"
-                  onClick={() => {
-                    ensureCvSection(title);
-                    selectCvSection(title);
-                  }}
-                  className={`rounded-full border px-3 py-2 text-xs font-extrabold ${currentMoreSection === title ? "border-[#8fb0ff] bg-[#5B8CFF]/18 text-white" : "border-white/12 bg-white/8 text-white/70"}`}
-                >
-                  {title} · {status}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        {renderRepeatableSection(currentMoreSection, { optional })}
+      <div className="grid gap-3" data-cv-editor-accordion="optional">
+        <p className="text-xs font-bold leading-5 text-white/52">Open one optional section at a time. Empty optional sections stay hidden from the preview and PDF.</p>
+        {cvMoreSections.map((title) => {
+          const status = sectionStatus(title, cvSectionItems(title), optionalCvSections.includes(title));
+          const isOpen = activeCvSection === title;
+          const panelId = accordionId(`more-${title}`);
+          return (
+            <div key={title} className={`overflow-hidden rounded-[18px] border ${isOpen ? "border-[#8fb0ff]/45 bg-[#5B8CFF]/10" : "border-white/10 bg-white/6"}`}>
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                aria-controls={panelId}
+                onClick={() => {
+                  if (isOpen) {
+                    setActiveCvSection("More");
+                    return;
+                  }
+                  ensureCvSection(title);
+                  setActiveCvSection(title);
+                }}
+                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8fb0ff]"
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-extrabold leading-5 text-white">{title}</span>
+                  <span className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${statusClasses(status)}`}>{status}</span>
+                </span>
+                <span className="shrink-0 rounded-full border border-white/10 bg-white/8 px-3 py-1 text-xs font-black text-white/70" aria-hidden="true">
+                  {isOpen ? "Collapse" : "Expand"}
+                </span>
+              </button>
+              {isOpen ? (
+                <div id={panelId} className="border-t border-white/10 p-3">
+                  {renderRepeatableSection(title, { optional: optionalCvSections.includes(title) })}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
     );
   }
 
-  function renderActiveCvEditor() {
+  function renderCvAccordionContent(item: { label: string; section: string }) {
     if (!document?.content || !parsedCv) {
       return (
-        <div className="rounded-[22px] border border-dashed border-white/14 bg-white/5 p-8 text-center">
-          <h3 className="text-xl font-black">Generate a CV draft to start editing.</h3>
+        <div className="rounded-[18px] border border-dashed border-white/14 bg-white/5 p-6 text-center">
+          <h3 className="text-lg font-black">Generate a CV draft to start editing.</h3>
           <p className="mt-3 text-sm leading-6 text-white/58">PATHZY becomes your editing workspace after generation. You will be able to edit every section before exporting the final PDF.</p>
         </div>
       );
     }
-    if (activeCvSection === "Professional Header") return renderHeaderEditor();
-    if (activeCvSection === "Professional Summary") return renderSummaryEditor();
-    if (skillGroupSections.some((group) => group.title === activeCvSection) || activeCvSection === "Core Competencies / Skills") return renderSkillsSection();
-    if (cvMoreSections.includes(activeCvSection)) return renderMoreEditor();
-    return renderRepeatableSection(activeCvSection);
+    if (item.section === "Professional Header") return renderHeaderEditor();
+    if (item.section === "Professional Summary") return renderSummaryEditor();
+    if (item.section === "Core Competencies / Skills") return renderSkillsSection();
+    if (item.label === "More") return renderMoreEditor();
+    return renderRepeatableSection(item.section);
   }
 
   function renderCoverLetterField(label: string, value: string, onChange: (value: string) => void, multiline = false) {
@@ -1496,7 +1530,6 @@ export function ProfessionalIdentityTool({
 
         {tool === "cv" ? (
           <div className="mt-5 grid gap-4">
-            {renderActiveCvEditor()}
             {sectionNotice ? <p className="rounded-[16px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 px-4 py-3 text-sm font-bold text-[#c7d6ff]">{sectionNotice}</p> : null}
           </div>
         ) : tool === "cover-letter" && coverLetterData ? (
