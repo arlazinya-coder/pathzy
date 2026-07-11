@@ -373,6 +373,21 @@ assert.match(professionalIdentityTool, /renderCvHtmlFromModel\(previewCvModel, t
 assert.match(professionalIdentityTool, /simplePdfDocumentFromModel\(document\.title, cvModel, templateName\)/, "PDF export path must stay aligned to the selected template and canonical CV model.");
 assert.match(professionalIdentityTool, /Improve your CV/, "CV Builder must show Improve your CV recommendations instead of generic missing-field messages.");
 assert.match(professionalIdentityTool, /Add \{parsedCv\.missing\.join\(", "\)\.toLowerCase\(\)\}/, "CV recommendations must be based on the structured CV model gaps.");
+for (const sectionLabel of ["Header", "Summary", "Experience", "Education", "Skills", "Projects", "Certifications", "More"]) {
+  assert.match(professionalIdentityTool, new RegExp(`label: "${sectionLabel}"`), `CV Document Studio section navigator must include ${sectionLabel}.`);
+}
+assert.match(professionalIdentityTool, /function renderCvSectionNavigator/, "CV Document Studio must render a compact section navigator.");
+assert.match(professionalIdentityTool, /function renderActiveCvEditor/, "CV Document Studio must render only the active editor section.");
+assert.match(professionalIdentityTool, /xl:grid-cols-\[minmax\(360px,0\.44fr\)_minmax\(0,0\.56fr\)\]/, "CV Document Studio must use a 42-45% editor and 55-58% preview desktop split.");
+assert.match(professionalIdentityTool, /xl:max-h-\[calc\(100vh-112px\)\] xl:overflow-y-auto/, "CV editor panel must scroll independently instead of stretching beside the A4 preview.");
+assert.match(professionalIdentityTool, /xl:sticky xl:top-24 xl:max-h-\[calc\(100vh-112px\)\] xl:overflow-y-auto/, "CV preview panel must stay sticky within the viewport.");
+assert.match(professionalIdentityTool, /const \[cvStudioMode, setCvStudioMode\] = useState<"edit" \| "preview">\("edit"\)/, "Mobile CV Document Studio must expose Edit and Preview modes.");
+assert.match(professionalIdentityTool, /setCvStudioMode\("preview"\)/, "Mobile CV Document Studio must let users switch to preview without changing routes.");
+assert.match(professionalIdentityTool, /function renderCvCompactStatus/, "CV Health and save state must be compact in the editor heading area.");
+assert.match(professionalIdentityTool, /function saveStatusLabel/, "CV Document Studio must centralize compact save status text.");
+assert.doesNotMatch(professionalIdentityTool, /mainCvSections\.slice\(1\)\.map/, "CV editor must not render the old endless stacked section editor.");
+assert.match(professionalIdentityTool, /function duplicateCvVersion/, "CV duplicate/version behavior must remain available after the studio refactor.");
+assert.match(professionalIdentityTool, /Move up[\s\S]*Move down[\s\S]*Duplicate[\s\S]*Remove/, "CV repeatable item controls must remain available in the studio editor.");
 assert.match(documentDownloads, /export function renderAtsCvHtmlFromModel\(cvInput: CvModel\)/, "CV renderer must expose an ATS Preview renderer from the same CV model.");
 assert.match(professionalIdentityTool, /const \[cvPreviewMode, setCvPreviewMode\] = useState<"designed" \| "ats">/, "CV Builder must support Designed and ATS preview modes.");
 assert.match(professionalIdentityTool, /ATS Preview/, "CV Builder must show an ATS Preview mode alongside the designed preview.");

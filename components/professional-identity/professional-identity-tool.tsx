@@ -72,6 +72,24 @@ const skillGroupSections = [
 
 const cvDesignSystems = documentTemplateGallery.map((template) => template.name);
 
+const cvPrimaryNavigation = [
+  { label: "Header", section: "Professional Header" },
+  { label: "Summary", section: "Professional Summary" },
+  { label: "Experience", section: "Professional Experience" },
+  { label: "Education", section: "Education" },
+  { label: "Skills", section: "Core Competencies / Skills" },
+  { label: "Projects", section: "Projects" },
+  { label: "Certifications", section: "Certifications" },
+  { label: "More", section: "Achievements" }
+];
+
+const cvMoreSections = [
+  "Achievements",
+  "Languages",
+  "References",
+  ...optionalCvSections
+];
+
 function cvHealthScore(cv: CvModel | null) {
   if (!cv) return { score: 0, label: "Needs a draft", recommendations: ["Generate your first CV draft."] };
   const checks = [
@@ -243,6 +261,7 @@ export function ProfessionalIdentityTool({
   const [previewCoverLetterData, setPreviewCoverLetterData] = useState<CoverLetterData | null>(null);
   const [updateLinkedCvVersions, setUpdateLinkedCvVersions] = useState(false);
   const [cvPreviewMode, setCvPreviewMode] = useState<"designed" | "ats">("designed");
+  const [cvStudioMode, setCvStudioMode] = useState<"edit" | "preview">("edit");
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const coverLetterPreviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -445,6 +464,41 @@ export function ProfessionalIdentityTool({
     return "border-white/12 bg-white/8 text-white/54";
   }
 
+  function selectCvSection(section: string) {
+    setActiveCvSection(section);
+    setCvStudioMode("edit");
+  }
+
+  function activeCvNavLabel() {
+    if (cvMoreSections.includes(activeCvSection)) return "More";
+    if (skillGroupSections.some((group) => group.title === activeCvSection)) return "Skills";
+    return cvPrimaryNavigation.find((item) => item.section === activeCvSection)?.label ?? "More";
+  }
+
+  function cvSectionStatusForNav(section: string) {
+    if (!parsedCv) return "Empty";
+    if (section === "Professional Header") {
+      return sectionStatus(section, [parsedCv.fullName, parsedCv.targetRole, parsedCv.email, parsedCv.phone, parsedCv.city, parsedCv.country, parsedCv.linkedIn, parsedCv.portfolio, parsedCv.github, parsedCv.website].filter(Boolean));
+    }
+    if (section === "Core Competencies / Skills") return sectionStatus(section, skillGroupSections.flatMap((group) => cvSectionItems(group.title)));
+    if (section === "Achievements") return cvMoreSections.some((title) => cvSectionItems(title).some((item) => item.trim())) ? "Visible" : "Empty";
+    return sectionStatus(section, cvSectionItems(section), optionalCvSections.includes(section));
+  }
+
+  function saveStatusLabel() {
+    if (saveState === "saving") return "Saving...";
+    if (saveState === "error") return "Could not save - Retry";
+    if (hasUnsavedChanges) return "Unsaved changes";
+    if (saved || saveState === "saved") return "Saved";
+    return "Ready";
+  }
+
+  function saveStatusClasses() {
+    if (saveState === "error") return "border-[#ff6b6b]/30 bg-[#ff6b6b]/10 text-[#ffc5c5]";
+    if (saveState === "saving" || hasUnsavedChanges) return "border-[#f8c45d]/25 bg-[#f8c45d]/10 text-[#ffe2a8]";
+    return "border-[#39d98a]/25 bg-[#39d98a]/10 text-[#b9f8d5]";
+  }
+
   function renderRepeatableSection(title: string, options: { optional?: boolean } = {}) {
     const items = cvSectionItems(title);
     const editableItems = items.length ? items : [""];
@@ -597,6 +651,159 @@ export function ProfessionalIdentityTool({
         </div>
       </div>
     );
+  }
+
+  function renderCvSectionNavigator() {
+    const activeLabel = activeCvNavLabel();
+
+    return (
+      <div className="rounded-[20px] border border-white/10 bg-white/6 p-3">
+        <div className="flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
+          {cvPrimaryNavigation.map((item) => {
+            const status = cvSectionStatusForNav(item.section);
+            const isActive = activeLabel === item.label;
+            return (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => selectCvSection(item.section)}
+                className={`min-w-[118px] rounded-[16px] border px-3 py-3 text-left transition ${isActive ? "border-[#8fb0ff] bg-[#5B8CFF]/18 text-white shadow-[0_14px_38px_rgba(91,140,255,.16)]" : "border-white/10 bg-white/6 text-white/70 hover:border-white/18 hover:bg-white/8"}`}
+              >
+                <span className="block text-sm font-black">{item.label}</span>
+                <span className={`mt-2 inline-flex rounded-full border px-2 py-1 text-[10px] font-extrabold ${statusClasses(status)}`}>{status}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  function renderCvCompactStatus() {
+    return (
+      <div className="grid gap-3 rounded-[20px] border border-white/10 bg-white/6 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="sr-only">CV Health Score</span>
+          <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">CV Health</span>
+          <span className="rounded-full border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 px-3 py-1 text-sm font-black text-[#c7d6ff]">{health.score}/100</span>
+          <span className="text-sm font-bold text-white/62">{health.label}</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <span className={`rounded-full border px-3 py-2 text-xs font-extrabold ${saveStatusClasses()}`}>{saveStatusLabel()}</span>
+          {saveState === "error" ? (
+            <button type="button" onClick={() => saveDocument(false)} className="rounded-full border border-white/12 bg-white/8 px-3 py-2 text-xs font-extrabold text-white">
+              Retry
+            </button>
+          ) : null}
+        </div>
+        {document?.content ? (
+          <details className="sm:col-span-2">
+            <summary className="cursor-pointer text-xs font-extrabold text-[#c7d6ff]">Improve your CV recommendations</summary>
+            <ul className="mt-2 grid gap-1 text-xs font-bold leading-5 text-[#c7d6ff]/82">
+              {health.recommendations.map((recommendation) => <li key={recommendation}>Improve your CV: {recommendation}</li>)}
+              {parsedCv?.missing.length ? <li>Add {parsedCv.missing.join(", ").toLowerCase()} so recruiters can contact you and understand your target role quickly.</li> : null}
+            </ul>
+          </details>
+        ) : null}
+      </div>
+    );
+  }
+
+  function renderHeaderEditor() {
+    if (!parsedCv) return null;
+    return (
+      <div className={`rounded-[20px] border p-4 ${activeCvSection === "Professional Header" ? "border-[#5B8CFF]/45 bg-[#5B8CFF]/10" : "border-white/10 bg-white/6"}`} onFocus={() => setActiveCvSection("Professional Header")} onClick={() => setActiveCvSection("Professional Header")}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-extrabold text-white">Professional Header</p>
+            <p className="mt-1 text-xs font-bold text-white/48">Editing this updates the CV name, role, and contact header.</p>
+          </div>
+          <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${hasUnsavedChanges ? "bg-[#f8c45d]/12 text-[#ffe2a8]" : "bg-[#39d98a]/12 text-[#b9f8d5]"}`}>{hasUnsavedChanges ? "Dirty" : "Saved"}</span>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="label">
+            Full name
+            <input className="field" value={parsedCv.fullName} onChange={(event) => updateCvDraft((draft) => { draft.fullName = event.target.value; })} />
+          </label>
+          <label className="label">
+            Target role
+            <input className="field" value={parsedCv.targetRole} onChange={(event) => updateCvDraft((draft) => { draft.targetRole = event.target.value; })} />
+          </label>
+          <label className="label">Email<input className="field" value={parsedCv.email} onChange={(event) => updateCvDraft((draft) => { draft.email = event.target.value; })} /></label>
+          <label className="label">Phone<input className="field" value={parsedCv.phone} onChange={(event) => updateCvDraft((draft) => { draft.phone = event.target.value; })} /></label>
+          <label className="label">City<input className="field" value={parsedCv.city} onChange={(event) => updateCvDraft((draft) => { draft.city = event.target.value; })} /></label>
+          <label className="label">Country<input className="field" value={parsedCv.country} onChange={(event) => updateCvDraft((draft) => { draft.country = event.target.value; })} /></label>
+          <label className="label">LinkedIn<input className="field" value={parsedCv.linkedIn} onChange={(event) => updateCvDraft((draft) => { draft.linkedIn = event.target.value; })} /></label>
+          <label className="label">Portfolio<input className="field" value={parsedCv.portfolio} onChange={(event) => updateCvDraft((draft) => { draft.portfolio = event.target.value; })} /></label>
+          <label className="label">GitHub<input className="field" value={parsedCv.github} onChange={(event) => updateCvDraft((draft) => { draft.github = event.target.value; })} /></label>
+          <label className="label">Website<input className="field" value={parsedCv.website} onChange={(event) => updateCvDraft((draft) => { draft.website = event.target.value; })} /></label>
+        </div>
+      </div>
+    );
+  }
+
+  function renderSummaryEditor() {
+    const status = sectionStatus("Professional Summary", cvSectionItems("Professional Summary"));
+    return (
+      <div className={`rounded-[20px] border p-4 ${activeCvSection === "Professional Summary" ? "border-[#5B8CFF]/45 bg-[#5B8CFF]/10" : "border-white/10 bg-white/6"}`} onFocus={() => setActiveCvSection("Professional Summary")} onClick={() => setActiveCvSection("Professional Summary")}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-extrabold text-white">Professional Summary</p>
+            <p className="mt-1 text-xs font-bold text-white/48">{status === "Visible" ? "This section is shown in the CV preview." : "This section is ready, but hidden until it has content."}</p>
+          </div>
+          <span className={`rounded-full border px-3 py-2 text-xs font-extrabold ${statusClasses(status)}`}>{status}</span>
+        </div>
+        <textarea className="field mt-4 min-h-[120px]" value={cvSectionItems("Professional Summary")[0] ?? ""} onChange={(event) => updateCvSectionItems("Professional Summary", [event.target.value])} />
+      </div>
+    );
+  }
+
+  function renderMoreEditor() {
+    const currentMoreSection = cvMoreSections.includes(activeCvSection) ? activeCvSection : "Achievements";
+    const optional = optionalCvSections.includes(currentMoreSection);
+    return (
+      <div className="grid gap-4">
+        <div className="rounded-[20px] border border-white/10 bg-white/6 p-4">
+          <p className="text-sm font-extrabold text-white">More CV sections</p>
+          <p className="mt-1 text-xs font-bold text-white/48">Choose one supported section to edit. Empty sections stay out of the preview and PDF.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {cvMoreSections.map((title) => {
+              const status = sectionStatus(title, cvSectionItems(title), optionalCvSections.includes(title));
+              return (
+                <button
+                  key={title}
+                  type="button"
+                  onClick={() => {
+                    ensureCvSection(title);
+                    selectCvSection(title);
+                  }}
+                  className={`rounded-full border px-3 py-2 text-xs font-extrabold ${currentMoreSection === title ? "border-[#8fb0ff] bg-[#5B8CFF]/18 text-white" : "border-white/12 bg-white/8 text-white/70"}`}
+                >
+                  {title} · {status}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {renderRepeatableSection(currentMoreSection, { optional })}
+      </div>
+    );
+  }
+
+  function renderActiveCvEditor() {
+    if (!document?.content || !parsedCv) {
+      return (
+        <div className="rounded-[22px] border border-dashed border-white/14 bg-white/5 p-8 text-center">
+          <h3 className="text-xl font-black">Generate a CV draft to start editing.</h3>
+          <p className="mt-3 text-sm leading-6 text-white/58">PATHZY becomes your editing workspace after generation. You will be able to edit every section before exporting the final PDF.</p>
+        </div>
+      );
+    }
+    if (activeCvSection === "Professional Header") return renderHeaderEditor();
+    if (activeCvSection === "Professional Summary") return renderSummaryEditor();
+    if (skillGroupSections.some((group) => group.title === activeCvSection) || activeCvSection === "Core Competencies / Skills") return renderSkillsSection();
+    if (cvMoreSections.includes(activeCvSection)) return renderMoreEditor();
+    return renderRepeatableSection(activeCvSection);
   }
 
   function renderCoverLetterField(label: string, value: string, onChange: (value: string) => void, multiline = false) {
@@ -1051,11 +1258,11 @@ export function ProfessionalIdentityTool({
     );
   }
 
-  const workspaceClass = tool === "cv" ? "grid gap-5 lg:grid-cols-4" : tool === "cover-letter" ? "grid gap-5 lg:grid-cols-2" : "grid gap-5 lg:grid-cols-[.82fr_1fr]";
+  const workspaceClass = tool === "cv" ? "grid gap-5 xl:grid-cols-[minmax(360px,0.44fr)_minmax(0,0.56fr)] xl:items-start" : tool === "cover-letter" ? "grid gap-5 lg:grid-cols-2" : "grid gap-5 lg:grid-cols-[.82fr_1fr]";
 
   return (
     <div className={workspaceClass}>
-      <Card className={tool === "cv" ? "lg:col-span-4" : tool === "cover-letter" ? "lg:col-span-2" : undefined}>
+      <Card className={tool === "cv" ? "xl:col-span-2" : tool === "cover-letter" ? "lg:col-span-2" : undefined}>
         {tool === "cv" ? (
           <div className="grid gap-6">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)] lg:items-start lg:justify-between">
@@ -1236,13 +1443,19 @@ export function ProfessionalIdentityTool({
         )}
       </Card>
 
-      <Card className={tool === "cv" ? "lg:col-span-1" : undefined}>
+      <Card className={tool === "cv" ? `${cvStudioMode === "preview" ? "hidden xl:block" : ""} xl:max-h-[calc(100vh-112px)] xl:overflow-y-auto` : undefined}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">{tool === "cv" || tool === "cover-letter" ? "Structured editor" : "Preview"}</p>
             <h2 className="mt-2 text-2xl font-black">{tool === "cv" ? "Edit CV" : tool === "cover-letter" ? "Edit Cover Letter" : outputTitle}</h2>
           </div>
           <div className="flex flex-wrap gap-2">
+            {tool === "cv" ? (
+              <div className="flex w-full rounded-full border border-white/10 bg-white/6 p-1 xl:hidden">
+                <button type="button" onClick={() => setCvStudioMode("edit")} className={`flex-1 rounded-full px-4 py-2 text-sm font-extrabold ${cvStudioMode === "edit" ? "bg-[#5B8CFF]/24 text-white" : "text-white/62"}`}>Edit</button>
+                <button type="button" onClick={() => setCvStudioMode("preview")} className={`flex-1 rounded-full px-4 py-2 text-sm font-extrabold ${cvStudioMode === "preview" ? "bg-[#5B8CFF]/24 text-white" : "text-white/62"}`}>Preview</button>
+              </div>
+            ) : null}
             {tool === "cv" ? (
               <button onClick={() => saveDocument(false)} disabled={!document?.id} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">
                 {saveState === "saving" ? "Saving..." : "Save Draft"}
@@ -1265,100 +1478,34 @@ export function ProfessionalIdentityTool({
           </div>
         </div>
 
-        {error ? <p className="mt-5 rounded-[16px] border border-[#ff6b6b]/30 bg-[#ff6b6b]/10 px-4 py-3 text-sm text-[#ffc5c5]">{error}</p> : null}
-        {xpAwarded ? <p className="mt-5 rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{celebrationCopy[tool]} +{xpAwarded} XP added to your PATHZY level.</p> : null}
-        {saved || saveState !== "idle" ? <p className="mt-5 rounded-[16px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 px-4 py-3 text-sm font-bold text-[#c7d6ff]">{saveState === "saving" ? "Saving..." : saveState === "error" ? "Could not save. Retry." : "Saved to My Documents."}</p> : null}
-        {downloadNotice ? <p className="mt-5 rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{downloadNotice}</p> : null}
-        {tool === "cv" && document?.content ? (
-          <div className="mt-5 rounded-[18px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 p-4">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#c7d6ff]/72">CV Health Score</p>
-                <p className="mt-2 text-2xl font-black text-white">{health.score}/100 <span className="text-sm text-white/54">{health.label}</span></p>
-              </div>
-              <div className="h-14 w-14 rounded-full border border-white/12 bg-white/10 p-1" aria-label={`CV Health Score ${health.score} out of 100`}>
-                <div className="grid h-full w-full place-items-center rounded-full blue-purple text-xs font-black text-white">{health.score}</div>
-              </div>
-            </div>
-            <ul className="mt-3 grid gap-2 text-sm font-bold leading-6 text-[#c7d6ff]">
-              {health.recommendations.map((recommendation) => <li key={recommendation}>Improve your CV: {recommendation}</li>)}
-            </ul>
-          </div>
-        ) : null}
-        {parsedCv?.missing.length ? (
-          <div className="mt-5 rounded-[18px] border border-[#f8c45d]/25 bg-[#f8c45d]/10 p-4 text-sm font-bold text-[#ffe2a8]">
-            <p className="text-xs uppercase tracking-[0.14em] text-[#ffe2a8]/70">Improve your CV</p>
-            <p className="mt-2 leading-6">Add {parsedCv.missing.join(", ").toLowerCase()} so recruiters can contact you and understand your target role quickly.</p>
-          </div>
-        ) : null}
-
-        {tool === "cv" && document?.content && parsedCv ? (
+        {tool === "cv" ? (
           <div className="mt-5 grid gap-4">
-            <div className={`rounded-[20px] border p-4 ${activeCvSection === "Professional Header" ? "border-[#5B8CFF]/45 bg-[#5B8CFF]/10" : "border-white/10 bg-white/6"}`} onFocus={() => setActiveCvSection("Professional Header")} onClick={() => setActiveCvSection("Professional Header")}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-extrabold text-white">1. Professional Header</p>
-                  <p className="mt-1 text-xs font-bold text-white/48">Name, role, and contact details.</p>
+            {renderCvCompactStatus()}
+            {error ? (
+              <div className="rounded-[16px] border border-[#ff6b6b]/30 bg-[#ff6b6b]/10 px-4 py-3 text-sm text-[#ffc5c5]">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <span>{error}</span>
+                  {saveState === "error" ? <button type="button" onClick={() => saveDocument(false)} className="w-fit rounded-full border border-white/12 bg-white/8 px-3 py-2 text-xs font-extrabold text-white">Retry</button> : null}
                 </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${hasUnsavedChanges ? "bg-[#f8c45d]/12 text-[#ffe2a8]" : "bg-[#39d98a]/12 text-[#b9f8d5]"}`}>{hasUnsavedChanges ? "Dirty" : "Saved"}</span>
               </div>
-              <div className="mt-4 grid gap-3">
-                <label className="label">
-                  Full name
-                  <input className="field" value={parsedCv.fullName} onChange={(event) => updateCvDraft((draft) => { draft.fullName = event.target.value; })} />
-                </label>
-                <label className="label">
-                  Target role
-                  <input className="field" value={parsedCv.targetRole} onChange={(event) => updateCvDraft((draft) => { draft.targetRole = event.target.value; })} />
-                </label>
-                <label className="label">Phone<input className="field" value={parsedCv.phone} onChange={(event) => updateCvDraft((draft) => { draft.phone = event.target.value; })} /></label>
-                <label className="label">Email<input className="field" value={parsedCv.email} onChange={(event) => updateCvDraft((draft) => { draft.email = event.target.value; })} /></label>
-                <label className="label">City<input className="field" value={parsedCv.city} onChange={(event) => updateCvDraft((draft) => { draft.city = event.target.value; })} /></label>
-                <label className="label">Country<input className="field" value={parsedCv.country} onChange={(event) => updateCvDraft((draft) => { draft.country = event.target.value; })} /></label>
-                <label className="label">LinkedIn<input className="field" value={parsedCv.linkedIn} onChange={(event) => updateCvDraft((draft) => { draft.linkedIn = event.target.value; })} /></label>
-                <label className="label">Portfolio<input className="field" value={parsedCv.portfolio} onChange={(event) => updateCvDraft((draft) => { draft.portfolio = event.target.value; })} /></label>
-                <label className="label">GitHub<input className="field" value={parsedCv.github} onChange={(event) => updateCvDraft((draft) => { draft.github = event.target.value; })} /></label>
-                <label className="label">Website<input className="field" value={parsedCv.website} onChange={(event) => updateCvDraft((draft) => { draft.website = event.target.value; })} /></label>
-              </div>
-            </div>
-
-            <div className={`rounded-[20px] border p-4 ${activeCvSection === "Professional Summary" ? "border-[#5B8CFF]/45 bg-[#5B8CFF]/10" : "border-white/10 bg-white/6"}`} onFocus={() => setActiveCvSection("Professional Summary")} onClick={() => setActiveCvSection("Professional Summary")}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-extrabold text-white">2. Professional Summary</p>
-                  <p className="mt-1 text-xs font-bold text-white/48">{sectionStatus("Professional Summary", cvSectionItems("Professional Summary")) === "Visible" ? "This section is shown in the CV preview." : "This section is ready, but hidden until it has content."}</p>
-                </div>
-                <span className={`rounded-full border px-3 py-2 text-xs font-extrabold ${statusClasses(sectionStatus("Professional Summary", cvSectionItems("Professional Summary")))}`}>{sectionStatus("Professional Summary", cvSectionItems("Professional Summary"))}</span>
-              </div>
-              <textarea className="field mt-4 min-h-[140px]" value={cvSectionItems("Professional Summary")[0] ?? ""} onChange={(event) => updateCvSectionItems("Professional Summary", [event.target.value])} />
-            </div>
-
-            {mainCvSections.slice(1).map((title, index) => (
-              <div key={title}>
-                <p className="sr-only">{index + 3}. {title}</p>
-                {title === "Core Competencies / Skills" ? renderSkillsSection() : renderRepeatableSection(title)}
-              </div>
-            ))}
-
-            <div className="rounded-[20px] border border-white/10 bg-white/6 p-4">
-              <p className="text-sm font-extrabold text-white">Add Optional Section</p>
-              <p className="mt-1 text-xs font-bold text-white/48">Optional sections appear in the editor immediately and stay hidden from preview/PDF until they contain content.</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {optionalCvSections.filter((title) => !cvSectionItems(title).length).map((title) => (
-                  <button key={title} type="button" onClick={() => ensureCvSection(title)} className="rounded-full border border-white/12 bg-white/8 px-4 py-2 text-sm font-extrabold text-white">
-                    Add {title}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {optionalCvSections.filter((title) => cvSectionItems(title).length).map((title) => renderRepeatableSection(title, { optional: true }))}
-            {sectionNotice ? <p className="rounded-[16px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 px-4 py-3 text-sm font-bold text-[#c7d6ff]">{sectionNotice}</p> : null}
+            ) : null}
+            {xpAwarded ? <p className="rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{celebrationCopy[tool]} +{xpAwarded} XP added to your PATHZY level.</p> : null}
+            {downloadNotice ? <p className="rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{downloadNotice}</p> : null}
+            {renderCvSectionNavigator()}
           </div>
-        ) : tool === "cv" ? (
-          <div className="mt-5 rounded-[22px] border border-dashed border-white/14 bg-white/5 p-8 text-center">
-            <h3 className="text-xl font-black">Generate a CV draft to start editing.</h3>
-            <p className="mt-3 text-sm leading-6 text-white/58">PATHZY becomes your editing workspace after generation. You will be able to edit every section before exporting the final PDF.</p>
+        ) : (
+          <>
+            {error ? <p className="mt-5 rounded-[16px] border border-[#ff6b6b]/30 bg-[#ff6b6b]/10 px-4 py-3 text-sm text-[#ffc5c5]">{error}</p> : null}
+            {xpAwarded ? <p className="mt-5 rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{celebrationCopy[tool]} +{xpAwarded} XP added to your PATHZY level.</p> : null}
+            {saved || saveState !== "idle" ? <p className="mt-5 rounded-[16px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 px-4 py-3 text-sm font-bold text-[#c7d6ff]">{saveState === "saving" ? "Saving..." : saveState === "error" ? "Could not save. Retry." : "Saved to My Documents."}</p> : null}
+            {downloadNotice ? <p className="mt-5 rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{downloadNotice}</p> : null}
+          </>
+        )}
+
+        {tool === "cv" ? (
+          <div className="mt-5 grid gap-4">
+            {renderActiveCvEditor()}
+            {sectionNotice ? <p className="rounded-[16px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 px-4 py-3 text-sm font-bold text-[#c7d6ff]">{sectionNotice}</p> : null}
           </div>
         ) : tool === "cover-letter" && coverLetterData ? (
           renderCoverLetterEditor()
@@ -1393,13 +1540,17 @@ export function ProfessionalIdentityTool({
       </Card>
 
       {tool === "cv" ? (
-        <Card className="lg:col-span-3">
+        <Card className={`${cvStudioMode === "edit" ? "hidden xl:block" : ""} xl:sticky xl:top-24 xl:max-h-[calc(100vh-112px)] xl:overflow-y-auto`}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Live preview engine</p>
               <h2 className="mt-2 text-2xl font-black">{outputTitle}</h2>
             </div>
             <div className="flex flex-wrap gap-2">
+              <div className="flex w-full rounded-full border border-white/10 bg-white/6 p-1 xl:hidden">
+                <button type="button" onClick={() => setCvStudioMode("edit")} className={`flex-1 rounded-full px-4 py-2 text-sm font-extrabold ${cvStudioMode === "edit" ? "bg-[#5B8CFF]/24 text-white" : "text-white/62"}`}>Edit</button>
+                <button type="button" onClick={() => setCvStudioMode("preview")} className={`flex-1 rounded-full px-4 py-2 text-sm font-extrabold ${cvStudioMode === "preview" ? "bg-[#5B8CFF]/24 text-white" : "text-white/62"}`}>Preview</button>
+              </div>
               <button type="button" onClick={() => setCvPreviewMode("designed")} className={`rounded-full border px-5 py-3 text-sm font-extrabold ${cvPreviewMode === "designed" ? "border-[#8fb0ff] bg-[#5B8CFF]/18 text-white" : "border-white/12 bg-white/8 text-white/72"}`}>
                 Designed Preview
               </button>
@@ -1455,7 +1606,7 @@ export function ProfessionalIdentityTool({
       ) : null}
 
       {tool === "cv" && document?.content ? (
-        <Card className="lg:col-span-4">
+        <Card className="xl:col-span-2">
           <div className="rounded-[20px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-5">
             <h3 className="text-xl font-black">Your CV is ready. What would you like to do next?</h3>
             <div className="mt-4 flex flex-wrap gap-2">
