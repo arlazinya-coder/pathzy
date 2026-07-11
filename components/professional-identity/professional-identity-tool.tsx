@@ -261,7 +261,6 @@ export function ProfessionalIdentityTool({
   const [previewCoverLetterData, setPreviewCoverLetterData] = useState<CoverLetterData | null>(null);
   const [updateLinkedCvVersions, setUpdateLinkedCvVersions] = useState(false);
   const [cvPreviewMode, setCvPreviewMode] = useState<"designed" | "ats">("designed");
-  const [cvStudioMode, setCvStudioMode] = useState<"edit" | "preview">("edit");
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const coverLetterPreviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -466,7 +465,6 @@ export function ProfessionalIdentityTool({
 
   function selectCvSection(section: string) {
     setActiveCvSection(section);
-    setCvStudioMode("edit");
   }
 
   function activeCvNavLabel() {
@@ -1258,11 +1256,11 @@ export function ProfessionalIdentityTool({
     );
   }
 
-  const workspaceClass = tool === "cv" ? "grid gap-5 xl:grid-cols-[minmax(360px,0.44fr)_minmax(0,0.56fr)] xl:items-start" : tool === "cover-letter" ? "grid gap-5 lg:grid-cols-2" : "grid gap-5 lg:grid-cols-[.82fr_1fr]";
+  const workspaceClass = tool === "cv" ? "grid gap-5 lg:grid-cols-4" : tool === "cover-letter" ? "grid gap-5 lg:grid-cols-2" : "grid gap-5 lg:grid-cols-[.82fr_1fr]";
 
   return (
     <div className={workspaceClass}>
-      <Card className={tool === "cv" ? "xl:col-span-2" : tool === "cover-letter" ? "lg:col-span-2" : undefined}>
+      <Card className={tool === "cv" ? "lg:col-span-4" : tool === "cover-letter" ? "lg:col-span-2" : undefined}>
         {tool === "cv" ? (
           <div className="grid gap-6">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)] lg:items-start lg:justify-between">
@@ -1443,19 +1441,13 @@ export function ProfessionalIdentityTool({
         )}
       </Card>
 
-      <Card className={tool === "cv" ? `${cvStudioMode === "preview" ? "hidden xl:block" : ""} xl:max-h-[calc(100vh-112px)] xl:overflow-y-auto` : undefined}>
+      <Card className={tool === "cv" ? "lg:col-span-1" : undefined}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">{tool === "cv" || tool === "cover-letter" ? "Structured editor" : "Preview"}</p>
             <h2 className="mt-2 text-2xl font-black">{tool === "cv" ? "Edit CV" : tool === "cover-letter" ? "Edit Cover Letter" : outputTitle}</h2>
           </div>
           <div className="flex flex-wrap gap-2">
-            {tool === "cv" ? (
-              <div className="flex w-full rounded-full border border-white/10 bg-white/6 p-1 xl:hidden">
-                <button type="button" onClick={() => setCvStudioMode("edit")} className={`flex-1 rounded-full px-4 py-2 text-sm font-extrabold ${cvStudioMode === "edit" ? "bg-[#5B8CFF]/24 text-white" : "text-white/62"}`}>Edit</button>
-                <button type="button" onClick={() => setCvStudioMode("preview")} className={`flex-1 rounded-full px-4 py-2 text-sm font-extrabold ${cvStudioMode === "preview" ? "bg-[#5B8CFF]/24 text-white" : "text-white/62"}`}>Preview</button>
-              </div>
-            ) : null}
             {tool === "cv" ? (
               <button onClick={() => saveDocument(false)} disabled={!document?.id} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">
                 {saveState === "saving" ? "Saving..." : "Save Draft"}
@@ -1540,17 +1532,13 @@ export function ProfessionalIdentityTool({
       </Card>
 
       {tool === "cv" ? (
-        <Card className={`${cvStudioMode === "edit" ? "hidden xl:block" : ""} xl:sticky xl:top-24 xl:max-h-[calc(100vh-112px)] xl:overflow-y-auto`}>
+        <Card className="lg:col-span-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Live preview engine</p>
               <h2 className="mt-2 text-2xl font-black">{outputTitle}</h2>
             </div>
             <div className="flex flex-wrap gap-2">
-              <div className="flex w-full rounded-full border border-white/10 bg-white/6 p-1 xl:hidden">
-                <button type="button" onClick={() => setCvStudioMode("edit")} className={`flex-1 rounded-full px-4 py-2 text-sm font-extrabold ${cvStudioMode === "edit" ? "bg-[#5B8CFF]/24 text-white" : "text-white/62"}`}>Edit</button>
-                <button type="button" onClick={() => setCvStudioMode("preview")} className={`flex-1 rounded-full px-4 py-2 text-sm font-extrabold ${cvStudioMode === "preview" ? "bg-[#5B8CFF]/24 text-white" : "text-white/62"}`}>Preview</button>
-              </div>
               <button type="button" onClick={() => setCvPreviewMode("designed")} className={`rounded-full border px-5 py-3 text-sm font-extrabold ${cvPreviewMode === "designed" ? "border-[#8fb0ff] bg-[#5B8CFF]/18 text-white" : "border-white/12 bg-white/8 text-white/72"}`}>
                 Designed Preview
               </button>
@@ -1606,7 +1594,7 @@ export function ProfessionalIdentityTool({
       ) : null}
 
       {tool === "cv" && document?.content ? (
-        <Card className="xl:col-span-2">
+        <Card className="lg:col-span-4">
           <div className="rounded-[20px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-5">
             <h3 className="text-xl font-black">Your CV is ready. What would you like to do next?</h3>
             <div className="mt-4 flex flex-wrap gap-2">

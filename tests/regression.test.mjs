@@ -378,11 +378,10 @@ for (const sectionLabel of ["Header", "Summary", "Experience", "Education", "Ski
 }
 assert.match(professionalIdentityTool, /function renderCvSectionNavigator/, "CV Document Studio must render a compact section navigator.");
 assert.match(professionalIdentityTool, /function renderActiveCvEditor/, "CV Document Studio must render only the active editor section.");
-assert.match(professionalIdentityTool, /xl:grid-cols-\[minmax\(360px,0\.44fr\)_minmax\(0,0\.56fr\)\]/, "CV Document Studio must use a 42-45% editor and 55-58% preview desktop split.");
-assert.match(professionalIdentityTool, /xl:max-h-\[calc\(100vh-112px\)\] xl:overflow-y-auto/, "CV editor panel must scroll independently instead of stretching beside the A4 preview.");
-assert.match(professionalIdentityTool, /xl:sticky xl:top-24 xl:max-h-\[calc\(100vh-112px\)\] xl:overflow-y-auto/, "CV preview panel must stay sticky within the viewport.");
-assert.match(professionalIdentityTool, /const \[cvStudioMode, setCvStudioMode\] = useState<"edit" \| "preview">\("edit"\)/, "Mobile CV Document Studio must expose Edit and Preview modes.");
-assert.match(professionalIdentityTool, /setCvStudioMode\("preview"\)/, "Mobile CV Document Studio must let users switch to preview without changing routes.");
+assert.match(professionalIdentityTool, /tool === "cv" \? "grid gap-5 lg:grid-cols-4"/, "CV workspace must use the normal app grid layout.");
+assert.match(professionalIdentityTool, /<Card className=\{tool === "cv" \? "lg:col-span-1"/, "CV editor must stay in the normal left editing zone.");
+assert.match(professionalIdentityTool, /<Card className="lg:col-span-3">/, "CV A4 preview must stay in the normal layout beside the editing zone.");
+assert.doesNotMatch(professionalIdentityTool, /cvStudioMode|setCvStudioMode|xl:sticky|xl:max-h-\[calc\(100vh-112px\)\]|xl:overflow-y-auto/, "CV editor must not use the rejected complex sticky or independent-scroll studio architecture.");
 assert.match(professionalIdentityTool, /function renderCvCompactStatus/, "CV Health and save state must be compact in the editor heading area.");
 assert.match(professionalIdentityTool, /function saveStatusLabel/, "CV Document Studio must centralize compact save status text.");
 assert.doesNotMatch(professionalIdentityTool, /mainCvSections\.slice\(1\)\.map/, "CV editor must not render the old endless stacked section editor.");
