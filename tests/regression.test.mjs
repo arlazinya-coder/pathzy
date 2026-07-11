@@ -54,6 +54,10 @@ const supabaseServer = readFileSync("lib/supabase/server.ts", "utf8");
 const floatingMentorButton = readFileSync("components/mentor/floating-mentor-button.tsx", "utf8");
 const professionalIdentityService = readFileSync("lib/professional-identity/professional-identity-service.ts", "utf8");
 const coverLetterGeneration = professionalIdentityService.match(/export async function generateCoverLetter[\s\S]*?export async function generateLinkedInProfile/)?.[0] ?? "";
+const eliteCoverLetterEngine = readFileSync("lib/professional-identity/elite-cover-letter-engine.ts", "utf8");
+const eliteCoverLetterTool = readFileSync("components/professional-identity/elite-cover-letter-tool.tsx", "utf8");
+const eliteCoverLetterApi = readFileSync("app/api/professional-identity/elite-cover-letter/route.ts", "utf8");
+const eliteDocumentContract = readFileSync("docs/PATHZY_ELITE_DOCUMENT_ENGINE_CONTRACT.md", "utf8");
 
 for (const section of ["Navigation", "Hero", "Features", "How PATHZY Works", "Career Journey", "Pricing", "Testimonials", "FAQ", "Footer"]) {
   assert.match(homepage, new RegExp(`data-home-section="${section}"`), `Homepage must include the ${section} landing section.`);
@@ -246,7 +250,8 @@ assert.match(permissions, /export function canExportProfessionalDocuments[\s\S]*
 assert.match(professionalCvPage, /requireAuthenticatedUser\("\/professional-identity\/cv"\)/, "All users must reach the same canonical CV Builder route.");
 assert.match(professionalCoverLetterPage, /requireAuthenticatedUser\("\/professional-identity\/cover-letter"\)/, "All users must reach the same canonical Cover Letter route.");
 assert.match(professionalCvPage, /locked=\{!unlocked\}[\s\S]*exportLocked=\{!canExport\}/, "CV Builder must allow creation/editing while locking only export actions for free users.");
-assert.match(professionalCoverLetterPage, /locked=\{!unlocked\}[\s\S]*exportLocked=\{!canExport\}/, "Cover Letter Builder must allow creation/editing while locking only export actions for free users.");
+assert.match(professionalCoverLetterPage, /canExport=\{canExport\}/, "Cover Letter Builder must allow creation/editing while passing export permissions only to the Download PDF action.");
+assert.match(eliteCoverLetterTool, /if \(!canExport\) \{[\s\S]*setLockedAction\(true\);[\s\S]*return;/, "Cover Letter export must be gated only after the user attempts Download PDF.");
 assert.match(professionalIdentityPage, /<ProfileActionEditor rows=\{profileRows\} \/>/, "Professional Profile information rows must use the shared inline profile action editor.");
 assert.doesNotMatch(professionalIdentityPage, /appRoutes\.settings|href="\/settings"|href=\{appRoutes\.billing\}|href="\/billing"|href="\/profile"|href="\/roadmap"|href="\/onboarding"/, "Professional Profile Edit/Add Missing Info actions must not leave the profile workflow for Settings, Billing, legacy profile, Journey, or onboarding.");
 assert.match(profileActionEditor, /export const profileSectionActions/, "Professional Profile actions must be centralized in profileSectionActions.");
@@ -404,5 +409,37 @@ for (const sectionName of ["1. Personal Header", "2. Employer Details", "3. Gree
 }
 assert.match(professionalIdentityTool, /Add paragraph/, "Cover Letter body paragraphs must support adding a paragraph.");
 assert.match(professionalIdentityTool, /draft\.bodyParagraphs = next;/, "Cover Letter body paragraphs must support editing and ordering through coverLetterData.");
+
+assert.match(professionalCoverLetterPage, /requireAuthenticatedUser\("\/professional-identity\/cover-letter"\)/, "Elite Cover Letter route must remain authenticated.");
+assert.match(professionalCoverLetterPage, /<EliteCoverLetterTool/, "Canonical Cover Letter route must use the dedicated Elite Cover Letter tool.");
+assert.doesNotMatch(professionalCoverLetterPage, /ProfessionalIdentityTool/, "Elite Cover Letter route must not reuse the CV/shared preview component.");
+for (const templateName of ["Executive Letter", "ATS Classic", "Modern Professional", "Graduate Signature", "Technology Letter", "Healthcare Professional", "Corporate Blue", "Creative Letter", "International Standard", "Minimal Elegance"]) {
+  assert.match(eliteCoverLetterEngine, new RegExp(`"${templateName}"`), `${templateName} must be registered in the Elite Cover Letter template gallery.`);
+}
+for (const fieldName of ["applicantName", "applicantContact", "companyName", "hiringManager", "companyAddress", "jobTitle", "greeting", "openingParagraph", "relevanceParagraph", "evidenceParagraph", "companyInterestParagraph", "closingParagraph", "signOff", "applicantSignatureName", "selectedTone", "selectedTemplate", "sourceJobDescription", "generatedAt", "updatedAt"]) {
+  assert.match(eliteCoverLetterEngine, new RegExp(`${fieldName}:`), `Elite Cover Letter data model must include ${fieldName}.`);
+}
+assert.match(eliteCoverLetterEngine, /analyzeJobDescription/, "Elite Cover Letter must review the job description before generation.");
+assert.match(eliteCoverLetterEngine, /missingQualifications/, "Elite Cover Letter must separate missing qualifications from truthful claims.");
+assert.match(eliteCoverLetterEngine, /must not invent employers, years, qualifications, certificates, metrics, licences, or achievements/i, "Elite Cover Letter contract must prohibit invented facts.");
+assert.match(eliteCoverLetterEngine, /renderEliteCoverLetterHtml/, "Elite Cover Letter preview must render from the elite model.");
+assert.match(eliteCoverLetterEngine, /eliteCoverLetterPdfDocument/, "Elite Cover Letter PDF must export from the elite model.");
+assert.match(eliteCoverLetterEngine, /PATHZY_Cover_Letter_\$\{safe\(data\.companyName\)\}_\$\{safe\(data\.jobTitle\)\}_\$\{stamp\}\.pdf/, "Elite Cover Letter PDF filename must include company, job title, and date.");
+assert.match(eliteCoverLetterApi, /from\("user_documents"\)[\s\S]*document_type: "cover_letter"/, "Elite Cover Letter API must save into user_documents as cover_letter.");
+assert.match(eliteCoverLetterApi, /content_json: \{[\s\S]*eliteCoverLetterData/, "Elite Cover Letter API must persist the structured eliteCoverLetterData model.");
+assert.match(eliteCoverLetterApi, /eq\("user_id", auth\.user\.id\)/, "Elite Cover Letter API must scope reads and writes to the authenticated user.");
+assert.match(eliteCoverLetterTool, /Generate Cover Letter/, "Elite Cover Letter UI must expose Generate Cover Letter.");
+assert.match(eliteCoverLetterTool, /Improve Content/, "Elite Cover Letter UI must expose Improve Content.");
+assert.match(eliteCoverLetterTool, /Preview Designs/, "Elite Cover Letter UI must expose Preview Designs.");
+assert.match(eliteCoverLetterTool, /Select Design/, "Elite Cover Letter UI must expose Select Design.");
+assert.match(eliteCoverLetterTool, /Save Version/, "Elite Cover Letter UI must expose Save Version.");
+assert.match(eliteCoverLetterTool, /Download PDF/, "Elite Cover Letter UI must expose Download PDF.");
+assert.match(eliteCoverLetterTool, /Back to My Professional Profile/, "Elite Cover Letter UI must link back to My Professional Profile.");
+assert.match(eliteCoverLetterTool, /Back to My Employment Journey/, "Elite Cover Letter UI must link back to My Employment Journey.");
+assert.match(eliteCoverLetterTool, /setSelectedTemplate\(nextTemplate\)[\s\S]*draft\.selectedTemplate = nextTemplate/, "Template switching must preserve content and only update selectedTemplate.");
+assert.match(eliteCoverLetterTool, /This feature is available with PATHZY Premium/, "Locked export must explain the Premium action only after the user attempts it.");
+assert.doesNotMatch(eliteCoverLetterTool, />Download PDF \(Premium\)|Premium<\/button>|\/billing|\/settings|\/membership|\/professional-identity\/cv/, "Elite Cover Letter must not advertise Premium on buttons or route users to CV, Billing, Settings, or Membership.");
+assert.match(eliteCoverLetterTool, /md:hidden[\s\S]*write[\s\S]*design[\s\S]*preview/, "Elite Cover Letter must provide mobile-friendly write/design/preview panels.");
+assert.match(eliteDocumentContract, /The Elite Cover Letter system stores its model at `content_json\.eliteCoverLetterData`/, "Elite document contract must document the cover-letter saved-version interface.");
 
 console.log("PATHZY journey and export standard regression tests passed.");

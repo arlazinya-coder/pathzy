@@ -1,52 +1,77 @@
-import { ProfessionalIdentityTool } from "@/components/professional-identity/professional-identity-tool";
+import { EliteCoverLetterTool } from "@/components/professional-identity/elite-cover-letter-tool";
 import { PageHeader } from "@/components/ui";
-import { canCurrentUserExportProfessionalDocuments, canCurrentUserUseProfessionalIdentityTools, getProfessionalIdentityContext, premiumDocumentTemplates } from "@/lib/professional-identity/professional-identity-service";
+import { canCurrentUserExportProfessionalDocuments } from "@/lib/professional-identity/professional-identity-service";
+import { buildCoverLetterProfileFacts, normalizeCoverLetterTemplate } from "@/lib/professional-identity/elite-cover-letter-engine";
+import type { EliteCoverLetterData, EliteCoverLetterSavedDocument } from "@/lib/professional-identity/elite-cover-letter-engine";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
 
 export default async function CoverLetterPage({ searchParams }: { searchParams?: Promise<{ role?: string; company?: string }> }) {
   const { user, supabase } = await requireAuthenticatedUser("/professional-identity/cover-letter");
-  const unlocked = await canCurrentUserUseProfessionalIdentityTools(supabase, user.id);
-  const canExport = await canCurrentUserExportProfessionalDocuments(supabase, user.id);
-  const context = await getProfessionalIdentityContext(supabase, user.id);
   const params = searchParams ? await searchParams : {};
-  const hasCv = Boolean(context && context.identity.cv_status !== "not_started");
+  const canExport = await canCurrentUserExportProfessionalDocuments(supabase, user.id);
+
+  const [{ data: profile }, { data: discovery }, { data: latestCv }, { data: latestCoverLetter }] = await Promise.all([
+    supabase
+      .from("user_profiles")
+      .select("full_name,email,phone,city,country,career_goal,education,highest_qualification,field_of_study,current_status,employment_status,linkedin_url,portfolio_url")
+      .or(`user_id.eq.${user.id},id.eq.${user.id}`)
+      .maybeSingle(),
+    supabase
+      .from("discovery_responses")
+      .select("answers,generated_result")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("user_documents")
+      .select("content_json")
+      .eq("user_id", user.id)
+      .eq("document_type", "cv")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("user_documents")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("document_type", "cover_letter")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+  ]);
+
+  const facts = buildCoverLetterProfileFacts(
+    profile ?? null,
+    (discovery?.answers ?? {}) as Record<string, unknown>,
+    (latestCv?.content_json ?? {}) as Record<string, unknown>
+  );
+  const contentJson = (latestCoverLetter?.content_json ?? {}) as Record<string, unknown>;
+  const eliteCoverLetterData = contentJson.eliteCoverLetterData as EliteCoverLetterData | undefined;
+  const initialDocument: EliteCoverLetterSavedDocument | null = latestCoverLetter && eliteCoverLetterData
+    ? {
+        id: latestCoverLetter.id,
+        title: latestCoverLetter.document_title,
+        data: eliteCoverLetterData,
+        templateName: normalizeCoverLetterTemplate(latestCoverLetter.template_name ?? eliteCoverLetterData.selectedTemplate),
+        updatedAt: latestCoverLetter.updated_at ?? null,
+        lastDownloadedAt: latestCoverLetter.last_downloaded_at ?? null
+      }
+    : null;
 
   return (
     <div className="container page-pad">
       <PageHeader eyebrow="My Professional Profile" title="Create My Cover Letter">
-        Generate a concise, honest, role-specific cover letter that users can review before sending.
+        Build a focused, recruiter-ready cover letter from your real profile and the job you want to apply for.
       </PageHeader>
-      <ProfessionalIdentityTool
-        tool="cover-letter"
-        title="Create your cover letter"
-        description="Add the company and role. Paste a job description when you want the draft tailored to a real opportunity."
-        trustNote="PATHZY strengthens your wording but does not add experience you do not have."
-        locked={!unlocked}
-        exportLocked={!canExport}
-        guidance={!hasCv ? {
-          recommendation: "Build your CV first.",
-          why: "A CV gives PATHZY stronger facts for your cover letter, but you can still create a draft now.",
-          impact: "+8 Job Readiness",
-          followHref: "/professional-identity/cv",
-          followLabel: "Build CV first",
-          continueLabel: "Continue with cover letter"
-        } : null}
-        defaultOptions={{ role: params.role ?? "", company: params.company ?? "", language: "english", templateName: "Modern ATS" }}
-        fields={[
-          { name: "company", label: "Company", placeholder: "Example: Flutterwave" },
-          { name: "role", label: "Role", placeholder: "Example: Junior Product Designer" },
-          { name: "jobDescription", label: "Job description optional", type: "textarea", placeholder: "Paste the job description here" },
-          { name: "tone", label: "Tone", type: "select", options: ["professional", "confident", "warm"] }
-        ]}
+      <EliteCoverLetterTool
+        initialFacts={facts}
+        initialDocument={initialDocument}
+        canExport={canExport}
+        initialRole={params.role ?? ""}
+        initialCompany={params.company ?? ""}
       />
-      <div className="mt-6 grid gap-3 md:grid-cols-5">
-        {premiumDocumentTemplates.map((template) => (
-          <div key={template.name} className="rounded-[18px] border border-white/10 bg-white/6 p-4">
-            <p className="font-black">{template.name}</p>
-            <p className="mt-2 text-xs leading-5 text-white/52">{template.description}</p>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
+
