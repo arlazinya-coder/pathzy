@@ -1379,40 +1379,6 @@ export function ProfessionalIdentityTool({
                 </label>
               </div>
             ) : null}
-            {tool === "cv" ? (
-              <div className="rounded-[22px] border border-white/10 bg-white/6 p-4">
-                <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                  <div>
-                    <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">Template gallery</p>
-                    <h3 className="mt-2 text-xl font-black">Choose a recruiter-ready design</h3>
-                    <p className="mt-2 text-sm leading-6 text-white/56">Template switching changes presentation only. Your CV model, edits, and saved content stay the same.</p>
-                  </div>
-                  <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-extrabold text-[#c7d6ff]">Selected: {selectedTemplateMetadata.name}</span>
-                </div>
-                <div className="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-                  {documentTemplateGallery.map((template) => (
-                    <button
-                      key={template.name}
-                      type="button"
-                      onClick={() => updateValue("templateName", template.name)}
-                      className={`group flex flex-col rounded-[20px] border p-4 text-left transition hover:-translate-y-0.5 ${templateName === template.name ? "border-[#8fb0ff] bg-[#5B8CFF]/16 shadow-[0_18px_54px_rgba(91,140,255,.22)]" : "border-white/10 bg-white/6 hover:border-white/18"}`}
-                    >
-                      <TemplateMiniPreview template={template} />
-                      <div className="mt-4 flex items-start justify-between gap-3">
-                        <p className="text-base font-black leading-5 text-white">{template.name}</p>
-                        {templateName === template.name ? <span className="shrink-0 rounded-full bg-[#8fb0ff]/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#c7d6ff]">Selected</span> : null}
-                      </div>
-                      <p className="mt-2 flex-1 text-xs leading-5 text-white/56">{template.description}</p>
-                      <p className="mt-3 text-xs font-bold leading-5 text-[#c7d6ff]">Best for: {template.bestFor}</p>
-                      <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-extrabold uppercase tracking-[0.1em] text-white/72">
-                        <span className="rounded-full bg-white/8 px-2.5 py-1.5">{template.atsCharacteristic}</span>
-                        <span className="rounded-full bg-white/8 px-2.5 py-1.5">{template.recruiterCharacteristic}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
           </div>
         ) : (
           <>
@@ -1623,6 +1589,43 @@ export function ProfessionalIdentityTool({
               </div>
             </div>
           )}
+        </Card>
+      ) : null}
+
+      {tool === "cv" ? (
+        <Card className="lg:col-span-4">
+          <div className="rounded-[22px] border border-white/10 bg-white/6 p-4">
+            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">Template gallery</p>
+                <h3 className="mt-2 text-xl font-black">Choose a recruiter-ready design</h3>
+                <p className="mt-2 text-sm leading-6 text-white/56">Template switching changes presentation only. Your CV model, edits, and saved content stay the same.</p>
+              </div>
+              <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-extrabold text-[#c7d6ff]">Selected: {selectedTemplateMetadata.name}</span>
+            </div>
+            <div className="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+              {documentTemplateGallery.map((template) => (
+                <button
+                  key={template.name}
+                  type="button"
+                  onClick={() => updateValue("templateName", template.name)}
+                  className={`group flex flex-col rounded-[20px] border p-4 text-left transition hover:-translate-y-0.5 ${templateName === template.name ? "border-[#8fb0ff] bg-[#5B8CFF]/16 shadow-[0_18px_54px_rgba(91,140,255,.22)]" : "border-white/10 bg-white/6 hover:border-white/18"}`}
+                >
+                  <TemplateMiniPreview template={template} />
+                  <div className="mt-4 flex items-start justify-between gap-3">
+                    <p className="text-base font-black leading-5 text-white">{template.name}</p>
+                    {templateName === template.name ? <span className="shrink-0 rounded-full bg-[#8fb0ff]/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#c7d6ff]">Selected</span> : null}
+                  </div>
+                  <p className="mt-2 flex-1 text-xs leading-5 text-white/56">{template.description}</p>
+                  <p className="mt-3 text-xs font-bold leading-5 text-[#c7d6ff]">Best for: {template.bestFor}</p>
+                  <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-extrabold uppercase tracking-[0.1em] text-white/72">
+                    <span className="rounded-full bg-white/8 px-2.5 py-1.5">{template.atsCharacteristic}</span>
+                    <span className="rounded-full bg-white/8 px-2.5 py-1.5">{template.recruiterCharacteristic}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
         </Card>
       ) : null}
 

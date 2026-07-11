@@ -378,7 +378,11 @@ const cvGalleryIndex = professionalIdentityTool.indexOf("Template gallery");
 const cvEditorIndex = professionalIdentityTool.indexOf("Structured editor");
 const cvPreviewIndex = professionalIdentityTool.indexOf("Live preview engine");
 const cvNextActionIndex = professionalIdentityTool.indexOf("Your CV is ready. What would you like to do next?");
-assert.ok(cvGalleryIndex > -1 && cvEditorIndex > cvGalleryIndex && cvPreviewIndex > cvEditorIndex && cvNextActionIndex > cvPreviewIndex, "CV page flow must be controls/version area, template gallery, editor/preview workspace, then next-action area.");
+const cvControlsIndex = professionalIdentityTool.indexOf("CV generated");
+assert.ok(cvControlsIndex > -1 && cvEditorIndex > cvControlsIndex && cvPreviewIndex > cvEditorIndex && cvGalleryIndex > cvPreviewIndex && cvNextActionIndex > cvGalleryIndex, "CV page flow must be controls/version area, editor/preview workspace, template gallery, then next-action area.");
+assert.equal((professionalIdentityTool.match(/Template gallery/g) ?? []).length, 1, "CV Builder must render one Template Gallery instance.");
+assert.equal((professionalIdentityTool.match(/Structured editor/g) ?? []).length, 1, "CV Builder must render one Structured Editor instance.");
+assert.equal((professionalIdentityTool.match(/Live preview engine/g) ?? []).length, 1, "CV Builder must render one Live Preview instance.");
 for (const sectionLabel of ["Header", "Summary", "Experience", "Education", "Skills", "Projects", "Certifications", "More"]) {
   assert.match(professionalIdentityTool, new RegExp(`label: "${sectionLabel}"`), `CV Document Studio section navigator must include ${sectionLabel}.`);
 }
