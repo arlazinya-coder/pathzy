@@ -373,6 +373,12 @@ assert.match(professionalIdentityTool, /renderCvHtmlFromModel\(previewCvModel, t
 assert.match(professionalIdentityTool, /simplePdfDocumentFromModel\(document\.title, cvModel, templateName\)/, "PDF export path must stay aligned to the selected template and canonical CV model.");
 assert.match(professionalIdentityTool, /Improve your CV/, "CV Builder must show Improve your CV recommendations instead of generic missing-field messages.");
 assert.match(professionalIdentityTool, /Add \{parsedCv\.missing\.join\(", "\)\.toLowerCase\(\)\}/, "CV recommendations must be based on the structured CV model gaps.");
+assert.doesNotMatch(professionalCvPage, /premiumDocumentTemplates\.map|TemplateMiniPreview/, "CV page wrapper must not render a second template gallery after the editor workspace.");
+const cvGalleryIndex = professionalIdentityTool.indexOf("Template gallery");
+const cvEditorIndex = professionalIdentityTool.indexOf("Structured editor");
+const cvPreviewIndex = professionalIdentityTool.indexOf("Live preview engine");
+const cvNextActionIndex = professionalIdentityTool.indexOf("Your CV is ready. What would you like to do next?");
+assert.ok(cvGalleryIndex > -1 && cvEditorIndex > cvGalleryIndex && cvPreviewIndex > cvEditorIndex && cvNextActionIndex > cvPreviewIndex, "CV page flow must be controls/version area, template gallery, editor/preview workspace, then next-action area.");
 for (const sectionLabel of ["Header", "Summary", "Experience", "Education", "Skills", "Projects", "Certifications", "More"]) {
   assert.match(professionalIdentityTool, new RegExp(`label: "${sectionLabel}"`), `CV Document Studio section navigator must include ${sectionLabel}.`);
 }
@@ -382,6 +388,7 @@ assert.match(professionalIdentityTool, /tool === "cv" \? "grid gap-5 lg:grid-col
 assert.match(professionalIdentityTool, /<Card className=\{tool === "cv" \? "lg:col-span-1"/, "CV editor must stay in the normal left editing zone.");
 assert.match(professionalIdentityTool, /<Card className="lg:col-span-3">/, "CV A4 preview must stay in the normal layout beside the editing zone.");
 assert.doesNotMatch(professionalIdentityTool, /cvStudioMode|setCvStudioMode|xl:sticky|xl:max-h-\[calc\(100vh-112px\)\]|xl:overflow-y-auto/, "CV editor must not use the rejected complex sticky or independent-scroll studio architecture.");
+assert.doesNotMatch(professionalIdentityTool, /absolute|fixed|z-\[|z-[1-9]/, "CV preview/gallery repair must not use positioning or z-index hacks.");
 assert.match(professionalIdentityTool, /function renderCvCompactStatus/, "CV Health and save state must be compact in the editor heading area.");
 assert.match(professionalIdentityTool, /function saveStatusLabel/, "CV Document Studio must centralize compact save status text.");
 assert.doesNotMatch(professionalIdentityTool, /mainCvSections\.slice\(1\)\.map/, "CV editor must not render the old endless stacked section editor.");
