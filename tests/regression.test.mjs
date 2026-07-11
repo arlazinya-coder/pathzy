@@ -56,6 +56,7 @@ const floatingMentorButton = readFileSync("components/mentor/floating-mentor-but
 const professionalIdentityService = readFileSync("lib/professional-identity/professional-identity-service.ts", "utf8");
 const cvImportPipeline = readFileSync("lib/professional-identity/cv-import.ts", "utf8");
 const cvImportRoute = readFileSync("app/api/professional-identity/import-cv/route.ts", "utf8");
+const legacyMedicalCvFixture = readFileSync("tests/fixtures/legacy-medical-cv.txt", "utf8");
 const coverLetterGeneration = professionalIdentityService.match(/export async function generateCoverLetter[\s\S]*?export async function generateLinkedInProfile/)?.[0] ?? "";
 
 for (const section of ["Navigation", "Hero", "Features", "How PATHZY Works", "Career Journey", "Pricing", "Testimonials", "FAQ", "Footer"]) {
@@ -436,16 +437,29 @@ assert.match(cvImportPipeline, /mapImportedTextToCvModel\(text: string\)/, "CV i
 assert.match(cvImportPipeline, /professionalExperience: parseExperience\(sections\.experience\)/, "CV import must map experience into the existing professionalExperience field.");
 assert.match(cvImportPipeline, /education: parseEducation\(sections\.education\)/, "CV import must map education into the existing education field.");
 assert.match(cvImportPipeline, /optionalSections: \{[\s\S]*volunteerExperience[\s\S]*publications[\s\S]*professionalMemberships/, "CV import must map additional sections into the existing optionalSections architecture.");
-assert.match(cvImportPipeline, /reviewItemsFor\(cvModel, normalizedText\.length\)/, "CV import must flag uncertain imported data for review.");
-assert.match(cvImportRoute, /createImportedCvDraft\(auth\.supabase, auth\.user\.id, imported, body\.templateName\)/, "CV import route must persist a reviewable imported CV draft.");
+assert.match(cvImportPipeline, /reviewItemsFor\(mapped\.cvModel, mapped\.normalizedText\.length, mapped\.excludedSensitiveFields\)/, "CV import must flag uncertain imported data for review.");
+assert.match(cvImportPipeline, /function lineToPair/, "CV import must pair LABEL: VALUE legacy CV rows before classification.");
+assert.match(cvImportPipeline, /secondary\\s\+school\\s\+education[\s\S]*tertiary\\s\+education/, "CV import must recognize secondary and tertiary education headings.");
+assert.match(cvImportPipeline, /experiential\\s\+training[\s\S]*practical\\s\+training/, "CV import must recognize experiential and practical training headings.");
+assert.match(cvImportPipeline, /LABORATORY|laboratory|Cobas 6000|ADVIA 2120|GeneXpert/, "CV import must preserve medical laboratory competency terms.");
+assert.match(cvImportPipeline, /function parseReferences/, "CV import must group reference lines into referee records.");
+assert.match(cvImportPipeline, /sensitiveLabelPattern/, "CV import must exclude sensitive personal data from automatic CV import.");
+assert.match(cvImportPipeline, /assertPlausibleImport/, "CV import must reject implausible classification results such as dozens of false experiences.");
+assert.match(cvImportRoute, /staging: imported/, "CV import route must return a staging result before saving the final CV draft.");
+assert.match(cvImportRoute, /body\.confirm && body\.staging[\s\S]*createImportedCvDraft/, "CV import route must only create the final imported CV draft after user confirmation.");
 assert.match(cvImportRoute, /safeFailure/, "CV import route must not expose raw technical failures to users.");
 assert.match(professionalIdentityService, /export async function createImportedCvDraft/, "Imported CV drafts must be created through the professional identity service.");
 assert.match(professionalIdentityService, /document_type: "old_cv"[\s\S]*content_text: imported\.normalizedText/, "Imported CV original extracted text must be saved as a recoverable old_cv document.");
 assert.match(professionalIdentityService, /contentJson: \{[\s\S]*cvModel,[\s\S]*cvVersion,[\s\S]*cvImport:/, "Imported CV draft must persist the canonical cvModel and import metadata.");
 assert.match(professionalIdentityTool, /\/api\/professional-identity\/import-cv/, "CV upload UI must call the real import route.");
 assert.match(professionalIdentityTool, /Review Imported CV/, "Successful CV import must pause at a review summary before opening the editor.");
-assert.match(professionalIdentityTool, /setCvDocument\(pendingImportedCv, true\)/, "Reviewing an imported CV must open the existing structured CV editor.");
+assert.match(professionalIdentityTool, /confirmImportedCv/, "Reviewing an imported CV must confirm staging before creating the saved draft.");
+assert.match(professionalIdentityTool, /setCvDocument\(data\.document, true\)/, "Confirmed imported CV drafts must open the existing structured CV editor.");
 assert.doesNotMatch(professionalIdentityTool, /accept="\.pdf,\.docx,\.png|image\/png|image\/jpeg/, "CV import UI must not advertise unsupported image OCR.");
+assert.match(legacyMedicalCvFixture, /LABORATORY ASSISTANT: BLOOD TRANSFUSION[\s\S]*PERIOD: 01\/02\/2014-30\/06\/2014[\s\S]*COMPANY\/INSTITUTION: VAAL UNIVERSITY OF TECHNOLOGY/, "Legacy medical CV fixture must cover grouped experience label/value records.");
+assert.match(legacyMedicalCvFixture, /TERTIARY EDUCATION[\s\S]*COURSE: BIOMEDICAL TECHNOLOGY/, "Legacy medical CV fixture must cover tertiary education grouping.");
+assert.match(legacyMedicalCvFixture, /HOME LANGUAGE: FRENCH[\s\S]*OTHER LANGUAGES: ENGLISH, KISWAHILI/, "Legacy medical CV fixture must cover explicit language extraction.");
+assert.match(legacyMedicalCvFixture, /IDENTITY NUMBER:[\s\S]*MARITAL STATUS:/, "Legacy medical CV fixture must cover sensitive personal data exclusion.");
 assert.match(documentDownloads, /export type CoverLetterData = \{[\s\S]*fullName: string;[\s\S]*companyName: string;[\s\S]*bodyParagraphs: string\[\];[\s\S]*designSystem: CvTemplateName;[\s\S]*\};/, "Cover Letter foundation must define one structured coverLetterData source of truth.");
 assert.match(documentDownloads, /export function serializeCoverLetterData/, "Cover Letter content text must serialize from coverLetterData.");
 assert.match(documentDownloads, /export function renderCoverLetterHtmlFromData/, "Cover Letter preview must render from coverLetterData.");

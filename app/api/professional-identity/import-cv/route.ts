@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { canCurrentUserUseProfessionalIdentityTools, createImportedCvDraft } from "@/lib/professional-identity/professional-identity-service";
 import { CvImportError, importCvFromUpload, validateCvImportFile } from "@/lib/professional-identity/cv-import";
+import type { ImportedCvResult } from "@/lib/professional-identity/cv-import";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -37,15 +38,9 @@ export async function POST(request: Request) {
       fileSize?: number;
       base64?: string;
       templateName?: string;
+      confirm?: boolean;
+      staging?: ImportedCvResult;
     };
-    const upload = {
-      fileName: body.fileName ?? "",
-      fileType: body.fileType ?? "",
-      fileSize: body.fileSize ?? 0,
-      base64: body.base64 ?? ""
-    };
-
-    validateCvImportFile(upload);
 
     if (!(await canCurrentUserUseProfessionalIdentityTools(auth.supabase, auth.user.id))) {
       return NextResponse.json({
@@ -56,15 +51,29 @@ export async function POST(request: Request) {
       });
     }
 
+    if (body.confirm && body.staging) {
+      const document = await createImportedCvDraft(auth.supabase, auth.user.id, body.staging, body.templateName);
+      return NextResponse.json({ document });
+    }
+
+    const upload = {
+      fileName: body.fileName ?? "",
+      fileType: body.fileType ?? "",
+      fileSize: body.fileSize ?? 0,
+      base64: body.base64 ?? ""
+    };
+
+    validateCvImportFile(upload);
+
     const imported = importCvFromUpload(upload);
-    const document = await createImportedCvDraft(auth.supabase, auth.user.id, imported, body.templateName);
 
     return NextResponse.json({
-      document,
+      staging: imported,
       importSummary: {
         counts: imported.counts,
         reviewItems: imported.reviewItems,
         confidence: imported.confidence,
+        excludedSensitiveNotice: imported.excludedSensitiveNotice ?? null,
         message: "We've prepared your CV."
       }
     });

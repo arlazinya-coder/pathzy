@@ -10,8 +10,10 @@ export type CvImportCounts = {
   skills: number;
   certifications: number;
   languages: number;
+  references: number;
   projects: number;
   achievements: number;
+  excludedSensitiveFields: number;
 };
 
 export type ImportedCvResult = {
@@ -23,6 +25,7 @@ export type ImportedCvResult = {
   confidence: CvImportConfidence;
   reviewItems: string[];
   counts: CvImportCounts;
+  excludedSensitiveNotice?: string;
 };
 
 export type CvImportUpload = {
@@ -42,26 +45,56 @@ export class CvImportError extends Error {
   }
 }
 
+type SectionKey =
+  | "header"
+  | "summary"
+  | "experience"
+  | "education"
+  | "skills"
+  | "projects"
+  | "certifications"
+  | "languages"
+  | "references"
+  | "achievements"
+  | "volunteer"
+  | "awards"
+  | "publications"
+  | "conferences"
+  | "memberships"
+  | "interests";
+
 const supportedTypes = new Set([
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 ]);
 const maxFileSize = 8 * 1024 * 1024;
 const minReadableCharacters = 160;
+const sensitiveLabelPattern = /\b(identity|id\s*number|passport|date\s*of\s*birth|birth\s*date|marital|gender|health|criminal|offence|residential\s+address|street\s+address)\b/i;
+const valueSeparator = /\s*[:]\s*/;
+
+const headingAliases: Array<[SectionKey, RegExp]> = [
+  ["summary", /^(professional\s+)?(summary|profile|objective|career\s+objective|personal\s+statement)$/i],
+  ["experience", /^(professional\s+)?(experience|work\s+experience|employment\s+history|career\s+history|work\s+history|employment|career\s+experience|experiential\s+training|internship|practical\s+training)$/i],
+  ["education", /^(education|academic\s+details|academic\s+background|educational\s+background|qualifications|secondary\s+school\s+education|secondary\s+education|tertiary\s+education|education\s+and\s+training|training)$/i],
+  ["skills", /^(skills|core\s+skills|technical\s+skills|competencies|core\s+competencies|technical\s+competencies|duties|responsibilities|key\s+functions|laboratory\s+duties|expertise)$/i],
+  ["projects", /^(projects|portfolio\s+projects|selected\s+projects)$/i],
+  ["certifications", /^(certifications|certificates|qualification|professional\s+qualification|registration|professional\s+registration|licenses|licences|license|licence|professional\s+certifications)$/i],
+  ["languages", /^(languages|home\s+language|other\s+languages|language\s+skills|language\s+proficiency)$/i],
+  ["references", /^(references?|referees|professional\s+references)$/i],
+  ["achievements", /^(achievements|accomplishments|awards\s+and\s+achievements)$/i],
+  ["volunteer", /^(volunteer|volunteering|volunteer\s+experience|community\s+work)$/i],
+  ["awards", /^awards$/i],
+  ["publications", /^publications?$/i],
+  ["conferences", /^conferences?$/i],
+  ["memberships", /^(memberships|professional\s+memberships|associations)$/i],
+  ["interests", /^(interests|hobbies|other\s+interests\s+and\s+activities)$/i]
+];
 
 export function validateCvImportFile(upload: Pick<CvImportUpload, "fileName" | "fileType" | "fileSize">) {
-  if (!upload.fileName?.trim()) {
-    throw new CvImportError("Missing file.", "Please choose a CV file to import.");
-  }
-  if (!supportedTypes.has(upload.fileType)) {
-    throw new CvImportError("Unsupported file type.", "This file format isn't supported yet. Please upload a PDF or DOCX CV.");
-  }
-  if (!upload.fileSize || upload.fileSize <= 0) {
-    throw new CvImportError("Empty file.", "This CV file appears to be empty.");
-  }
-  if (upload.fileSize > maxFileSize) {
-    throw new CvImportError("File too large.", "This CV is too large. Please upload a PDF or DOCX smaller than 8MB.");
-  }
+  if (!upload.fileName?.trim()) throw new CvImportError("Missing file.", "Please choose a CV file to import.");
+  if (!supportedTypes.has(upload.fileType)) throw new CvImportError("Unsupported file type.", "This file format isn't supported yet. Please upload a PDF or DOCX CV.");
+  if (!upload.fileSize || upload.fileSize <= 0) throw new CvImportError("Empty file.", "This CV file appears to be empty.");
+  if (upload.fileSize > maxFileSize) throw new CvImportError("File too large.", "This CV is too large. Please upload a PDF or DOCX smaller than 8MB.");
 }
 
 function decodeBase64File(base64: string) {
@@ -85,6 +118,8 @@ function normalizeExtractedText(text: string) {
   return text
     .replace(/\r/g, "\n")
     .replace(/\u0000/g, "")
+    .replace(/[–—]/g, "-")
+    .replace(/[：]/g, ":")
     .split("\n")
     .map((line) => line.replace(/[ \t]+/g, " ").trim())
     .filter(Boolean)
@@ -110,28 +145,22 @@ export function extractPdfText(buffer: Buffer) {
   const literalText = /\((?:\\.|[^\\()]){2,}\)\s*Tj/g;
   const arrayText = /\[((?:.|\n)*?)\]\s*TJ/g;
   let literalMatch: RegExpExecArray | null;
-
-  while ((literalMatch = literalText.exec(raw))) {
-    textParts.push(decodePdfLiteral(literalMatch[0].replace(/\)\s*Tj$/, "").slice(1)));
-  }
-
+  while ((literalMatch = literalText.exec(raw))) textParts.push(decodePdfLiteral(literalMatch[0].replace(/\)\s*Tj$/, "").slice(1)));
   let arrayMatch: RegExpExecArray | null;
   while ((arrayMatch = arrayText.exec(raw))) {
-    const arrayContent = arrayMatch[1];
-    const fragments = Array.from(arrayContent.matchAll(/\((?:\\.|[^\\()])*\)/g)).map((fragment) => decodePdfLiteral(fragment[0].slice(1, -1)));
+    const fragments = Array.from(arrayMatch[1].matchAll(/\((?:\\.|[^\\()])*\)/g)).map((fragment) => decodePdfLiteral(fragment[0].slice(1, -1)));
     if (fragments.length) textParts.push(fragments.join(""));
   }
-
   if (textParts.join("").length < minReadableCharacters) {
-    const fallback = raw
-      .replace(/[^\x09\x0a\x0d\x20-\x7e]/g, "\n")
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => /[A-Za-z]{3,}/.test(line) && line.length < 180)
-      .join("\n");
-    textParts.push(fallback);
+    textParts.push(
+      raw
+        .replace(/[^\x09\x0a\x0d\x20-\x7e]/g, "\n")
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => /[A-Za-z]{3,}/.test(line) && line.length < 180)
+        .join("\n")
+    );
   }
-
   return normalizeExtractedText(textParts.join("\n"));
 }
 
@@ -155,7 +184,6 @@ function readZipEntries(buffer: Buffer) {
   const entries = buffer.readUInt16LE(eocd + 10);
   let offset = buffer.readUInt32LE(eocd + 16);
   const result: ZipEntry[] = [];
-
   for (let index = 0; index < entries; index += 1) {
     if (buffer.readUInt32LE(offset) !== 0x02014b50) break;
     const compression = buffer.readUInt16LE(offset + 10);
@@ -168,7 +196,6 @@ function readZipEntries(buffer: Buffer) {
     result.push({ name, compression, compressedSize, localHeaderOffset });
     offset += 46 + nameLength + extraLength + commentLength;
   }
-
   return result;
 }
 
@@ -193,6 +220,7 @@ export function extractDocxText(buffer: Buffer) {
     xml
       .replace(/<w:tab\s*\/>/g, " ")
       .replace(/<w:br\s*\/>/g, "\n")
+      .replace(/<\/w:tc>/g, " : ")
       .replace(/<\/w:p>/g, "\n")
       .replace(/<\/w:tr>/g, "\n")
       .replace(/<[^>]+>/g, "")
@@ -211,46 +239,43 @@ export function extractTextFromUploadedCv(upload: CvImportUpload) {
   return text;
 }
 
-type SectionKey =
-  | "header"
-  | "summary"
-  | "experience"
-  | "education"
-  | "skills"
-  | "projects"
-  | "certifications"
-  | "languages"
-  | "references"
-  | "achievements"
-  | "volunteer"
-  | "awards"
-  | "publications"
-  | "conferences"
-  | "memberships"
-  | "interests";
+function cleanBullet(line: string) {
+  return line.replace(/^[•*\-\u2022\u25cf\u25e6\u2043]+\s*/i, "").trim();
+}
 
-const headingAliases: Array<[SectionKey, RegExp]> = [
-  ["summary", /^(professional\s+)?(summary|profile|objective|career\s+objective|personal\s+statement)$/i],
-  ["experience", /^(professional\s+)?(experience|work\s+experience|employment\s+history|career\s+history|work\s+history|employment|career\s+experience)$/i],
-  ["education", /^(education|academic\s+background|qualifications|education\s+and\s+training|training)$/i],
-  ["skills", /^(skills|core\s+skills|technical\s+skills|competencies|core\s+competencies|expertise)$/i],
-  ["projects", /^(projects|portfolio\s+projects|selected\s+projects)$/i],
-  ["certifications", /^(certifications|certificates|licenses|licences|professional\s+certifications)$/i],
-  ["languages", /^(languages|language\s+skills)$/i],
-  ["references", /^references?$/i],
-  ["achievements", /^(achievements|accomplishments|awards\s+and\s+achievements)$/i],
-  ["volunteer", /^(volunteer|volunteering|volunteer\s+experience|community\s+work)$/i],
-  ["awards", /^awards$/i],
-  ["publications", /^publications?$/i],
-  ["conferences", /^conferences?$/i],
-  ["memberships", /^(memberships|professional\s+memberships|associations)$/i],
-  ["interests", /^(interests|hobbies)$/i]
-];
+function lineToPair(line: string) {
+  const clean = cleanBullet(line).replace(/\s+:\s+/g, ": ").trim();
+  const [rawLabel, ...rest] = clean.split(valueSeparator);
+  if (!rest.length) return null;
+  const label = rawLabel.replace(/\s+/g, " ").trim();
+  const value = rest.join(":").replace(/\s+/g, " ").trim();
+  if (!label || !value || label.length > 72) return null;
+  return { label, value };
+}
+
+function labelIs(label: string, patterns: RegExp[]) {
+  return patterns.some((pattern) => pattern.test(label));
+}
 
 function headingFor(line: string): SectionKey | null {
-  const normalized = line.replace(/[:•\-–—]+$/g, "").trim();
-  if (normalized.length > 48) return null;
+  const normalized = cleanBullet(line).replace(/[:\-]+$/g, "").trim();
+  if (normalized.length > 72) return null;
   return headingAliases.find(([, pattern]) => pattern.test(normalized))?.[0] ?? null;
+}
+
+function isSpecificSubheading(line: string) {
+  return /^(secondary\s+school\s+education|secondary\s+education|tertiary\s+education|experiential\s+training|internship|practical\s+training|professional\s+qualification|registration|professional\s+registration)$/i.test(cleanBullet(line).replace(/[:\-]+$/g, ""));
+}
+
+function removeSensitiveLines(lines: string[]) {
+  let excludedSensitiveFields = 0;
+  const safeLines = lines.filter((line) => {
+    const pair = lineToPair(line);
+    const sensitive = sensitiveLabelPattern.test(pair?.label ?? line);
+    if (sensitive) excludedSensitiveFields += 1;
+    return !sensitive;
+  });
+  return { safeLines, excludedSensitiveFields };
 }
 
 function sectionize(lines: string[]) {
@@ -276,32 +301,35 @@ function sectionize(lines: string[]) {
   for (const line of lines) {
     const heading = headingFor(line);
     if (heading) {
+      if (isSpecificSubheading(line)) sections[heading].push(line);
       current = heading;
       continue;
     }
+    const pair = lineToPair(line);
+    if (pair && /language/i.test(pair.label)) current = "languages";
+    else if (pair && /^(qualification|professional\s+qualification|registration|reference\s+number|year\s+qualified)$/i.test(pair.label)) current = "certifications";
     sections[current].push(line);
   }
   return sections;
-}
-
-function cleanBullet(line: string) {
-  return line.replace(/^[•*\-\u2022\u25CF\u25E6\u2043]+\s*/, "").trim();
 }
 
 function splitList(lines: string[]) {
   return Array.from(
     new Set(
       lines
-        .flatMap((line) => line.split(/[,;|]/g))
+        .flatMap((line) => {
+          const pair = lineToPair(line);
+          return (pair?.value ?? line).split(/[,;|]/g);
+        })
         .map(cleanBullet)
         .map((item) => item.replace(/\s{2,}/g, " ").trim())
-        .filter((item) => item.length > 1 && item.length < 80)
+        .filter((item) => item.length > 1 && item.length < 90)
     )
   );
 }
 
 function splitSkillGroups(skills: string[]) {
-  const technicalPattern = /\b(sql|excel|python|javascript|typescript|react|node|figma|power\s*bi|tableau|html|css|java|c\+\+|aws|azure|git|github|linux|api|crm|sap|salesforce|microsoft|word|powerpoint)\b/i;
+  const technicalPattern = /\b(sql|excel|python|javascript|typescript|react|node|figma|power\s*bi|tableau|html|css|java|c\+\+|aws|azure|git|github|linux|api|crm|sap|salesforce|microsoft|word|powerpoint|cobas|advia|calibration|quality\s+control|centrifugation|full\s+blood\s+count|coagulation|malaria|api\s*20e|genexpert|blood\s+culture|gram\s+stain|auramine|ziehl|neelsen|antimicrobial|microscopy|haematology|hematology|microbiology|chemistry|clinical\s+pathology)\b/i;
   const professionalPattern = /\b(communication|leadership|teamwork|customer|problem|planning|research|analysis|management|coordination|presentation|collaboration|time\s+management)\b/i;
   return {
     technicalSkills: skills.filter((skill) => technicalPattern.test(skill)),
@@ -311,87 +339,159 @@ function splitSkillGroups(skills: string[]) {
 }
 
 function extractContacts(lines: string[]) {
+  const pairs = lines.map(lineToPair).filter(Boolean) as Array<{ label: string; value: string }>;
   const joined = lines.join(" ");
-  const email = joined.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? "";
-  const phone = joined.match(/(?:\+\d{1,3}[\s-]?)?(?:\(?\d{2,4}\)?[\s-]?){2,5}\d{2,4}/)?.[0] ?? "";
+  const email = pairs.find((pair) => /e-?mail/i.test(pair.label))?.value ?? joined.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] ?? "";
+  const phone = pairs.find((pair) => /(contact|phone|mobile|cell)/i.test(pair.label))?.value ?? joined.match(/(?:\+\d{1,3}[\s-]?)?(?:\(?\d{2,4}\)?[\s-]?){2,5}\d{2,4}/)?.[0] ?? "";
   const linkedIn = joined.match(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s]+|linkedin\.com\/[^\s]+/i)?.[0] ?? "";
   const github = joined.match(/https?:\/\/(?:www\.)?github\.com\/[^\s]+|github\.com\/[^\s]+/i)?.[0] ?? "";
   const portfolio = joined.match(/https?:\/\/(?!.*(?:linkedin|github))[^\s]+/i)?.[0] ?? "";
+  const fullNameFromPair = pairs.find((pair) => /^(full\s+names?|name|names?)$/i.test(pair.label))?.value ?? "";
   const headerCandidates = lines
     .map(cleanBullet)
     .filter((line) => line && !line.includes("@") && !/https?:|linkedin\.com|github\.com/i.test(line) && line !== phone)
-    .filter((line) => !/^\+?\d/.test(line));
-  const fullName = headerCandidates.find((line) => /^[A-Za-z][A-Za-z' -]{2,60}$/.test(line) && line.split(/\s+/).length <= 5) ?? "";
+    .filter((line) => !/^\+?\d/.test(line))
+    .filter((line) => !lineToPair(line));
+  const fullName = fullNameFromPair || (headerCandidates.find((line) => /^[A-Za-z][A-Za-z' -]{2,60}$/.test(line) && line.split(/\s+/).length <= 5) ?? "");
   const targetRole = headerCandidates.find((line) => line !== fullName && line.length <= 80) ?? "";
   const locationLine = lines.find((line) => /(south africa|zambia|zimbabwe|kenya|nigeria|ghana|canada|united|johannesburg|cape town|pretoria|durban|london|paris|kinshasa|lusaka|harare)/i.test(line)) ?? "";
   const [city, country] = locationLine.split(/[,|]/).map((part) => part.trim());
   return { fullName, targetRole, email, phone, linkedIn, github, portfolio, city: city ?? "", country: country ?? "" };
 }
 
-function groupEntries(lines: string[]) {
-  const groups: Array<{ title: string; bullets: string[] }> = [];
-  let current: { title: string; bullets: string[] } | null = null;
-
-  for (const rawLine of lines) {
-    const line = cleanBullet(rawLine);
-    if (!line) continue;
-    const isBullet = /^[•*\-\u2022\u25CF\u25E6\u2043]/.test(rawLine.trim()) || line.length > 90;
-    if (!isBullet) {
-      if (current) groups.push(current);
-      current = { title: line, bullets: [] };
-    } else if (current) {
-      current.bullets.push(line);
-    } else {
-      current = { title: line, bullets: [] };
-    }
-  }
-
-  if (current) groups.push(current);
-  return groups;
-}
-
 function parseDateRange(value: string) {
-  const match = value.match(/((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)?\.?\s*\d{4})\s*[-–—]\s*((?:present|current|now)|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)?\.?\s*\d{4})/i);
+  const match = value.match(/((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)?\.?\s*\d{4}|\d{1,2}\/\d{1,2}\/\d{4})\s*[-]\s*((?:present|current|now)|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)?\.?\s*\d{4}|\d{1,2}\/\d{1,2}\/\d{4})/i);
   return {
     startDate: match?.[1]?.trim() ?? "",
     endDate: match?.[2]?.trim() ?? "",
     current: /present|current|now/i.test(match?.[2] ?? ""),
-    titleWithoutDates: match ? value.replace(match[0], "").replace(/[|,\-–—]+$/g, "").trim() : value
+    titleWithoutDates: match ? value.replace(match[0], "").replace(/[|,\-]+$/g, "").trim() : value
   };
 }
 
+function compactEntry(value: string) {
+  return value.replace(/\s{2,}/g, " ").trim();
+}
+
 function parseExperience(lines: string[]) {
-  return groupEntries(lines).map((group) => {
-    const dates = parseDateRange(group.title);
-    const parts = dates.titleWithoutDates.split(/\s+(?:at|@)\s+|[|]/i).map((part) => part.trim()).filter(Boolean);
-    return {
-      role: parts[0] ?? dates.titleWithoutDates,
-      company: parts[1] ?? "",
-      location: parts[2] ?? "",
-      startDate: dates.startDate,
-      endDate: dates.endDate,
-      current: dates.current,
-      achievements: group.bullets.length ? group.bullets : []
-    };
-  }).filter((item) => item.role || item.achievements.length);
+  const result: CvModel["professionalExperience"] = [];
+  let current: CvModel["professionalExperience"][number] | null = null;
+  let inDuties = false;
+  const pushCurrent = () => {
+    if (!current) return;
+    current.achievements = Array.from(new Set(current.achievements.map(compactEntry).filter(Boolean)));
+    if (current.role || current.company || current.achievements.length) result.push(current);
+    current = null;
+    inDuties = false;
+  };
+
+  for (const rawLine of lines) {
+    const line = cleanBullet(rawLine);
+    if (!line) continue;
+    const pair = lineToPair(line);
+    const label = pair?.label ?? "";
+    const value = pair?.value ?? "";
+
+    if (headingFor(line) === "skills" || /^(chemistry|haematology|hematology|microbiology)$/i.test(line)) {
+      inDuties = true;
+      if (current) current.achievements.push(line);
+      continue;
+    }
+    if (pair && labelIs(label, [/^period$/i, /^date/i])) {
+      current ??= { role: "", company: "", location: "", startDate: "", endDate: "", current: false, achievements: [] };
+      const dates = parseDateRange(value);
+      current.startDate = dates.startDate || value;
+      current.endDate = dates.endDate;
+      current.current = dates.current;
+      continue;
+    }
+    if (pair && labelIs(label, [/^(company|employer|organisation|organization|company\/institution|institution)$/i])) {
+      current ??= { role: "", company: "", location: "", startDate: "", endDate: "", current: false, achievements: [] };
+      current.company = value;
+      continue;
+    }
+    if (pair && labelIs(label, [/^(location|city)$/i])) {
+      current ??= { role: "", company: "", location: "", startDate: "", endDate: "", current: false, achievements: [] };
+      current.location = value;
+      continue;
+    }
+    if (pair && labelIs(label, [/^(duties|responsibilities|key\s+functions)$/i])) {
+      inDuties = true;
+      current ??= { role: "", company: "", location: "", startDate: "", endDate: "", current: false, achievements: [] };
+      if (value) current.achievements.push(value);
+      continue;
+    }
+    if (pair && labelIs(label, [/^(role|job\s+title|position|title|department)$/i])) {
+      if (current?.role || current?.company || current?.achievements.length) pushCurrent();
+      current = { role: value, company: "", location: "", startDate: "", endDate: "", current: false, achievements: [] };
+      continue;
+    }
+    if (pair && /^[A-Z][A-Z\s/()-]{4,}$/.test(label) && !labelIs(label, [/^(course|qualification|institution|reference|year|home\s+language|other\s+languages)$/i])) {
+      if (current?.role || current?.company || current?.achievements.length) pushCurrent();
+      current = { role: compactEntry(label), company: "", location: "", startDate: "", endDate: "", current: false, achievements: value ? [compactEntry(value)] : [] };
+      continue;
+    }
+    if (/^(secondary|tertiary|qualification|institution|course|reference\s+number|year\s+qualified)\b/i.test(line)) continue;
+    if (!current) {
+      current = { role: line, company: "", location: "", startDate: "", endDate: "", current: false, achievements: [] };
+      continue;
+    }
+    if (inDuties || /^[•*\-\u2022\u25cf\u25e6\u2043]/i.test(rawLine.trim()) || line.length > 60) current.achievements.push(line);
+    else if (!current.role) current.role = line;
+    else current.achievements.push(line);
+  }
+  pushCurrent();
+  return result;
 }
 
 function parseEducation(lines: string[]) {
-  return groupEntries(lines).map((group) => {
-    const dates = parseDateRange(group.title);
-    const parts = dates.titleWithoutDates.split(/[|,]/).map((part) => part.trim()).filter(Boolean);
-    return {
-      qualification: parts[0] ?? dates.titleWithoutDates,
-      institution: parts[1] ?? "",
-      fieldOfStudy: parts[2] ?? "",
-      year: dates.endDate || dates.startDate,
-      status: dates.current ? "In progress" : ""
-    };
-  }).filter((item) => item.qualification);
+  const result: CvModel["education"] = [];
+  let current: CvModel["education"][number] | null = null;
+  const pushCurrent = () => {
+    if (!current) return;
+    if (current.qualification || current.institution || current.fieldOfStudy) result.push(current);
+    current = null;
+  };
+
+  for (const rawLine of lines) {
+    const line = cleanBullet(rawLine);
+    if (!line) continue;
+    const pair = lineToPair(line);
+    if (isSpecificSubheading(line)) {
+      pushCurrent();
+      current = { qualification: line, institution: "", fieldOfStudy: "", year: "", status: "" };
+      continue;
+    }
+    current ??= { qualification: "", institution: "", fieldOfStudy: "", year: "", status: "" };
+    if (pair && labelIs(pair.label, [/^(institution|school|college|university)$/i])) current.institution = pair.value;
+    else if (pair && labelIs(pair.label, [/^(course|qualification|program|programme|degree|diploma)$/i])) {
+      current.qualification = current.qualification && !/education/i.test(current.qualification) ? current.qualification : pair.value;
+      current.fieldOfStudy = pair.value;
+    } else if (pair && labelIs(pair.label, [/^(period|year|dates?)$/i])) {
+      const dates = parseDateRange(pair.value);
+      current.year = dates.endDate || dates.startDate || pair.value;
+      current.status = dates.current ? "In progress" : current.status;
+    } else if (pair && labelIs(pair.label, [/^(grade|level|status|subjects?|modules?)$/i])) {
+      current.status = [current.status, pair.value].filter(Boolean).join("; ");
+    } else if (!pair && !headingFor(line)) {
+      if (!current.qualification) current.qualification = line;
+      else if (!current.institution) current.institution = line;
+      else current.status = [current.status, line].filter(Boolean).join("; ");
+    }
+  }
+  pushCurrent();
+  return result;
 }
 
 function parseProjects(lines: string[]) {
-  return groupEntries(lines).map((group) => ({
+  const groups = lines.reduce<Array<{ title: string; bullets: string[] }>>((items, rawLine) => {
+    const line = cleanBullet(rawLine);
+    if (!line) return items;
+    if (!items.length || (!lineToPair(line) && !/^[•*\-\u2022\u25cf\u25e6\u2043]/i.test(rawLine.trim()))) items.push({ title: line, bullets: [] });
+    else items[items.length - 1].bullets.push(line);
+    return items;
+  }, []);
+  return groups.map((group) => ({
     projectName: group.title,
     role: "",
     tools: splitList(group.bullets).slice(0, 8),
@@ -401,53 +501,165 @@ function parseProjects(lines: string[]) {
 }
 
 function parseCertifications(lines: string[]) {
-  return lines.map(cleanBullet).filter(Boolean).map((line) => {
-    const parts = line.split(/[|,]/).map((part) => part.trim()).filter(Boolean);
-    return { name: parts[0] ?? line, provider: parts[1] ?? "", year: parts.find((part) => /\b\d{4}\b/.test(part)) ?? "", credentialUrl: "" };
-  }).filter((item) => item.name);
+  const result: CvModel["certifications"] = [];
+  let current: CvModel["certifications"][number] | null = null;
+  const pushCurrent = () => {
+    if (current?.name) result.push(current);
+    current = null;
+  };
+  for (const rawLine of lines) {
+    const line = cleanBullet(rawLine);
+    if (!line) continue;
+    const pair = lineToPair(line);
+    if (isSpecificSubheading(line)) {
+      pushCurrent();
+      current = { name: line, provider: "", year: "", credentialUrl: "" };
+    } else if (pair && labelIs(pair.label, [/^(qualification|professional\s+qualification|registration|licen[cs]e)$/i])) {
+      pushCurrent();
+      current = { name: pair.value, provider: "", year: "", credentialUrl: "" };
+    } else if (pair && labelIs(pair.label, [/^reference\s+number$/i])) {
+      current ??= { name: "Professional registration", provider: "", year: "", credentialUrl: "" };
+      current.credentialUrl = pair.value;
+    } else if (pair && labelIs(pair.label, [/^year\s+qualified$|^year$/i])) {
+      current ??= { name: "Professional qualification", provider: "", year: "", credentialUrl: "" };
+      current.year = pair.value;
+    } else if (!pair) {
+      pushCurrent();
+      const parts = line.split(/[|,]/).map((part) => part.trim()).filter(Boolean);
+      current = { name: parts[0] ?? line, provider: parts[1] ?? "", year: parts.find((part) => /\b\d{4}\b/.test(part)) ?? "", credentialUrl: "" };
+    }
+  }
+  pushCurrent();
+  return result;
 }
 
 function parseLanguages(lines: string[]) {
-  return splitList(lines).map((line) => {
-    const [language, level = ""] = line.split(/[-–—:]/).map((part) => part.trim());
-    return { language, level };
-  }).filter((item) => item.language);
+  const languages: CvModel["languages"] = [];
+  for (const rawLine of lines) {
+    const line = cleanBullet(rawLine);
+    const pair = lineToPair(line);
+    if (pair && /language/i.test(pair.label)) {
+      for (const value of splitList([pair.value])) languages.push({ language: value, level: /home/i.test(pair.label) ? "Home language" : "" });
+    } else if (!headingFor(line)) {
+      const [language, level = ""] = line.split(/[-:]/).map((part) => part.trim());
+      if (language) languages.push({ language, level });
+    }
+  }
+  return Array.from(new Map(languages.map((item) => [item.language.toLowerCase(), item])).values());
+}
+
+function parseReferences(lines: string[]) {
+  const refs: string[] = [];
+  let current: Record<string, string> = {};
+  const flush = () => {
+    const parts = ["name", "position", "organisation", "phone", "email"].map((key) => current[key]).filter(Boolean);
+    if (parts.length) refs.push(parts.join(" | "));
+    current = {};
+  };
+  for (const rawLine of lines) {
+    const line = cleanBullet(rawLine);
+    if (!line) continue;
+    const pair = lineToPair(line);
+    if (pair && labelIs(pair.label, [/^(name|referee)$/i])) {
+      if (Object.keys(current).length) flush();
+      current.name = pair.value;
+    } else if (pair && labelIs(pair.label, [/^(position|title)$/i])) current.position = pair.value;
+    else if (pair && labelIs(pair.label, [/^(company|organisation|organization|institution)$/i])) current.organisation = pair.value;
+    else if (pair && labelIs(pair.label, [/^(contact|phone|mobile|cell)$/i])) current.phone = pair.value;
+    else if (pair && /e-?mail/i.test(pair.label)) current.email = pair.value;
+    else if (!pair && /@/.test(line)) current.email = line;
+    else if (!pair && /\d{6,}/.test(line)) current.phone = line;
+    else if (!pair) {
+      if (Object.keys(current).length) flush();
+      current.name = line;
+    }
+  }
+  flush();
+  return refs;
 }
 
 function compactParagraph(lines: string[]) {
   return lines.map(cleanBullet).filter(Boolean).join(" ").replace(/\s{2,}/g, " ").trim();
 }
 
-function importCounts(cv: CvModel): CvImportCounts {
+function importCounts(cv: CvModel, excludedSensitiveFields: number): CvImportCounts {
   return {
     workExperiences: cv.professionalExperience.length,
     educationRecords: cv.education.length,
     skills: cv.coreSkills.length + cv.technicalSkills.length + cv.professionalSkills.length,
     certifications: cv.certifications.length,
     languages: cv.languages.length,
+    references: cv.references.items.length,
     projects: cv.projects.length,
-    achievements: cv.achievements.length
+    achievements: cv.achievements.length,
+    excludedSensitiveFields
   };
 }
 
-function reviewItemsFor(cv: CvModel, textLength: number) {
-  const reviewItems = [
+function explicitHeadingExists(lines: string[], section: SectionKey) {
+  return lines.some((line) => headingFor(line) === section || (section === "languages" && /language/i.test(lineToPair(line)?.label ?? "")));
+}
+
+function extractTechnicalTermsFromDuties(lines: string[]) {
+  const terms = [
+    "Cobas 6000",
+    "ADVIA 2120",
+    "calibration",
+    "quality control",
+    "sample centrifugation",
+    "full blood count",
+    "coagulation testing",
+    "malaria testing",
+    "API 20E",
+    "GeneXpert",
+    "blood culture processing",
+    "Gram staining",
+    "Auramine staining",
+    "Ziehl-Neelsen staining",
+    "antimicrobial sensitivity testing"
+  ];
+  const source = lines.join("\n");
+  return terms.filter((term) => new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(source));
+}
+
+function assertPlausibleImport(cv: CvModel, lines: string[], excludedSensitiveFields: number) {
+  const counts = importCounts(cv, excludedSensitiveFields);
+  const experienceLabelOnly = cv.professionalExperience.filter((item) => /^(period|qualification|company|institution|duties|course)$/i.test(item.role)).length;
+  if (
+    counts.workExperiences > 25 ||
+    (explicitHeadingExists(lines, "education") && counts.educationRecords === 0) ||
+    (explicitHeadingExists(lines, "languages") && counts.languages === 0) ||
+    (counts.workExperiences > 8 && counts.workExperiences > Math.max(3, Math.floor(lines.length / 3))) ||
+    experienceLabelOnly > 0
+  ) {
+    throw new CvImportError(
+      "Implausible CV import classification.",
+      "We read the document, but some sections need better interpretation before we create your PATHZY CV."
+    );
+  }
+}
+
+function reviewItemsFor(cv: CvModel, textLength: number, excludedSensitiveFields: number) {
+  return [
     !cv.fullName ? "Full name needs review." : "",
     !cv.targetRole ? "Professional title needs review." : "",
     !cv.email && !cv.phone ? "Contact details need review." : "",
     !cv.professionalExperience.length ? "Experience section needs review." : "",
     !cv.education.length ? "Education section needs review." : "",
-    textLength < 600 ? "The readable text was short, so please review the imported details." : ""
+    textLength < 600 ? "The readable text was short, so please review the imported details." : "",
+    excludedSensitiveFields ? "We found personal information that is usually unnecessary in a modern CV. It was not added." : ""
   ].filter(Boolean);
-  return reviewItems;
 }
 
-export function mapImportedTextToCvModel(text: string) {
+function mapImportedTextToCvModelWithMeta(text: string) {
   const normalizedText = normalizeExtractedText(text);
-  const lines = normalizedText.split("\n").map((line) => line.trim()).filter(Boolean);
-  const sections = sectionize(lines);
-  const contacts = extractContacts(sections.header.length ? sections.header : lines.slice(0, 10));
-  const skills = splitSkillGroups(splitList(sections.skills));
+  const rawLines = normalizedText.split("\n").map((line) => line.trim()).filter(Boolean);
+  const { safeLines, excludedSensitiveFields } = removeSensitiveLines(rawLines);
+  const sections = sectionize(safeLines);
+  const contacts = extractContacts(sections.header.length ? sections.header : safeLines.slice(0, 14));
+  const explicitSkills = splitList(sections.skills);
+  const dutySkills = extractTechnicalTermsFromDuties([...sections.experience, ...sections.skills]);
+  const skills = splitSkillGroups(Array.from(new Set([...explicitSkills, ...dutySkills])));
   const base = cvModelFromUnknown(null, "");
   const cvModel: CvModel = {
     ...base,
@@ -462,7 +674,7 @@ export function mapImportedTextToCvModel(text: string) {
     languages: parseLanguages(sections.languages),
     references: {
       availableUponRequest: sections.references.some((line) => /available/i.test(line)),
-      items: sections.references.filter((line) => !/available/i.test(line)).map(cleanBullet).filter(Boolean)
+      items: parseReferences(sections.references)
     },
     optionalSections: {
       volunteerExperience: sections.volunteer.map(cleanBullet).filter(Boolean),
@@ -470,28 +682,35 @@ export function mapImportedTextToCvModel(text: string) {
       publications: sections.publications.map(cleanBullet).filter(Boolean),
       conferences: sections.conferences.map(cleanBullet).filter(Boolean),
       professionalMemberships: sections.memberships.map(cleanBullet).filter(Boolean),
-      interests: sections.interests.map(cleanBullet).filter(Boolean),
+      interests: splitList(sections.interests),
       portfolioLinks: contacts.portfolio ? [contacts.portfolio] : [],
       qrCodePlaceholder: ""
     }
   };
-  return normalizeCvModelForExport(cvModel);
+  const normalizedCv = normalizeCvModelForExport(cvModel);
+  assertPlausibleImport(normalizedCv, safeLines, excludedSensitiveFields);
+  return { cvModel: normalizedCv, normalizedText, excludedSensitiveFields };
+}
+
+export function mapImportedTextToCvModel(text: string) {
+  return mapImportedTextToCvModelWithMeta(text).cvModel;
 }
 
 export function buildCvImportResult(upload: Pick<CvImportUpload, "fileName" | "fileType" | "fileSize">, normalizedText: string): ImportedCvResult {
-  const cvModel = mapImportedTextToCvModel(normalizedText);
-  const counts = importCounts(cvModel);
-  const reviewItems = reviewItemsFor(cvModel, normalizedText.length);
+  const mapped = mapImportedTextToCvModelWithMeta(normalizedText);
+  const counts = importCounts(mapped.cvModel, mapped.excludedSensitiveFields);
+  const reviewItems = reviewItemsFor(mapped.cvModel, mapped.normalizedText.length, mapped.excludedSensitiveFields);
   const confidence: CvImportConfidence = reviewItems.length <= 1 ? "high" : reviewItems.length <= 3 ? "medium" : "low";
   return {
-    cvModel,
-    normalizedText,
+    cvModel: mapped.cvModel,
+    normalizedText: mapped.normalizedText,
     fileName: upload.fileName,
     fileType: upload.fileType,
     fileSize: upload.fileSize,
     confidence,
     reviewItems,
-    counts
+    counts,
+    excludedSensitiveNotice: mapped.excludedSensitiveFields ? "We found personal information that is usually unnecessary in a modern CV. It was not added." : undefined
   };
 }
 

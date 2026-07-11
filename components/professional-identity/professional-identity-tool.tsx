@@ -140,12 +140,15 @@ type CvImportSummary = {
     skills: number;
     certifications: number;
     languages: number;
+    references: number;
     projects: number;
     achievements: number;
+    excludedSensitiveFields: number;
   };
   reviewItems: string[];
   confidence: "high" | "medium" | "low";
   message: string;
+  excludedSensitiveNotice?: string | null;
 };
 
 function cvVersionFromDocument(document: GeneratedProfessionalDocument | null, fallbackDesign = "Modern ATS"): CvVersionMetadata {
@@ -268,7 +271,7 @@ export function ProfessionalIdentityTool({
   const [oldCvNotice, setOldCvNotice] = useState("");
   const [cvImportStatus, setCvImportStatus] = useState<"idle" | "reading" | "extracting" | "organizing" | "saving" | "ready" | "error">("idle");
   const [cvImportSummary, setCvImportSummary] = useState<CvImportSummary | null>(null);
-  const [pendingImportedCv, setPendingImportedCv] = useState<GeneratedProfessionalDocument | null>(null);
+  const [pendingImportedCv, setPendingImportedCv] = useState<Record<string, unknown> | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [cvEntryMode, setCvEntryMode] = useState<"choice" | "profile" | "upload">("profile");
   const [viewMode, setViewMode] = useState<"preview" | "edit">("preview");
@@ -1297,7 +1300,7 @@ export function ProfessionalIdentityTool({
       const data = await response.json();
       if (!response.ok || data.error) throw new Error(data.error ?? "We could not complete the CV import. Your existing PATHZY information is safe.");
       setCvImportStatus("saving");
-      setPendingImportedCv(data.document);
+      setPendingImportedCv(data.staging);
       setCvImportSummary(data.importSummary);
       setOldCvNotice("Preparing your PATHZY CV...");
       setCvImportStatus("ready");
@@ -1305,6 +1308,35 @@ export function ProfessionalIdentityTool({
       console.error("[professional-identity] CV import failed", caught instanceof Error ? caught.message : caught);
       setCvImportStatus("error");
       setOldCvNotice(caught instanceof Error ? caught.message : "We could not complete the CV import. Your existing PATHZY information is safe.");
+    }
+  }
+
+  async function confirmImportedCv() {
+    if (!pendingImportedCv) return;
+    setCvImportStatus("saving");
+    setOldCvNotice("Saving your imported CV draft...");
+    try {
+      const response = await fetch("/api/professional-identity/import-cv", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          confirm: true,
+          staging: pendingImportedCv,
+          templateName
+        })
+      });
+      const data = await response.json();
+      if (!response.ok || data.error) throw new Error(data.error ?? "We could not save your imported CV yet. Please try again.");
+      setCvDocument(data.document, true);
+      setCvEntryMode("profile");
+      setActiveCvSection("Professional Header");
+      setSectionNotice("Imported from your CV. Review each section before downloading.");
+      setCvImportStatus("ready");
+      setOldCvNotice("");
+    } catch (caught) {
+      console.error("[professional-identity] imported CV confirmation failed", caught instanceof Error ? caught.message : caught);
+      setCvImportStatus("error");
+      setOldCvNotice(caught instanceof Error ? caught.message : "We could not save your imported CV yet. Please try again.");
     }
   }
 
@@ -1394,8 +1426,11 @@ export function ProfessionalIdentityTool({
                           <div>
                             <p className="text-sm font-black text-white">{cvImportSummary.message}</p>
                             <p className="mt-1 text-sm leading-6 text-[#b9f8d5]">
-                              We found {cvImportSummary.counts.workExperiences} work experiences, {cvImportSummary.counts.educationRecords} education records, {cvImportSummary.counts.skills} skills, {cvImportSummary.counts.certifications} certifications, and {cvImportSummary.counts.languages} languages.
+                              We found {cvImportSummary.counts.workExperiences} work experiences, {cvImportSummary.counts.educationRecords} education records, {cvImportSummary.counts.skills} skills, {cvImportSummary.counts.certifications} qualifications, {cvImportSummary.counts.languages} languages, and {cvImportSummary.counts.references} references.
                             </p>
+                            {cvImportSummary.excludedSensitiveNotice ? (
+                              <p className="mt-2 text-xs font-bold text-[#c7d6ff]">{cvImportSummary.excludedSensitiveNotice}</p>
+                            ) : null}
                             {cvImportSummary.reviewItems.length ? (
                               <p className="mt-2 text-xs font-bold text-[#ffe2a8]">{cvImportSummary.reviewItems.length} item{cvImportSummary.reviewItems.length === 1 ? "" : "s"} may need your review.</p>
                             ) : (
@@ -1404,15 +1439,11 @@ export function ProfessionalIdentityTool({
                           </div>
                           <button
                             type="button"
-                            onClick={() => {
-                              setCvDocument(pendingImportedCv, true);
-                              setCvEntryMode("profile");
-                              setActiveCvSection("Professional Header");
-                              setSectionNotice("Imported from your CV. Review each section before downloading.");
-                            }}
+                            onClick={confirmImportedCv}
+                            disabled={cvImportStatus === "saving"}
                             className="h-[44px] shrink-0 rounded-full blue-purple px-5 text-sm font-extrabold text-white"
                           >
-                            Review Imported CV
+                            {cvImportStatus === "saving" ? "Saving Draft" : "Review Imported CV"}
                           </button>
                         </div>
                       </div>
