@@ -341,10 +341,14 @@ for (const templateName of ["Executive Black", "Modern ATS", "Google Style", "Mi
   assert.match(documentTemplateEngine, new RegExp(`name: "${templateName}"`), `${templateName} must be registered in the reusable template engine.`);
   assert.match(documentDownloads, new RegExp(`"${templateName}"[\\s\\S]*identity:`), `${templateName} must have its own design identity.`);
 }
-assert.match(documentTemplateEngine, /atsRating[\s\S]*recruiterRating[\s\S]*bestFor[\s\S]*thumbnail/, "Template gallery metadata must include ATS rating, recruiter rating, best-for labels, and thumbnails.");
+assert.match(documentTemplateEngine, /atsCharacteristic[\s\S]*recruiterCharacteristic[\s\S]*bestFor[\s\S]*thumbnail/, "Template gallery metadata must include honest ATS/recruiter characteristics, best-for labels, and thumbnails.");
+assert.doesNotMatch(documentTemplateEngine, /atsRating|recruiterRating/, "Template gallery metadata must not use invented static ATS or recruiter percentage ratings.");
 assert.match(professionalIdentityService, /premiumDocumentTemplates = documentTemplateGallery/, "Professional Identity service must reuse the shared template gallery.");
 assert.match(professionalIdentityTool, /documentTemplateGallery\.map/, "CV Builder must render the shared visual template gallery.");
 assert.match(professionalIdentityTool, /Template gallery[\s\S]*Choose a recruiter-ready design/, "CV Builder must expose a visual template gallery.");
+assert.match(professionalIdentityTool, /\[grid-template-columns:repeat\(auto-fit,minmax\(220px,1fr\)\)\]/, "CV Builder template gallery must use a responsive minimum-width card grid.");
+assert.match(professionalIdentityTool, /template\.atsCharacteristic[\s\S]*template\.recruiterCharacteristic/, "CV Builder template cards must show honest characteristics instead of static percentages.");
+assert.doesNotMatch(professionalIdentityTool, /ATS \{template\.atsRating\}%|Recruiter \{template\.recruiterRating\}%/, "CV Builder template cards must not show fake ATS or recruiter percentages.");
 assert.match(professionalIdentityTool, /onClick=\{\(\) => updateValue\("templateName", template\.name\)\}/, "Template cards must switch instantly while preserving the same CV model.");
 assert.match(professionalIdentityTool, /Template switching changes presentation only\. Your CV model, edits, and saved content stay the same\./, "CV Builder must explain that switching templates preserves data.");
 assert.match(professionalIdentityTool, /Improve your CV/, "CV Builder must show Improve your CV recommendations instead of generic missing-field messages.");

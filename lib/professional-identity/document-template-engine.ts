@@ -17,8 +17,8 @@ export type DocumentTemplateMetadata = {
   name: PremiumDocumentTemplate;
   description: string;
   bestFor: string;
-  atsRating: number;
-  recruiterRating: number;
+  atsCharacteristic: string;
+  recruiterCharacteristic: string;
   thumbnail: {
     background: string;
     accent: string;
@@ -39,80 +39,80 @@ export const documentTemplateGallery: DocumentTemplateMetadata[] = [
     name: "Executive Black",
     description: "High-contrast executive layout with refined spacing and boardroom-level hierarchy.",
     bestFor: "Senior professionals, managers, founders, consultants",
-    atsRating: 88,
-    recruiterRating: 97,
+    atsCharacteristic: "Executive Layout",
+    recruiterCharacteristic: "Leadership Focused",
     thumbnail: { background: "#111111", accent: "#c9a35b", layout: "sidebar" }
   },
   {
     name: "Modern ATS",
     description: "Clean one-column structure optimized for ATS parsing and recruiter scanning.",
     bestFor: "Online applications, corporate roles, high-volume hiring",
-    atsRating: 99,
-    recruiterRating: 90,
+    atsCharacteristic: "Single-Column ATS",
+    recruiterCharacteristic: "Fast Scanner Friendly",
     thumbnail: { background: "#ffffff", accent: "#1f4f82", layout: "single" }
   },
   {
     name: "Google Style",
     description: "Minimal, bright, product-minded layout with crisp blue accents and practical hierarchy.",
     bestFor: "Tech, product, operations, data, modern startups",
-    atsRating: 94,
-    recruiterRating: 95,
+    atsCharacteristic: "ATS Friendly",
+    recruiterCharacteristic: "Product Focused",
     thumbnail: { background: "#f8fbff", accent: "#4285f4", layout: "sidebar" }
   },
   {
     name: "Microsoft Professional",
     description: "Polished enterprise layout with calm blue structure and strong document discipline.",
     bestFor: "Enterprise, administration, finance, IT support",
-    atsRating: 96,
-    recruiterRating: 94,
+    atsCharacteristic: "ATS Optimized",
+    recruiterCharacteristic: "Enterprise Ready",
     thumbnail: { background: "#f5f9ff", accent: "#2563eb", layout: "single" }
   },
   {
     name: "Deloitte Consulting",
     description: "Consulting-style layout with sharp sections, evidence-first bullets, and compact density.",
     bestFor: "Consulting, strategy, business analysis, graduate programs",
-    atsRating: 93,
-    recruiterRating: 96,
+    atsCharacteristic: "ATS Friendly",
+    recruiterCharacteristic: "Consulting Style",
     thumbnail: { background: "#f8fff8", accent: "#86bc25", layout: "consulting" }
   },
   {
     name: "Creative Premium",
     description: "Premium creative layout with expressive sidebar rhythm while preserving ATS-friendly text.",
     bestFor: "Design, marketing, content, portfolio-led careers",
-    atsRating: 84,
-    recruiterRating: 96,
+    atsCharacteristic: "Portfolio Friendly",
+    recruiterCharacteristic: "Creative Impact",
     thumbnail: { background: "#fff7ed", accent: "#f97316", layout: "creative" }
   },
   {
     name: "Healthcare Professional",
     description: "Trustworthy clinical layout with calm green accents and credential-forward structure.",
     bestFor: "Healthcare, care work, public service, education support",
-    atsRating: 95,
-    recruiterRating: 93,
+    atsCharacteristic: "ATS Friendly",
+    recruiterCharacteristic: "Credential Focused",
     thumbnail: { background: "#f4faf7", accent: "#15803d", layout: "single" }
   },
   {
     name: "Graduate Elite",
     description: "Fresh early-career layout that elevates projects, education, skills, and potential.",
     bestFor: "Students, graduates, internships, first jobs",
-    atsRating: 92,
-    recruiterRating: 94,
+    atsCharacteristic: "Graduate Friendly",
+    recruiterCharacteristic: "Potential Focused",
     thumbnail: { background: "#f6f7ff", accent: "#6366f1", layout: "sidebar" }
   },
   {
     name: "Engineering",
     description: "Technical layout with skills architecture, project proof, and structured experience blocks.",
     bestFor: "Engineering, software, data, technical support",
-    atsRating: 96,
-    recruiterRating: 95,
+    atsCharacteristic: "Technical ATS",
+    recruiterCharacteristic: "Project Focused",
     thumbnail: { background: "#f8fafc", accent: "#0f766e", layout: "technical" }
   },
   {
     name: "International Standard",
     description: "Globally familiar CV layout with conservative spacing and international readability.",
     bestFor: "International applications, NGOs, remote roles, relocation",
-    atsRating: 98,
-    recruiterRating: 91,
+    atsCharacteristic: "International Format",
+    recruiterCharacteristic: "Conservative Layout",
     thumbnail: { background: "#ffffff", accent: "#334155", layout: "single" }
   }
 ];

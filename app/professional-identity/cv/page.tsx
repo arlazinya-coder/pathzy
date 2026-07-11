@@ -34,9 +34,9 @@ export default async function ProfessionalCvPage() {
           { name: "cvType", label: "CV type", type: "select", options: ["Entry-Level CV", "Graduate CV", "Internship CV", "Career Change CV", "Professional CV"] }
         ]}
       />
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="mt-6 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
         {premiumDocumentTemplates.map((template) => (
-          <div key={template.name} className="rounded-[18px] border border-white/10 bg-white/6 p-4">
+          <div key={template.name} className="flex min-h-[330px] flex-col rounded-[20px] border border-white/10 bg-white/6 p-4">
             <div className="h-28 rounded-[14px] border border-white/10 p-3" style={{ background: template.thumbnail.background }}>
               <div className="h-3 w-16 rounded-full" style={{ background: template.thumbnail.accent }} />
               <div className="mt-4 grid gap-2">
@@ -49,13 +49,13 @@ export default async function ProfessionalCvPage() {
                 <div className="h-10 rounded bg-black/10" />
               </div>
             </div>
-            <p className="mt-4 font-black">{template.name}</p>
-            <p className="mt-2 text-xs leading-5 text-white/52">{template.description}</p>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] font-extrabold text-white/70">
-              <span className="rounded-full bg-white/8 px-3 py-2">ATS {template.atsRating}%</span>
-              <span className="rounded-full bg-white/8 px-3 py-2">Recruiter {template.recruiterRating}%</span>
-            </div>
+            <p className="mt-4 text-base font-black leading-5">{template.name}</p>
+            <p className="mt-2 flex-1 text-xs leading-5 text-white/52">{template.description}</p>
             <p className="mt-3 text-xs font-bold leading-5 text-[#c7d6ff]">Best for: {template.bestFor}</p>
+            <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-extrabold uppercase tracking-[0.1em] text-white/70">
+              <span className="rounded-full bg-white/8 px-2.5 py-1.5">{template.atsCharacteristic}</span>
+              <span className="rounded-full bg-white/8 px-2.5 py-1.5">{template.recruiterCharacteristic}</span>
+            </div>
           </div>
         ))}
       </div>

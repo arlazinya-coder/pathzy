@@ -1147,15 +1147,15 @@ export function ProfessionalIdentityTool({
                   </div>
                   <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-extrabold text-[#c7d6ff]">Selected: {selectedTemplateMetadata.name}</span>
                 </div>
-                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                <div className="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
                   {documentTemplateGallery.map((template) => (
                     <button
                       key={template.name}
                       type="button"
                       onClick={() => updateValue("templateName", template.name)}
-                      className={`rounded-[18px] border p-3 text-left transition hover:-translate-y-0.5 ${templateName === template.name ? "border-[#8fb0ff] bg-[#5B8CFF]/16" : "border-white/10 bg-white/6"}`}
+                      className={`group flex min-h-[330px] flex-col rounded-[20px] border p-4 text-left transition hover:-translate-y-0.5 ${templateName === template.name ? "border-[#8fb0ff] bg-[#5B8CFF]/16 shadow-[0_18px_54px_rgba(91,140,255,.22)]" : "border-white/10 bg-white/6 hover:border-white/18"}`}
                     >
-                      <div className="h-24 rounded-[14px] border border-white/10 p-3" style={{ background: template.thumbnail.background }}>
+                      <div className="h-28 rounded-[16px] border border-white/10 p-3" style={{ background: template.thumbnail.background }}>
                         <div className="h-2.5 w-14 rounded-full" style={{ background: template.thumbnail.accent }} />
                         <div className="mt-3 grid gap-1.5">
                           <div className="h-1.5 w-4/5 rounded-full bg-black/18" />
@@ -1171,11 +1171,15 @@ export function ProfessionalIdentityTool({
                           )}
                         </div>
                       </div>
-                      <p className="mt-3 text-sm font-black text-white">{template.name}</p>
-                      <p className="mt-1 text-xs leading-5 text-white/50">{template.bestFor}</p>
-                      <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] font-extrabold text-white/72">
-                        <span className="rounded-full bg-white/8 px-2 py-1">ATS {template.atsRating}%</span>
-                        <span className="rounded-full bg-white/8 px-2 py-1">Recruiter {template.recruiterRating}%</span>
+                      <div className="mt-4 flex items-start justify-between gap-3">
+                        <p className="text-base font-black leading-5 text-white">{template.name}</p>
+                        {templateName === template.name ? <span className="shrink-0 rounded-full bg-[#8fb0ff]/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#c7d6ff]">Selected</span> : null}
+                      </div>
+                      <p className="mt-2 flex-1 text-xs leading-5 text-white/56">{template.description}</p>
+                      <p className="mt-3 text-xs font-bold leading-5 text-[#c7d6ff]">Best for: {template.bestFor}</p>
+                      <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-extrabold uppercase tracking-[0.1em] text-white/72">
+                        <span className="rounded-full bg-white/8 px-2.5 py-1.5">{template.atsCharacteristic}</span>
+                        <span className="rounded-full bg-white/8 px-2.5 py-1.5">{template.recruiterCharacteristic}</span>
                       </div>
                     </button>
                   ))}
