@@ -392,6 +392,9 @@ assert.doesNotMatch(professionalIdentityTool, /function renderActiveCvEditor/, "
 assert.doesNotMatch(professionalIdentityTool, /overflow-x-auto[\s\S]{0,120}cvPrimaryNavigation|lg:grid-cols-4[\s\S]{0,160}cvPrimaryNavigation/, "CV primary sections must not use the old horizontal tab/grid selector.");
 assert.match(professionalIdentityTool, /data-cv-editor-accordion="optional"/, "More must render optional sections as a nested vertical accordion.");
 assert.match(professionalIdentityTool, /activeCvSection === title[\s\S]*setActiveCvSection\("More"\)/, "Clicking an open optional section must collapse it back to More.");
+assert.match(professionalIdentityTool, /data-cv-editor-form-flow="single-column"/, "Expanded CV accordion editors must use a single-column field flow.");
+assert.doesNotMatch(professionalIdentityTool, /renderHeaderEditor[\s\S]*sm:grid-cols-2/, "Header expanded accordion content must not place editable fields in two columns.");
+assert.match(professionalIdentityTool, /Full name[\s\S]*Target role[\s\S]*Email[\s\S]*Phone[\s\S]*City[\s\S]*Country[\s\S]*LinkedIn[\s\S]*Portfolio/, "Header editor must preserve all existing fields in vertical order.");
 assert.match(professionalIdentityTool, /tool === "cv" \? "grid gap-5 lg:grid-cols-4"/, "CV workspace must use the normal app grid layout.");
 assert.match(professionalIdentityTool, /<Card className=\{tool === "cv" \? "lg:col-span-1"/, "CV editor must stay in the normal left editing zone.");
 assert.match(professionalIdentityTool, /<Card className="lg:col-span-3">/, "CV A4 preview must stay in the normal layout beside the editing zone.");

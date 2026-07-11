@@ -740,7 +740,7 @@ export function ProfessionalIdentityTool({
           </div>
           <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${hasUnsavedChanges ? "bg-[#f8c45d]/12 text-[#ffe2a8]" : "bg-[#39d98a]/12 text-[#b9f8d5]"}`}>{hasUnsavedChanges ? "Dirty" : "Saved"}</span>
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="mt-4 grid gap-3" data-cv-editor-form-flow="single-column">
           <label className="label">
             Full name
             <input className="field" value={parsedCv.fullName} onChange={(event) => updateCvDraft((draft) => { draft.fullName = event.target.value; })} />
