@@ -1538,6 +1538,28 @@ export function renderCvHtmlFromModel(cv: CvModel, templateName?: string, active
   return renderCvLayoutHtml(buildCvLayoutFromModel(cv, templateName, activeSection));
 }
 
+export function renderAtsCvHtmlFromModel(cvInput: CvModel) {
+  const cv = normalizeCvModel(cvInput);
+  const sections = cvModelToRenderModel(cv).sections;
+  return `
+    <div class="cv-render-shell">
+      <section class="cv-page" style="background:#fff;color:#111827;font-family:Arial,Helvetica,sans-serif;padding:54px 62px;box-shadow:0 24px 80px rgba(0,0,0,.18);">
+        <h1 style="margin:0;font-size:30px;line-height:1.1;color:#111827;">${escapeHtml(cv.fullName)}</h1>
+        ${cv.targetRole ? `<p style="margin:8px 0 0;font-size:14px;font-weight:700;color:#374151;">${escapeHtml(cv.targetRole)}</p>` : ""}
+        ${contactLines(cv).length ? `<p style="margin:12px 0 24px;font-size:10px;line-height:1.6;color:#4b5563;">${contactLines(cv).map(escapeHtml).join(" | ")}</p>` : ""}
+        ${sections.map((section) => `
+          <section style="margin-top:18px;break-inside:avoid;">
+            <h2 style="margin:0 0 8px;border-bottom:1px solid #d1d5db;padding-bottom:5px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#111827;">${escapeHtml(section.title)}</h2>
+            <ul style="margin:0;padding-left:18px;font-size:10.5px;line-height:1.55;color:#1f2937;">
+              ${section.items.map((item) => `<li style="margin:0 0 6px;">${escapeHtml(item)}</li>`).join("")}
+            </ul>
+          </section>
+        `).join("")}
+      </section>
+    </div>
+  `;
+}
+
 function renderCvLayoutHtml(layout: CvLayout) {
   return `
     <div class="cv-render-shell">

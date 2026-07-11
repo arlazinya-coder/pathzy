@@ -4,7 +4,7 @@ import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "reac
 import Link from "next/link";
 import { Card } from "@/components/ui";
 import { PremiumUpgradeCard } from "@/components/upgrade/premium-upgrade-card";
-import { coverLetterDataFromUnknown, coverLetterPdfFilename, cvModelFromUnknown, cvModelWithMissing, downloadBlob, normalizeCoverLetterDataForExport, normalizeCvModelForExport, pathzyFilename, renderCoverLetterHtmlFromData, renderCvHtml, renderCvHtmlFromModel, serializeCoverLetterData, serializeCvModel, simpleCoverLetterPdfDocument, simplePdfDocument, simplePdfDocumentFromModel } from "@/components/professional-identity/document-downloads";
+import { coverLetterDataFromUnknown, coverLetterPdfFilename, cvModelFromUnknown, cvModelWithMissing, downloadBlob, normalizeCoverLetterDataForExport, normalizeCvModelForExport, pathzyFilename, renderAtsCvHtmlFromModel, renderCoverLetterHtmlFromData, renderCvHtml, renderCvHtmlFromModel, serializeCoverLetterData, serializeCvModel, simpleCoverLetterPdfDocument, simplePdfDocument, simplePdfDocumentFromModel } from "@/components/professional-identity/document-downloads";
 import type { CoverLetterData, CvModel } from "@/components/professional-identity/document-downloads";
 import { documentTemplateGallery, normalizeDocumentTemplate, templateMetadata } from "@/lib/professional-identity/document-template-engine";
 import type { GeneratedProfessionalDocument, GenerateOptions, ProfessionalLanguage } from "@/lib/professional-identity/professional-identity-types";
@@ -70,6 +70,40 @@ const skillGroupSections = [
 ];
 
 const cvDesignSystems = documentTemplateGallery.map((template) => template.name);
+
+function cvHealthScore(cv: CvModel | null) {
+  if (!cv) return { score: 0, label: "Needs a draft", recommendations: ["Generate your first CV draft."] };
+  const checks = [
+    Boolean(cv.fullName.trim()),
+    Boolean(cv.targetRole.trim()),
+    Boolean(cv.email.trim() || cv.phone.trim()),
+    Boolean(cv.professionalSummary.trim()),
+    cv.coreSkills.length + cv.technicalSkills.length + cv.professionalSkills.length >= 5,
+    cv.professionalExperience.length > 0 || cv.projects.length > 0,
+    cv.education.length > 0 || cv.certifications.length > 0,
+    cv.projects.length > 0 || cv.achievements.length > 0,
+    cv.languages.length > 0 || Boolean(cv.linkedIn.trim() || cv.portfolio.trim() || cv.website.trim()),
+    cv.references.availableUponRequest || cv.references.items.length > 0
+  ];
+  const score = Math.round((checks.filter(Boolean).length / checks.length) * 100);
+  const recommendations = [
+    !checks[0] ? "Add your full name so recruiters can identify you." : "",
+    !checks[1] ? "Add a target role so the CV has a clear direction." : "",
+    !checks[2] ? "Add email or phone so employers can contact you." : "",
+    !checks[3] ? "Write a short professional summary focused on your career goal." : "",
+    !checks[4] ? "Add at least five relevant skills matched to the role." : "",
+    !checks[5] ? "Add experience or projects to prove what you can do." : "",
+    !checks[6] ? "Add education, certificates, or training evidence." : "",
+    !checks[7] ? "Add achievements or portfolio projects to strengthen proof." : "",
+    !checks[8] ? "Add languages, LinkedIn, portfolio, or website details." : "",
+    !checks[9] ? "Add references or mark them as available on request." : ""
+  ].filter(Boolean).slice(0, 3);
+  return {
+    score,
+    label: score >= 85 ? "Recruiter ready" : score >= 65 ? "Strong draft" : score >= 40 ? "Improving" : "Needs key details",
+    recommendations: recommendations.length ? recommendations : ["Review spacing, wording, and tailor this CV to the next job before sending."]
+  };
+}
 
 type CvVersionMetadata = {
   designSystem: string;
@@ -207,6 +241,7 @@ export function ProfessionalIdentityTool({
   const [previewCvModel, setPreviewCvModel] = useState<CvModel | null>(null);
   const [previewCoverLetterData, setPreviewCoverLetterData] = useState<CoverLetterData | null>(null);
   const [updateLinkedCvVersions, setUpdateLinkedCvVersions] = useState(false);
+  const [cvPreviewMode, setCvPreviewMode] = useState<"designed" | "ats">("designed");
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const coverLetterPreviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -217,6 +252,7 @@ export function ProfessionalIdentityTool({
   const templateName = normalizeDocumentTemplate(values.templateName);
   const selectedTemplateMetadata = templateMetadata(templateName);
   const parsedCv = useMemo(() => tool === "cv" && cvModel ? cvModelWithMissing(cvModel) : null, [cvModel, tool]);
+  const health = useMemo(() => cvHealthScore(previewCvModel ?? cvModel), [previewCvModel, cvModel]);
   const activeCvVersion = useMemo(() => tool === "cv" ? cvVersionFromDocument(document, templateName) : null, [document, templateName, tool]);
 
   useEffect(() => {
@@ -1241,6 +1277,22 @@ export function ProfessionalIdentityTool({
         {xpAwarded ? <p className="mt-5 rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{celebrationCopy[tool]} +{xpAwarded} XP added to your PATHZY level.</p> : null}
         {saved || saveState !== "idle" ? <p className="mt-5 rounded-[16px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 px-4 py-3 text-sm font-bold text-[#c7d6ff]">{saveState === "saving" ? "Saving..." : saveState === "error" ? "Could not save. Retry." : "Saved to My Documents."}</p> : null}
         {downloadNotice ? <p className="mt-5 rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{downloadNotice}</p> : null}
+        {tool === "cv" && document?.content ? (
+          <div className="mt-5 rounded-[18px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#c7d6ff]/72">CV Health Score</p>
+                <p className="mt-2 text-2xl font-black text-white">{health.score}/100 <span className="text-sm text-white/54">{health.label}</span></p>
+              </div>
+              <div className="h-14 w-14 rounded-full border border-white/12 bg-white/10 p-1" aria-label={`CV Health Score ${health.score} out of 100`}>
+                <div className="grid h-full w-full place-items-center rounded-full blue-purple text-xs font-black text-white">{health.score}</div>
+              </div>
+            </div>
+            <ul className="mt-3 grid gap-2 text-sm font-bold leading-6 text-[#c7d6ff]">
+              {health.recommendations.map((recommendation) => <li key={recommendation}>Improve your CV: {recommendation}</li>)}
+            </ul>
+          </div>
+        ) : null}
         {parsedCv?.missing.length ? (
           <div className="mt-5 rounded-[18px] border border-[#f8c45d]/25 bg-[#f8c45d]/10 p-4 text-sm font-bold text-[#ffe2a8]">
             <p className="text-xs uppercase tracking-[0.14em] text-[#ffe2a8]/70">Improve your CV</p>
@@ -1352,19 +1404,25 @@ export function ProfessionalIdentityTool({
         <Card className="lg:col-span-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Live preview</p>
+              <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Live preview engine</p>
               <h2 className="mt-2 text-2xl font-black">{outputTitle}</h2>
             </div>
             <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setCvPreviewMode("designed")} className={`rounded-full border px-5 py-3 text-sm font-extrabold ${cvPreviewMode === "designed" ? "border-[#8fb0ff] bg-[#5B8CFF]/18 text-white" : "border-white/12 bg-white/8 text-white/72"}`}>
+                Designed Preview
+              </button>
+              <button type="button" onClick={() => setCvPreviewMode("ats")} className={`rounded-full border px-5 py-3 text-sm font-extrabold ${cvPreviewMode === "ats" ? "border-[#8fb0ff] bg-[#5B8CFF]/18 text-white" : "border-white/12 bg-white/8 text-white/72"}`}>
+                ATS Preview
+              </button>
               <button onClick={downloadPdf} disabled={!document?.content} className="rounded-full blue-purple px-5 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">
                 Download PDF
               </button>
             </div>
           </div>
-          <p className="mt-3 text-sm leading-6 text-white/58">This is the published version. Edit in the center panel; export only when the preview is ready.</p>
+          <p className="mt-3 text-sm leading-6 text-white/58">{cvPreviewMode === "ats" ? "ATS Preview shows the parser-friendly structure recruiters and screening systems can read." : "Designed Preview shows the print-ready A4 document that the PDF export uses."}</p>
           {document?.content && previewCvModel ? (
             <div ref={previewScrollRef} className="mt-5 rounded-[22px] bg-[#dfe7f3] p-3 text-black">
-              <div dangerouslySetInnerHTML={{ __html: renderCvHtmlFromModel(previewCvModel, templateName, activeCvSection) }} />
+              <div dangerouslySetInnerHTML={{ __html: cvPreviewMode === "ats" ? renderAtsCvHtmlFromModel(previewCvModel) : renderCvHtmlFromModel(previewCvModel, templateName, activeCvSection) }} />
             </div>
           ) : (
             <div className="mt-5 grid min-h-[420px] place-items-center rounded-[22px] border border-dashed border-white/14 bg-white/5 text-center">

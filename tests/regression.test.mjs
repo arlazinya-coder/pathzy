@@ -349,6 +349,13 @@ assert.match(professionalIdentityTool, /onClick=\{\(\) => updateValue\("template
 assert.match(professionalIdentityTool, /Template switching changes presentation only\. Your CV model, edits, and saved content stay the same\./, "CV Builder must explain that switching templates preserves data.");
 assert.match(professionalIdentityTool, /Improve your CV/, "CV Builder must show Improve your CV recommendations instead of generic missing-field messages.");
 assert.match(professionalIdentityTool, /Add \{parsedCv\.missing\.join\(", "\)\.toLowerCase\(\)\}/, "CV recommendations must be based on the structured CV model gaps.");
+assert.match(documentDownloads, /export function renderAtsCvHtmlFromModel\(cvInput: CvModel\)/, "CV renderer must expose an ATS Preview renderer from the same CV model.");
+assert.match(professionalIdentityTool, /const \[cvPreviewMode, setCvPreviewMode\] = useState<"designed" \| "ats">/, "CV Builder must support Designed and ATS preview modes.");
+assert.match(professionalIdentityTool, /ATS Preview/, "CV Builder must show an ATS Preview mode alongside the designed preview.");
+assert.match(professionalIdentityTool, /renderAtsCvHtmlFromModel\(previewCvModel\)/, "ATS Preview must render from the live CV model.");
+assert.match(professionalIdentityTool, /function cvHealthScore\(cv: CvModel \| null\)/, "CV Builder must calculate a CV Health Score from structured CV data.");
+assert.match(professionalIdentityTool, /CV Health Score/, "CV Builder must display CV Health Score.");
+assert.match(professionalIdentityTool, /Improve your CV: \{recommendation\}/, "CV Health recommendations must be actionable Improve your CV messages.");
 assert.match(myDocumentsClient, /documentTemplateGallery\.map/, "My Documents must use the same template engine for saved CV versions.");
 assert.match(documentTemplateEngine, /legacyTemplateAliases[\s\S]*"ATS Friendly": "Modern ATS"/, "Legacy saved template names must normalize to canonical templates.");
 assert.match(documentDownloads, /resolveCvTemplateDesign\(templateName\)/, "Template choice must resolve to a real document design.");
