@@ -48,6 +48,7 @@ const exportStandard = readFileSync("docs/PATHZY_EXPORT_STANDARD.md", "utf8");
 const documentTemplateEngine = readFileSync("lib/professional-identity/document-template-engine.ts", "utf8");
 const documentDownloads = readFileSync("components/professional-identity/document-downloads.ts", "utf8");
 const professionalIdentityTool = readFileSync("components/professional-identity/professional-identity-tool.tsx", "utf8");
+const templateMiniPreview = readFileSync("components/professional-identity/template-mini-preview.tsx", "utf8");
 const myDocumentsClient = readFileSync("components/professional-identity/my-documents-client.tsx", "utf8");
 const cvBuilderPage = readFileSync("app/cv-builder/page.tsx", "utf8");
 const supabaseServer = readFileSync("lib/supabase/server.ts", "utf8");
@@ -343,6 +344,10 @@ assert.match(documentDownloads, /pathzyEliteDesignSystem/, "CV renderer must use
 assert.match(documentDownloads, /function buildSingleColumnCvLayout/, "ATS and International templates must have a true single-column A4 layout path.");
 assert.match(documentDownloads, /premiumTemplate\.identity === "ats" \|\| premiumTemplate\.identity === "international"[\s\S]*buildSingleColumnCvLayout/, "Modern ATS and International Standard must render structurally different single-column CV layouts.");
 assert.match(documentDownloads, /function printableCvSections/, "Single-column layouts must render real CV sections from the canonical model without creating another content source.");
+assert.match(documentDownloads, /rightRail = \["executive", "consulting", "engineering"\]\.includes/, "Executive, Consulting, and Engineering templates must use a visibly different right-rail document architecture.");
+assert.match(documentDownloads, /graduate: \["Education", "Projects", "Internships"/, "Graduate Elite must use an education-first document architecture.");
+assert.match(documentDownloads, /healthcare: \["Certifications", "Education", "Professional Experience"/, "Healthcare Professional must elevate credentials and education near the top.");
+assert.match(documentDownloads, /engineering: \["Projects", "Professional Experience"/, "Engineering must prioritize technical projects and experience.");
 for (const templateName of ["Executive Black", "Modern ATS", "Google Style", "Microsoft Professional", "Deloitte Consulting", "Creative Premium", "Healthcare Professional", "Graduate Elite", "Engineering", "International Standard"]) {
   assert.match(documentTemplateEngine, new RegExp(`name: "${templateName}"`), `${templateName} must be registered in the reusable template engine.`);
   assert.match(documentDownloads, new RegExp(`"${templateName}"[\\s\\S]*identity:`), `${templateName} must have its own design identity.`);
@@ -353,7 +358,13 @@ assert.match(professionalIdentityService, /premiumDocumentTemplates = documentTe
 assert.match(professionalIdentityTool, /documentTemplateGallery\.map/, "CV Builder must render the shared visual template gallery.");
 assert.match(professionalIdentityTool, /Template gallery[\s\S]*Choose a recruiter-ready design/, "CV Builder must expose a visual template gallery.");
 assert.match(professionalIdentityTool, /\[grid-template-columns:repeat\(auto-fit,minmax\(220px,1fr\)\)\]/, "CV Builder template gallery must use a responsive minimum-width card grid.");
-assert.match(professionalIdentityTool, /cv-template-mini-preview/, "CV Builder template gallery must show lightweight mini document previews instead of abstract skeleton-only cards.");
+assert.match(professionalIdentityTool, /<TemplateMiniPreview template=\{template\} \/>/, "CV Builder template gallery must use the shared architecture mini preview component.");
+assert.match(templateMiniPreview, /cv-template-mini-preview/, "CV Builder template gallery must show lightweight mini document previews instead of abstract skeleton-only cards.");
+for (const layout of ["single", "international", "executive", "consulting", "technical", "creative", "graduate"]) {
+  assert.match(templateMiniPreview, new RegExp(layout), `Template mini preview must represent the ${layout} architecture.`);
+}
+assert.doesNotMatch(professionalIdentityTool, /lg:flex-row lg:items-start lg:justify-between/, "CV gallery parent must not use the old stretched desktop flex-row layout.");
+assert.doesNotMatch(professionalIdentityTool, /min-h-\[330px\]/, "CV template cards must use natural content height, not fixed minimum card height.");
 assert.match(professionalIdentityTool, /template\.atsCharacteristic[\s\S]*template\.recruiterCharacteristic/, "CV Builder template cards must show honest characteristics instead of static percentages.");
 assert.doesNotMatch(professionalIdentityTool, /ATS \{template\.atsRating\}%|Recruiter \{template\.recruiterRating\}%/, "CV Builder template cards must not show fake ATS or recruiter percentages.");
 assert.match(professionalIdentityTool, /onClick=\{\(\) => updateValue\("templateName", template\.name\)\}/, "Template cards must switch instantly while preserving the same CV model.");

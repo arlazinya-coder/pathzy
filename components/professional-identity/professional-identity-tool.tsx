@@ -4,6 +4,7 @@ import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "reac
 import Link from "next/link";
 import { Card } from "@/components/ui";
 import { PremiumUpgradeCard } from "@/components/upgrade/premium-upgrade-card";
+import { TemplateMiniPreview } from "@/components/professional-identity/template-mini-preview";
 import { coverLetterDataFromUnknown, coverLetterPdfFilename, cvModelFromUnknown, cvModelWithMissing, downloadBlob, normalizeCoverLetterDataForExport, normalizeCvModelForExport, pathzyFilename, renderAtsCvHtmlFromModel, renderCoverLetterHtmlFromData, renderCvHtml, renderCvHtmlFromModel, serializeCoverLetterData, serializeCvModel, simpleCoverLetterPdfDocument, simplePdfDocument, simplePdfDocumentFromModel } from "@/components/professional-identity/document-downloads";
 import type { CoverLetterData, CvModel } from "@/components/professional-identity/document-downloads";
 import { documentTemplateGallery, normalizeDocumentTemplate, templateMetadata } from "@/lib/professional-identity/document-template-engine";
@@ -1056,59 +1057,61 @@ export function ProfessionalIdentityTool({
     <div className={workspaceClass}>
       <Card className={tool === "cv" ? "lg:col-span-4" : tool === "cover-letter" ? "lg:col-span-2" : undefined}>
         {tool === "cv" ? (
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-xl">
-              <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">{document ? "CV generated" : "Generate your CV"}</p>
-              <h2 className="mt-2 text-2xl font-black">{document ? outputTitle : title}</h2>
-              <p className="mt-2 text-sm leading-6 text-white/58">{document ? "Your draft is ready. Keep editing below, save changes, or regenerate from your latest PATHZY profile." : description}</p>
-            </div>
-            <form onSubmit={generate} className="grid w-full gap-3 lg:max-w-3xl lg:grid-cols-[.85fr_1.15fr_.95fr_auto_auto] lg:items-end">
-              <label className="label">
-                Language
-                <select className="field" value={values.language ?? "english"} onChange={(event) => updateValue("language", event.target.value as ProfessionalLanguage)}>
-                  <option value="english">English</option>
-                  <option value="french">French</option>
-                </select>
-              </label>
-              <label className="label">
-                Template
-                <select className="field" value={templateName} onChange={(event) => updateValue("templateName", event.target.value)}>
-                  {cvDesignSystems.map((template) => (
-                    <option key={template} value={template}>{template}</option>
-                  ))}
-                </select>
-              </label>
-              {fields.map((field) => (
-                <label key={field.name} className="label">
-                  {field.label}
-                  {field.type === "select" ? (
-                    <select className="field" value={(values[field.name] as string | undefined) ?? field.options?.[0] ?? ""} onChange={(event) => updateValue(field.name, event.target.value)}>
-                      {(field.options ?? []).map((option) => (
-                        <option key={option} value={option}>{option}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input className="field" type={field.type ?? "text"} placeholder={field.placeholder} value={(values[field.name] as string | undefined) ?? ""} onChange={(event) => updateValue(field.name, event.target.value)} />
-                  )}
+          <div className="grid gap-6">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)] lg:items-start lg:justify-between">
+              <div className="max-w-xl">
+                <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">{document ? "CV generated" : "Generate your CV"}</p>
+                <h2 className="mt-2 text-2xl font-black">{document ? outputTitle : title}</h2>
+                <p className="mt-2 text-sm leading-6 text-white/58">{document ? "Your draft is ready. Keep editing below, save changes, or regenerate from your latest PATHZY profile." : description}</p>
+              </div>
+              <form onSubmit={generate} className="grid w-full gap-3 lg:grid-cols-[.85fr_1.15fr_.95fr_auto_auto] lg:items-end">
+                <label className="label">
+                  Language
+                  <select className="field" value={values.language ?? "english"} onChange={(event) => updateValue("language", event.target.value as ProfessionalLanguage)}>
+                    <option value="english">English</option>
+                    <option value="french">French</option>
+                  </select>
                 </label>
-              ))}
-              <button disabled={loading} className="h-[46px] rounded-full blue-purple px-5 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60">
-                {loading ? "Generating" : document ? "Regenerate" : "Generate"}
-              </button>
-              <button type="button" onClick={() => setCvEntryMode(cvEntryMode === "upload" ? "profile" : "upload")} className="h-[46px] rounded-full border border-white/12 bg-white/8 px-5 text-sm font-extrabold text-white/82">
-                {cvEntryMode === "upload" ? "Use Profile" : "Upload CV"}
-              </button>
-              {cvEntryMode === "upload" ? (
-                <div id="old-cv-upload" className="rounded-[18px] border border-white/10 bg-white/6 p-4 lg:col-span-5">
-                  <p className="text-sm font-extrabold text-white">Upload old CV</p>
-                  <input className="mt-3 block w-full text-sm text-white/62 file:mr-4 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-extrabold file:text-white" type="file" accept=".pdf,.docx,.png,.jpg,.jpeg,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg" onChange={(event) => handleOldCvUpload(event.target.files?.[0] ?? null)} />
-                  {oldCvNotice ? <p className="mt-3 rounded-[16px] border border-[#f8c45d]/25 bg-[#f8c45d]/10 px-4 py-3 text-sm font-bold text-[#ffe2a8]">{oldCvNotice}</p> : null}
-                  <textarea className="field mt-3 min-h-[96px]" placeholder="Paste text from your old CV here." value={values.oldCvText ?? ""} onChange={(event) => updateValue("oldCvText", event.target.value)} />
-                </div>
-              ) : null}
-            </form>
+                <label className="label">
+                  Template
+                  <select className="field" value={templateName} onChange={(event) => updateValue("templateName", event.target.value)}>
+                    {cvDesignSystems.map((template) => (
+                      <option key={template} value={template}>{template}</option>
+                    ))}
+                  </select>
+                </label>
+                {fields.map((field) => (
+                  <label key={field.name} className="label">
+                    {field.label}
+                    {field.type === "select" ? (
+                      <select className="field" value={(values[field.name] as string | undefined) ?? field.options?.[0] ?? ""} onChange={(event) => updateValue(field.name, event.target.value)}>
+                        {(field.options ?? []).map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input className="field" type={field.type ?? "text"} placeholder={field.placeholder} value={(values[field.name] as string | undefined) ?? ""} onChange={(event) => updateValue(field.name, event.target.value)} />
+                    )}
+                  </label>
+                ))}
+                <button disabled={loading} className="h-[46px] rounded-full blue-purple px-5 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60">
+                  {loading ? "Generating" : document ? "Regenerate" : "Generate"}
+                </button>
+                <button type="button" onClick={() => setCvEntryMode(cvEntryMode === "upload" ? "profile" : "upload")} className="h-[46px] rounded-full border border-white/12 bg-white/8 px-5 text-sm font-extrabold text-white/82">
+                  {cvEntryMode === "upload" ? "Use Profile" : "Upload CV"}
+                </button>
+                {cvEntryMode === "upload" ? (
+                  <div id="old-cv-upload" className="rounded-[18px] border border-white/10 bg-white/6 p-4 lg:col-span-5">
+                    <p className="text-sm font-extrabold text-white">Upload old CV</p>
+                    <input className="mt-3 block w-full text-sm text-white/62 file:mr-4 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-extrabold file:text-white" type="file" accept=".pdf,.docx,.png,.jpg,.jpeg,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg" onChange={(event) => handleOldCvUpload(event.target.files?.[0] ?? null)} />
+                    {oldCvNotice ? <p className="mt-3 rounded-[16px] border border-[#f8c45d]/25 bg-[#f8c45d]/10 px-4 py-3 text-sm font-bold text-[#ffe2a8]">{oldCvNotice}</p> : null}
+                    <textarea className="field mt-3 min-h-[96px]" placeholder="Paste text from your old CV here." value={values.oldCvText ?? ""} onChange={(event) => updateValue("oldCvText", event.target.value)} />
+                  </div>
+                ) : null}
+              </form>
+            </div>
             {document && cvModel && activeCvVersion ? (
-              <div className="rounded-[22px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 p-4 lg:col-span-2">
+              <div className="rounded-[22px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 p-4">
                 <div className="grid gap-3 lg:grid-cols-[1.2fr_.9fr_auto] lg:items-end">
                   <label className="label">
                     CV version name
@@ -1138,7 +1141,7 @@ export function ProfessionalIdentityTool({
               </div>
             ) : null}
             {tool === "cv" ? (
-              <div className="rounded-[22px] border border-white/10 bg-white/6 p-4 lg:col-span-5">
+              <div className="rounded-[22px] border border-white/10 bg-white/6 p-4">
                 <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                   <div>
                     <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">Template gallery</p>
@@ -1153,35 +1156,9 @@ export function ProfessionalIdentityTool({
                       key={template.name}
                       type="button"
                       onClick={() => updateValue("templateName", template.name)}
-                      className={`group flex min-h-[330px] flex-col rounded-[20px] border p-4 text-left transition hover:-translate-y-0.5 ${templateName === template.name ? "border-[#8fb0ff] bg-[#5B8CFF]/16 shadow-[0_18px_54px_rgba(91,140,255,.22)]" : "border-white/10 bg-white/6 hover:border-white/18"}`}
+                      className={`group flex flex-col rounded-[20px] border p-4 text-left transition hover:-translate-y-0.5 ${templateName === template.name ? "border-[#8fb0ff] bg-[#5B8CFF]/16 shadow-[0_18px_54px_rgba(91,140,255,.22)]" : "border-white/10 bg-white/6 hover:border-white/18"}`}
                     >
-                      <div className="cv-template-mini-preview h-32 overflow-hidden rounded-[16px] border border-white/10 p-3" style={{ background: template.thumbnail.background }}>
-                        <div className={template.thumbnail.layout === "single" ? "grid gap-2" : "grid h-full grid-cols-[.36fr_1fr] gap-3"}>
-                          {template.thumbnail.layout === "single" ? null : (
-                            <div className="rounded-lg p-2" style={{ background: `${template.thumbnail.accent}24` }}>
-                              <div className="h-2 w-8 rounded-full" style={{ background: template.thumbnail.accent }} />
-                              <div className="mt-3 grid gap-1.5">
-                                <div className="h-1.5 w-full rounded-full bg-black/16" />
-                                <div className="h-1.5 w-3/4 rounded-full bg-black/12" />
-                                <div className="h-1.5 w-5/6 rounded-full bg-black/12" />
-                              </div>
-                            </div>
-                          )}
-                          <div className="grid content-start gap-2">
-                            <div className="h-2.5 w-20 rounded-full" style={{ background: template.thumbnail.accent }} />
-                            <div className={template.thumbnail.layout === "consulting" ? "h-1 w-12 rounded-full" : "h-1.5 w-4/5 rounded-full bg-black/18"} style={template.thumbnail.layout === "consulting" ? { background: template.thumbnail.accent } : undefined} />
-                            <div className="grid gap-1.5">
-                              <div className="h-1.5 w-full rounded-full bg-black/16" />
-                              <div className="h-1.5 w-5/6 rounded-full bg-black/12" />
-                              <div className="h-1.5 w-3/4 rounded-full bg-black/12" />
-                            </div>
-                            <div className={template.thumbnail.layout === "technical" ? "grid grid-cols-2 gap-1.5" : template.thumbnail.layout === "creative" ? "mt-1 grid grid-cols-[1fr_.48fr] gap-1.5" : "grid gap-1.5"}>
-                              <div className="h-5 rounded bg-black/10" />
-                              <div className="h-5 rounded bg-black/10" />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                      <TemplateMiniPreview template={template} />
                       <div className="mt-4 flex items-start justify-between gap-3">
                         <p className="text-base font-black leading-5 text-white">{template.name}</p>
                         {templateName === template.name ? <span className="shrink-0 rounded-full bg-[#8fb0ff]/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#c7d6ff]">Selected</span> : null}

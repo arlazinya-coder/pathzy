@@ -22,7 +22,7 @@ export type DocumentTemplateMetadata = {
   thumbnail: {
     background: string;
     accent: string;
-    layout: "single" | "sidebar" | "consulting" | "creative" | "technical";
+    layout: "single" | "sidebar" | "consulting" | "creative" | "technical" | "executive" | "enterprise" | "healthcare" | "graduate" | "international";
   };
 };
 
@@ -41,7 +41,7 @@ export const documentTemplateGallery: DocumentTemplateMetadata[] = [
     bestFor: "Senior professionals, managers, founders, consultants",
     atsCharacteristic: "Executive Layout",
     recruiterCharacteristic: "Leadership Focused",
-    thumbnail: { background: "#111111", accent: "#c9a35b", layout: "sidebar" }
+    thumbnail: { background: "#111111", accent: "#c9a35b", layout: "executive" }
   },
   {
     name: "Modern ATS",
@@ -65,7 +65,7 @@ export const documentTemplateGallery: DocumentTemplateMetadata[] = [
     bestFor: "Enterprise, administration, finance, IT support",
     atsCharacteristic: "ATS Optimized",
     recruiterCharacteristic: "Enterprise Ready",
-    thumbnail: { background: "#f5f9ff", accent: "#2563eb", layout: "single" }
+    thumbnail: { background: "#f5f9ff", accent: "#2563eb", layout: "enterprise" }
   },
   {
     name: "Deloitte Consulting",
@@ -89,7 +89,7 @@ export const documentTemplateGallery: DocumentTemplateMetadata[] = [
     bestFor: "Healthcare, care work, public service, education support",
     atsCharacteristic: "ATS Friendly",
     recruiterCharacteristic: "Credential Focused",
-    thumbnail: { background: "#f4faf7", accent: "#15803d", layout: "single" }
+    thumbnail: { background: "#f4faf7", accent: "#15803d", layout: "healthcare" }
   },
   {
     name: "Graduate Elite",
@@ -97,7 +97,7 @@ export const documentTemplateGallery: DocumentTemplateMetadata[] = [
     bestFor: "Students, graduates, internships, first jobs",
     atsCharacteristic: "Graduate Friendly",
     recruiterCharacteristic: "Potential Focused",
-    thumbnail: { background: "#f6f7ff", accent: "#6366f1", layout: "sidebar" }
+    thumbnail: { background: "#f6f7ff", accent: "#6366f1", layout: "graduate" }
   },
   {
     name: "Engineering",
@@ -113,7 +113,7 @@ export const documentTemplateGallery: DocumentTemplateMetadata[] = [
     bestFor: "International applications, NGOs, remote roles, relocation",
     atsCharacteristic: "International Format",
     recruiterCharacteristic: "Conservative Layout",
-    thumbnail: { background: "#ffffff", accent: "#334155", layout: "single" }
+    thumbnail: { background: "#ffffff", accent: "#334155", layout: "international" }
   }
 ];
 

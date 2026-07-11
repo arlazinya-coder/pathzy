@@ -1189,12 +1189,32 @@ function section(cv: CvRenderModel, title: string) {
 }
 
 function mainSections(cv: CvRenderModel) {
-  const order = ["Career Goal", "Professional Experience", "Work Experience", "Experience", "Internships", "Freelance Work", "Projects", "Volunteer Experience", "Education", "Certifications", "Achievements", "Awards", "Publications", "Conferences", "Professional Memberships", "Interests", "References"];
+  const orders: Partial<Record<CvDesignSystem["identity"], string[]>> = {
+    executive: ["Career Goal", "Professional Experience", "Work Experience", "Experience", "Achievements", "Projects", "Education", "Certifications", "Awards", "Professional Memberships", "References"],
+    consulting: ["Professional Experience", "Work Experience", "Experience", "Projects", "Achievements", "Education", "Certifications", "Professional Memberships", "Awards", "References"],
+    healthcare: ["Certifications", "Education", "Professional Experience", "Work Experience", "Experience", "Volunteer Experience", "Achievements", "Languages", "References"],
+    graduate: ["Education", "Projects", "Internships", "Achievements", "Volunteer Experience", "Professional Experience", "Work Experience", "Experience", "Certifications", "Awards", "References"],
+    engineering: ["Projects", "Professional Experience", "Work Experience", "Experience", "Education", "Certifications", "Achievements", "Publications", "Conferences", "References"],
+    creative: ["Projects", "Portfolio Links", "Professional Experience", "Work Experience", "Experience", "Achievements", "Awards", "Education", "Certifications", "Interests", "References"],
+    professional: ["Professional Experience", "Work Experience", "Experience", "Education", "Certifications", "Projects", "Achievements", "Professional Memberships", "References"],
+    modern: ["Projects", "Professional Experience", "Work Experience", "Experience", "Education", "Certifications", "Achievements", "References"]
+  };
+  const order = orders[premiumTemplate.identity] ?? ["Career Goal", "Professional Experience", "Work Experience", "Experience", "Internships", "Freelance Work", "Projects", "Volunteer Experience", "Education", "Certifications", "Achievements", "Awards", "Publications", "Conferences", "Professional Memberships", "Interests", "References"];
   return order.map((title) => section(cv, title)).filter((item) => item?.items.length) as CvSection[];
 }
 
 function sideSections(cv: CvRenderModel) {
-  const order = ["Core Competencies / Skills", "Core Skills", "Technical Skills", "Professional Skills", "Key Skills", "Portfolio Links", "GitHub", "Website", "Portfolio / LinkedIn / GitHub / Website", "Languages"];
+  const orders: Partial<Record<CvDesignSystem["identity"], string[]>> = {
+    executive: ["Core Competencies / Skills", "Professional Skills", "Technical Skills", "Education", "Certifications", "Languages", "Portfolio Links"],
+    consulting: ["Technical Skills", "Core Competencies / Skills", "Professional Skills", "Education", "Certifications", "Languages"],
+    healthcare: ["Core Competencies / Skills", "Professional Skills", "Technical Skills", "Languages", "Portfolio Links"],
+    graduate: ["Core Competencies / Skills", "Technical Skills", "Professional Skills", "Certifications", "Languages", "Portfolio Links"],
+    engineering: ["Technical Skills", "Core Competencies / Skills", "Portfolio Links", "Professional Skills", "Languages"],
+    creative: ["Core Competencies / Skills", "Technical Skills", "Professional Skills", "Languages", "Certifications"],
+    professional: ["Core Competencies / Skills", "Technical Skills", "Professional Skills", "Languages", "Portfolio Links"],
+    modern: ["Core Competencies / Skills", "Technical Skills", "Professional Skills", "Languages", "Portfolio Links"]
+  };
+  const order = orders[premiumTemplate.identity] ?? ["Core Competencies / Skills", "Core Skills", "Technical Skills", "Professional Skills", "Key Skills", "Portfolio Links", "GitHub", "Website", "Portfolio / LinkedIn / GitHub / Website", "Languages"];
   return order.map((title) => section(cv, title)).filter((item) => item?.items.length) as CvSection[];
 }
 
@@ -1559,20 +1579,21 @@ function buildCvLayoutFromModelWithDesign(cvInput: CvModel, activeSection?: stri
   const cv = cvModelToRenderModel(cvInput);
   const layout: CvLayout = { width: page.width, height: page.height, pages: [] };
   const first = addPage(layout);
-  const sidebarX = 52;
+  const rightRail = ["executive", "consulting", "engineering"].includes(premiumTemplate.identity);
   const sidebarW = premiumTemplate.sidebarWidth;
-  const mainX = sidebarX + sidebarW + premiumTemplate.columnGap;
-  const mainW = page.width - mainX - 58;
+  const sidebarX = rightRail ? page.width - 52 - sidebarW : 52;
+  const mainX = rightRail ? 58 : sidebarX + sidebarW + premiumTemplate.columnGap;
+  const mainW = rightRail ? sidebarX - mainX - premiumTemplate.columnGap : page.width - mainX - 58;
   const headerHeight = premiumTemplate.headerHeight;
 
   first.elements.push({ kind: "rect", x: 0, y: 0, width: page.width, height: headerHeight, color: premiumTemplate.navy });
-  first.elements.push({ kind: "rect", x: 0, y: 0, width: sidebarW + 62, height: headerHeight, color: premiumTemplate.navyAlt });
+  first.elements.push({ kind: "rect", x: rightRail ? sidebarX - 24 : 0, y: 0, width: sidebarW + 62, height: headerHeight, color: premiumTemplate.navyAlt });
   if (premiumTemplate.showHeroOrnaments) {
     first.elements.push({ kind: "circle", x: 642, y: 32, radius: 56, color: premiumTemplate.identity === "graduate" ? "#373a8a" : "#173c70" });
     first.elements.push({ kind: "circle", x: 704, y: 78, radius: 28, color: premiumTemplate.identity === "graduate" ? "#4f46e5" : "#255b9b" });
   }
   first.elements.push({ kind: "rect", x: 0, y: headerHeight - 8, width: page.width, height: 8, color: premiumTemplate.blue });
-  first.elements.push({ kind: "rounded", x: 38, y: headerHeight + 32, width: sidebarW + 34, height: page.height - headerHeight - 95, radius: premiumTemplate.identity === "executive" ? 8 : 18, color: premiumTemplate.sidebar, borderColor: premiumTemplate.cardBorder });
+  first.elements.push({ kind: "rounded", x: sidebarX - 14, y: headerHeight + 32, width: sidebarW + 34, height: page.height - headerHeight - 95, radius: premiumTemplate.identity === "executive" ? 8 : 18, color: premiumTemplate.sidebar, borderColor: premiumTemplate.cardBorder });
   if (isActiveCvSection(activeSection, "Professional Header")) first.elements.push({ kind: "rounded", x: 42, y: 32, width: 512, height: 136, radius: premiumTemplate.cardRadius + 6, color: premiumTemplate.navyAlt, borderColor: premiumTemplate.blue, className: "cv-active-section", sectionId: "cv-section-active" });
   first.elements.push({ kind: "text", x: 52, y: 42, width: 500, text: cv.name || "", size: premiumTemplate.nameSize, color: premiumTemplate.heroText, weight: "bold" });
   if (cv.targetRole) first.elements.push({ kind: "text", x: 54, y: 96, width: 480, text: cv.targetRole, size: premiumTemplate.roleSize, color: premiumTemplate.heroMuted, weight: "bold" });
