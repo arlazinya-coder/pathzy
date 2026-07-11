@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { cvModelFromUnknown, serializeCoverLetterData, serializeCvModel } from "@/components/professional-identity/document-downloads";
+import { cvModelFromUnknown, normalizeCvModelForExport, serializeCoverLetterData, serializeCvModel } from "@/components/professional-identity/document-downloads";
 import type { CoverLetterData, CvModel } from "@/components/professional-identity/document-downloads";
 import type { DiscoveryAnswers, GeneratedRoadmap } from "@/lib/discovery/types";
 import { isPremiumUser } from "@/lib/launch/launch-service";
@@ -7,6 +7,7 @@ import { canExportProfessionalDocuments, canUseProfessionalIdentity } from "@/li
 import { getBrainContextForAI } from "@/lib/pathzy-brain/brain-service";
 import { documentTemplateGallery, normalizeDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
 import type { PremiumDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
+import type { ImportedCvResult } from "@/lib/professional-identity/cv-import";
 import type {
   GenerateOptions,
   GeneratedProfessionalDocument,
@@ -426,6 +427,105 @@ export async function generateCV(supabase: Supabase, userId: string, options: Ge
   await refreshIdentity(supabase, userId);
 
   return saveUnifiedDocument(supabase, userId, { id: data?.id, tool: "cv", title, content, contentJson: { cvModel, cvVersion }, score }, templateName, { cv_type: cvType });
+}
+
+export async function createImportedCvDraft(
+  supabase: Supabase,
+  userId: string,
+  imported: ImportedCvResult,
+  templateNameInput?: string
+): Promise<GeneratedProfessionalDocument> {
+  const templateName = normalizeTemplate(templateNameInput ?? "Modern ATS");
+  const cvModel = normalizeCvModelForExport(imported.cvModel);
+  const content = serializeCvModel(cvModel);
+  const now = new Date().toISOString();
+  const namePart = cvCandidateName({ profile: { full_name: cvModel.fullName }, discoveryAnswers: null, roadmap: null, brain: null, readiness: null, skillGaps: [] });
+  const baseFileName = imported.fileName.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
+  const title = `Imported CV${namePart ? ` - ${namePart}` : baseFileName ? ` - ${baseFileName}` : ""}`;
+  const score = Math.min(
+    95,
+    Math.max(
+      35,
+      40 +
+        imported.counts.skills * 2 +
+        imported.counts.workExperiences * 8 +
+        imported.counts.educationRecords * 6 +
+        imported.counts.projects * 4 +
+        imported.counts.certifications * 3
+    )
+  );
+  const { data } = await supabase
+    .from("cv_documents")
+    .insert({
+      user_id: userId,
+      language: "english",
+      cv_type: "Imported CV",
+      title,
+      content,
+      score,
+      status: "draft"
+    })
+    .select("id")
+    .maybeSingle();
+
+  const cvVersion = {
+    designSystem: templateName,
+    versionName: title,
+    createdAt: now,
+    updatedAt: now,
+    lastDownloadedAt: null,
+    contentSourceId: data?.id ?? null
+  };
+
+  await supabase.from("user_documents").insert({
+    user_id: userId,
+    document_type: "old_cv",
+    document_title: `Uploaded CV - ${imported.fileName}`,
+    template_name: null,
+    content_json: {
+      source: "uploaded_cv",
+      original_file_name: imported.fileName,
+      original_file_type: imported.fileType,
+      original_file_size: imported.fileSize,
+      confidence: imported.confidence,
+      counts: imported.counts,
+      review_items: imported.reviewItems
+    },
+    content_text: imported.normalizedText,
+    status: "ready",
+    version_number: 1,
+    updated_at: now
+  });
+
+  await refreshIdentity(supabase, userId);
+
+  return saveUnifiedDocument(
+    supabase,
+    userId,
+    {
+      id: data?.id,
+      tool: "cv",
+      title,
+      content,
+      contentJson: {
+        cvModel,
+        cvVersion,
+        cvImport: {
+          source: "uploaded_cv",
+          fileName: imported.fileName,
+          fileType: imported.fileType,
+          fileSize: imported.fileSize,
+          confidence: imported.confidence,
+          counts: imported.counts,
+          reviewItems: imported.reviewItems,
+          importedAt: now
+        }
+      },
+      score
+    },
+    templateName,
+    { cv_type: "Imported CV" }
+  );
 }
 
 export async function generateCoverLetter(supabase: Supabase, userId: string, options: GenerateOptions = {}): Promise<GeneratedProfessionalDocument> {

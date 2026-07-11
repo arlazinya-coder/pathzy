@@ -133,6 +133,21 @@ type CvVersionMetadata = {
   contentSourceId?: string | null;
 };
 
+type CvImportSummary = {
+  counts: {
+    workExperiences: number;
+    educationRecords: number;
+    skills: number;
+    certifications: number;
+    languages: number;
+    projects: number;
+    achievements: number;
+  };
+  reviewItems: string[];
+  confidence: "high" | "medium" | "low";
+  message: string;
+};
+
 function cvVersionFromDocument(document: GeneratedProfessionalDocument | null, fallbackDesign = "Modern ATS"): CvVersionMetadata {
   const raw = document?.contentJson?.cvVersion;
   const source = raw && typeof raw === "object" ? raw as Partial<CvVersionMetadata> : {};
@@ -251,6 +266,9 @@ export function ProfessionalIdentityTool({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [downloadNotice, setDownloadNotice] = useState("");
   const [oldCvNotice, setOldCvNotice] = useState("");
+  const [cvImportStatus, setCvImportStatus] = useState<"idle" | "reading" | "extracting" | "organizing" | "saving" | "ready" | "error">("idle");
+  const [cvImportSummary, setCvImportSummary] = useState<CvImportSummary | null>(null);
+  const [pendingImportedCv, setPendingImportedCv] = useState<GeneratedProfessionalDocument | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [cvEntryMode, setCvEntryMode] = useState<"choice" | "profile" | "upload">("profile");
   const [viewMode, setViewMode] = useState<"preview" | "edit">("preview");
@@ -1234,44 +1252,60 @@ export function ProfessionalIdentityTool({
 
   async function handleOldCvUpload(file: File | null) {
     if (!file) return;
-    const allowed = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "image/png", "image/jpeg"];
+    const allowed = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
     if (!allowed.includes(file.type)) {
-      setOldCvNotice("Unsupported file type. Please upload PDF, DOCX, PNG, JPG, or JPEG.");
+      setCvImportStatus("error");
+      setOldCvNotice("This file format isn't supported yet. Please upload a PDF or DOCX CV.");
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
+      setCvImportStatus("error");
       setOldCvNotice("This file is too large. Please upload a file smaller than 8MB.");
       return;
     }
-    setOldCvNotice("Saving your uploaded CV record...");
+    if (file.size <= 0) {
+      setCvImportStatus("error");
+      setOldCvNotice("This CV file appears to be empty.");
+      return;
+    }
+    setCvImportSummary(null);
+    setPendingImportedCv(null);
+    setCvImportStatus("reading");
+    setOldCvNotice("Reading your CV...");
     try {
-      const response = await fetch("/api/professional-identity", {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result ?? "").split(",")[1] ?? "");
+        reader.onerror = () => reject(new Error("We could not read this file in your browser. Please try again."));
+        reader.readAsDataURL(file);
+      });
+      setCvImportStatus("extracting");
+      setOldCvNotice("Finding your experience...");
+      const response = await fetch("/api/professional-identity/import-cv", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tool: "uploaded-document",
-          upload: {
-            documentType: "old_cv",
-            title: `Old CV - ${file.name}`,
-            fileName: file.name,
-            fileType: file.type,
-            fileSize: file.size,
-            content: values.oldCvText ?? "",
-            status: "draft"
-          }
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          base64,
+          templateName
         })
       });
+      setCvImportStatus("organizing");
+      setOldCvNotice("Organising your education and skills...");
       const data = await response.json();
-      if (!response.ok || data.error) throw new Error(data.error ?? "Could not save uploaded CV.");
-      setOldCvNotice("Your old CV record is saved in My Documents. PATHZY could not read this file clearly in the browser, so paste the CV text below and rebuild it.");
+      if (!response.ok || data.error) throw new Error(data.error ?? "We could not complete the CV import. Your existing PATHZY information is safe.");
+      setCvImportStatus("saving");
+      setPendingImportedCv(data.document);
+      setCvImportSummary(data.importSummary);
+      setOldCvNotice("Preparing your PATHZY CV...");
+      setCvImportStatus("ready");
     } catch (caught) {
-      console.error("[professional-identity] old CV upload save failed", caught);
-      setOldCvNotice("We could not save the upload record yet. Your file was not changed. Paste the CV text below, then try again when your connection is stable.");
+      console.error("[professional-identity] CV import failed", caught instanceof Error ? caught.message : caught);
+      setCvImportStatus("error");
+      setOldCvNotice(caught instanceof Error ? caught.message : "We could not complete the CV import. Your existing PATHZY information is safe.");
     }
-    setValues((current) => ({
-      ...current,
-      oldCvText: current.oldCvText || ""
-    }));
   }
 
   if (upgradeRequired || exportUpgradeRequired) {
@@ -1342,9 +1376,47 @@ export function ProfessionalIdentityTool({
                 {cvEntryMode === "upload" ? (
                   <div id="old-cv-upload" className="rounded-[18px] border border-white/10 bg-white/6 p-4 lg:col-span-5">
                     <p className="text-sm font-extrabold text-white">Upload old CV</p>
-                    <input className="mt-3 block w-full text-sm text-white/62 file:mr-4 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-extrabold file:text-white" type="file" accept=".pdf,.docx,.png,.jpg,.jpeg,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg" onChange={(event) => handleOldCvUpload(event.target.files?.[0] ?? null)} />
-                    {oldCvNotice ? <p className="mt-3 rounded-[16px] border border-[#f8c45d]/25 bg-[#f8c45d]/10 px-4 py-3 text-sm font-bold text-[#ffe2a8]">{oldCvNotice}</p> : null}
-                    <textarea className="field mt-3 min-h-[96px]" placeholder="Paste text from your old CV here." value={values.oldCvText ?? ""} onChange={(event) => updateValue("oldCvText", event.target.value)} />
+                    <p className="mt-1 text-sm leading-6 text-white/58">Upload a text-based PDF or DOCX. PATHZY will read the content, organize it into your CV draft, then ask you to review before editing.</p>
+                    <input className="mt-3 block w-full text-sm text-white/62 file:mr-4 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-extrabold file:text-white" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => handleOldCvUpload(event.target.files?.[0] ?? null)} />
+                    {oldCvNotice ? (
+                      <p className={`mt-3 rounded-[16px] border px-4 py-3 text-sm font-bold ${cvImportStatus === "error" ? "border-[#ff6b7a]/25 bg-[#ff6b7a]/10 text-[#ffd5da]" : "border-[#5B8CFF]/25 bg-[#5B8CFF]/10 text-[#c7d6ff]"}`}>
+                        {oldCvNotice}
+                      </p>
+                    ) : null}
+                    {cvImportStatus !== "idle" && cvImportStatus !== "ready" && cvImportStatus !== "error" ? (
+                      <div className="mt-3 overflow-hidden rounded-full bg-white/10">
+                        <div className="h-2 rounded-full bg-gradient-to-r from-[#5B8CFF] to-[#9D5BFF]" style={{ width: cvImportStatus === "reading" ? "25%" : cvImportStatus === "extracting" ? "50%" : cvImportStatus === "organizing" ? "72%" : "90%" }} />
+                      </div>
+                    ) : null}
+                    {cvImportSummary && pendingImportedCv ? (
+                      <div className="mt-4 rounded-[18px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-sm font-black text-white">{cvImportSummary.message}</p>
+                            <p className="mt-1 text-sm leading-6 text-[#b9f8d5]">
+                              We found {cvImportSummary.counts.workExperiences} work experiences, {cvImportSummary.counts.educationRecords} education records, {cvImportSummary.counts.skills} skills, {cvImportSummary.counts.certifications} certifications, and {cvImportSummary.counts.languages} languages.
+                            </p>
+                            {cvImportSummary.reviewItems.length ? (
+                              <p className="mt-2 text-xs font-bold text-[#ffe2a8]">{cvImportSummary.reviewItems.length} item{cvImportSummary.reviewItems.length === 1 ? "" : "s"} may need your review.</p>
+                            ) : (
+                              <p className="mt-2 text-xs font-bold text-[#b9f8d5]">Imported details are ready for review.</p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCvDocument(pendingImportedCv, true);
+                              setCvEntryMode("profile");
+                              setActiveCvSection("Professional Header");
+                              setSectionNotice("Imported from your CV. Review each section before downloading.");
+                            }}
+                            className="h-[44px] shrink-0 rounded-full blue-purple px-5 text-sm font-extrabold text-white"
+                          >
+                            Review Imported CV
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </form>

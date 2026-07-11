@@ -54,6 +54,8 @@ const cvBuilderPage = readFileSync("app/cv-builder/page.tsx", "utf8");
 const supabaseServer = readFileSync("lib/supabase/server.ts", "utf8");
 const floatingMentorButton = readFileSync("components/mentor/floating-mentor-button.tsx", "utf8");
 const professionalIdentityService = readFileSync("lib/professional-identity/professional-identity-service.ts", "utf8");
+const cvImportPipeline = readFileSync("lib/professional-identity/cv-import.ts", "utf8");
+const cvImportRoute = readFileSync("app/api/professional-identity/import-cv/route.ts", "utf8");
 const coverLetterGeneration = professionalIdentityService.match(/export async function generateCoverLetter[\s\S]*?export async function generateLinkedInProfile/)?.[0] ?? "";
 
 for (const section of ["Navigation", "Hero", "Features", "How PATHZY Works", "Career Journey", "Pricing", "Testimonials", "FAQ", "Footer"]) {
@@ -424,6 +426,26 @@ assert.match(documentDownloads, /headerHeight[\s\S]*sidebarWidth[\s\S]*columnGap
 assert.match(professionalIdentityTool, /simplePdfDocumentFromModel\(document\.title, cvModel, templateName\)/, "CV export must use the same structured model as preview.");
 assert.match(myDocumentsClient, /simplePdfDocumentFromModel\(selected\.title, selectedCvModel/, "Saved CV PDF export must use the structured CV model.");
 assert.doesNotMatch(`${professionalIdentityTool}\n${myDocumentsClient}\n${cvBuilderPage}`, /Download DOCX|downloadDocx|downloadWord|Download Text|text export|download text|download PDF, or download DOCX/i, "Normal user flow must not expose DOCX or text export.");
+assert.match(cvImportPipeline, /export function validateCvImportFile/, "CV import must validate files before extraction.");
+assert.match(cvImportPipeline, /application\/pdf/, "CV import must support PDF files.");
+assert.match(cvImportPipeline, /application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document/, "CV import must support DOCX files.");
+assert.match(cvImportPipeline, /throw new CvImportError\("Unsupported file type\./, "CV import must reject unsupported files with a safe error.");
+assert.match(cvImportPipeline, /extractPdfText\(buffer: Buffer\)/, "CV import must extract text from text-based PDFs server-side.");
+assert.match(cvImportPipeline, /extractDocxText\(buffer: Buffer\)/, "CV import must extract text from DOCX files server-side.");
+assert.match(cvImportPipeline, /mapImportedTextToCvModel\(text: string\)/, "CV import must map extracted text into the canonical CvModel.");
+assert.match(cvImportPipeline, /professionalExperience: parseExperience\(sections\.experience\)/, "CV import must map experience into the existing professionalExperience field.");
+assert.match(cvImportPipeline, /education: parseEducation\(sections\.education\)/, "CV import must map education into the existing education field.");
+assert.match(cvImportPipeline, /optionalSections: \{[\s\S]*volunteerExperience[\s\S]*publications[\s\S]*professionalMemberships/, "CV import must map additional sections into the existing optionalSections architecture.");
+assert.match(cvImportPipeline, /reviewItemsFor\(cvModel, normalizedText\.length\)/, "CV import must flag uncertain imported data for review.");
+assert.match(cvImportRoute, /createImportedCvDraft\(auth\.supabase, auth\.user\.id, imported, body\.templateName\)/, "CV import route must persist a reviewable imported CV draft.");
+assert.match(cvImportRoute, /safeFailure/, "CV import route must not expose raw technical failures to users.");
+assert.match(professionalIdentityService, /export async function createImportedCvDraft/, "Imported CV drafts must be created through the professional identity service.");
+assert.match(professionalIdentityService, /document_type: "old_cv"[\s\S]*content_text: imported\.normalizedText/, "Imported CV original extracted text must be saved as a recoverable old_cv document.");
+assert.match(professionalIdentityService, /contentJson: \{[\s\S]*cvModel,[\s\S]*cvVersion,[\s\S]*cvImport:/, "Imported CV draft must persist the canonical cvModel and import metadata.");
+assert.match(professionalIdentityTool, /\/api\/professional-identity\/import-cv/, "CV upload UI must call the real import route.");
+assert.match(professionalIdentityTool, /Review Imported CV/, "Successful CV import must pause at a review summary before opening the editor.");
+assert.match(professionalIdentityTool, /setCvDocument\(pendingImportedCv, true\)/, "Reviewing an imported CV must open the existing structured CV editor.");
+assert.doesNotMatch(professionalIdentityTool, /accept="\.pdf,\.docx,\.png|image\/png|image\/jpeg/, "CV import UI must not advertise unsupported image OCR.");
 assert.match(documentDownloads, /export type CoverLetterData = \{[\s\S]*fullName: string;[\s\S]*companyName: string;[\s\S]*bodyParagraphs: string\[\];[\s\S]*designSystem: CvTemplateName;[\s\S]*\};/, "Cover Letter foundation must define one structured coverLetterData source of truth.");
 assert.match(documentDownloads, /export function serializeCoverLetterData/, "Cover Letter content text must serialize from coverLetterData.");
 assert.match(documentDownloads, /export function renderCoverLetterHtmlFromData/, "Cover Letter preview must render from coverLetterData.");
