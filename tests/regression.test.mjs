@@ -482,6 +482,8 @@ assert.doesNotMatch(professionalIdentityTool, /cvStudioMode|setCvStudioMode|xl:s
 assert.doesNotMatch(professionalIdentityTool, /absolute|fixed|z-\[|z-[1-9]/, "CV preview/gallery repair must not use positioning or z-index hacks.");
 assert.match(professionalIdentityTool, /function renderCvCompactStatus/, "CV Health and save state must be compact in the editor heading area.");
 assert.match(professionalIdentityTool, /function saveStatusLabel/, "CV Document Studio must centralize compact save status text.");
+assert.match(professionalIdentityTool, /renderCvCompactStatus\(\)[\s\S]*Next step[\s\S]*Create your cover letter[\s\S]*After creating your CV, you can build a professional cover letter tailored to the job you want to apply for\.[\s\S]*PATHZY will use your professional profile, selected CV and job information to help you create it\.[\s\S]*href="\/professional-identity\/cover-letter"[\s\S]*Build Cover Letter[\s\S]*renderCvSectionNavigator\(\)/, "My CV left column must show the compact Cover Letter next-step card below CV Health and before the editor sections.");
+assert.doesNotMatch(professionalIdentityTool, /Create your cover letter[\s\S]{0,300}href="\/professional-identity\/cv"/, "Cover Letter next-step card must not route back to My CV.");
 assert.doesNotMatch(professionalIdentityTool, /mainCvSections\.slice\(1\)\.map/, "CV editor must not render the old endless stacked section editor.");
 assert.match(professionalIdentityTool, /function duplicateCvVersion/, "CV duplicate/version behavior must remain available after the studio refactor.");
 assert.match(professionalIdentityTool, /Move up[\s\S]*Move down[\s\S]*Duplicate[\s\S]*Remove/, "CV repeatable item controls must remain available in the studio editor.");

@@ -1466,6 +1466,15 @@ export function ProfessionalIdentityTool({
             ) : null}
             {xpAwarded ? <p className="rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{celebrationCopy[tool]} +{xpAwarded} XP added to your PATHZY level.</p> : null}
             {downloadNotice ? <p className="rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{downloadNotice}</p> : null}
+            <div className="rounded-[20px] border border-[#5B8CFF]/20 bg-[#5B8CFF]/10 p-4">
+              <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#c7d6ff]/72">Next step</p>
+              <h3 className="mt-2 text-lg font-black text-white">Create your cover letter</h3>
+              <p className="mt-2 text-sm leading-6 text-white/62">After creating your CV, you can build a professional cover letter tailored to the job you want to apply for.</p>
+              <p className="mt-2 text-sm leading-6 text-white/52">PATHZY will use your professional profile, selected CV and job information to help you create it.</p>
+              <Link href="/professional-identity/cover-letter" className="mt-4 inline-flex w-full items-center justify-center rounded-full blue-purple px-4 py-3 text-sm font-extrabold text-white transition hover:-translate-y-0.5 sm:w-auto">
+                Build Cover Letter
+              </Link>
+            </div>
             {renderCvSectionNavigator()}
           </div>
         ) : (
