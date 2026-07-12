@@ -8,8 +8,8 @@ const dashboardActions = [
     title: "Your employment journey, guided step by step",
     question: "",
     body: "PATHZY is your employment support system.\n\nWe guide you step by step - from building your professional profile and CV to preparing for opportunities and moving toward employment.",
-    button: "Start My Journey",
-    href: appRoutes.roadmap
+    button: "Build My CV",
+    href: `${appRoutes.professionalIdentityCv}?intent=build`
   },
   {
     eyebrow: "TODAY'S RECOMMENDATION",
