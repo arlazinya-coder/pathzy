@@ -1,0 +1,62 @@
+FIXTURE A - EXPERIENCED TECHNICAL PROFESSIONAL
+Structure: multi-page technical CV with category-based skills, dates on separate lines, multiple employers, references, and education modules.
+Invariant: employer/job-title relationship survives field-order differences.
+Invariant: skill category headings are preserved as categories.
+
+FIXTURE B - ENTRY LEVEL GRADUATE
+Structure: education-heavy CV with projects, little experience, short skills list, and career objective.
+Invariant: education modules do not merge into qualification names.
+Invariant: projects remain projects rather than work history.
+
+FIXTURE C - CORPORATE PROFESSIONAL
+Structure: employer before job title, achievement bullets, date ranges, certifications, and business summary.
+Invariant: date-only values never become job titles.
+Invariant: achievement bullets stay attached to the correct role.
+
+FIXTURE D - FRAGMENTED PLAIN TEXT
+Structure: poor punctuation, wrapped sentences, missing full stops, and line-broken responsibilities.
+Invariant: wrapped sentences reconstruct correctly.
+Invariant: professional normalisation fixes punctuation without inventing metrics.
+
+FIXTURE E - TWO COLUMN EXTRACTED ORDER
+Structure: contact sidebar, skills sidebar, experience main column, and deliberately mixed raw extraction order.
+Invariant: phone numbers never become languages.
+Invariant: email addresses never become skills.
+
+FIXTURE F - FRENCH CV
+Structure: French headings, formation, experience professionnelle, competences, langues, and French date text.
+Invariant: multilingual headings map to canonical sections without replacing the canonical CV model.
+
+FIXTURE G - UNUSUAL HEADINGS
+Structure: non-standard headings and meaningful unknown sections.
+Invariant: unresolved content is preserved.
+Invariant: unknown headings do not cause data loss.
+
+FIXTURE H - DUPLICATE PAGE FURNITURE
+Structure: repeated name, continued labels, page numbers, repeated footer, and repeated section titles.
+Invariant: page numbers never become CV content.
+Invariant: continuation labels never become CV content.
+
+FIXTURE I - CONTACT CONTAMINATION
+Structure: phone and email physically near language content in flattened extraction.
+Invariant: phone numbers never become languages.
+Invariant: email addresses never become skills.
+
+FIXTURE J - SKILL HIERARCHY
+Structure: category heading, tools, techniques, and fragmented competency sentences.
+Invariant: skill category headings are preserved as categories.
+Invariant: fragmented competency sentences are reconstructed before placement.
+
+GLOBAL INVARIANTS
+phone numbers never become languages
+email addresses never become skills
+date-only values never become job titles
+page numbers never become CV content
+continuation labels never become CV content
+education modules do not merge into qualification names
+skill category headings are preserved as categories
+employer/job-title relationship survives field-order differences
+wrapped sentences reconstruct correctly
+unresolved content is preserved
+meaningful content coverage is measured by reconciliation
+no fixture-specific names are present in parser implementation

@@ -490,7 +490,13 @@ export async function createImportedCvDraft(
       confidence: imported.confidence,
       counts: imported.counts,
       review_items: imported.reviewItems,
-      unclassified_items: imported.unclassifiedItems ?? []
+      unclassified_items: imported.unclassifiedItems ?? [],
+      interpretation: imported.interpretation
+        ? {
+            coverage: imported.interpretation.coverage,
+            warnings: imported.interpretation.warnings
+          }
+        : null
     },
     content_text: imported.normalizedText,
     status: "ready",
@@ -520,6 +526,7 @@ export async function createImportedCvDraft(
           counts: imported.counts,
           reviewItems: imported.reviewItems,
           unclassifiedItems: imported.unclassifiedItems ?? [],
+          interpretation: imported.interpretation,
           importedAt: now
         }
       },

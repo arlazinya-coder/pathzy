@@ -55,9 +55,11 @@ const supabaseServer = readFileSync("lib/supabase/server.ts", "utf8");
 const floatingMentorButton = readFileSync("components/mentor/floating-mentor-button.tsx", "utf8");
 const professionalIdentityService = readFileSync("lib/professional-identity/professional-identity-service.ts", "utf8");
 const cvImportPipeline = readFileSync("lib/professional-identity/cv-import.ts", "utf8");
+const cvInterpretationEngine = readFileSync("lib/professional-identity/cv-interpretation-engine.ts", "utf8");
 const cvImportRoute = readFileSync("app/api/professional-identity/import-cv/route.ts", "utf8");
 const legacyMedicalCvFixture = readFileSync("tests/fixtures/legacy-medical-cv.txt", "utf8");
 const cvImportFixtureMatrix = readFileSync("tests/fixtures/cv-import-matrix.txt", "utf8");
+const cvInterpretationFixtureMatrix = readFileSync("tests/fixtures/cv-interpretation-general-matrix.txt", "utf8");
 const coverLetterGeneration = professionalIdentityService.match(/export async function generateCoverLetter[\s\S]*?export async function generateLinkedInProfile/)?.[0] ?? "";
 
 for (const section of ["Navigation", "Hero", "Features", "How PATHZY Works", "Career Journey", "Pricing", "Testimonials", "FAQ", "Footer"]) {
@@ -440,6 +442,9 @@ assert.match(cvImportPipeline, /export function createNormalizedBlocksFromText/,
 assert.match(cvImportPipeline, /createNormalizedBlocksFromDocxText/, "CV import must create normalized blocks for DOCX extraction.");
 assert.match(cvImportPipeline, /createNormalizedBlocksFromPdfText/, "CV import must create normalized blocks for PDF extraction.");
 assert.match(cvImportPipeline, /function classifyBlock/, "CV import must classify blocks before section mapping.");
+assert.match(cvImportPipeline, /interpretationForBlocks\(safeBlocks, sourceFormat\)/, "CV import must run extracted content through the general interpretation engine before section placement.");
+assert.match(cvImportPipeline, /sectionsFromInterpretation\(interpretation, sectionize\(safeBlocks\)\)/, "CV import must classify sections after reconstruction and semantic interpretation.");
+assert.match(cvImportPipeline, /OCR required\./, "CV import must return a typed OCR-required state for insufficient machine-readable text.");
 assert.match(cvImportPipeline, /mapImportedTextToCvModel\(text: string\)/, "CV import must map extracted text into the canonical CvModel.");
 assert.match(cvImportPipeline, /professionalExperience: parseExperience\(sections\.experience\)/, "CV import must map experience into the existing professionalExperience field.");
 assert.match(cvImportPipeline, /education: parseEducation\(sections\.education\)/, "CV import must map education into the existing education field.");
@@ -453,6 +458,60 @@ assert.match(cvImportPipeline, /function parseReferences/, "CV import must group
 assert.match(cvImportPipeline, /sensitiveLabelPattern/, "CV import must exclude sensitive personal data from automatic CV import.");
 assert.match(cvImportPipeline, /assertPlausibleImport/, "CV import must reject implausible classification results such as dozens of false experiences.");
 assert.match(cvImportPipeline, /unclassifiedItems/, "CV import must keep uncertain content unclassified instead of forcing it into Experience.");
+for (const requiredArchitectureType of [
+  "CvSourceDocument",
+  "SourceUnit",
+  "BoundaryDecision",
+  "ReconstructedBlock",
+  "SemanticRole",
+  "ExperienceRecord",
+  "EducationRecord",
+  "CertificationRecord",
+  "SkillGroup",
+  "ReferenceRecord",
+  "LanguageRecord",
+  "SourceTrace",
+  "ReconciliationItem",
+  "InterpretationDiagnostic"
+]) {
+  assert.match(cvInterpretationEngine, new RegExp(`export type ${requiredArchitectureType}`), `CV interpretation engine must expose ${requiredArchitectureType}.`);
+}
+for (const requiredArchitectureFunction of [
+  "createCvSourceDocument",
+  "createSourceUnits",
+  "inferBoundaryDecisions",
+  "reconstructDocument",
+  "inferSemanticRoles",
+  "linkSemanticRecords",
+  "classifyCanonicalSections",
+  "normaliseProfessionalContent",
+  "validateSemanticDocument",
+  "reconcileSourceToOutput",
+  "buildInterpretationDiagnostics",
+  "interpretCvSourceDocument"
+]) {
+  assert.match(cvInterpretationEngine, new RegExp(`export function ${requiredArchitectureFunction}`), `CV interpretation engine must separate ${requiredArchitectureFunction}.`);
+}
+assert.match(cvInterpretationEngine, /sourceType: "pdf" \| "docx" \| "text" \| "pasted_text"/, "Source abstraction must support PDF, DOCX, text, and pasted CV text.");
+assert.match(cvInterpretationEngine, /extractionState: "ok" \| "requires_ocr" \| "failed"/, "Source abstraction must support explicit OCR-required failures.");
+assert.match(cvInterpretationEngine, /export type BoundaryRelationship[\s\S]*"same_sentence"[\s\S]*"same_record"[\s\S]*"child_item"[\s\S]*"new_section"[\s\S]*"field_pair"/, "Boundary inference must distinguish sentence, record, child, section, and field-pair relationships.");
+assert.match(cvInterpretationEngine, /normaliseProfessionalStatement\(parts: string\[\]\)/, "Professional normalisation must happen after reconstruction rather than on raw extraction.");
+assert.doesNotMatch(cvInterpretationEngine, /invent|percent|years of experience|managed a team of|increased revenue/i, "Professional normalisation code must not contain unsupported achievement invention patterns.");
+assert.match(professionalIdentityService, /interpretation: imported\.interpretation/, "Imported CV drafts must persist interpretation metadata for traceability.");
+const antiHardcodingTerms = [
+  "Florent",
+  "Kalanda",
+  "Vaal University",
+  "VUT",
+  "Cobas",
+  "GeneXpert",
+  "ADVIA",
+  "laboratory assistant: blood transfusion",
+  "01/02/2014"
+];
+for (const term of antiHardcodingTerms) {
+  assert.doesNotMatch(`${cvImportPipeline}\n${cvInterpretationEngine}`, new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), `Production CV interpretation code must not hardcode fixture-specific term: ${term}.`);
+}
 assert.match(cvImportRoute, /staging: imported/, "CV import route must return a staging result before saving the final CV draft.");
 assert.match(cvImportRoute, /body\.confirm && body\.staging[\s\S]*createImportedCvDraft/, "CV import route must only create the final imported CV draft after user confirmation.");
 assert.match(cvImportRoute, /safeFailure/, "CV import route must not expose raw technical failures to users.");
@@ -488,6 +547,34 @@ for (const fixtureName of [
   "REPEATED HEADER FOOTER"
 ]) {
   assert.match(cvImportFixtureMatrix, new RegExp(fixtureName), `CV import fixture matrix must include ${fixtureName}.`);
+}
+for (const fixtureName of [
+  "FIXTURE A - EXPERIENCED TECHNICAL PROFESSIONAL",
+  "FIXTURE B - ENTRY LEVEL GRADUATE",
+  "FIXTURE C - CORPORATE PROFESSIONAL",
+  "FIXTURE D - FRAGMENTED PLAIN TEXT",
+  "FIXTURE E - TWO COLUMN EXTRACTED ORDER",
+  "FIXTURE F - FRENCH CV",
+  "FIXTURE G - UNUSUAL HEADINGS",
+  "FIXTURE H - DUPLICATE PAGE FURNITURE",
+  "FIXTURE I - CONTACT CONTAMINATION",
+  "FIXTURE J - SKILL HIERARCHY"
+]) {
+  assert.match(cvInterpretationFixtureMatrix, new RegExp(fixtureName), `General CV interpretation fixture matrix must include ${fixtureName}.`);
+}
+for (const invariant of [
+  "phone numbers never become languages",
+  "email addresses never become skills",
+  "date-only values never become job titles",
+  "page numbers never become CV content",
+  "continuation labels never become CV content",
+  "education modules do not merge into qualification names",
+  "skill category headings are preserved as categories",
+  "wrapped sentences reconstruct correctly",
+  "unresolved content is preserved",
+  "no fixture-specific names are present in parser implementation"
+]) {
+  assert.match(cvInterpretationFixtureMatrix, new RegExp(invariant), `General interpretation fixtures must document invariant: ${invariant}.`);
 }
 assert.match(documentDownloads, /export type CoverLetterData = \{[\s\S]*fullName: string;[\s\S]*companyName: string;[\s\S]*bodyParagraphs: string\[\];[\s\S]*designSystem: CvTemplateName;[\s\S]*\};/, "Cover Letter foundation must define one structured coverLetterData source of truth.");
 assert.match(documentDownloads, /export function serializeCoverLetterData/, "Cover Letter content text must serialize from coverLetterData.");

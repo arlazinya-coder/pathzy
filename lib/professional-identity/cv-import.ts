@@ -1,6 +1,14 @@
 import { inflateRawSync } from "node:zlib";
 import { cvModelFromUnknown, normalizeCvModelForExport } from "@/components/professional-identity/document-downloads";
 import type { CvModel } from "@/components/professional-identity/document-downloads";
+import {
+  createCanonicalCvTrace,
+  createCvSourceDocument,
+  cvSourceTypeFromMime,
+  interpretCvSourceDocument,
+  type CvInterpretationResult,
+  type SourceTrace
+} from "@/lib/professional-identity/cv-interpretation-engine";
 
 export type CvImportConfidence = "high" | "medium" | "low";
 
@@ -28,6 +36,11 @@ export type ImportedCvResult = {
   counts: CvImportCounts;
   unclassifiedItems: string[];
   excludedSensitiveNotice?: string;
+  interpretation?: {
+    coverage: number;
+    warnings: string[];
+    sourceTrace: SourceTrace[];
+  };
 };
 
 export type CvImportUpload = {
@@ -418,6 +431,66 @@ function sectionize(blocks: NormalizedCvBlock[]) {
   return sections;
 }
 
+function uniqueLines(...groups: string[][]) {
+  const seen = new Set<string>();
+  const merged: string[] = [];
+  for (const group of groups) {
+    for (const item of group) {
+      const clean = cleanBullet(item).replace(/\s{2,}/g, " ").trim();
+      const key = clean.toLowerCase();
+      if (clean && !seen.has(key)) {
+        seen.add(key);
+        merged.push(clean);
+      }
+    }
+  }
+  return merged;
+}
+
+function sourceTypeFromFormat(sourceFormat: CvSourceFormat) {
+  if (sourceFormat === "pdf") return "pdf";
+  if (sourceFormat === "docx") return "docx";
+  return "pasted_text";
+}
+
+function interpretationForBlocks(blocks: NormalizedCvBlock[], sourceFormat: CvSourceFormat): CvInterpretationResult {
+  const rawText = blocks.map((block) => block.text).join("\n");
+  const document = createCvSourceDocument({
+    sourceType: sourceTypeFromFormat(sourceFormat),
+    rawText,
+    extractionWarnings: []
+  });
+  return interpretCvSourceDocument(document);
+}
+
+function sectionsFromInterpretation(interpretation: CvInterpretationResult, legacy: Record<SectionKey, string[]>): Record<SectionKey, string[]> {
+  return {
+    header: uniqueLines(legacy.header, interpretation.canonicalSections.contact),
+    summary: uniqueLines(legacy.summary, interpretation.canonicalSections.professional_summary, interpretation.canonicalSections.career_objective),
+    experience: uniqueLines(legacy.experience, interpretation.canonicalSections.experience),
+    education: uniqueLines(legacy.education, interpretation.canonicalSections.education),
+    skills: uniqueLines(legacy.skills, interpretation.canonicalSections.skills),
+    projects: uniqueLines(legacy.projects, interpretation.canonicalSections.projects),
+    certifications: uniqueLines(legacy.certifications, interpretation.canonicalSections.certifications, interpretation.canonicalSections.licences),
+    languages: uniqueLines(legacy.languages, interpretation.canonicalSections.languages),
+    references: uniqueLines(legacy.references, interpretation.canonicalSections.references),
+    achievements: uniqueLines(legacy.achievements),
+    volunteer: uniqueLines(legacy.volunteer, interpretation.canonicalSections.volunteer_experience),
+    awards: uniqueLines(legacy.awards),
+    publications: uniqueLines(legacy.publications),
+    conferences: uniqueLines(legacy.conferences),
+    memberships: uniqueLines(legacy.memberships, interpretation.canonicalSections.memberships),
+    interests: uniqueLines(legacy.interests),
+    unclassified: uniqueLines(
+      legacy.unclassified,
+      interpretation.canonicalSections.additional_information,
+      interpretation.reconciliation
+        .filter((item) => item.disposition === "review" || item.disposition === "unresolved")
+        .map((item) => interpretation.reconstructedBlocks.find((block) => block.id === item.sourceBlockId)?.text ?? "")
+    )
+  };
+}
+
 function splitList(lines: string[]) {
   return Array.from(
     new Set(
@@ -748,7 +821,9 @@ function mapImportedBlocksToCvModelWithMeta(blocks: NormalizedCvBlock[]) {
   const { safeLines, excludedSensitiveFields } = removeSensitiveLines(rawLines);
   const safeSet = new Set(safeLines);
   const safeBlocks = blocks.filter((block) => safeSet.has(block.text));
-  const sections = sectionize(safeBlocks);
+  const sourceFormat = safeBlocks[0]?.sourceFormat ?? "txt";
+  const interpretation = interpretationForBlocks(safeBlocks, sourceFormat);
+  const sections = sectionsFromInterpretation(interpretation, sectionize(safeBlocks));
   const contacts = extractContacts(sections.header.length ? sections.header : safeLines.slice(0, 14));
   const explicitSkills = extractSkillsFromBlocks(sections.skills);
   const dutySkills: string[] = [];
@@ -782,7 +857,17 @@ function mapImportedBlocksToCvModelWithMeta(blocks: NormalizedCvBlock[]) {
   };
   const normalizedCv = normalizeCvModelForExport(cvModel);
   assertPlausibleImport(normalizedCv, safeLines, excludedSensitiveFields);
-  return { cvModel: normalizedCv, normalizedText, excludedSensitiveFields, unclassifiedItems: sections.unclassified };
+  return {
+    cvModel: normalizedCv,
+    normalizedText,
+    excludedSensitiveFields,
+    unclassifiedItems: sections.unclassified,
+    interpretation: {
+      coverage: interpretation.coverage,
+      warnings: interpretation.warnings,
+      sourceTrace: createCanonicalCvTrace(normalizedCv, interpretation)
+    }
+  };
 }
 
 function mapImportedTextToCvModelWithMeta(text: string, sourceFormat: CvSourceFormat = "txt") {
@@ -794,6 +879,15 @@ export function mapImportedTextToCvModel(text: string) {
 }
 
 export function buildCvImportResult(upload: Pick<CvImportUpload, "fileName" | "fileType" | "fileSize">, normalizedText: string): ImportedCvResult {
+  const sourceDocument = createCvSourceDocument({
+    sourceType: cvSourceTypeFromMime(upload.fileType),
+    fileName: upload.fileName,
+    mimeType: upload.fileType,
+    rawText: normalizedText
+  });
+  if (sourceDocument.extractionState === "requires_ocr") {
+    throw new CvImportError("OCR required.", "We could not read enough selectable text from this CV. If it is scanned, please upload a text-based PDF, DOCX, or TXT version.");
+  }
   const mapped = mapImportedTextToCvModelWithMeta(normalizedText, sourceFormatFromType(upload.fileType));
   const counts = importCounts(mapped.cvModel, mapped.excludedSensitiveFields, mapped.unclassifiedItems);
   const reviewItems = reviewItemsFor(mapped.cvModel, mapped.normalizedText.length, mapped.excludedSensitiveFields);
@@ -808,7 +902,8 @@ export function buildCvImportResult(upload: Pick<CvImportUpload, "fileName" | "f
     reviewItems,
     counts,
     unclassifiedItems: mapped.unclassifiedItems,
-    excludedSensitiveNotice: mapped.excludedSensitiveFields ? "We found personal information that is usually unnecessary in a modern CV. It was not added." : undefined
+    excludedSensitiveNotice: mapped.excludedSensitiveFields ? "We found personal information that is usually unnecessary in a modern CV. It was not added." : undefined,
+    interpretation: mapped.interpretation
   };
 }
 
@@ -828,6 +923,7 @@ export function importCvFromUpload(upload: CvImportUpload) {
     reviewItems,
     counts,
     unclassifiedItems: mapped.unclassifiedItems,
-    excludedSensitiveNotice: mapped.excludedSensitiveFields ? "We found personal information that is usually unnecessary in a modern CV. It was not added." : undefined
+    excludedSensitiveNotice: mapped.excludedSensitiveFields ? "We found personal information that is usually unnecessary in a modern CV. It was not added." : undefined,
+    interpretation: mapped.interpretation
   };
 }
