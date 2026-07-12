@@ -7,9 +7,9 @@ const dashboardActions = [
     eyebrow: "WELCOME TO PATHZY",
     title: "Your employment journey, guided step by step",
     question: "",
-    body: "PATHZY is your employment support system.\n\nWe guide you step by step - from building your professional profile and CV to preparing for opportunities and moving toward employment.",
-    button: "Build My CV",
-    href: `${appRoutes.professionalIdentityCv}?intent=build`
+    body: "PATHZY is your employment support system.\n\nWe guide you step by step - from building your professional profile and CV to preparing for opportunities and moving toward employment.\n\nYou don't need to figure out everything at once. Start with the next step, and PATHZY will help you move forward from there.",
+    button: "",
+    href: ""
   },
   {
     eyebrow: "TODAY'S RECOMMENDATION",
@@ -83,7 +83,7 @@ export default async function RoadmapPage() {
         <div className="grid gap-5 lg:grid-cols-2">
           {dashboardActions.map((action) => (
             <Card
-              key={action.button}
+              key={action.eyebrow}
               className="bg-white/6"
             >
               <div className="flex h-full flex-col">
@@ -95,9 +95,11 @@ export default async function RoadmapPage() {
                     <p key={paragraph}>{paragraph}</p>
                   ))}
                 </div>
-                <div className="mt-6 pt-1 sm:mt-auto sm:pt-6">
-                  <ButtonLink href={action.href}>{action.button}</ButtonLink>
-                </div>
+                {action.button && action.href ? (
+                  <div className="mt-6 pt-1 sm:mt-auto sm:pt-6">
+                    <ButtonLink href={action.href}>{action.button}</ButtonLink>
+                  </div>
+                ) : null}
               </div>
             </Card>
           ))}
