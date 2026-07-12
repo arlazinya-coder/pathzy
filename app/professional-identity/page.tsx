@@ -16,7 +16,7 @@ const tools = [
   {
     title: "CV",
     href: "/professional-identity/cv",
-    button: "Create My CV",
+    button: "My CV",
     statusKey: "cv_status",
     readiness: 25,
     action: "Create an honest CV from your PATHZY profile."

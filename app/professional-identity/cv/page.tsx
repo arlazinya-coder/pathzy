@@ -11,7 +11,7 @@ export default async function ProfessionalCvPage() {
 
   return (
     <div className="container page-pad">
-      <PageHeader eyebrow="My Professional Profile" title="Create My CV">
+      <PageHeader eyebrow="My Professional Profile" title="My CV">
         Build a clear CV draft using your PATHZY profile, career plan, skills, and Job Readiness context.
       </PageHeader>
       <ProfessionalIdentityTool

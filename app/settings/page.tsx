@@ -63,7 +63,7 @@ export default async function SettingsPage() {
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
             <ButtonLink href={appRoutes.roadmap}>Back to My Journey</ButtonLink>
-            <ButtonLink href={appRoutes.professionalIdentityCv} variant="secondary">Create My CV</ButtonLink>
+            <ButtonLink href={appRoutes.professionalIdentityCv} variant="secondary">My CV</ButtonLink>
           </div>
         </Card>
         <Card>

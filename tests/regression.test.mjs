@@ -49,6 +49,7 @@ const professionalCoverLetterPage = readFileSync("app/professional-identity/cove
 const applicationsPage = readFileSync("app/applications/page.tsx", "utf8");
 const skillsPage = readFileSync("app/skills/page.tsx", "utf8");
 const billingPage = readFileSync("app/billing/page.tsx", "utf8");
+const settingsPage = readFileSync("app/settings/page.tsx", "utf8");
 const permissions = readFileSync("lib/navigation/permissions.ts", "utf8");
 const exportStandard = readFileSync("docs/PATHZY_EXPORT_STANDARD.md", "utf8");
 const documentTemplateEngine = readFileSync("lib/professional-identity/document-template-engine.ts", "utf8");
@@ -178,14 +179,21 @@ for (const [routeName, routeLayout] of [
 
 assert.match(nextActionEngine, /export async function getPathzyNextAction/, "PATHZY must expose one shared next action journey engine.");
 assert.match(dashboard, /redirect\(appRoutes\.roadmap\)/, "Legacy /dashboard must redirect to My Employment Journey.");
-assert.match(roadmapPage, /WELCOME TO PATHZY/, "My Employment Journey hero must welcome users warmly.");
-assert.match(roadmapPage, /Welcome, \$\{firstName\}!/, "My Employment Journey hero must use the authenticated user's first name when available.");
-assert.match(roadmapPage, /Welcome to PATHZY!/, "My Employment Journey hero must include the fallback welcome when first name is missing.");
-assert.match(roadmapPage, /Let's build your future together\./, "My Employment Journey hero must include the approved warm subheading.");
-assert.match(roadmapPage, /TODAY'S RECOMMENDATION/, "My Employment Journey hero must include Today's Recommendation.");
-assert.match(roadmapPage, /A professional CV is the foundation of every successful job application\./, "My Employment Journey hero must explain why the CV matters.");
-assert.match(roadmapPage, /<ButtonLink href=\{appRoutes\.professionalIdentityCv\}>Build My CV<\/ButtonLink>/, "My Employment Journey hero primary CTA must open the canonical CV Builder.");
-assert.doesNotMatch(roadmapPage, /Sample Career Plan|Your 90-day control center|Continue My Journey/, "My Employment Journey hero must not use the old cold wording.");
+assert.match(roadmapPage, /Welcome back to PATHZY/, "Authenticated landing page must show a warm PATHZY welcome.");
+assert.match(roadmapPage, /Welcome, \{firstName\}/, "Authenticated landing page must render the safe first-name value.");
+assert.match(roadmapPage, /safeFirstToken\(user\?\.user_metadata\?\.display_name\)/, "First name fallback must use account display name before generic fallback.");
+assert.match(roadmapPage, /const firstName = profileFirstName \|\| accountFirstName \|\| "there";/, "First name fallback must safely use 'there' instead of undefined, null, or email.");
+assert.match(roadmapPage, /Start with your CV, and PATHZY will guide you through the process\./, "Authenticated landing page must focus the next step on CV action.");
+for (const label of ["Build My CV", "Upload My Old CV", "Upgrade My CV"]) {
+  assert.match(roadmapPage, new RegExp(`button: "${label}"`), `Authenticated landing page must render ${label}.`);
+}
+assert.match(roadmapPage, /href: `\$\{appRoutes\.professionalIdentityCv\}\?intent=build`/, "Build My CV must open the existing CV workspace with build intent.");
+assert.match(roadmapPage, /href: `\$\{appRoutes\.professionalIdentityCv\}\?intent=upload`/, "Upload My Old CV must open the existing CV workspace with upload intent.");
+assert.match(roadmapPage, /href: `\$\{appRoutes\.professionalIdentityCv\}\?intent=upgrade`/, "Upgrade My CV must open the existing CV workspace with upgrade intent.");
+assert.equal((roadmapPage.match(/appRoutes\.professionalIdentityCv/g) ?? []).length, 3, "All three authenticated landing buttons must use the single canonical CV workspace route.");
+assert.match(roadmapPage, /grid gap-5 lg:grid-cols-2/, "Authenticated landing cards must use a responsive grid.");
+assert.doesNotMatch(roadmapPage, /overflow-x-auto|whitespace-nowrap|min-w-\[/, "Authenticated landing page must not require horizontal scrolling on mobile.");
+assert.doesNotMatch(roadmapPage, /Sample Career Plan|Your 90-day control center|Continue My Journey|Interactive 90-day plan|Compare careers/, "Authenticated landing page must not show the previous crowded journey content.");
 assert.match(legacyCvBuilderPage, /redirect\(appRoutes\.professionalIdentityCv\)/, "Legacy /cv-builder must redirect to the canonical CV Builder.");
 assert.match(legacyEmploymentTrackerPage, /redirect\(appRoutes\.applications\)/, "Legacy /employment-tracker must redirect to My Applications.");
 assert.match(legacyProgressPage, /redirect\(appRoutes\.skills\)/, "Legacy /progress must redirect to Skills & Career Growth.");
@@ -302,6 +310,11 @@ assert.match(professionalCvPage, /requireAuthenticatedUser\("\/professional-iden
 assert.match(professionalCoverLetterPage, /requireAuthenticatedUser\("\/professional-identity\/cover-letter"\)/, "All users must reach the same canonical Cover Letter route.");
 assert.match(professionalCvPage, /locked=\{!unlocked\}[\s\S]*exportLocked=\{!canExport\}/, "CV Builder must allow creation/editing while locking only export actions for free users.");
 assert.match(professionalCoverLetterPage, /locked=\{!unlocked\}[\s\S]*exportLocked=\{!canExport\}/, "Cover Letter Builder must allow creation/editing while locking only export actions for free users.");
+assert.match(professionalIdentityPage, /button: "My CV"/, "Professional Profile must label the existing CV workspace as My CV.");
+assert.match(professionalCvPage, /title="My CV"/, "CV workspace page header must use the My CV label.");
+assert.match(settingsPage, />My CV<\/ButtonLink>/, "Settings shortcut must use the My CV label.");
+assert.match(navigation, /"My CV"/, "Shared user-facing product data must use the My CV label.");
+assert.doesNotMatch(`${professionalIdentityPage}\n${professionalCvPage}\n${settingsPage}\n${navigation}\n${readFileSync("app/qa-pathzy-journey/page.tsx", "utf8")}`, /Create My CV/, "Relevant user-facing CV workspace labels must not say Create My CV.");
 assert.match(professionalIdentityPage, /<ProfileActionEditor rows=\{profileRows\} \/>/, "Professional Profile information rows must use the shared inline profile action editor.");
 assert.doesNotMatch(professionalIdentityPage, /appRoutes\.settings|href="\/settings"|href=\{appRoutes\.billing\}|href="\/billing"|href="\/profile"|href="\/roadmap"|href="\/onboarding"/, "Professional Profile Edit/Add Missing Info actions must not leave the profile workflow for Settings, Billing, legacy profile, Journey, or onboarding.");
 assert.match(profileActionEditor, /export const profileSectionActions/, "Professional Profile actions must be centralized in profileSectionActions.");

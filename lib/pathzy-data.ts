@@ -76,7 +76,7 @@ export const pricingPlans = [
     features: [
       "Career Discovery",
       "Limited Mentor",
-      "Create My CV",
+      "My CV",
       "Create My Cover Letter",
       "LinkedIn Builder",
       "Resume Preview",
