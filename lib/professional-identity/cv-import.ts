@@ -7,6 +7,7 @@ import {
   cvSourceTypeFromMime,
   interpretCvSourceDocument,
   type CvInterpretationResult,
+  type ExperienceRecord,
   type SourceTrace
 } from "@/lib/professional-identity/cv-interpretation-engine";
 
@@ -786,6 +787,153 @@ function extractSkillsFromBlocks(lines: string[]) {
     .filter((item) => item.length > 1 && item.length < 90);
 }
 
+function isEmailLike(value: string) {
+  return /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(value);
+}
+
+function isPhoneLike(value: string) {
+  return /(?:\+\d{1,3}[\s-]?)?(?:\(?\d{2,4}\)?[\s-]?){2,5}\d{2,4}/.test(value);
+}
+
+function isPageFurniture(value: string) {
+  return /^(page\s+\d+|\d+\s*\/\s*\d+|curriculum vitae|resume|cv)$|\bcontinued\b/i.test(value.trim());
+}
+
+function isDateOnly(value: string) {
+  const clean = value.replace(/[|,\-–—\s]/g, "").trim();
+  return Boolean(clean) && /^(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?)?(?:19|20)\d{2}(?:present|current|now|(?:19|20)\d{2})?$/i.test(clean);
+}
+
+function safeCvText(value: string) {
+  const clean = compactEntry(value).replace(/\s+\|\s+$/g, "");
+  if (!clean || isPageFurniture(clean)) return "";
+  return clean;
+}
+
+function normalizeCompetencyStatement(parts: string[]) {
+  const clean = parts.map(safeCvText).filter(Boolean);
+  if (!clean.length) return "";
+  const statement = clean.join(", ").replace(/\s{2,}/g, " ").replace(/\s+,/g, ",").trim();
+  return /[.!?]$/.test(statement) ? statement : `${statement}.`;
+}
+
+function semanticExperienceToCv(record: ExperienceRecord): CvModel["professionalExperience"][number] | null {
+  const dates = parseDateRange(record.dateText);
+  const role = safeCvText(record.jobTitle);
+  const company = safeCvText(record.employer);
+  if (!role && !company && !record.responsibilities.length) return null;
+  if (role && isDateOnly(role)) return null;
+  return {
+    role,
+    company,
+    location: safeCvText(record.location),
+    startDate: dates.startDate || safeCvText(record.startDate),
+    endDate: dates.endDate || safeCvText(record.endDate),
+    current: dates.current,
+    achievements: uniqueLines(
+      record.achievements,
+      record.responsibilities.map((item) => normalizeCompetencyStatement([item]))
+    ).filter((item) => !isPageFurniture(item) && !isEmailLike(item) && !isPhoneLike(item))
+  };
+}
+
+function cvModelFromSemanticInterpretation(
+  interpretation: CvInterpretationResult,
+  sections: Record<SectionKey, string[]>,
+  contacts: ReturnType<typeof extractContacts>
+) {
+  const base = cvModelFromUnknown(null, "");
+  const records = interpretation.linkedRecords;
+  const skillGroups = records.skillGroups;
+  const semanticSkills = splitSkillGroups(
+    skillGroups.flatMap((group) => group.skills.length ? group.skills : [])
+  );
+  const fallbackSkills = splitSkillGroups(extractSkillsFromBlocks(sections.skills));
+  const semanticExperience = records.experience.map(semanticExperienceToCv).filter(Boolean) as CvModel["professionalExperience"];
+  const fallbackExperience = parseExperience(sections.experience).filter((item) => !isDateOnly(item.role));
+  const semanticEducation: CvModel["education"] = records.education
+    .map((record) => ({
+      qualification: safeCvText(record.qualification),
+      institution: safeCvText(record.institution),
+      fieldOfStudy: safeCvText(record.fieldOfStudy),
+      year: safeCvText(record.dateText || record.endDate || record.startDate),
+      status: uniqueLines(record.modules, record.coursework).join("; ")
+    }))
+    .filter((item) => item.qualification || item.institution || item.status);
+  const semanticLanguages = records.languages
+    .map((item) => ({ language: safeCvText(item.language), level: safeCvText(item.proficiency) }))
+    .filter((item) => item.language && !isEmailLike(item.language) && !isPhoneLike(item.language));
+  const semanticReferences = records.references
+    .map((item) => uniqueLines([item.name, item.title, item.organisation, item.phone, item.email]).join(" | "))
+    .filter(Boolean);
+  const fallbackReferences = parseReferences(sections.references);
+  const semanticCertifications: CvModel["certifications"] = records.certifications.map((item) => ({
+    name: safeCvText(item.name),
+    provider: safeCvText(item.issuer),
+    year: safeCvText(item.date),
+    credentialUrl: safeCvText(item.credentialId)
+  })).filter((item) => item.name);
+  const semanticProjects: CvModel["projects"] = records.projects.map((item) => ({
+    projectName: safeCvText(item.name),
+    role: "",
+    tools: [],
+    description: safeCvText(item.description),
+    impact: ""
+  })).filter((item) => item.projectName);
+
+  return {
+    ...base,
+    ...contacts,
+    fullName: contacts.fullName || records.contact.fullName || base.fullName,
+    phone: contacts.phone || records.contact.phone || "",
+    email: contacts.email || records.contact.email || "",
+    linkedIn: contacts.linkedIn || records.contact.linkedIn || "",
+    website: records.contact.website || contacts.portfolio || "",
+    professionalSummary: compactParagraph(sections.summary),
+    coreSkills: uniqueLines(semanticSkills.coreSkills, fallbackSkills.coreSkills),
+    technicalSkills: uniqueLines(semanticSkills.technicalSkills, fallbackSkills.technicalSkills),
+    professionalSkills: uniqueLines(semanticSkills.professionalSkills, fallbackSkills.professionalSkills),
+    professionalExperience: semanticExperience.length ? semanticExperience : fallbackExperience,
+    education: semanticEducation.length ? semanticEducation : parseEducation(sections.education),
+    projects: semanticProjects.length ? semanticProjects : parseProjects(sections.projects),
+    certifications: semanticCertifications.length ? semanticCertifications : parseCertifications(sections.certifications),
+    achievements: sections.achievements.map(cleanBullet).filter(Boolean),
+    languages: semanticLanguages.length ? semanticLanguages : parseLanguages(sections.languages).filter((item) => !isEmailLike(item.language) && !isPhoneLike(item.language)),
+    references: {
+      availableUponRequest: sections.references.some((line) => /available/i.test(line)),
+      items: semanticReferences.length >= fallbackReferences.length ? semanticReferences : fallbackReferences
+    },
+    optionalSections: {
+      volunteerExperience: sections.volunteer.map(cleanBullet).filter(Boolean),
+      awards: sections.awards.map(cleanBullet).filter(Boolean),
+      publications: sections.publications.map(cleanBullet).filter(Boolean),
+      conferences: sections.conferences.map(cleanBullet).filter(Boolean),
+      professionalMemberships: sections.memberships.map(cleanBullet).filter(Boolean),
+      interests: splitList(sections.interests),
+      portfolioLinks: contacts.portfolio ? [contacts.portfolio] : [],
+      qrCodePlaceholder: ""
+    }
+  } satisfies CvModel;
+}
+
+export function validateCanonicalCvInvariants(cv: CvModel) {
+  const errors: string[] = [];
+  const allContent = JSON.stringify(cv);
+  if (cv.languages.some((item) => isEmailLike(item.language) || isEmailLike(item.level))) errors.push("Email-shaped value was placed in languages.");
+  if (cv.languages.some((item) => isPhoneLike(item.language) || isPhoneLike(item.level))) errors.push("Phone-shaped value was placed in languages.");
+  if (cv.languages.some((item) => /street|avenue|road|drive|po box|postal/i.test(`${item.language} ${item.level}`))) errors.push("Address-shaped contact value was placed in languages.");
+  if (cv.professionalExperience.some((item) => isDateOnly(item.role))) errors.push("Date-only value was placed as an experience role.");
+  if (/\bcontinued\b/i.test(allContent)) errors.push("Continuation header reached CanonicalCv content.");
+  if (/(^|["\s])page\s+\d+/i.test(allContent) || /["\s]\d{1,2}\s*\/\s*\d{1,2}["\s]/.test(allContent)) errors.push("Page number reached CanonicalCv content.");
+  if (cv.professionalExperience.some((item) => item.role.includes("|") && !item.company && !item.startDate && !item.endDate)) errors.push("Pipe-separated experience string substituted for structured experience.");
+  if (cv.education.some((item) => item.qualification.length > 180 || /;.*;.*;/.test(item.qualification))) errors.push("Qualification appears to have absorbed a module list.");
+  const skillCategories = new Set(["technical skills", "core skills", "professional skills", "tools", "technologies", "competencies"]);
+  if ([...cv.coreSkills, ...cv.technicalSkills, ...cv.professionalSkills].some((item) => skillCategories.has(item.toLowerCase().replace(/:$/, "")))) errors.push("Skill category heading was emitted as an ordinary skill.");
+  if (errors.length) {
+    throw new CvImportError(`Semantic CV invariant failed: ${errors.join("; ")}`, "We read the document, but some content needs review before PATHZY can safely create the CV.");
+  }
+}
+
 function assertPlausibleImport(cv: CvModel, lines: string[], excludedSensitiveFields: number) {
   const counts = importCounts(cv, excludedSensitiveFields);
   const experienceLabelOnly = cv.professionalExperience.filter((item) => /^(period|qualification|company|institution|duties|course)$/i.test(item.role)).length;
@@ -825,37 +973,9 @@ function mapImportedBlocksToCvModelWithMeta(blocks: NormalizedCvBlock[]) {
   const interpretation = interpretationForBlocks(safeBlocks, sourceFormat);
   const sections = sectionsFromInterpretation(interpretation, sectionize(safeBlocks));
   const contacts = extractContacts(sections.header.length ? sections.header : safeLines.slice(0, 14));
-  const explicitSkills = extractSkillsFromBlocks(sections.skills);
-  const dutySkills: string[] = [];
-  const skills = splitSkillGroups(Array.from(new Set([...explicitSkills, ...dutySkills])));
-  const base = cvModelFromUnknown(null, "");
-  const cvModel: CvModel = {
-    ...base,
-    ...contacts,
-    professionalSummary: compactParagraph(sections.summary),
-    ...skills,
-    professionalExperience: parseExperience(sections.experience),
-    education: parseEducation(sections.education),
-    projects: parseProjects(sections.projects),
-    certifications: parseCertifications(sections.certifications),
-    achievements: sections.achievements.map(cleanBullet).filter(Boolean),
-    languages: parseLanguages(sections.languages),
-    references: {
-      availableUponRequest: sections.references.some((line) => /available/i.test(line)),
-      items: parseReferences(sections.references)
-    },
-    optionalSections: {
-      volunteerExperience: sections.volunteer.map(cleanBullet).filter(Boolean),
-      awards: sections.awards.map(cleanBullet).filter(Boolean),
-      publications: sections.publications.map(cleanBullet).filter(Boolean),
-      conferences: sections.conferences.map(cleanBullet).filter(Boolean),
-      professionalMemberships: sections.memberships.map(cleanBullet).filter(Boolean),
-      interests: splitList(sections.interests),
-      portfolioLinks: contacts.portfolio ? [contacts.portfolio] : [],
-      qrCodePlaceholder: ""
-    }
-  };
+  const cvModel = cvModelFromSemanticInterpretation(interpretation, sections, contacts);
   const normalizedCv = normalizeCvModelForExport(cvModel);
+  validateCanonicalCvInvariants(normalizedCv);
   assertPlausibleImport(normalizedCv, safeLines, excludedSensitiveFields);
   return {
     cvModel: normalizedCv,

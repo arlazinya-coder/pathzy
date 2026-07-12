@@ -288,7 +288,7 @@ const emailPattern = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 const phonePattern = /(?:\+\d{1,3}[\s-]?)?(?:\(?\d{2,4}\)?[\s-]?){2,5}\d{2,4}/;
 const urlPattern = /(?:https?:\/\/|www\.|linkedin\.com|github\.com)[^\s]+/i;
 const datePattern = /\b(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s*)?(?:19|20)\d{2}\b|\b\d{1,2}\/\d{1,2}\/(?:19|20)\d{2}\b/i;
-const pageFurniturePattern = /^(page\s+\d+|\d+\s*\/\s*\d+|continued|curriculum vitae|resume|cv)$/i;
+const pageFurniturePattern = /^(page\s+\d+|\d+\s*\/\s*\d+|curriculum vitae|resume|cv)$|\bcontinued\b/i;
 const bulletPrefixPattern = /^[*\-\u2022\u25cf\u25e6\u2043]\s*/;
 
 function cleanText(value: string) {
@@ -376,8 +376,27 @@ function isSentenceContinuation(left: string, right: string) {
   if (/[.!?;:]$/.test(leftClean)) return false;
   if (/^(and|or|with|for|to|of|in|on|by|while|including)\b/i.test(rightClean)) return true;
   if (/^[a-z(]/.test(rightClean)) return true;
-  if (leftClean.length < 55 && rightClean.length < 70 && !labelValue(leftClean) && !labelValue(rightClean)) return true;
   return false;
+}
+
+function semanticDomainEvidence(text: string) {
+  const domains = new Set<string>();
+  if (emailPattern.test(text) || phonePattern.test(text) || urlPattern.test(text)) domains.add("contact");
+  if (datePattern.test(text)) domains.add("date");
+  if (/\b(university|college|school|academy|institute|institution|degree|diploma|course|module|qualification)\b/i.test(text)) domains.add("education");
+  if (/\b(company|employer|organisation|organization|position|role|duties|responsibilities)\b/i.test(text)) domains.add("experience");
+  if (/\b(skill|tool|technology|competenc|method|procedure|quality|operate|maintain|calibrat|test|review)\b/i.test(text)) domains.add("competency");
+  if (/\b(reference|referee|manager|lecturer|supervisor)\b/i.test(text)) domains.add("reference");
+  if (/\b(language|fluent|native|basic|intermediate|advanced)\b/i.test(text)) domains.add("language");
+  return domains;
+}
+
+export function blockCohesionScore(text: string) {
+  const domains = semanticDomainEvidence(text);
+  const delimiterCount = (text.match(/\||:/g) ?? []).length;
+  const sentenceCount = text.split(/[.!?]+/).filter((part) => part.trim().length > 12).length;
+  const score = Math.max(0, 1 - Math.max(0, domains.size - 2) * 0.22 - Math.max(0, delimiterCount - 4) * 0.08 - Math.max(0, sentenceCount - 4) * 0.08);
+  return { score, domains: Array.from(domains) };
 }
 
 function normaliseProfessionalStatement(parts: string[]) {
@@ -487,13 +506,18 @@ export function reconstructDocument(units: SourceUnit[], decisions: BoundaryDeci
   const flush = (reason = "preserved source unit") => {
     if (!pending.length) return;
     const text = normaliseProfessionalStatement(pending.map((unit) => unit.text));
+    const cohesion = blockCohesionScore(text);
     blocks.push({
       id: `block-${blocks.length + 1}`,
       sourceUnitIds: pending.map((unit) => unit.id),
       text,
-      blockKind: blockKindFor(text),
+      blockKind: cohesion.score < 0.45 ? "unknown" : blockKindFor(text),
       reconstructionConfidence: pending.length > 1 ? 0.76 : 0.68,
-      reconstructionReasons: pending.length > 1 ? ["joined source fragments using boundary inference", reason] : [reason]
+      reconstructionReasons: [
+        ...(pending.length > 1 ? ["joined source fragments using boundary inference"] : []),
+        reason,
+        `cohesion=${cohesion.score.toFixed(2)} domains=${cohesion.domains.join(",") || "general"}`
+      ]
     });
     pending = [];
   };
@@ -744,12 +768,26 @@ export function classifyCanonicalSections(semanticBlocks: SemanticBlock[], recor
     if (block.roles.includes("section_heading") || block.roles.includes("page_number") || block.roles.includes("continuation_label")) continue;
     const target = block.sectionHint ?? (block.roles.includes("email") || block.roles.includes("phone") ? "contact" : undefined);
     if (!target) continue;
+    if (!semanticTargetIsCompatible(block.roles, target)) {
+      appendUnique(sections.additional_information, block.text);
+      continue;
+    }
     appendUnique(sections[target], block.text);
   }
 
   Object.values(records.contact).forEach((value) => appendUnique(sections.contact, value));
   records.unresolved.forEach((block) => appendUnique(sections.additional_information, block.text));
   return sections;
+}
+
+export function semanticTargetIsCompatible(roles: SemanticRole[], target: CanonicalCvSectionKey) {
+  if (roles.includes("email")) return target === "contact" || target === "references";
+  if (roles.includes("phone") || roles.includes("alternate_phone")) return target === "contact" || target === "references";
+  if (roles.includes("language") || roles.includes("language_proficiency")) return target === "languages";
+  if (roles.includes("employment_date")) return target === "experience";
+  if (roles.includes("education_date")) return target === "education";
+  if (roles.includes("continuation_label") || roles.includes("page_number")) return false;
+  return true;
 }
 
 export function normaliseProfessionalContent(sections: Record<CanonicalCvSectionKey, string[]>): Record<CanonicalCvSectionKey, string[]> {
@@ -767,6 +805,9 @@ export function validateSemanticDocument(semanticBlocks: SemanticBlock[], record
   }
   if (records.experience.some((record) => datePattern.test(record.jobTitle) && record.jobTitle.length < 40)) {
     warnings.push("A date appeared as an experience title candidate and needs review.");
+  }
+  if (semanticBlocks.some((block) => blockCohesionScore(block.text).score < 0.45)) {
+    warnings.push("A low-cohesion reconstructed block was kept out of automatic structured placement.");
   }
   if (records.unresolved.length) warnings.push("Some meaningful content remained unresolved for review.");
   return warnings;

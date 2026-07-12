@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import path from "node:path";
+import vm from "node:vm";
+
+const require = createRequire(import.meta.url);
+const ts = require(path.resolve("node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/typescript.js"));
 
 const dashboard = readFileSync("app/dashboard/page.tsx", "utf8");
 const legacyCvBuilderPage = readFileSync("app/cv-builder/page.tsx", "utf8");
@@ -61,6 +67,48 @@ const legacyMedicalCvFixture = readFileSync("tests/fixtures/legacy-medical-cv.tx
 const cvImportFixtureMatrix = readFileSync("tests/fixtures/cv-import-matrix.txt", "utf8");
 const cvInterpretationFixtureMatrix = readFileSync("tests/fixtures/cv-interpretation-general-matrix.txt", "utf8");
 const coverLetterGeneration = professionalIdentityService.match(/export async function generateCoverLetter[\s\S]*?export async function generateLinkedInProfile/)?.[0] ?? "";
+
+const runtimeModuleCache = new Map();
+function loadProductionTsModule(filePath) {
+  const absolutePath = path.resolve(filePath);
+  if (runtimeModuleCache.has(absolutePath)) return runtimeModuleCache.get(absolutePath).exports;
+  const source = readFileSync(absolutePath, "utf8");
+  const output = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+      esModuleInterop: true,
+      jsx: ts.JsxEmit.ReactJSX
+    }
+  }).outputText;
+  const module = { exports: {} };
+  runtimeModuleCache.set(absolutePath, module);
+  const localRequire = (request) => {
+    if (request.startsWith("node:")) return require(request.replace(/^node:/, ""));
+    if (request.startsWith("@/")) {
+      const candidate = path.resolve(request.replace(/^@\//, ""));
+      return loadProductionTsModule(candidate.endsWith(".ts") || candidate.endsWith(".tsx") ? candidate : `${candidate}.ts`);
+    }
+    if (request.startsWith(".")) {
+      const candidate = path.resolve(path.dirname(absolutePath), request);
+      return loadProductionTsModule(candidate.endsWith(".ts") || candidate.endsWith(".tsx") ? candidate : `${candidate}.ts`);
+    }
+    return require(request);
+  };
+  vm.runInNewContext(output, {
+    exports: module.exports,
+    module,
+    require: localRequire,
+    Buffer,
+    console,
+    TextDecoder,
+    TextEncoder,
+    URL,
+    setTimeout,
+    clearTimeout
+  }, { filename: absolutePath });
+  return module.exports;
+}
 
 for (const section of ["Navigation", "Hero", "Features", "How PATHZY Works", "Career Journey", "Pricing", "Testimonials", "FAQ", "Footer"]) {
   assert.match(homepage, new RegExp(`data-home-section="${section}"`), `Homepage must include the ${section} landing section.`);
@@ -446,8 +494,8 @@ assert.match(cvImportPipeline, /interpretationForBlocks\(safeBlocks, sourceForma
 assert.match(cvImportPipeline, /sectionsFromInterpretation\(interpretation, sectionize\(safeBlocks\)\)/, "CV import must classify sections after reconstruction and semantic interpretation.");
 assert.match(cvImportPipeline, /OCR required\./, "CV import must return a typed OCR-required state for insufficient machine-readable text.");
 assert.match(cvImportPipeline, /mapImportedTextToCvModel\(text: string\)/, "CV import must map extracted text into the canonical CvModel.");
-assert.match(cvImportPipeline, /professionalExperience: parseExperience\(sections\.experience\)/, "CV import must map experience into the existing professionalExperience field.");
-assert.match(cvImportPipeline, /education: parseEducation\(sections\.education\)/, "CV import must map education into the existing education field.");
+assert.match(cvImportPipeline, /professionalExperience: semanticExperience\.length \? semanticExperience : fallbackExperience/, "CV import must map semantic ExperienceRecord entities into the existing professionalExperience field.");
+assert.match(cvImportPipeline, /education: semanticEducation\.length \? semanticEducation : parseEducation\(sections\.education\)/, "CV import must map semantic EducationRecord entities into the existing education field.");
 assert.match(cvImportPipeline, /optionalSections: \{[\s\S]*volunteerExperience[\s\S]*publications[\s\S]*professionalMemberships/, "CV import must map additional sections into the existing optionalSections architecture.");
 assert.match(cvImportPipeline, /reviewItemsFor\(mapped\.cvModel, mapped\.normalizedText\.length, mapped\.excludedSensitiveFields\)/, "CV import must flag uncertain imported data for review.");
 assert.match(cvImportPipeline, /function lineToPair/, "CV import must pair LABEL: VALUE legacy CV rows before classification.");
@@ -576,6 +624,20 @@ for (const invariant of [
 ]) {
   assert.match(cvInterpretationFixtureMatrix, new RegExp(invariant), `General interpretation fixtures must document invariant: ${invariant}.`);
 }
+const productionCvImport = loadProductionTsModule("lib/professional-identity/cv-import.ts");
+const florentCanonicalCv = productionCvImport.mapImportedTextToCvModel(legacyMedicalCvFixture);
+assert.ok(florentCanonicalCv && typeof florentCanonicalCv === "object", "Production CV import must return a CanonicalCv object for CV Studio.");
+assert.ok(Array.isArray(florentCanonicalCv.languages), "CanonicalCv must expose structured languages.");
+assert.ok(Array.isArray(florentCanonicalCv.professionalExperience), "CanonicalCv must expose structured professionalExperience.");
+assert.ok(Array.isArray(florentCanonicalCv.education), "CanonicalCv must expose structured education.");
+assert.ok(florentCanonicalCv.languages.every((item) => !/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(`${item.language} ${item.level}`)), "No email-shaped value may exist in CanonicalCv languages.");
+assert.ok(florentCanonicalCv.languages.every((item) => !/(?:\+\d{1,3}[\s-]?)?(?:\(?\d{2,4}\)?[\s-]?){2,5}\d{2,4}/.test(`${item.language} ${item.level}`)), "No phone-shaped value may exist in CanonicalCv languages.");
+assert.ok(florentCanonicalCv.professionalExperience.every((item) => !/^(?:\d{4}|(?:19|20)\d{2}\s*[-–—]\s*(?:present|current|now|(?:19|20)\d{2}))$/i.test(item.role.trim())), "No date-only value may be a CanonicalCv job title.");
+assert.ok(!/\bcontinued\b/i.test(JSON.stringify(florentCanonicalCv)), "Continuation headers must not exist in CanonicalCv content.");
+assert.ok(!/(^|["\s])page\s+\d+/i.test(JSON.stringify(florentCanonicalCv)) && !/["\s]\d{1,2}\s*\/\s*\d{1,2}["\s]/.test(JSON.stringify(florentCanonicalCv)), "Page numbers must not exist in CanonicalCv content.");
+assert.ok(florentCanonicalCv.professionalExperience.every((item) => !(item.role.includes("|") && !item.company && !item.startDate && !item.endDate)), "Pipe-separated flattened experience strings must not substitute for structured ExperienceRecord data.");
+assert.ok(florentCanonicalCv.education.every((item) => item.qualification.length < 180 && !/;.*;.*;/.test(item.qualification)), "Qualification title must not absorb an entire module list.");
+assert.ok(florentCanonicalCv.references.items.length >= 2, "References continuing through the import must remain grouped in CanonicalCv references.");
 assert.match(documentDownloads, /export type CoverLetterData = \{[\s\S]*fullName: string;[\s\S]*companyName: string;[\s\S]*bodyParagraphs: string\[\];[\s\S]*designSystem: CvTemplateName;[\s\S]*\};/, "Cover Letter foundation must define one structured coverLetterData source of truth.");
 assert.match(documentDownloads, /export function serializeCoverLetterData/, "Cover Letter content text must serialize from coverLetterData.");
 assert.match(documentDownloads, /export function renderCoverLetterHtmlFromData/, "Cover Letter preview must render from coverLetterData.");
