@@ -419,9 +419,9 @@ assert.match(documentDownloads, /function buildSingleColumnCvLayout/, "ATS and I
 assert.match(documentDownloads, /premiumTemplate\.identity === "ats" \|\| premiumTemplate\.identity === "international"[\s\S]*buildSingleColumnCvLayout/, "Modern ATS and International Standard must render structurally different single-column CV layouts.");
 assert.match(documentDownloads, /function printableCvSections/, "Single-column layouts must render real CV sections from the canonical model without creating another content source.");
 assert.match(documentDownloads, /rightRail = \["executive", "consulting", "engineering"\]\.includes/, "Executive, Consulting, and Engineering templates must use a visibly different right-rail document architecture.");
-assert.match(documentDownloads, /graduate: \["Education", "Projects", "Internships"/, "Graduate Elite must use an education-first document architecture.");
-assert.match(documentDownloads, /healthcare: \["Certifications", "Education", "Professional Experience"/, "Healthcare Professional must elevate credentials and education near the top.");
-assert.match(documentDownloads, /engineering: \["Projects", "Professional Experience"/, "Engineering must prioritize technical projects and experience.");
+assert.match(documentDownloads, /graduate: \["Professional Summary", "Education", "Projects", "Internships"/, "Graduate Elite must use an education-first document architecture after Summary.");
+assert.match(documentDownloads, /healthcare: \["Professional Summary", "Certifications", "Education", "Professional Experience"/, "Healthcare Professional must elevate credentials and education near the top after Summary.");
+assert.match(documentDownloads, /engineering: \["Professional Summary", "Projects", "Professional Experience"/, "Engineering must prioritize technical projects and experience after Summary.");
 for (const templateName of ["Executive Black", "Modern ATS", "Google Style", "Microsoft Professional", "Deloitte Consulting", "Creative Premium", "Healthcare Professional", "Graduate Elite", "Engineering", "International Standard"]) {
   assert.match(documentTemplateEngine, new RegExp(`name: "${templateName}"`), `${templateName} must be registered in the reusable template engine.`);
   assert.match(documentDownloads, new RegExp(`"${templateName}"[\\s\\S]*identity:`), `${templateName} must have its own design identity.`);
@@ -499,6 +499,61 @@ assert.match(documentDownloads, /nameSize[\s\S]*roleSize[\s\S]*sectionTitleSize[
 assert.match(documentDownloads, /headerHeight[\s\S]*sidebarWidth[\s\S]*columnGap[\s\S]*cardRadius[\s\S]*chipRadius/, "Document design system must define spacing and layout tokens.");
 assert.match(professionalIdentityTool, /simplePdfDocumentFromModel\(document\.title, cvModel, templateName\)/, "CV export must use the same structured model as preview.");
 assert.match(myDocumentsClient, /simplePdfDocumentFromModel\(selected\.title, selectedCvModel/, "Saved CV PDF export must use the structured CV model.");
+assert.doesNotMatch(documentDownloads, /heroSummary|headerSummary|subtitle:\s*[^,\n]*professionalSummary|tagline:\s*[^,\n]*professionalSummary|description:\s*[^,\n]*professionalSummary|intro:\s*[^,\n]*professionalSummary/, "CV template headers must never map professionalSummary into header subtitle/tagline/intro fields.");
+assert.match(documentDownloads, /executive: \["Professional Summary"/, "Executive templates must render Professional Summary as a main section.");
+assert.match(documentDownloads, /consulting: \["Professional Summary"/, "Consulting templates must render Professional Summary as a main section.");
+assert.match(documentDownloads, /healthcare: \["Professional Summary"/, "Healthcare templates must render Professional Summary as a main section.");
+assert.match(documentDownloads, /graduate: \["Professional Summary"/, "Graduate templates must render Professional Summary as a main section.");
+assert.match(documentDownloads, /engineering: \["Professional Summary"/, "Engineering templates must render Professional Summary as a main section.");
+
+const documentDownloadsRuntime = loadProductionTsModule("components/professional-identity/document-downloads.ts");
+const cvTemplateRuntime = loadProductionTsModule("lib/professional-identity/document-template-engine.ts");
+const summarySentinel = "UNIQUE SUMMARY SENTINEL";
+const cvMappingFixture = {
+  fullName: "Nicka Candida",
+  targetRole: "Data Analyst",
+  phone: "+27 000 000 0000",
+  email: "nicka@example.com",
+  city: "Johannesburg",
+  country: "South Africa",
+  linkedIn: "https://linkedin.com/in/nicka",
+  portfolio: "",
+  github: "",
+  website: "",
+  professionalSummary: summarySentinel,
+  coreSkills: ["Data analysis"],
+  technicalSkills: ["Excel", "SQL"],
+  professionalSkills: ["Communication"],
+  professionalExperience: [{ role: "Assistant", company: "Example Company", location: "Johannesburg", startDate: "2024", endDate: "", current: true, achievements: ["Improved weekly reporting."] }],
+  projects: [{ projectName: "Portfolio Dashboard", role: "Analyst", tools: ["Excel"], description: "Built a reporting dashboard.", impact: "Helped explain trends." }],
+  education: [{ qualification: "Diploma", institution: "Example College", fieldOfStudy: "ICT", year: "2025", status: "Complete" }],
+  certifications: [],
+  achievements: [],
+  languages: [{ language: "English", level: "Professional" }],
+  references: { availableUponRequest: true, items: [] },
+  optionalSections: { volunteerExperience: [], awards: [], publications: [], conferences: [], professionalMemberships: [], interests: [], portfolioLinks: [], qrCodePlaceholder: "" }
+};
+const countOccurrences = (source, needle) => (source.match(new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g")) ?? []).length;
+for (const templateName of cvTemplateRuntime.cvTemplateNames) {
+  const html = documentDownloadsRuntime.renderCvHtmlFromModel(cvMappingFixture, templateName);
+  assert.match(html, /Nicka Candida/, `${templateName} header must contain the candidate name.`);
+  assert.match(html, /Data Analyst|DATA ANALYST/, `${templateName} header must contain the target role.`);
+  assert.equal(countOccurrences(html, summarySentinel), 1, `${templateName} must render the professional summary exactly once.`);
+  assert.ok(html.indexOf(summarySentinel) > html.indexOf("Professional Summary"), `${templateName} must place professional summary inside the Summary section, not the header.`);
+
+  const hiddenSummaryHtml = documentDownloadsRuntime.renderCvHtmlFromModel({ ...cvMappingFixture, professionalSummary: "" }, templateName);
+  assert.doesNotMatch(hiddenSummaryHtml, new RegExp(summarySentinel), `${templateName} must remove hidden/empty summary content from the entire document.`);
+  assert.doesNotMatch(hiddenSummaryHtml, /Professional Summary/, `${templateName} must not render an empty Summary heading.`);
+}
+const atsHtml = documentDownloadsRuntime.renderAtsCvHtmlFromModel(cvMappingFixture);
+assert.equal(countOccurrences(atsHtml, summarySentinel), 1, "ATS Preview must render the professional summary exactly once.");
+assert.ok(atsHtml.indexOf(summarySentinel) > atsHtml.indexOf("Professional Summary"), "ATS Preview must keep the professional summary inside the Summary section.");
+const editedSummaryHtml = documentDownloadsRuntime.renderCvHtmlFromModel({ ...cvMappingFixture, professionalSummary: "EDITED SUMMARY SENTINEL" }, "Executive Black");
+assert.match(editedSummaryHtml, /Nicka Candida/, "Editing Summary must not change the header name.");
+assert.match(editedSummaryHtml, /Data Analyst|DATA ANALYST/, "Editing Summary must not change the header role.");
+assert.ok(editedSummaryHtml.indexOf("EDITED SUMMARY SENTINEL") > editedSummaryHtml.indexOf("Professional Summary"), "Editing Summary must update only the Summary section.");
+const pdfOutput = documentDownloadsRuntime.simplePdfDocumentFromModel("Nicka Candida CV", cvMappingFixture, "Executive Black");
+assert.equal(countOccurrences(pdfOutput, summarySentinel), 1, "PDF export must preserve the same professional summary placement once.");
 assert.doesNotMatch(`${professionalIdentityTool}\n${myDocumentsClient}\n${cvBuilderPage}`, /Download DOCX|downloadDocx|downloadWord|Download Text|text export|download text|download PDF, or download DOCX/i, "Normal user flow must not expose DOCX or text export.");
 assert.match(cvImportPipeline, /export function validateCvImportFile/, "CV import must validate files before extraction.");
 assert.match(cvImportPipeline, /application\/pdf/, "CV import must support PDF files.");
