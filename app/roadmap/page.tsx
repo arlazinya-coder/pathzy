@@ -2,24 +2,30 @@ import { ButtonLink, Card } from "@/components/ui";
 import { appRoutes } from "@/lib/navigation/routes";
 import { createSupabaseServerClient, getCurrentUser } from "@/lib/supabase/server";
 
-const cvActions = [
+const dashboardActions = [
+  {
+    eyebrow: "WELCOME TO PATHZY",
+    title: "Your employment journey, guided step by step",
+    question: "",
+    body: "PATHZY is your employment support system.\n\nWe guide you step by step - from building your professional profile and CV to preparing for opportunities and moving toward employment.",
+    button: "Start My Journey",
+    href: appRoutes.roadmap
+  },
   {
     eyebrow: "TODAY'S RECOMMENDATION",
     title: "Build your CV",
     question: "Do you need a new CV?",
-    body: "A professional CV is the foundation of every successful job application. PATHZY can help you build a professional, recruiter-ready CV step by step, even if you have never created one before.",
+    body: "A professional CV is the foundation of every successful job application. PATHZY can help you build yours step by step.",
     button: "Build My CV",
-    href: `${appRoutes.professionalIdentityCv}?intent=build`,
-    featured: true
+    href: `${appRoutes.professionalIdentityCv}?intent=build`
   },
   {
     eyebrow: "ALREADY HAVE AN OLD CV?",
     title: "Upload and improve your CV",
     question: "",
-    body: "Upload your existing PDF or Word CV.\n\nPATHZY will read the content, organise the information, help you correct it and transform it into a premium PATHZY CV.",
+    body: "Upload your existing PDF or Word CV.\n\nPATHZY will read and organise your information, help you improve it and transform it into a premium PATHZY CV.",
     button: "Upload My Old CV",
-    href: `${appRoutes.professionalIdentityCv}?intent=upload`,
-    featured: false
+    href: `${appRoutes.professionalIdentityCv}?intent=upload`
   },
   {
     eyebrow: "IMPROVE YOUR PATHZY CV",
@@ -27,8 +33,7 @@ const cvActions = [
     question: "Already created a CV with PATHZY?",
     body: "Add new experience, education, skills, certifications, projects or achievements to keep your CV up to date.",
     button: "Upgrade My CV",
-    href: `${appRoutes.professionalIdentityCv}?intent=upgrade`,
-    featured: false
+    href: `${appRoutes.professionalIdentityCv}?intent=upgrade`
   }
 ] as const;
 
@@ -76,10 +81,10 @@ export default async function RoadmapPage() {
       <section aria-labelledby="cv-actions-heading" className="mt-6">
         <h2 id="cv-actions-heading" className="sr-only">Choose how to work on your CV</h2>
         <div className="grid gap-5 lg:grid-cols-2">
-          {cvActions.map((action) => (
+          {dashboardActions.map((action) => (
             <Card
               key={action.button}
-              className={action.featured ? "border-[#5B8CFF]/30 bg-[#5B8CFF]/10 lg:row-span-2" : "bg-white/6"}
+              className="bg-white/6"
             >
               <div className="flex h-full flex-col">
                 <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#c7d6ff]">{action.eyebrow}</p>

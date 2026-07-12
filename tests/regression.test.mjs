@@ -183,15 +183,19 @@ assert.match(roadmapPage, /Welcome back to PATHZY/, "Authenticated landing page 
 assert.match(roadmapPage, /Welcome, \{firstName\}/, "Authenticated landing page must render the safe first-name value.");
 assert.match(roadmapPage, /safeFirstToken\(user\?\.user_metadata\?\.display_name\)/, "First name fallback must use account display name before generic fallback.");
 assert.match(roadmapPage, /const firstName = profileFirstName \|\| accountFirstName \|\| "there";/, "First name fallback must safely use 'there' instead of undefined, null, or email.");
-assert.match(roadmapPage, /Start with your CV, and PATHZY will guide you through the process\./, "Authenticated landing page must focus the next step on CV action.");
-for (const label of ["Build My CV", "Upload My Old CV", "Upgrade My CV"]) {
+assert.match(roadmapPage, /Start with your CV, and PATHZY will guide you through the process\./, "Authenticated landing page must keep the concise welcome guidance.");
+assert.match(roadmapPage, /button: "Start My Journey"[\s\S]*href: appRoutes\.roadmap/, "Start My Journey must use the existing My Employment Journey route.");
+assert.match(roadmapPage, /Your employment journey, guided step by step/, "Authenticated landing page must include the PATHZY journey guidance card.");
+for (const label of ["Start My Journey", "Build My CV", "Upload My Old CV", "Upgrade My CV"]) {
   assert.match(roadmapPage, new RegExp(`button: "${label}"`), `Authenticated landing page must render ${label}.`);
 }
 assert.match(roadmapPage, /href: `\$\{appRoutes\.professionalIdentityCv\}\?intent=build`/, "Build My CV must open the existing CV workspace with build intent.");
 assert.match(roadmapPage, /href: `\$\{appRoutes\.professionalIdentityCv\}\?intent=upload`/, "Upload My Old CV must open the existing CV workspace with upload intent.");
 assert.match(roadmapPage, /href: `\$\{appRoutes\.professionalIdentityCv\}\?intent=upgrade`/, "Upgrade My CV must open the existing CV workspace with upgrade intent.");
 assert.equal((roadmapPage.match(/appRoutes\.professionalIdentityCv/g) ?? []).length, 3, "All three authenticated landing buttons must use the single canonical CV workspace route.");
+assert.equal((roadmapPage.match(/key=\{action\.button\}/g) ?? []).length, 1, "Authenticated landing page must render the dashboard action card collection once.");
 assert.match(roadmapPage, /grid gap-5 lg:grid-cols-2/, "Authenticated landing cards must use a responsive grid.");
+assert.doesNotMatch(roadmapPage, /row-span|featured/, "Authenticated landing page must not keep one oversized recommendation card.");
 assert.doesNotMatch(roadmapPage, /overflow-x-auto|whitespace-nowrap|min-w-\[/, "Authenticated landing page must not require horizontal scrolling on mobile.");
 assert.doesNotMatch(roadmapPage, /Sample Career Plan|Your 90-day control center|Continue My Journey|Interactive 90-day plan|Compare careers/, "Authenticated landing page must not show the previous crowded journey content.");
 assert.match(legacyCvBuilderPage, /redirect\(appRoutes\.professionalIdentityCv\)/, "Legacy /cv-builder must redirect to the canonical CV Builder.");
