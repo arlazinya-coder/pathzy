@@ -1362,133 +1362,8 @@ export function ProfessionalIdentityTool({
 
   return (
     <div className={workspaceClass}>
-      <Card className={tool === "cv" ? "lg:col-span-4" : tool === "cover-letter" ? "lg:col-span-2" : undefined}>
-        {tool === "cv" ? (
-          <div className="grid gap-6">
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)] lg:items-start lg:justify-between">
-              <div className="max-w-xl">
-                <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">{document ? "CV generated" : "Generate your CV"}</p>
-                <h2 className="mt-2 text-2xl font-black">{document ? outputTitle : title}</h2>
-                <p className="mt-2 text-sm leading-6 text-white/58">{document ? "Your draft is ready. Keep editing below, save changes, or regenerate from your latest PATHZY profile." : description}</p>
-              </div>
-              <form onSubmit={generate} className="grid w-full gap-3 lg:grid-cols-[.85fr_1.15fr_.95fr_auto_auto] lg:items-end">
-                <label className="label">
-                  Language
-                  <select className="field" value={values.language ?? "english"} onChange={(event) => updateValue("language", event.target.value as ProfessionalLanguage)}>
-                    <option value="english">English</option>
-                    <option value="french">French</option>
-                  </select>
-                </label>
-                <label className="label">
-                  Template
-                  <select className="field" value={templateName} onChange={(event) => updateValue("templateName", event.target.value)}>
-                    {cvDesignSystems.map((template) => (
-                      <option key={template} value={template}>{template}</option>
-                    ))}
-                  </select>
-                </label>
-                {fields.map((field) => (
-                  <label key={field.name} className="label">
-                    {field.label}
-                    {field.type === "select" ? (
-                      <select className="field" value={(values[field.name] as string | undefined) ?? field.options?.[0] ?? ""} onChange={(event) => updateValue(field.name, event.target.value)}>
-                        {(field.options ?? []).map((option) => (
-                          <option key={option} value={option}>{option}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input className="field" type={field.type ?? "text"} placeholder={field.placeholder} value={(values[field.name] as string | undefined) ?? ""} onChange={(event) => updateValue(field.name, event.target.value)} />
-                    )}
-                  </label>
-                ))}
-                <button disabled={loading} className="h-[46px] rounded-full blue-purple px-5 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60">
-                  {loading ? "Generating" : document ? "Regenerate" : "Generate"}
-                </button>
-                <button type="button" onClick={() => setCvEntryMode(cvEntryMode === "upload" ? "profile" : "upload")} className="h-[46px] rounded-full border border-white/12 bg-white/8 px-5 text-sm font-extrabold text-white/82">
-                  {cvEntryMode === "upload" ? "Use Profile" : "Upload CV"}
-                </button>
-                {cvEntryMode === "upload" ? (
-                  <div id="old-cv-upload" className="rounded-[18px] border border-white/10 bg-white/6 p-4 lg:col-span-5">
-                    <p className="text-sm font-extrabold text-white">Upload old CV</p>
-                    <p className="mt-1 text-sm leading-6 text-white/58">Upload a text-based PDF, DOCX, or TXT CV. PATHZY will read the content, organize it into your CV draft, then ask you to review before editing.</p>
-                    <input className="mt-3 block w-full text-sm text-white/62 file:mr-4 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-extrabold file:text-white" type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={(event) => handleOldCvUpload(event.target.files?.[0] ?? null)} />
-                    {oldCvNotice ? (
-                      <p className={`mt-3 rounded-[16px] border px-4 py-3 text-sm font-bold ${cvImportStatus === "error" ? "border-[#ff6b7a]/25 bg-[#ff6b7a]/10 text-[#ffd5da]" : "border-[#5B8CFF]/25 bg-[#5B8CFF]/10 text-[#c7d6ff]"}`}>
-                        {oldCvNotice}
-                      </p>
-                    ) : null}
-                    {cvImportStatus !== "idle" && cvImportStatus !== "ready" && cvImportStatus !== "error" ? (
-                      <div className="mt-3 overflow-hidden rounded-full bg-white/10">
-                        <div className="h-2 rounded-full bg-gradient-to-r from-[#5B8CFF] to-[#9D5BFF]" style={{ width: cvImportStatus === "reading" ? "25%" : cvImportStatus === "extracting" ? "50%" : cvImportStatus === "organizing" ? "72%" : "90%" }} />
-                      </div>
-                    ) : null}
-                    {cvImportSummary && pendingImportedCv ? (
-                      <div className="mt-4 rounded-[18px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-4">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                          <div>
-                            <p className="text-sm font-black text-white">{cvImportSummary.message}</p>
-                            <p className="mt-1 text-sm leading-6 text-[#b9f8d5]">
-                              We found {cvImportSummary.counts.workExperiences} work experiences, {cvImportSummary.counts.educationRecords} education records, {cvImportSummary.counts.skills} skills, {cvImportSummary.counts.certifications} qualifications, {cvImportSummary.counts.languages} languages, and {cvImportSummary.counts.references} references.
-                            </p>
-                            {cvImportSummary.counts.unclassifiedItems ? (
-                              <p className="mt-2 text-xs font-bold text-[#ffe2a8]">{cvImportSummary.counts.unclassifiedItems} item{cvImportSummary.counts.unclassifiedItems === 1 ? "" : "s"} stayed unclassified for review instead of being guessed.</p>
-                            ) : null}
-                            {cvImportSummary.excludedSensitiveNotice ? (
-                              <p className="mt-2 text-xs font-bold text-[#c7d6ff]">{cvImportSummary.excludedSensitiveNotice}</p>
-                            ) : null}
-                            {cvImportSummary.reviewItems.length ? (
-                              <p className="mt-2 text-xs font-bold text-[#ffe2a8]">{cvImportSummary.reviewItems.length} item{cvImportSummary.reviewItems.length === 1 ? "" : "s"} may need your review.</p>
-                            ) : (
-                              <p className="mt-2 text-xs font-bold text-[#b9f8d5]">Imported details are ready for review.</p>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={confirmImportedCv}
-                            disabled={cvImportStatus === "saving"}
-                            className="h-[44px] shrink-0 rounded-full blue-purple px-5 text-sm font-extrabold text-white"
-                          >
-                            {cvImportStatus === "saving" ? "Saving Draft" : "Review Imported CV"}
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-              </form>
-            </div>
-            {document && cvModel && activeCvVersion ? (
-              <div className="rounded-[22px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 p-4">
-                <div className="grid gap-3 lg:grid-cols-[1.2fr_.9fr_auto] lg:items-end">
-                  <label className="label">
-                    CV version name
-                    <input className="field" value={activeCvVersion.versionName} onChange={(event) => renameCvVersion(event.target.value)} />
-                  </label>
-                  <label className="label">
-                    Design system
-                    <select className="field" value={activeCvVersion.designSystem} onChange={(event) => updateValue("templateName", event.target.value)}>
-                      {cvDesignSystems.map((template) => (
-                        <option key={template} value={template}>{template}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <button type="button" onClick={duplicateCvVersion} className="h-[46px] rounded-full border border-white/12 bg-white/8 px-5 text-sm font-extrabold text-white/82">
-                    Duplicate CV
-                  </button>
-                </div>
-                <div className="mt-3 grid gap-2 text-xs font-bold text-[#c7d6ff]/80 sm:grid-cols-3">
-                  <span>Design changes only the layout.</span>
-                  <span>Content source: one CV model.</span>
-                  <span>Updated: {new Date(activeCvVersion.updatedAt).toLocaleDateString()}</span>
-                </div>
-                <label className="mt-4 flex items-start gap-3 rounded-[16px] border border-white/10 bg-white/6 p-3 text-sm font-bold text-white/70">
-                  <input type="checkbox" className="mt-1" checked={updateLinkedCvVersions} onChange={(event) => setUpdateLinkedCvVersions(event.target.checked)} />
-                  <span>When I save content edits, also update linked CV versions that share this content source.</span>
-                </label>
-              </div>
-            ) : null}
-          </div>
-        ) : (
+      {tool !== "cv" ? (
+        <Card className={tool === "cover-letter" ? "lg:col-span-2" : undefined}>
           <>
             <h2 className="text-2xl font-black">{title}</h2>
             <p className="mt-3 leading-7 text-white/62">{description}</p>
@@ -1546,8 +1421,8 @@ export function ProfessionalIdentityTool({
               </button>
             </form>
           </>
-        )}
-      </Card>
+        </Card>
+      ) : null}
 
       <Card className={tool === "cv" ? "lg:col-span-1" : undefined}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1645,19 +1520,77 @@ export function ProfessionalIdentityTool({
               <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Live preview engine</p>
               <h2 className="mt-2 text-2xl font-black">{outputTitle}</h2>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => setCvPreviewMode("designed")} className={`rounded-full border px-5 py-3 text-sm font-extrabold ${cvPreviewMode === "designed" ? "border-[#8fb0ff] bg-[#5B8CFF]/18 text-white" : "border-white/12 bg-white/8 text-white/72"}`}>
-                Designed Preview
-              </button>
-              <button type="button" onClick={() => setCvPreviewMode("ats")} className={`rounded-full border px-5 py-3 text-sm font-extrabold ${cvPreviewMode === "ats" ? "border-[#8fb0ff] bg-[#5B8CFF]/18 text-white" : "border-white/12 bg-white/8 text-white/72"}`}>
-                ATS Preview
-              </button>
-              <button onClick={downloadPdf} disabled={!document?.content} className="rounded-full blue-purple px-5 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">
-                Download PDF
-              </button>
+            <div className="flex flex-col gap-2 sm:items-end">
+              <form onSubmit={generate} className="flex flex-wrap gap-2 sm:justify-end">
+                <button disabled={loading} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-60">
+                  {loading ? "Generating" : "Regenerate"}
+                </button>
+                <button type="button" onClick={() => setCvEntryMode(cvEntryMode === "upload" ? "profile" : "upload")} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82">
+                  {cvEntryMode === "upload" ? "Use Profile" : "Upload CV"}
+                </button>
+              </form>
+              <div className="flex flex-wrap gap-2 sm:justify-end">
+                <button onClick={downloadPdf} disabled={!document?.content} className="rounded-full blue-purple px-5 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">
+                  Download PDF
+                </button>
+                <button type="button" onClick={() => setCvPreviewMode("designed")} className={`rounded-full border px-5 py-3 text-sm font-extrabold ${cvPreviewMode === "designed" ? "border-[#8fb0ff] bg-[#5B8CFF]/18 text-white" : "border-white/12 bg-white/8 text-white/72"}`}>
+                  Designed Preview
+                </button>
+                <button type="button" onClick={() => setCvPreviewMode("ats")} className={`rounded-full border px-5 py-3 text-sm font-extrabold ${cvPreviewMode === "ats" ? "border-[#8fb0ff] bg-[#5B8CFF]/18 text-white" : "border-white/12 bg-white/8 text-white/72"}`}>
+                  ATS Preview
+                </button>
+              </div>
             </div>
           </div>
           <p className="mt-3 text-sm leading-6 text-white/58">{cvPreviewMode === "ats" ? "ATS Preview shows the parser-friendly structure recruiters and screening systems can read." : "Designed Preview shows the print-ready A4 document that the PDF export uses."}</p>
+          {cvEntryMode === "upload" ? (
+            <div id="old-cv-upload" className="mt-5 rounded-[18px] border border-white/10 bg-white/6 p-4">
+              <p className="text-sm font-extrabold text-white">Upload old CV</p>
+              <p className="mt-1 text-sm leading-6 text-white/58">Upload a text-based PDF, DOCX, or TXT CV. PATHZY will read the content, organize it into your CV draft, then ask you to review before editing.</p>
+              <input className="mt-3 block w-full text-sm text-white/62 file:mr-4 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-extrabold file:text-white" type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" onChange={(event) => handleOldCvUpload(event.target.files?.[0] ?? null)} />
+              {oldCvNotice ? (
+                <p className={`mt-3 rounded-[16px] border px-4 py-3 text-sm font-bold ${cvImportStatus === "error" ? "border-[#ff6b7a]/25 bg-[#ff6b7a]/10 text-[#ffd5da]" : "border-[#5B8CFF]/25 bg-[#5B8CFF]/10 text-[#c7d6ff]"}`}>
+                  {oldCvNotice}
+                </p>
+              ) : null}
+              {cvImportStatus !== "idle" && cvImportStatus !== "ready" && cvImportStatus !== "error" ? (
+                <div className="mt-3 overflow-hidden rounded-full bg-white/10">
+                  <div className="h-2 rounded-full bg-gradient-to-r from-[#5B8CFF] to-[#9D5BFF]" style={{ width: cvImportStatus === "reading" ? "25%" : cvImportStatus === "extracting" ? "50%" : cvImportStatus === "organizing" ? "72%" : "90%" }} />
+                </div>
+              ) : null}
+              {cvImportSummary && pendingImportedCv ? (
+                <div className="mt-4 rounded-[18px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-sm font-black text-white">{cvImportSummary.message}</p>
+                      <p className="mt-1 text-sm leading-6 text-[#b9f8d5]">
+                        We found {cvImportSummary.counts.workExperiences} work experiences, {cvImportSummary.counts.educationRecords} education records, {cvImportSummary.counts.skills} skills, {cvImportSummary.counts.certifications} qualifications, {cvImportSummary.counts.languages} languages, and {cvImportSummary.counts.references} references.
+                      </p>
+                      {cvImportSummary.counts.unclassifiedItems ? (
+                        <p className="mt-2 text-xs font-bold text-[#ffe2a8]">{cvImportSummary.counts.unclassifiedItems} item{cvImportSummary.counts.unclassifiedItems === 1 ? "" : "s"} stayed unclassified for review instead of being guessed.</p>
+                      ) : null}
+                      {cvImportSummary.excludedSensitiveNotice ? (
+                        <p className="mt-2 text-xs font-bold text-[#c7d6ff]">{cvImportSummary.excludedSensitiveNotice}</p>
+                      ) : null}
+                      {cvImportSummary.reviewItems.length ? (
+                        <p className="mt-2 text-xs font-bold text-[#ffe2a8]">{cvImportSummary.reviewItems.length} item{cvImportSummary.reviewItems.length === 1 ? "" : "s"} may need your review.</p>
+                      ) : (
+                        <p className="mt-2 text-xs font-bold text-[#b9f8d5]">Imported details are ready for review.</p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={confirmImportedCv}
+                      disabled={cvImportStatus === "saving"}
+                      className="h-[44px] shrink-0 rounded-full blue-purple px-5 text-sm font-extrabold text-white"
+                    >
+                      {cvImportStatus === "saving" ? "Saving Draft" : "Review Imported CV"}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {document?.content && previewCvModel ? (
             <div ref={previewScrollRef} className="mt-5 rounded-[22px] bg-[#dfe7f3] p-3 text-black">
               <div dangerouslySetInnerHTML={{ __html: cvPreviewMode === "ats" ? renderAtsCvHtmlFromModel(previewCvModel) : renderCvHtmlFromModel(previewCvModel, templateName, activeCvSection) }} />
