@@ -365,6 +365,14 @@ assert.match(myDocumentsClient, /cvVersion: \{ \.\.\.version, versionName: title
 assert.match(myDocumentsClient, /renderCvHtmlFromModel\(selectedCvModel, selectedCvVersion\?\.designSystem/, "Saved CV preview must render from the selected version design metadata.");
 assert.match(myDocumentsClient, /lastDownloadedAt: downloadedAt/, "Downloaded CV versions must store lastDownloadedAt metadata.");
 assert.match(documentDownloads, /return \{ name: cv\.fullName, targetRole: cv\.targetRole, contact: contactLines\(cv\), sections \};/, "CV renderer must map fullName and targetRole to separate output fields.");
+assert.match(documentDownloads, /first\.elements\.push\(\{ kind: "text", x: 52, y: 42[\s\S]*text: cv\.name/, "Designed CV header must render the candidate name from fullName.");
+assert.match(documentDownloads, /if \(cv\.targetRole\) first\.elements\.push\(\{ kind: "text"[\s\S]*text: cv\.targetRole/, "Designed CV header must render targetRole as the header role line.");
+assert.match(documentDownloads, /cv\.contact\.forEach\(\(item\) => \{[\s\S]*pushWrappedText\(first\.elements, item/, "Designed CV header must render only contact lines from contact data.");
+assert.match(documentDownloads, /executive: \["Professional Summary", "Career Goal"/, "Professional Summary must render as a normal main section in executive layouts.");
+assert.match(documentDownloads, /modern: \["Professional Summary", "Projects"/, "Professional Summary must render as a normal main section in modern layouts.");
+assert.match(documentDownloads, /const order = orders\[premiumTemplate\.identity\] \?\? \["Professional Summary", "Career Goal"/, "Professional Summary must render as a normal main section in fallback layouts.");
+assert.doesNotMatch(documentDownloads, /heroSummary|headerSummary|tagline: professionalSummary|subtitle: professionalSummary|intro: professionalSummary|description: professionalSummary/, "Professional Summary must never be mapped into the CV header.");
+assert.doesNotMatch(documentDownloads, /pushWrappedText\(first\.elements,\s*section\(cv,\s*"Professional Summary"/, "Designed CV header must not draw Professional Summary text.");
 assert.match(documentDownloads, /`FULL NAME: \$\{professionalizeLine\(cv\.name\)\}`/, "Serialized CV must keep full name mapped to full name.");
 assert.match(documentDownloads, /`TARGET ROLE: \$\{professionalizeLine\(cv\.targetRole\)\}`/, "Serialized CV must keep target role mapped to target role.");
 assert.match(documentDownloads, /\.replace\(\/\\bmicrosoft\\s\+microsoft\\s\+word\\b\/gi, "Microsoft Word"\)/, "CV cleanup must repair Microsoft Microsoft Word.");
@@ -415,14 +423,16 @@ assert.match(documentDownloads, /for \(const layoutPage of layout\.pages\)/, "PD
 assert.match(documentDownloads, /function roundedRectPath/, "PDF export must render rounded CV cards instead of flattening preview cards into plain rectangles.");
 assert.match(documentDownloads, /function circlePath/, "PDF export must render circular markers so the visual language matches preview.");
 assert.match(documentDownloads, /simplePdfDocumentFromModel[\s\S]*pdfFromLayout\(buildCvLayoutFromModel\(cv, templateName\)\)/, "PDF export must use the same CV layout renderer as preview.");
+assert.match(documentDownloads, /export function renderCvHtmlFromModel\(cv: CvModel, templateName\?: string, activeSection\?: string\)[\s\S]*buildCvLayoutFromModel\(cv, templateName, activeSection\)/, "Designed Preview must use the shared CV layout renderer.");
+assert.match(documentDownloads, /export function renderAtsCvHtmlFromModel\(cvInput: CvModel\)[\s\S]*cv\.fullName[\s\S]*cv\.targetRole[\s\S]*sections\.map/, "ATS Preview must keep header fields separate from semantic sections.");
 assert.match(documentDownloads, /pathzyEliteDesignSystem/, "CV renderer must use the shared PATHZY elite document design system.");
 assert.match(documentDownloads, /function buildSingleColumnCvLayout/, "ATS and International templates must have a true single-column A4 layout path.");
 assert.match(documentDownloads, /premiumTemplate\.identity === "ats" \|\| premiumTemplate\.identity === "international"[\s\S]*buildSingleColumnCvLayout/, "Modern ATS and International Standard must render structurally different single-column CV layouts.");
 assert.match(documentDownloads, /function printableCvSections/, "Single-column layouts must render real CV sections from the canonical model without creating another content source.");
 assert.match(documentDownloads, /rightRail = \["executive", "consulting", "engineering"\]\.includes/, "Executive, Consulting, and Engineering templates must use a visibly different right-rail document architecture.");
-assert.match(documentDownloads, /graduate: \["Education", "Projects", "Internships"/, "Graduate Elite must use an education-first document architecture.");
-assert.match(documentDownloads, /healthcare: \["Certifications", "Education", "Professional Experience"/, "Healthcare Professional must elevate credentials and education near the top.");
-assert.match(documentDownloads, /engineering: \["Projects", "Professional Experience"/, "Engineering must prioritize technical projects and experience.");
+assert.match(documentDownloads, /graduate: \["Professional Summary", "Education", "Projects", "Internships"/, "Graduate Elite must use an education-first document architecture after the Summary section.");
+assert.match(documentDownloads, /healthcare: \["Professional Summary", "Certifications", "Education", "Professional Experience"/, "Healthcare Professional must elevate credentials and education near the top after the Summary section.");
+assert.match(documentDownloads, /engineering: \["Professional Summary", "Projects", "Professional Experience"/, "Engineering must prioritize technical projects and experience after the Summary section.");
 for (const templateName of ["Executive Black", "Modern ATS", "Google Style", "Microsoft Professional", "Deloitte Consulting", "Creative Premium", "Healthcare Professional", "Graduate Elite", "Engineering", "International Standard"]) {
   assert.match(documentTemplateEngine, new RegExp(`name: "${templateName}"`), `${templateName} must be registered in the reusable template engine.`);
   assert.match(documentDownloads, new RegExp(`"${templateName}"[\\s\\S]*identity:`), `${templateName} must have its own design identity.`);

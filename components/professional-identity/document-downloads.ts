@@ -1190,16 +1190,16 @@ function section(cv: CvRenderModel, title: string) {
 
 function mainSections(cv: CvRenderModel) {
   const orders: Partial<Record<CvDesignSystem["identity"], string[]>> = {
-    executive: ["Career Goal", "Professional Experience", "Work Experience", "Experience", "Achievements", "Projects", "Education", "Certifications", "Awards", "Professional Memberships", "References"],
-    consulting: ["Professional Experience", "Work Experience", "Experience", "Projects", "Achievements", "Education", "Certifications", "Professional Memberships", "Awards", "References"],
-    healthcare: ["Certifications", "Education", "Professional Experience", "Work Experience", "Experience", "Volunteer Experience", "Achievements", "Languages", "References"],
-    graduate: ["Education", "Projects", "Internships", "Achievements", "Volunteer Experience", "Professional Experience", "Work Experience", "Experience", "Certifications", "Awards", "References"],
-    engineering: ["Projects", "Professional Experience", "Work Experience", "Experience", "Education", "Certifications", "Achievements", "Publications", "Conferences", "References"],
-    creative: ["Projects", "Portfolio Links", "Professional Experience", "Work Experience", "Experience", "Achievements", "Awards", "Education", "Certifications", "Interests", "References"],
-    professional: ["Professional Experience", "Work Experience", "Experience", "Education", "Certifications", "Projects", "Achievements", "Professional Memberships", "References"],
-    modern: ["Projects", "Professional Experience", "Work Experience", "Experience", "Education", "Certifications", "Achievements", "References"]
+    executive: ["Professional Summary", "Career Goal", "Professional Experience", "Work Experience", "Experience", "Achievements", "Projects", "Education", "Certifications", "Awards", "Professional Memberships", "References"],
+    consulting: ["Professional Summary", "Professional Experience", "Work Experience", "Experience", "Projects", "Achievements", "Education", "Certifications", "Professional Memberships", "Awards", "References"],
+    healthcare: ["Professional Summary", "Certifications", "Education", "Professional Experience", "Work Experience", "Experience", "Volunteer Experience", "Achievements", "Languages", "References"],
+    graduate: ["Professional Summary", "Education", "Projects", "Internships", "Achievements", "Volunteer Experience", "Professional Experience", "Work Experience", "Experience", "Certifications", "Awards", "References"],
+    engineering: ["Professional Summary", "Projects", "Professional Experience", "Work Experience", "Experience", "Education", "Certifications", "Achievements", "Publications", "Conferences", "References"],
+    creative: ["Professional Summary", "Projects", "Portfolio Links", "Professional Experience", "Work Experience", "Experience", "Achievements", "Awards", "Education", "Certifications", "Interests", "References"],
+    professional: ["Professional Summary", "Professional Experience", "Work Experience", "Experience", "Education", "Certifications", "Projects", "Achievements", "Professional Memberships", "References"],
+    modern: ["Professional Summary", "Projects", "Professional Experience", "Work Experience", "Experience", "Education", "Certifications", "Achievements", "References"]
   };
-  const order = orders[premiumTemplate.identity] ?? ["Career Goal", "Professional Experience", "Work Experience", "Experience", "Internships", "Freelance Work", "Projects", "Volunteer Experience", "Education", "Certifications", "Achievements", "Awards", "Publications", "Conferences", "Professional Memberships", "Interests", "References"];
+  const order = orders[premiumTemplate.identity] ?? ["Professional Summary", "Career Goal", "Professional Experience", "Work Experience", "Experience", "Internships", "Freelance Work", "Projects", "Volunteer Experience", "Education", "Certifications", "Achievements", "Awards", "Publications", "Conferences", "Professional Memberships", "Interests", "References"];
   return order.map((title) => section(cv, title)).filter((item) => item?.items.length) as CvSection[];
 }
 
@@ -1598,8 +1598,6 @@ function buildCvLayoutFromModelWithDesign(cvInput: CvModel, activeSection?: stri
   first.elements.push({ kind: "text", x: 52, y: 42, width: 500, text: cv.name || "", size: premiumTemplate.nameSize, color: premiumTemplate.heroText, weight: "bold" });
   if (cv.targetRole) first.elements.push({ kind: "text", x: 54, y: 96, width: 480, text: cv.targetRole, size: premiumTemplate.roleSize, color: premiumTemplate.heroMuted, weight: "bold" });
   first.elements.push({ kind: "line", x: 54, y: 128, width: premiumTemplate.identity === "executive" ? 190 : 138, color: premiumTemplate.blue, thickness: premiumTemplate.identity === "executive" ? 2 : 4 });
-  const heroSummary = section(cv, "Professional Summary")?.items[0];
-  if (heroSummary) pushWrappedText(first.elements, heroSummary, 54, 148, 470, premiumTemplate.summarySize, premiumTemplate.heroMuted, premiumTemplate.summarySize + 3.1);
 
   let contactY = 54;
   cv.contact.forEach((item) => {
