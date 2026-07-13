@@ -320,6 +320,15 @@ assert.match(professionalCvPage, /locked=\{!unlocked\}[\s\S]*exportLocked=\{!can
 assert.match(professionalCoverLetterPage, /locked=\{!unlocked\}[\s\S]*exportLocked=\{!canExport\}/, "Cover Letter Builder must allow creation/editing while locking only export actions for free users.");
 assert.match(professionalIdentityPage, /button: "My CV"/, "Professional Profile must label the existing CV workspace as My CV.");
 assert.match(professionalCvPage, /title="My CV"/, "CV workspace page header must use the My CV label.");
+assert.match(professionalCvPage, /Build your professional CV[\s\S]*PATHZY will prepare the first draft, and you can review, edit and improve it before downloading\./, "My CV page must show the explanatory intro card before the workspace.");
+assert.match(professionalCvPage, /Create your cover letter[\s\S]*Build Cover Letter/, "My CV page must show the cover letter next-step intro card.");
+assert.match(professionalCvPage, /ButtonLink href=\{PATHZY_ROUTES\.COVER_LETTER\}>Build Cover Letter<\/ButtonLink>/, "Build Cover Letter must use the canonical Cover Letter route.");
+const myCvIntroIndex = professionalCvPage.indexOf("Build your professional CV");
+const coverLetterIntroIndex = professionalCvPage.indexOf("Create your cover letter");
+const cvToolIndex = professionalCvPage.indexOf("<ProfessionalIdentityTool");
+assert.ok(myCvIntroIndex > -1 && coverLetterIntroIndex > myCvIntroIndex && cvToolIndex > coverLetterIntroIndex, "My CV intro cards must render below the page heading and before the existing CV workspace.");
+const myCvIntroCard = professionalCvPage.slice(myCvIntroIndex, coverLetterIntroIndex);
+assert.doesNotMatch(myCvIntroCard, /ButtonLink|<Link|href=|<button/, "The My CV explanatory intro card must not contain a button or link.");
 assert.match(settingsPage, />My CV<\/ButtonLink>/, "Settings shortcut must use the My CV label.");
 assert.match(navigation, /"My CV"/, "Shared user-facing product data must use the My CV label.");
 assert.doesNotMatch(`${professionalIdentityPage}\n${professionalCvPage}\n${settingsPage}\n${navigation}\n${readFileSync("app/qa-pathzy-journey/page.tsx", "utf8")}`, /Create My CV/, "Relevant user-facing CV workspace labels must not say Create My CV.");
