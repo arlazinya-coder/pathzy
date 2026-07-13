@@ -468,15 +468,15 @@ assert.match(professionalIdentityTool, /simplePdfDocumentFromModel\(document\.ti
 assert.match(professionalIdentityTool, /Improve your CV/, "CV Builder must show Improve your CV recommendations instead of generic missing-field messages.");
 assert.match(professionalIdentityTool, /Add \{parsedCv\.missing\.join\(", "\)\.toLowerCase\(\)\}/, "CV recommendations must be based on the structured CV model gaps.");
 assert.doesNotMatch(professionalCvPage, /premiumDocumentTemplates\.map|TemplateMiniPreview/, "CV page wrapper must not render a second template gallery after the editor workspace.");
-const cvGalleryIndex = professionalIdentityTool.indexOf("Template gallery");
 const cvEditorIndex = professionalIdentityTool.indexOf("Structured editor");
 const cvPreviewIndex = professionalIdentityTool.indexOf("Live preview engine");
+const cvGalleryIndex = professionalIdentityTool.indexOf("Choose a recruiter-ready design", cvPreviewIndex + 1);
 const cvNextActionIndex = professionalIdentityTool.indexOf("Your CV is ready. What would you like to do next?");
 assert.equal(professionalIdentityTool.indexOf("CV generated"), -1, "CV Builder must not render the old generated/version management card.");
 assert.doesNotMatch(professionalIdentityTool, /CV version name|Content source: one CV model\.|When I save content edits, also update linked CV versions|Duplicate CV/, "CV Builder must keep technical version controls out of the visible workspace.");
 assert.match(professionalIdentityTool, /Live preview engine[\s\S]*Regenerate[\s\S]*Upload CV[\s\S]*Download PDF[\s\S]*Designed Preview[\s\S]*ATS Preview/, "Live Preview Engine must contain CV management and preview/output actions.");
 assert.ok(cvEditorIndex > -1 && cvPreviewIndex > cvEditorIndex && cvGalleryIndex > cvPreviewIndex && cvNextActionIndex > cvGalleryIndex, "CV page flow must be editor, live preview workspace, template gallery, then next-action area.");
-assert.equal((professionalIdentityTool.match(/Template gallery/g) ?? []).length, 1, "CV Builder must render one Template Gallery instance.");
+assert.equal((professionalIdentityTool.match(/Choose a recruiter-ready design/g) ?? []).length, 1, "CV Builder must render one Template Gallery instance.");
 assert.equal((professionalIdentityTool.match(/Structured editor/g) ?? []).length, 1, "CV Builder must render one Structured Editor instance.");
 assert.equal((professionalIdentityTool.match(/Live preview engine/g) ?? []).length, 1, "CV Builder must render one Live Preview instance.");
 for (const sectionLabel of ["Header", "Summary", "Experience", "Education", "Skills", "Projects", "Certifications", "More"]) {
@@ -680,21 +680,29 @@ assert.ok(!/(^|["\s])page\s+\d+/i.test(JSON.stringify(florentCanonicalCv)) && !/
 assert.ok(florentCanonicalCv.professionalExperience.every((item) => !(item.role.includes("|") && !item.company && !item.startDate && !item.endDate)), "Pipe-separated flattened experience strings must not substitute for structured ExperienceRecord data.");
 assert.ok(florentCanonicalCv.education.every((item) => item.qualification.length < 180 && !/;.*;.*;/.test(item.qualification)), "Qualification title must not absorb an entire module list.");
 assert.ok(florentCanonicalCv.references.items.length >= 2, "References continuing through the import must remain grouped in CanonicalCv references.");
-assert.match(documentDownloads, /export type CoverLetterData = \{[\s\S]*fullName: string;[\s\S]*companyName: string;[\s\S]*bodyParagraphs: string\[\];[\s\S]*designSystem: CvTemplateName;[\s\S]*\};/, "Cover Letter foundation must define one structured coverLetterData source of truth.");
+assert.match(documentDownloads, /export type CoverLetterData = \{[\s\S]*fullName: string;[\s\S]*professionalTitle: string;[\s\S]*companyName: string;[\s\S]*subject: string;[\s\S]*motivationParagraph: string;[\s\S]*evidenceParagraph: string;[\s\S]*companyAlignmentParagraph: string;[\s\S]*designSystem: CoverLetterTemplateName;[\s\S]*\};/, "Cover Letter foundation must define one canonical structured CoverLetterData source of truth.");
+for (const templateName of ["Executive Black", "Modern ATS", "Google Style", "Microsoft Professional", "Deloitte Consulting", "Executive Signature", "Global Corporate", "Tech Minimal", "Creative Professional", "Graduate First Step"]) {
+  assert.match(documentDownloads, new RegExp(`name: "${templateName}"`), `${templateName} must be registered in the cover letter template gallery.`);
+}
 assert.match(documentDownloads, /export function serializeCoverLetterData/, "Cover Letter content text must serialize from coverLetterData.");
 assert.match(documentDownloads, /export function renderCoverLetterHtmlFromData/, "Cover Letter preview must render from coverLetterData.");
 assert.match(documentDownloads, /export function simpleCoverLetterPdfDocument[\s\S]*pdfFromLayout\(buildCoverLetterLayoutFromData\(data\)\)/, "Cover Letter PDF must export from the same coverLetterData renderer.");
 assert.match(documentDownloads, /export function coverLetterPdfFilename/, "Cover Letter PDF export must use a dedicated clean filename helper.");
-assert.match(documentDownloads, /PATHZY_Cover_Letter_\$\{company\}_\$\{jobTitle\}_\$\{stamp\}\.pdf/, "Cover Letter filename must include company, job title, and date.");
+assert.match(documentDownloads, /\$\{candidate\}_Cover_Letter_\$\{company\}_\$\{jobTitle\}_\$\{stamp\}\.pdf/, "Cover Letter filename must include candidate, company, job title, and date.");
 assert.match(documentDownloads, /function resolveCoverLetterDesign/, "Cover Letter renderer must have design-system-specific layout tokens.");
 assert.match(documentDownloads, /headerStyle: "minimal"/, "ATS cover letter must use a minimal recruiter-friendly header style.");
 assert.match(documentDownloads, /headerStyle: "accented"/, "Professional cover letter must use an accented business header style.");
 assert.match(documentDownloads, /headerStyle: "executive"/, "Executive cover letter must use an executive letterhead style.");
+assert.match(documentDownloads, /headerStyle: "signature"/, "Executive Signature cover letter must use a signature-specific layout.");
+assert.match(documentDownloads, /headerStyle: "technical"/, "Tech Minimal cover letter must use a technical letter layout.");
+assert.match(documentDownloads, /headerStyle: "creative"/, "Creative Professional cover letter must use an editorial letter layout.");
 assert.match(documentDownloads, /const coverDesign = resolveCoverLetterDesign\(cover\.designSystem\)/, "Cover Letter layout must resolve the selected design system.");
+assert.match(documentDownloads, /premiumTemplate = resolveCvTemplateDesign\(coverDesign\.cvTemplate\)/, "Cover Letter rendering must use cover-letter design tokens without changing CV content.");
 assert.match(documentDownloads, /coverDesign\.paragraphSpacing/, "Cover Letter design systems must change section rhythm, not just color.");
 assert.match(documentDownloads, /coverDesign\.nameSize/, "Cover Letter design systems must change typography, not just color.");
 assert.match(documentDownloads, /coverDesign\.headerStyle === "executive"[\s\S]*premiumTemplate\.amber/, "Executive cover letter must include a distinct premium accent treatment.");
-assert.match(professionalIdentityService, /const coverLetterData: CoverLetterData = \{[\s\S]*companyName: company,[\s\S]*jobTitle: role,[\s\S]*designSystem: templateName[\s\S]*\};/, "Cover Letter generation must create structured coverLetterData.");
+assert.match(professionalIdentityService, /const templateName = normalizeCoverLetterTemplate\(options\.templateName\);/, "Cover Letter generation must use the cover-letter template family.");
+assert.match(professionalIdentityService, /const coverLetterData: CoverLetterData = \{[\s\S]*professionalTitle: goal,[\s\S]*companyName: company,[\s\S]*jobTitle: role,[\s\S]*motivationParagraph:[\s\S]*evidenceParagraph:[\s\S]*companyAlignmentParagraph:[\s\S]*designSystem: templateName[\s\S]*\};/, "Cover Letter generation must create the expanded structured coverLetterData.");
 assert.match(professionalIdentityService, /contentJson: \{ coverLetterData \}/, "Cover Letter save must persist coverLetterData.");
 assert.match(professionalIdentityService, /async function getLatestCvModel/, "Cover Letter generation must read saved CV data when available.");
 assert.match(coverLetterGeneration, /getLatestCvModel\(supabase, userId\)/, "Cover Letter generation must use the user's latest CV context.");
@@ -710,12 +718,18 @@ assert.doesNotMatch(professionalIdentityTool, /cover-letter[\s\S]{0,220}docx/i, 
 assert.match(professionalIdentityTool, /function updateCoverLetterDraft/, "Cover Letter editor must update coverLetterData as the source of truth.");
 assert.match(professionalIdentityTool, /contentJson: \{ \.\.\.\(document\.contentJson \?\? \{\}\), coverLetterData: draft \}/, "Cover Letter edits must preserve coverLetterData for save and recovery.");
 assert.match(professionalIdentityTool, /function renderCoverLetterEditor/, "Cover Letter must have a structured editor.");
+assert.match(professionalIdentityTool, /function renderCoverLetterTemplateGallery/, "Cover Letter Studio must expose a letter-specific template gallery.");
+assert.match(professionalIdentityTool, /function renderCoverLetterMiniPreview/, "Cover Letter template cards must show real mini document previews.");
+assert.match(professionalIdentityTool, /coverLetterTemplateGallery\.map/, "Cover Letter template gallery must render all letter-specific templates.");
+assert.match(professionalIdentityTool, /Switching templates changes presentation only\. Your company, role, paragraphs, and edits stay exactly the same\./, "Cover Letter template switching must explain that content is preserved.");
+assert.match(professionalIdentityTool, /template_name: draft\.designSystem,[\s\S]*coverLetterData: draft/, "Cover Letter template switching must update presentation without losing content.");
+assert.doesNotMatch(professionalCoverLetterPage, /premiumDocumentTemplates|documentTemplateGallery\.map/, "Cover Letter page must not render the old borrowed CV template strip.");
 assert.match(professionalIdentityTool, /previewCoverLetterData/, "Cover Letter preview must use a stable debounced preview data state.");
 assert.match(professionalIdentityTool, /setTimeout\(\(\) => \{\s*setPreviewCoverLetterData\(coverLetterData\);\s*\}, 260\);/, "Cover Letter live preview must debounce updates to avoid shaking while typing.");
 assert.match(professionalIdentityTool, /tool === "cover-letter" \? "grid gap-5 lg:grid-cols-2"/, "Cover Letter workspace must split editor and preview into two columns on desktop.");
 assert.match(professionalIdentityTool, /tool === "cover-letter" \? "lg:col-span-2"/, "Cover Letter generator card must sit above the editor and preview columns.");
-assert.match(professionalIdentityTool, /renderCoverLetterEditor\(\)[\s\S]*tool === "cover-letter" \? \([\s\S]*Live preview[\s\S]*renderCoverLetterHtmlFromData\(previewCoverLetterData\)/, "Cover Letter editor and live A4 preview must render at the same time.");
-for (const sectionName of ["1. Personal Header", "2. Employer Details", "3. Greeting", "4. Opening Paragraph", "5. Body Paragraphs", "6. Closing Paragraph", "7. Signature"]) {
+assert.match(professionalIdentityTool, /renderCoverLetterEditor\(\)[\s\S]*tool === "cover-letter" \? \([\s\S]*Live A4 preview engine[\s\S]*renderCoverLetterHtmlFromData\(previewCoverLetterData\)/, "Cover Letter editor and live A4 preview must render at the same time.");
+for (const sectionName of ["1. Personal Header", "2. Employer Details", "3. Greeting", "4. Opening Paragraph", "5. Motivation / Why This Role", "6. Evidence / Why Me", "7. Company Alignment", "8. Additional Paragraphs", "9. Closing Paragraph", "10. Sign-off"]) {
   assert.match(professionalIdentityTool, new RegExp(sectionName.replace(/[.]/g, "\\.")), `Cover Letter editor must include ${sectionName}.`);
 }
 assert.match(professionalIdentityTool, /Add paragraph/, "Cover Letter body paragraphs must support adding a paragraph.");

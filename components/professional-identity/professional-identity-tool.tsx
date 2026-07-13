@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui";
 import { PremiumUpgradeCard } from "@/components/upgrade/premium-upgrade-card";
 import { TemplateMiniPreview } from "@/components/professional-identity/template-mini-preview";
-import { coverLetterDataFromUnknown, coverLetterPdfFilename, cvModelFromUnknown, cvModelWithMissing, downloadBlob, normalizeCoverLetterDataForExport, normalizeCvModelForExport, pathzyFilename, renderAtsCvHtmlFromModel, renderCoverLetterHtmlFromData, renderCvHtml, renderCvHtmlFromModel, serializeCoverLetterData, serializeCvModel, simpleCoverLetterPdfDocument, simplePdfDocument, simplePdfDocumentFromModel } from "@/components/professional-identity/document-downloads";
+import { coverLetterDataFromUnknown, coverLetterPdfFilename, coverLetterTemplateGallery, coverLetterTemplateMetadata, cvModelFromUnknown, cvModelWithMissing, downloadBlob, normalizeCoverLetterDataForExport, normalizeCoverLetterTemplate, normalizeCvModelForExport, pathzyFilename, renderAtsCvHtmlFromModel, renderCoverLetterHtmlFromData, renderCvHtml, renderCvHtmlFromModel, serializeCoverLetterData, serializeCvModel, simpleCoverLetterPdfDocument, simplePdfDocument, simplePdfDocumentFromModel } from "@/components/professional-identity/document-downloads";
 import type { CoverLetterData, CvModel } from "@/components/professional-identity/document-downloads";
 import { documentTemplateGallery, normalizeDocumentTemplate, templateMetadata } from "@/lib/professional-identity/document-template-engine";
 import type { GeneratedProfessionalDocument, GenerateOptions, ProfessionalLanguage } from "@/lib/professional-identity/professional-identity-types";
@@ -71,6 +71,7 @@ const skillGroupSections = [
 ];
 
 const cvDesignSystems = documentTemplateGallery.map((template) => template.name);
+const coverLetterDesignSystems = coverLetterTemplateGallery.map((template) => template.name);
 
 const cvPrimaryNavigation = [
   { label: "Header", section: "Professional Header" },
@@ -291,8 +292,8 @@ export function ProfessionalIdentityTool({
 
   const outputTitle = useMemo(() => document?.title ?? "Your generated draft will appear here.", [document]);
   const recoveryKey = `pathzy-document-draft:${tool}`;
-  const templateName = normalizeDocumentTemplate(values.templateName);
-  const selectedTemplateMetadata = templateMetadata(templateName);
+  const templateName = tool === "cover-letter" ? normalizeCoverLetterTemplate(values.templateName) : normalizeDocumentTemplate(values.templateName);
+  const selectedTemplateMetadata = tool === "cover-letter" ? coverLetterTemplateMetadata(templateName) : templateMetadata(templateName);
   const parsedCv = useMemo(() => tool === "cv" && cvModel ? cvModelWithMissing(cvModel) : null, [cvModel, tool]);
   const health = useMemo(() => cvHealthScore(previewCvModel ?? cvModel), [previewCvModel, cvModel]);
   const activeCvVersion = useMemo(() => tool === "cv" ? cvVersionFromDocument(document, templateName) : null, [document, templateName, tool]);
@@ -376,6 +377,7 @@ export function ProfessionalIdentityTool({
     setDocument(next);
     setCoverLetterData(nextData);
     setPreviewCoverLetterData(nextData);
+    setValues((current) => ({ ...current, templateName: nextData.designSystem }));
     setSaved(markSaved);
     setSaveState(markSaved ? "saved" : "idle");
     setHasUnsavedChanges(!markSaved);
@@ -893,7 +895,7 @@ export function ProfessionalIdentityTool({
     if (!coverLetterData) return null;
     const paragraphs = coverLetterData.bodyParagraphs.length ? coverLetterData.bodyParagraphs : [""];
     return renderCoverLetterSection(
-      "5. Body Paragraphs",
+      "8. Additional Paragraphs",
       <>
         {paragraphs.map((paragraph, index) => (
           <CvRepeatableItem
@@ -952,6 +954,7 @@ export function ProfessionalIdentityTool({
         {renderCoverLetterSection("1. Personal Header", (
           <>
             {renderCoverLetterField("Full name", coverLetterData.fullName, (value) => updateCoverLetterDraft((draft) => { draft.fullName = value; }))}
+            {renderCoverLetterField("Professional title", coverLetterData.professionalTitle, (value) => updateCoverLetterDraft((draft) => { draft.professionalTitle = value; }))}
             {renderCoverLetterField("Phone", coverLetterData.phone, (value) => updateCoverLetterDraft((draft) => { draft.phone = value; }))}
             {renderCoverLetterField("Email", coverLetterData.email, (value) => updateCoverLetterDraft((draft) => { draft.email = value; }))}
             {renderCoverLetterField("LinkedIn", coverLetterData.linkedIn, (value) => updateCoverLetterDraft((draft) => { draft.linkedIn = value; }))}
@@ -966,25 +969,170 @@ export function ProfessionalIdentityTool({
             {renderCoverLetterField("Job title", coverLetterData.jobTitle, (value) => updateCoverLetterDraft((draft) => { draft.jobTitle = value; }))}
             {renderCoverLetterField("Company address", coverLetterData.companyAddress, (value) => updateCoverLetterDraft((draft) => { draft.companyAddress = value; }))}
             {renderCoverLetterField("Date", coverLetterData.date, (value) => updateCoverLetterDraft((draft) => { draft.date = value; }))}
+            {renderCoverLetterField("Subject", coverLetterData.subject, (value) => updateCoverLetterDraft((draft) => { draft.subject = value; }))}
           </>
         ))}
         {renderCoverLetterSection("3. Greeting", renderCoverLetterField("Greeting", coverLetterData.greeting, (value) => updateCoverLetterDraft((draft) => { draft.greeting = value; })))}
         {renderCoverLetterSection("4. Opening Paragraph", renderCoverLetterField("Opening paragraph", coverLetterData.openingParagraph, (value) => updateCoverLetterDraft((draft) => { draft.openingParagraph = value; }), true))}
+        {renderCoverLetterSection("5. Motivation / Why This Role", renderCoverLetterField("Motivation", coverLetterData.motivationParagraph, (value) => updateCoverLetterDraft((draft) => { draft.motivationParagraph = value; }), true))}
+        {renderCoverLetterSection("6. Evidence / Why Me", renderCoverLetterField("Evidence", coverLetterData.evidenceParagraph, (value) => updateCoverLetterDraft((draft) => { draft.evidenceParagraph = value; }), true))}
+        {renderCoverLetterSection("7. Company Alignment", renderCoverLetterField("Company alignment", coverLetterData.companyAlignmentParagraph, (value) => updateCoverLetterDraft((draft) => { draft.companyAlignmentParagraph = value; }), true))}
         {renderBodyParagraphsEditor()}
-        {renderCoverLetterSection("6. Closing Paragraph", renderCoverLetterField("Closing paragraph", coverLetterData.closingParagraph, (value) => updateCoverLetterDraft((draft) => { draft.closingParagraph = value; }), true))}
-        {renderCoverLetterSection("7. Signature", renderCoverLetterField("Signature", coverLetterData.signature, (value) => updateCoverLetterDraft((draft) => { draft.signature = value; })))}
+        {renderCoverLetterSection("9. Closing Paragraph", renderCoverLetterField("Closing paragraph", coverLetterData.closingParagraph, (value) => updateCoverLetterDraft((draft) => { draft.closingParagraph = value; }), true))}
+        {renderCoverLetterSection("10. Sign-off", (
+          <>
+            {renderCoverLetterField("Closing phrase", coverLetterData.closingPhrase, (value) => updateCoverLetterDraft((draft) => { draft.closingPhrase = value; }))}
+            {renderCoverLetterField("Signature name", coverLetterData.signature, (value) => updateCoverLetterDraft((draft) => { draft.signature = value; }))}
+          </>
+        ))}
       </div>
     );
   }
 
+  function renderCoverLetterMiniPreview(template: (typeof coverLetterTemplateGallery)[number]) {
+    const line = "rounded-full bg-slate-300/80";
+    const darkLine = "rounded-full bg-slate-700/80";
+    return (
+      <div className="overflow-hidden rounded-[14px] border border-slate-200 bg-white p-2 shadow-[0_14px_34px_rgba(0,0,0,.18)]">
+        <div className="aspect-[210/297] rounded-[10px] bg-white p-2 text-slate-900" style={{ background: template.background }}>
+          {template.architecture === "executive" ? (
+            <div className="h-full bg-white">
+              <div className="h-[23%] rounded-t-[8px] bg-slate-950 p-2">
+                <div className="h-1.5 w-10 rounded-full" style={{ backgroundColor: template.accent }} />
+                <div className="mt-3 h-2.5 w-24 rounded-full bg-white/90" />
+                <div className="mt-2 h-1.5 w-20 rounded-full bg-white/45" />
+              </div>
+              <div className="space-y-2 p-2">
+                <div className="h-1.5 w-16 rounded-full" style={{ backgroundColor: template.accent }} />
+                <div className={darkLine} />
+                <div className={line} />
+                <div className={line} />
+                <div className="mt-4 h-1.5 w-14 rounded-full bg-slate-500/80" />
+              </div>
+            </div>
+          ) : template.architecture === "signature" ? (
+            <div className="h-full space-y-3 p-2">
+              <div className="flex justify-between gap-3">
+                <div className="space-y-1.5">
+                  <div className="h-2.5 w-24 rounded-full bg-slate-800" />
+                  <div className="h-1.5 w-16 rounded-full bg-slate-400" />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="h-1.5 w-10 rounded-full bg-slate-300" />
+                  <div className="h-1.5 w-12 rounded-full bg-slate-300" />
+                </div>
+              </div>
+              <div className="h-1 w-16 rounded-full" style={{ backgroundColor: template.accent }} />
+              <div className="space-y-1.5">
+                <div className={darkLine} />
+                <div className={line} />
+                <div className={line} />
+                <div className="h-1.5 w-20 rounded-full bg-slate-300" />
+              </div>
+              <div className="pt-5">
+                <div className="h-1.5 w-14 rounded-full bg-slate-400" />
+                <div className="mt-2 h-2 w-20 rounded-full bg-slate-800" />
+              </div>
+            </div>
+          ) : template.architecture === "creative" ? (
+            <div className="h-full rounded-[10px] border border-slate-200 bg-white p-2">
+              <div className="flex gap-2 rounded-[8px] bg-amber-50 p-2">
+                <div className="h-12 w-1.5 rounded-full" style={{ backgroundColor: template.accent }} />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-2.5 w-24 rounded-full bg-slate-800" />
+                  <div className="h-1.5 w-20 rounded-full bg-slate-400" />
+                  <div className="h-1.5 w-28 rounded-full bg-slate-300" />
+                </div>
+              </div>
+              <div className="mt-3 space-y-1.5">
+                <div className={darkLine} />
+                <div className={line} />
+                <div className={line} />
+                <div className="h-1.5 w-16 rounded-full bg-slate-300" />
+              </div>
+            </div>
+          ) : (
+            <div className="h-full space-y-2 p-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1.5">
+                  <div className="h-2.5 w-24 rounded-full bg-slate-800" />
+                  <div className="h-1.5 w-20 rounded-full" style={{ backgroundColor: template.accent }} />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="h-1.5 w-12 rounded-full bg-slate-300" />
+                  <div className="h-1.5 w-10 rounded-full bg-slate-300" />
+                </div>
+              </div>
+              <div className="h-px w-full bg-slate-200" />
+              <div className="h-2 w-28 rounded-full bg-slate-700" />
+              <div className="space-y-1.5">
+                <div className={darkLine} />
+                <div className={line} />
+                <div className={line} />
+                <div className={line} />
+              </div>
+              <div className="mt-3 h-1.5 w-16 rounded-full bg-slate-400" />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function renderCoverLetterTemplateGallery() {
+    return (
+      <Card className="lg:col-span-2">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Template gallery</p>
+            <h2 className="mt-2 text-2xl font-black">Choose a cover letter design</h2>
+            <p className="mt-2 text-sm leading-6 text-white/58">Switching templates changes presentation only. Your company, role, paragraphs, and edits stay exactly the same.</p>
+          </div>
+          <span className="w-fit rounded-full bg-white/10 px-4 py-2 text-xs font-extrabold text-[#c7d6ff]">Selected: {selectedTemplateMetadata.name}</span>
+        </div>
+        <div className="mt-5 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+          {coverLetterTemplateGallery.map((template) => (
+            <button
+              key={template.name}
+              type="button"
+              onClick={() => updateValue("templateName", template.name)}
+              className={`group flex h-full flex-col rounded-[20px] border p-4 text-left transition hover:-translate-y-0.5 ${templateName === template.name ? "border-[#8fb0ff] bg-[#5B8CFF]/16 shadow-[0_18px_54px_rgba(91,140,255,.22)]" : "border-white/10 bg-white/6 hover:border-white/18"}`}
+            >
+              {renderCoverLetterMiniPreview(template)}
+              <div className="mt-4 flex items-start justify-between gap-3">
+                <p className="text-base font-black leading-5 text-white">{template.name}</p>
+                {templateName === template.name ? <span className="shrink-0 rounded-full bg-[#8fb0ff]/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#c7d6ff]">Selected</span> : null}
+              </div>
+              <p className="mt-2 text-xs leading-5 text-white/56">{template.description}</p>
+              <p className="mt-3 text-xs font-bold leading-5 text-[#c7d6ff]">Best for: {template.bestFor}</p>
+            </button>
+          ))}
+        </div>
+      </Card>
+    );
+  }
+
   function updateValue(name: keyof GenerateOptions, value: string) {
-    const nextValue = name === "templateName" ? normalizeDocumentTemplate(value) : value;
+    const nextValue = name === "templateName" ? (tool === "cover-letter" ? normalizeCoverLetterTemplate(value) : normalizeDocumentTemplate(value)) : value;
     setValues((current) => ({ ...current, [name]: nextValue }));
     if (document && name === "templateName" && tool === "cv" && cvModel) {
       const version = { ...cvVersionFromDocument(document, nextValue), designSystem: nextValue, updatedAt: new Date().toISOString() };
       const next = { ...document, template_name: nextValue, contentJson: { ...(document.contentJson ?? {}), cvModel, cvVersion: version } };
       setDocument(next);
       setPreviewCvModel(cvModel);
+      window.localStorage.setItem(recoveryKey, JSON.stringify(next));
+      setSaved(false);
+      setSaveState("idle");
+      setHasUnsavedChanges(true);
+      return;
+    }
+    if (document && name === "templateName" && tool === "cover-letter" && coverLetterData) {
+      const draft = { ...coverLetterData, designSystem: normalizeCoverLetterTemplate(nextValue) };
+      const content = serializeCoverLetterData(draft);
+      const next = { ...document, template_name: draft.designSystem, content, contentJson: { ...(document.contentJson ?? {}), coverLetterData: draft } };
+      setCoverLetterData(draft);
+      setPreviewCoverLetterData(draft);
+      setDocument(next);
       window.localStorage.setItem(recoveryKey, JSON.stringify(next));
       setSaved(false);
       setSaveState("idle");
@@ -1394,7 +1542,7 @@ export function ProfessionalIdentityTool({
                 <label className="label">
                   Premium template
                   <select className="field" value={templateName} onChange={(event) => updateValue("templateName", event.target.value)}>
-                    {cvDesignSystems.map((template) => (
+                    {coverLetterDesignSystems.map((template) => (
                       <option key={template} value={template}>{template}</option>
                     ))}
                   </select>
@@ -1445,7 +1593,7 @@ export function ProfessionalIdentityTool({
                 <button onClick={() => setViewMode("edit")} disabled={!document?.content} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">Edit</button>
               </>
             )}
-            {tool !== "cv" ? (
+            {tool !== "cv" && tool !== "cover-letter" ? (
               <button onClick={copyDocument} disabled={!document?.content} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">
                 {copied ? "Copied" : "Copy"}
               </button>
@@ -1610,14 +1758,14 @@ export function ProfessionalIdentityTool({
         <Card>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Live preview</p>
+              <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Live A4 preview engine</p>
               <h2 className="mt-2 text-2xl font-black">{outputTitle}</h2>
             </div>
             <button onClick={downloadPdf} disabled={!document?.content} className="rounded-full blue-purple px-5 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">
               Download PDF
             </button>
           </div>
-          <p className="mt-3 text-sm leading-6 text-white/58">This is the published A4 cover letter. Empty fields stay hidden.</p>
+          <p className="mt-3 text-sm leading-6 text-white/58">This is the published A4 cover letter using the selected template. Empty fields stay hidden and template changes preserve the same content.</p>
           {document?.content && previewCoverLetterData ? (
             <div className="mt-5 rounded-[22px] bg-[#dfe7f3] p-3 text-black">
               <div dangerouslySetInnerHTML={{ __html: renderCoverLetterHtmlFromData(previewCoverLetterData) }} />
@@ -1632,6 +1780,8 @@ export function ProfessionalIdentityTool({
           )}
         </Card>
       ) : null}
+
+      {tool === "cover-letter" ? renderCoverLetterTemplateGallery() : null}
 
       {tool === "cv" ? (
         <Card className="lg:col-span-4">

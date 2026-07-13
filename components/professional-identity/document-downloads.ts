@@ -75,6 +75,7 @@ export type CvModel = {
 
 export type CoverLetterData = {
   fullName: string;
+  professionalTitle: string;
   phone: string;
   email: string;
   linkedIn: string;
@@ -85,14 +86,126 @@ export type CoverLetterData = {
   jobTitle: string;
   companyAddress: string;
   date: string;
+  subject: string;
   greeting: string;
   openingParagraph: string;
+  motivationParagraph: string;
+  evidenceParagraph: string;
+  companyAlignmentParagraph: string;
   bodyParagraphs: string[];
   closingParagraph: string;
+  closingPhrase: string;
   signature: string;
   tone: string;
-  designSystem: CvTemplateName;
+  designSystem: CoverLetterTemplateName;
 };
+
+export const coverLetterTemplateNames = [
+  "Executive Black",
+  "Modern ATS",
+  "Google Style",
+  "Microsoft Professional",
+  "Deloitte Consulting",
+  "Executive Signature",
+  "Global Corporate",
+  "Tech Minimal",
+  "Creative Professional",
+  "Graduate First Step"
+] as const;
+
+export type CoverLetterTemplateName = (typeof coverLetterTemplateNames)[number];
+
+export type CoverLetterTemplateMetadata = {
+  name: CoverLetterTemplateName;
+  bestFor: string;
+  description: string;
+  accent: string;
+  background: string;
+  architecture: "executive" | "ats" | "product" | "enterprise" | "consulting" | "signature" | "global" | "technical" | "creative" | "graduate";
+};
+
+export const coverLetterTemplateGallery: CoverLetterTemplateMetadata[] = [
+  {
+    name: "Executive Black",
+    bestFor: "Senior professionals, management, directors, leadership, founders",
+    description: "High-contrast executive letter with a premium boardroom identity and restrained black accent.",
+    accent: "#c9a35b",
+    background: "#111111",
+    architecture: "executive"
+  },
+  {
+    name: "Modern ATS",
+    bestFor: "General applications, operations, administration, finance, recruiter screening",
+    description: "Extremely clean single-column structure with strong spacing and ATS-conscious hierarchy.",
+    accent: "#2563eb",
+    background: "#ffffff",
+    architecture: "ats"
+  },
+  {
+    name: "Google Style",
+    bestFor: "Technology, product, data, digital roles, modern companies",
+    description: "Minimal product-minded document with bright whitespace and subtle blue accent rhythm.",
+    accent: "#4285f4",
+    background: "#f8fbff",
+    architecture: "product"
+  },
+  {
+    name: "Microsoft Professional",
+    bestFor: "Enterprise, IT support, administration, finance, corporate roles",
+    description: "Polished enterprise letter with structured header hierarchy and disciplined spacing.",
+    accent: "#2563eb",
+    background: "#f5f9ff",
+    architecture: "enterprise"
+  },
+  {
+    name: "Deloitte Consulting",
+    bestFor: "Consulting, strategy, business analysis, graduate programmes",
+    description: "Sharp consulting layout with compact professional rhythm and strong subject treatment.",
+    accent: "#86bc25",
+    background: "#f8fff8",
+    architecture: "consulting"
+  },
+  {
+    name: "Executive Signature",
+    bestFor: "Senior leadership, country managers, directors, high-level applications",
+    description: "Elegant editorial letter with signature-led closing and generous premium whitespace.",
+    accent: "#a67c52",
+    background: "#fffaf3",
+    architecture: "signature"
+  },
+  {
+    name: "Global Corporate",
+    bestFor: "Multinationals, banking, telecommunications, FMCG, large organisations",
+    description: "Formal international corporate composition with restrained accent and clear hierarchy.",
+    accent: "#1e3a8a",
+    background: "#f8fafc",
+    architecture: "global"
+  },
+  {
+    name: "Tech Minimal",
+    bestFor: "Software, engineering, data, cybersecurity, product",
+    description: "Ultra-clean technical letter with precise typography and compact breathable structure.",
+    accent: "#06b6d4",
+    background: "#f8fafc",
+    architecture: "technical"
+  },
+  {
+    name: "Creative Professional",
+    bestFor: "Marketing, design, content, brand, creative industries",
+    description: "Editorial professional letter with distinct visual rhythm without sacrificing readability.",
+    accent: "#16a34a",
+    background: "#fffbeb",
+    architecture: "creative"
+  },
+  {
+    name: "Graduate First Step",
+    bestFor: "Students, graduates, entry-level candidates, career starters",
+    description: "Fresh confident letter that emphasizes potential, education, projects, and transferable skills.",
+    accent: "#7c3aed",
+    background: "#f6f7ff",
+    architecture: "graduate"
+  }
+];
 
 export type ParsedCv = CvModel & {
   missing: string[];
@@ -594,7 +707,10 @@ function resolveCvTemplateDesign(templateName?: string): CvDesignSystem {
 }
 
 type CoverLetterDesign = {
-  headerStyle: "minimal" | "band" | "accented" | "executive" | "fresh";
+  template: CoverLetterTemplateName;
+  architecture: CoverLetterTemplateMetadata["architecture"];
+  cvTemplate: CvTemplateName;
+  headerStyle: "minimal" | "band" | "accented" | "executive" | "fresh" | "signature" | "global" | "technical" | "creative";
   marginX: number;
   firstPageTop: number;
   continuedTop: number;
@@ -610,12 +726,42 @@ type CoverLetterDesign = {
   headerHeight: number;
   accentWidth: number;
   recipientInset: number;
+  subjectStyle: "plain" | "boxed" | "rule" | "accent";
 };
 
+const coverLetterLegacyTemplateAliases: Record<string, CoverLetterTemplateName> = {
+  "Creative Premium": "Creative Professional",
+  "Healthcare Professional": "Global Corporate",
+  "Graduate Elite": "Graduate First Step",
+  "Engineering": "Tech Minimal",
+  "International Standard": "Global Corporate"
+};
+
+export function normalizeCoverLetterTemplate(value: unknown): CoverLetterTemplateName {
+  if (typeof value !== "string") return "Modern ATS";
+  if (coverLetterTemplateNames.includes(value as CoverLetterTemplateName)) return value as CoverLetterTemplateName;
+  const normalizedCvTemplate = normalizeDocumentTemplate(value);
+  if (coverLetterTemplateNames.includes(normalizedCvTemplate as CoverLetterTemplateName)) return normalizedCvTemplate as CoverLetterTemplateName;
+  return coverLetterLegacyTemplateAliases[value] ?? coverLetterLegacyTemplateAliases[normalizedCvTemplate] ?? "Modern ATS";
+}
+
+export function coverLetterTemplateMetadata(name: unknown) {
+  const normalized = normalizeCoverLetterTemplate(name);
+  return coverLetterTemplateGallery.find((template) => template.name === normalized) ?? coverLetterTemplateGallery[1];
+}
+
 function resolveCoverLetterDesign(templateName?: string): CoverLetterDesign {
-  const template = resolveCvTemplateDesign(templateName);
-  if (template.identity === "ats") {
+  const template = coverLetterTemplateMetadata(templateName);
+  const base = {
+    template: template.name,
+    architecture: template.architecture,
+    cvTemplate: "Modern ATS" as CvTemplateName,
+    subjectStyle: "plain" as CoverLetterDesign["subjectStyle"]
+  };
+  if (template.architecture === "ats") {
     return {
+      ...base,
+      cvTemplate: "Modern ATS",
       headerStyle: "minimal",
       marginX: 78,
       firstPageTop: 74,
@@ -631,11 +777,14 @@ function resolveCoverLetterDesign(templateName?: string): CoverLetterDesign {
       signatureSpacing: 30,
       headerHeight: 86,
       accentWidth: 1.4,
-      recipientInset: 0
+      recipientInset: 0,
+      subjectStyle: "rule"
     };
   }
-  if (template.identity === "professional") {
+  if (template.architecture === "enterprise") {
     return {
+      ...base,
+      cvTemplate: "Microsoft Professional",
       headerStyle: "accented",
       marginX: 72,
       firstPageTop: 78,
@@ -651,11 +800,14 @@ function resolveCoverLetterDesign(templateName?: string): CoverLetterDesign {
       signatureSpacing: 34,
       headerHeight: 112,
       accentWidth: 7,
-      recipientInset: 20
+      recipientInset: 20,
+      subjectStyle: "boxed"
     };
   }
-  if (template.identity === "executive") {
+  if (template.architecture === "executive") {
     return {
+      ...base,
+      cvTemplate: "Executive Black",
       headerStyle: "executive",
       marginX: 84,
       firstPageTop: 94,
@@ -671,11 +823,14 @@ function resolveCoverLetterDesign(templateName?: string): CoverLetterDesign {
       signatureSpacing: 38,
       headerHeight: 132,
       accentWidth: 4,
-      recipientInset: 24
+      recipientInset: 24,
+      subjectStyle: "accent"
     };
   }
-  if (template.identity === "graduate") {
+  if (template.architecture === "graduate") {
     return {
+      ...base,
+      cvTemplate: "Graduate Elite",
       headerStyle: "fresh",
       marginX: 70,
       firstPageTop: 76,
@@ -691,10 +846,151 @@ function resolveCoverLetterDesign(templateName?: string): CoverLetterDesign {
       signatureSpacing: 32,
       headerHeight: 112,
       accentWidth: 10,
-      recipientInset: 18
+      recipientInset: 18,
+      subjectStyle: "boxed"
+    };
+  }
+  if (template.architecture === "product") {
+    return {
+      ...base,
+      cvTemplate: "Google Style",
+      headerStyle: "minimal",
+      marginX: 76,
+      firstPageTop: 76,
+      continuedTop: 98,
+      bottom: page.height - 78,
+      nameSize: 27,
+      contactSize: 9.4,
+      metaSize: 10,
+      bodySize: 10.9,
+      lineHeight: 16.8,
+      paragraphSpacing: 18,
+      blockSpacing: 8,
+      signatureSpacing: 32,
+      headerHeight: 92,
+      accentWidth: 3,
+      recipientInset: 0,
+      subjectStyle: "rule"
+    };
+  }
+  if (template.architecture === "consulting") {
+    return {
+      ...base,
+      cvTemplate: "Deloitte Consulting",
+      headerStyle: "accented",
+      marginX: 70,
+      firstPageTop: 76,
+      continuedTop: 100,
+      bottom: page.height - 76,
+      nameSize: 26,
+      contactSize: 9.2,
+      metaSize: 9.8,
+      bodySize: 10.5,
+      lineHeight: 16.2,
+      paragraphSpacing: 15,
+      blockSpacing: 7,
+      signatureSpacing: 30,
+      headerHeight: 104,
+      accentWidth: 5,
+      recipientInset: 18,
+      subjectStyle: "accent"
+    };
+  }
+  if (template.architecture === "signature") {
+    return {
+      ...base,
+      cvTemplate: "Executive Black",
+      headerStyle: "signature",
+      marginX: 82,
+      firstPageTop: 88,
+      continuedTop: 112,
+      bottom: page.height - 86,
+      nameSize: 31,
+      contactSize: 9.2,
+      metaSize: 10,
+      bodySize: 11.2,
+      lineHeight: 18.2,
+      paragraphSpacing: 22,
+      blockSpacing: 12,
+      signatureSpacing: 44,
+      headerHeight: 122,
+      accentWidth: 2,
+      recipientInset: 18,
+      subjectStyle: "plain"
+    };
+  }
+  if (template.architecture === "global") {
+    return {
+      ...base,
+      cvTemplate: "International Standard",
+      headerStyle: "global",
+      marginX: 78,
+      firstPageTop: 80,
+      continuedTop: 104,
+      bottom: page.height - 80,
+      nameSize: 26,
+      contactSize: 9.4,
+      metaSize: 10,
+      bodySize: 10.8,
+      lineHeight: 16.8,
+      paragraphSpacing: 18,
+      blockSpacing: 8,
+      signatureSpacing: 32,
+      headerHeight: 104,
+      accentWidth: 4,
+      recipientInset: 16,
+      subjectStyle: "boxed"
+    };
+  }
+  if (template.architecture === "technical") {
+    return {
+      ...base,
+      cvTemplate: "Engineering",
+      headerStyle: "technical",
+      marginX: 72,
+      firstPageTop: 74,
+      continuedTop: 98,
+      bottom: page.height - 76,
+      nameSize: 26,
+      contactSize: 9.3,
+      metaSize: 9.8,
+      bodySize: 10.6,
+      lineHeight: 16.3,
+      paragraphSpacing: 16,
+      blockSpacing: 8,
+      signatureSpacing: 30,
+      headerHeight: 100,
+      accentWidth: 4,
+      recipientInset: 18,
+      subjectStyle: "rule"
+    };
+  }
+  if (template.architecture === "creative") {
+    return {
+      ...base,
+      cvTemplate: "Creative Premium",
+      headerStyle: "creative",
+      marginX: 76,
+      firstPageTop: 86,
+      continuedTop: 106,
+      bottom: page.height - 82,
+      nameSize: 29,
+      contactSize: 9.2,
+      metaSize: 10,
+      bodySize: 11,
+      lineHeight: 17.4,
+      paragraphSpacing: 20,
+      blockSpacing: 10,
+      signatureSpacing: 36,
+      headerHeight: 118,
+      accentWidth: 9,
+      recipientInset: 20,
+      subjectStyle: "accent"
     };
   }
   return {
+    ...base,
+    cvTemplate: "Microsoft Professional",
     headerStyle: "band",
     marginX: 74,
     firstPageTop: 82,
@@ -710,7 +1006,8 @@ function resolveCoverLetterDesign(templateName?: string): CoverLetterDesign {
     signatureSpacing: 34,
     headerHeight: 118,
     accentWidth: 6,
-    recipientInset: 20
+    recipientInset: 20,
+    subjectStyle: "boxed"
   };
 }
 
@@ -861,6 +1158,7 @@ function emptyCvModel(): CvModel {
 function emptyCoverLetterData(): CoverLetterData {
   return {
     fullName: "",
+    professionalTitle: "",
     phone: "",
     email: "",
     linkedIn: "",
@@ -871,10 +1169,15 @@ function emptyCoverLetterData(): CoverLetterData {
     jobTitle: "",
     companyAddress: "",
     date: "",
+    subject: "",
     greeting: "",
     openingParagraph: "",
+    motivationParagraph: "",
+    evidenceParagraph: "",
+    companyAlignmentParagraph: "",
     bodyParagraphs: [],
     closingParagraph: "",
+    closingPhrase: "Kind regards,",
     signature: "",
     tone: "professional",
     designSystem: "Modern ATS"
@@ -898,6 +1201,7 @@ function cleanItems(items: string[]) {
 function normalizeCoverLetterData(data: CoverLetterData): CoverLetterData {
   return {
     fullName: cleanFinalLine(data.fullName),
+    professionalTitle: cleanFinalLine(data.professionalTitle),
     phone: cleanFinalLine(data.phone),
     email: cleanFinalLine(data.email),
     linkedIn: cleanFinalLine(data.linkedIn),
@@ -908,13 +1212,18 @@ function normalizeCoverLetterData(data: CoverLetterData): CoverLetterData {
     jobTitle: cleanFinalLine(data.jobTitle),
     companyAddress: cleanFinalLine(data.companyAddress),
     date: cleanFinalLine(data.date),
+    subject: cleanFinalLine(data.subject),
     greeting: cleanFinalLine(data.greeting),
     openingParagraph: cleanFinalLine(data.openingParagraph),
+    motivationParagraph: cleanFinalLine(data.motivationParagraph),
+    evidenceParagraph: cleanFinalLine(data.evidenceParagraph),
+    companyAlignmentParagraph: cleanFinalLine(data.companyAlignmentParagraph),
     bodyParagraphs: cleanItems(data.bodyParagraphs),
     closingParagraph: cleanFinalLine(data.closingParagraph),
+    closingPhrase: cleanFinalLine(data.closingPhrase) || "Kind regards,",
     signature: cleanFinalLine(data.signature),
     tone: cleanFinalLine(data.tone) || "professional",
-    designSystem: normalizeDocumentTemplate(data.designSystem)
+    designSystem: normalizeCoverLetterTemplate(data.designSystem)
   };
 }
 
@@ -922,11 +1231,18 @@ export function coverLetterDataFromUnknown(value: unknown, fallbackContent = "")
   const base = emptyCoverLetterData();
   if (value && typeof value === "object") {
     const candidate = value as Partial<CoverLetterData>;
+    const bodyItems = Array.isArray(candidate.bodyParagraphs) ? candidate.bodyParagraphs.filter((item): item is string => typeof item === "string") : [];
     return normalizeCoverLetterData({
       ...base,
       ...candidate,
+      professionalTitle: typeof candidate.professionalTitle === "string" ? candidate.professionalTitle : "",
       linkedIn: typeof candidate.linkedIn === "string" ? candidate.linkedIn : "",
-      bodyParagraphs: Array.isArray(candidate.bodyParagraphs) ? candidate.bodyParagraphs.filter((item): item is string => typeof item === "string") : [],
+      subject: typeof candidate.subject === "string" ? candidate.subject : "",
+      motivationParagraph: typeof candidate.motivationParagraph === "string" ? candidate.motivationParagraph : bodyItems[0] ?? "",
+      evidenceParagraph: typeof candidate.evidenceParagraph === "string" ? candidate.evidenceParagraph : bodyItems[1] ?? "",
+      companyAlignmentParagraph: typeof candidate.companyAlignmentParagraph === "string" ? candidate.companyAlignmentParagraph : "",
+      bodyParagraphs: typeof candidate.motivationParagraph === "string" || typeof candidate.evidenceParagraph === "string" ? bodyItems : bodyItems.slice(2),
+      closingPhrase: typeof candidate.closingPhrase === "string" ? candidate.closingPhrase : base.closingPhrase,
       designSystem: candidate.designSystem ?? base.designSystem
     });
   }
@@ -938,7 +1254,10 @@ export function coverLetterDataFromUnknown(value: unknown, fallbackContent = "")
     ...base,
     greeting: greetingIndex > -1 ? lines[greetingIndex] : "Dear Hiring Manager,",
     openingParagraph: paragraphs[0] ?? "",
-    bodyParagraphs: paragraphs.slice(1, -1),
+    motivationParagraph: paragraphs[1] ?? "",
+    evidenceParagraph: paragraphs[2] ?? "",
+    companyAlignmentParagraph: paragraphs[3] ?? "",
+    bodyParagraphs: paragraphs.slice(4, -1),
     closingParagraph: paragraphs.at(-1) ?? "",
     signature
   });
@@ -1720,6 +2039,7 @@ export function serializeCoverLetterData(data: CoverLetterData) {
   const cover = normalizeCoverLetterData(data);
   return [
     cover.fullName,
+    cover.professionalTitle,
     ...coverLetterContactLines(cover),
     cover.date,
     "",
@@ -1727,13 +2047,18 @@ export function serializeCoverLetterData(data: CoverLetterData) {
     cover.hiringManager,
     cover.jobTitle,
     cover.companyAddress,
+    cover.subject,
     "",
     cover.greeting,
     "",
     cover.openingParagraph,
+    cover.motivationParagraph,
+    cover.evidenceParagraph,
+    cover.companyAlignmentParagraph,
     ...cover.bodyParagraphs,
     cover.closingParagraph,
     "",
+    cover.closingPhrase,
     cover.signature || cover.fullName
   ].filter((line) => line !== undefined && line !== null).join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
@@ -1741,6 +2066,9 @@ export function serializeCoverLetterData(data: CoverLetterData) {
 function coverLetterParagraphs(data: CoverLetterData) {
   return [
     data.openingParagraph,
+    data.motivationParagraph,
+    data.evidenceParagraph,
+    data.companyAlignmentParagraph,
     ...data.bodyParagraphs,
     data.closingParagraph
   ].filter((line) => line.trim());
@@ -1749,8 +2077,8 @@ function coverLetterParagraphs(data: CoverLetterData) {
 function buildCoverLetterLayoutFromData(input: CoverLetterData): CvLayout {
   const previousTemplate = premiumTemplate;
   const cover = normalizeCoverLetterData(input);
-  premiumTemplate = resolveCvTemplateDesign(cover.designSystem);
   const coverDesign = resolveCoverLetterDesign(cover.designSystem);
+  premiumTemplate = resolveCvTemplateDesign(coverDesign.cvTemplate);
   try {
     const layout: CvLayout = { width: page.width, height: page.height, pages: [] };
     const marginX = coverDesign.marginX;
@@ -1788,11 +2116,13 @@ function buildCoverLetterLayoutFromData(input: CoverLetterData): CvLayout {
 
     const drawHeader = () => {
       const contacts = coverLetterContactLines(cover).join("  |  ");
+      const titleLine = cover.professionalTitle || cover.jobTitle;
       if (coverDesign.headerStyle === "minimal") {
         currentPage.elements.push({ kind: "line", x: marginX, y: 48, width: contentW, orientation: "horizontal", color: premiumTemplate.blue, thickness: coverDesign.accentWidth });
         currentPage.elements.push({ kind: "text", x: marginX, y, width: contentW, text: cover.fullName, size: coverDesign.nameSize, color: premiumTemplate.heroText, weight: "bold" });
-        if (contacts) currentPage.elements.push({ kind: "text", x: marginX, y: y + 32, width: contentW, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
-        y += contacts ? coverDesign.headerHeight : coverDesign.headerHeight - 18;
+        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX, y: y + 31, width: contentW, text: titleLine, size: coverDesign.metaSize, color: premiumTemplate.blue, weight: "bold" });
+        if (contacts) currentPage.elements.push({ kind: "text", x: marginX, y: y + (titleLine ? 49 : 36), width: contentW, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
+        y += contacts || titleLine ? coverDesign.headerHeight : coverDesign.headerHeight - 18;
         currentPage.elements.push({ kind: "line", x: marginX, y: y - 28, width: contentW, orientation: "horizontal", color: premiumTemplate.line, thickness: 1 });
         return;
       }
@@ -1801,7 +2131,8 @@ function buildCoverLetterLayoutFromData(input: CoverLetterData): CvLayout {
         currentPage.elements.push({ kind: "rounded", x: marginX - 16, y: 46, width: contentW + 32, height: 88, radius: 18, color: premiumTemplate.sky, borderColor: premiumTemplate.line });
         currentPage.elements.push({ kind: "rect", x: marginX - 16, y: 46, width: coverDesign.accentWidth, height: 88, color: premiumTemplate.blue });
         currentPage.elements.push({ kind: "text", x: marginX + 10, y: 72, width: contentW - 20, text: cover.fullName, size: coverDesign.nameSize, color: premiumTemplate.navy, weight: "bold" });
-        if (contacts) currentPage.elements.push({ kind: "text", x: marginX + 10, y: 108, width: contentW - 20, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
+        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX + 10, y: 105, width: contentW - 20, text: titleLine, size: coverDesign.metaSize, color: premiumTemplate.blue, weight: "bold" });
+        if (contacts) currentPage.elements.push({ kind: "text", x: marginX + 10, y: titleLine ? 122 : 108, width: contentW - 20, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
         y = 162;
         return;
       }
@@ -1811,7 +2142,8 @@ function buildCoverLetterLayoutFromData(input: CoverLetterData): CvLayout {
         currentPage.elements.push({ kind: "rect", x: 0, y: coverDesign.headerHeight - 7, width: page.width, height: 7, color: premiumTemplate.amber });
         currentPage.elements.push({ kind: "line", x: marginX, y: 45, width: 74, orientation: "horizontal", color: premiumTemplate.amber, thickness: 2 });
         currentPage.elements.push({ kind: "text", x: marginX, y: 66, width: contentW, text: cover.fullName, size: coverDesign.nameSize, color: premiumTemplate.heroText, weight: "bold" });
-        if (contacts) currentPage.elements.push({ kind: "text", x: marginX, y: 106, width: contentW, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.heroMuted });
+        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX, y: 101, width: contentW, text: titleLine, size: coverDesign.metaSize, color: premiumTemplate.amber, weight: "bold" });
+        if (contacts) currentPage.elements.push({ kind: "text", x: marginX, y: titleLine ? 120 : 106, width: contentW, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.heroMuted });
         y = 172;
         return;
       }
@@ -1820,15 +2152,58 @@ function buildCoverLetterLayoutFromData(input: CoverLetterData): CvLayout {
         currentPage.elements.push({ kind: "rounded", x: marginX - 10, y: 44, width: contentW + 20, height: 92, radius: 24, color: premiumTemplate.sky });
         currentPage.elements.push({ kind: "circle", x: page.width - marginX - 38, y: 78, radius: 24, color: premiumTemplate.blue });
         currentPage.elements.push({ kind: "text", x: marginX + 8, y: 70, width: contentW - 78, text: cover.fullName, size: coverDesign.nameSize, color: premiumTemplate.navy, weight: "bold" });
-        if (contacts) currentPage.elements.push({ kind: "text", x: marginX + 8, y: 106, width: contentW - 78, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
+        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX + 8, y: 104, width: contentW - 78, text: titleLine, size: coverDesign.metaSize, color: premiumTemplate.blue, weight: "bold" });
+        if (contacts) currentPage.elements.push({ kind: "text", x: marginX + 8, y: titleLine ? 121 : 106, width: contentW - 78, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
         y = 162;
+        return;
+      }
+
+      if (coverDesign.headerStyle === "signature") {
+        currentPage.elements.push({ kind: "line", x: marginX, y: 48, width: contentW, orientation: "horizontal", color: premiumTemplate.amber, thickness: 1.6 });
+        currentPage.elements.push({ kind: "text", x: marginX, y: 70, width: contentW * 0.72, text: cover.fullName, size: coverDesign.nameSize, color: premiumTemplate.navy, weight: "bold" });
+        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX, y: 108, width: contentW * 0.72, text: titleLine, size: coverDesign.metaSize, color: premiumTemplate.muted, weight: "bold" });
+        if (contacts) currentPage.elements.push({ kind: "text", x: marginX + contentW * 0.58, y: 72, width: contentW * 0.42, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
+        currentPage.elements.push({ kind: "line", x: marginX, y: 142, width: 96, orientation: "horizontal", color: premiumTemplate.amber, thickness: 3 });
+        y = 174;
+        return;
+      }
+
+      if (coverDesign.headerStyle === "global") {
+        currentPage.elements.push({ kind: "rect", x: 0, y: 0, width: page.width, height: 28, color: premiumTemplate.navy });
+        currentPage.elements.push({ kind: "line", x: marginX, y: 72, width: contentW, orientation: "horizontal", color: premiumTemplate.line, thickness: 1 });
+        currentPage.elements.push({ kind: "text", x: marginX, y: 42, width: contentW * 0.58, text: cover.fullName, size: coverDesign.nameSize, color: premiumTemplate.navy, weight: "bold" });
+        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX, y: 76, width: contentW * 0.58, text: titleLine, size: coverDesign.metaSize, color: premiumTemplate.blue, weight: "bold" });
+        if (contacts) currentPage.elements.push({ kind: "text", x: marginX + contentW * 0.62, y: 44, width: contentW * 0.38, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
+        y = 136;
+        return;
+      }
+
+      if (coverDesign.headerStyle === "technical") {
+        currentPage.elements.push({ kind: "rect", x: marginX - 12, y: 42, width: 8, height: 82, color: premiumTemplate.blue });
+        currentPage.elements.push({ kind: "line", x: marginX, y: 126, width: contentW, orientation: "horizontal", color: premiumTemplate.line, thickness: 1 });
+        currentPage.elements.push({ kind: "text", x: marginX + 12, y: 58, width: contentW - 24, text: cover.fullName, size: coverDesign.nameSize, color: premiumTemplate.navy, weight: "bold" });
+        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX + 12, y: 91, width: contentW - 24, text: titleLine, size: coverDesign.metaSize, color: premiumTemplate.blue, weight: "bold" });
+        if (contacts) currentPage.elements.push({ kind: "text", x: marginX + 12, y: titleLine ? 109 : 96, width: contentW - 24, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
+        y = 154;
+        return;
+      }
+
+      if (coverDesign.headerStyle === "creative") {
+        currentPage.elements.push({ kind: "rounded", x: marginX - 18, y: 42, width: contentW + 36, height: 100, radius: 22, color: premiumTemplate.cream, borderColor: premiumTemplate.line });
+        currentPage.elements.push({ kind: "rect", x: marginX - 18, y: 42, width: coverDesign.accentWidth, height: 100, color: premiumTemplate.blue });
+        currentPage.elements.push({ kind: "circle", x: page.width - marginX - 38, y: 74, radius: 22, color: premiumTemplate.blue });
+        currentPage.elements.push({ kind: "text", x: marginX + 14, y: 70, width: contentW - 90, text: cover.fullName, size: coverDesign.nameSize, color: premiumTemplate.navy, weight: "bold" });
+        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX + 14, y: 106, width: contentW - 90, text: titleLine, size: coverDesign.metaSize, color: premiumTemplate.muted, weight: "bold" });
+        if (contacts) currentPage.elements.push({ kind: "text", x: marginX + 14, y: titleLine ? 124 : 110, width: contentW - 90, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
+        y = 174;
         return;
       }
 
       currentPage.elements.push({ kind: "rect", x: 0, y: 0, width: page.width, height: 76, color: premiumTemplate.navy });
       currentPage.elements.push({ kind: "rect", x: 0, y: 76, width: page.width, height: coverDesign.accentWidth, color: premiumTemplate.blue });
       currentPage.elements.push({ kind: "text", x: marginX, y: 36, width: contentW, text: cover.fullName, size: coverDesign.nameSize, color: premiumTemplate.heroText, weight: "bold" });
-      if (contacts) currentPage.elements.push({ kind: "text", x: marginX, y: 88, width: contentW, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
+      if (titleLine) currentPage.elements.push({ kind: "text", x: marginX, y: 84, width: contentW, text: titleLine, size: coverDesign.metaSize, color: premiumTemplate.blue, weight: "bold" });
+      if (contacts) currentPage.elements.push({ kind: "text", x: marginX, y: titleLine ? 103 : 88, width: contentW, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
       y = 142;
     };
 
@@ -1859,16 +2234,33 @@ function buildCoverLetterLayoutFromData(input: CoverLetterData): CvLayout {
       y += 14;
     };
 
+    const pushSubject = () => {
+      if (!cover.subject) return;
+      const subjectText = cover.subject;
+      const lines = wrapText(subjectText, bodyWidth - 24, coverDesign.metaSize + 0.6);
+      ensure(lines.length * 15 + 28);
+      if (coverDesign.subjectStyle === "boxed") {
+        currentPage.elements.push({ kind: "rounded", x: marginX - 2, y: y - 10, width: bodyWidth + 4, height: lines.length * 15 + 22, radius: 10, color: premiumTemplate.sky, borderColor: premiumTemplate.line });
+      } else if (coverDesign.subjectStyle === "accent") {
+        currentPage.elements.push({ kind: "rect", x: marginX - 2, y: y - 8, width: coverDesign.accentWidth, height: lines.length * 15 + 18, color: premiumTemplate.blue });
+      } else if (coverDesign.subjectStyle === "rule") {
+        currentPage.elements.push({ kind: "line", x: marginX, y: y - 8, width: bodyWidth, orientation: "horizontal", color: premiumTemplate.line, thickness: 1 });
+      }
+      lines.forEach((line, index) => currentPage.elements.push({ kind: "text", x: marginX + (coverDesign.subjectStyle === "accent" ? 16 : 10), y: y + index * 15, width: bodyWidth - 24, text: line, size: coverDesign.metaSize + 0.6, color: premiumTemplate.navy, weight: "bold" }));
+      y += lines.length * 15 + 24;
+    };
+
     drawHeader();
     if (cover.date) pushMetaLine(cover.date, 13);
     pushRecipientBlock([cover.hiringManager, cover.companyName, cover.companyAddress].filter(Boolean));
+    pushSubject();
     if (cover.greeting) pushParagraph(cover.greeting, coverDesign.paragraphSpacing - 2);
     coverLetterParagraphs(cover).forEach((paragraph) => pushParagraph(paragraph));
     const signature = cover.signature || cover.fullName;
     if (signature) {
       ensure(coverDesign.signatureSpacing + 42);
       y += coverDesign.signatureSpacing - 20;
-      currentPage.elements.push({ kind: "text", x: marginX, y, width: bodyWidth, text: "Kind regards,", size: coverDesign.bodySize, color: premiumTemplate.ink });
+      currentPage.elements.push({ kind: "text", x: marginX, y, width: bodyWidth, text: cover.closingPhrase || "Kind regards,", size: coverDesign.bodySize, color: premiumTemplate.ink });
       y += 30;
       currentPage.elements.push({ kind: "text", x: marginX, y, width: bodyWidth, text: signature, size: coverDesign.bodySize + 1.5, color: premiumTemplate.navy, weight: "bold" });
     }
@@ -2125,9 +2517,10 @@ export function pathzyFilename(kind: string, title: string, extension: "pdf" | "
 
 export function coverLetterPdfFilename(data: CoverLetterData) {
   const cover = normalizeCoverLetterDataForExport(data);
+  const candidate = slugifyDocumentName(cover.fullName || "Cover Letter").replace(/-/g, "_");
   const company = slugifyDocumentName(cover.companyName || "company").replace(/-/g, "_");
-  const jobTitle = slugifyDocumentName(cover.jobTitle || "jobtitle").replace(/-/g, "_");
+  const jobTitle = slugifyDocumentName(cover.jobTitle || "role").replace(/-/g, "_");
   const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  return `PATHZY_Cover_Letter_${company}_${jobTitle}_${stamp}.pdf`;
+  return `${candidate}_Cover_Letter_${company}_${jobTitle}_${stamp}.pdf`;
 }
 

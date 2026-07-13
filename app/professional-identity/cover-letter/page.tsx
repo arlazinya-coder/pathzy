@@ -1,6 +1,6 @@
 import { ProfessionalIdentityTool } from "@/components/professional-identity/professional-identity-tool";
 import { PageHeader } from "@/components/ui";
-import { canCurrentUserExportProfessionalDocuments, canCurrentUserUseProfessionalIdentityTools, getProfessionalIdentityContext, premiumDocumentTemplates } from "@/lib/professional-identity/professional-identity-service";
+import { canCurrentUserExportProfessionalDocuments, canCurrentUserUseProfessionalIdentityTools, getProfessionalIdentityContext } from "@/lib/professional-identity/professional-identity-service";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
 
 export default async function CoverLetterPage({ searchParams }: { searchParams?: Promise<{ role?: string; company?: string }> }) {
@@ -39,14 +39,6 @@ export default async function CoverLetterPage({ searchParams }: { searchParams?:
           { name: "tone", label: "Tone", type: "select", options: ["professional", "confident", "warm"] }
         ]}
       />
-      <div className="mt-6 grid gap-3 md:grid-cols-5">
-        {premiumDocumentTemplates.map((template) => (
-          <div key={template.name} className="rounded-[18px] border border-white/10 bg-white/6 p-4">
-            <p className="font-black">{template.name}</p>
-            <p className="mt-2 text-xs leading-5 text-white/52">{template.description}</p>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

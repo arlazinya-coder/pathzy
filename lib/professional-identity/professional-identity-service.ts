@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { cvModelFromUnknown, normalizeCvModelForExport, serializeCoverLetterData, serializeCvModel } from "@/components/professional-identity/document-downloads";
+import { cvModelFromUnknown, normalizeCoverLetterTemplate, normalizeCvModelForExport, serializeCoverLetterData, serializeCvModel } from "@/components/professional-identity/document-downloads";
 import type { CoverLetterData, CvModel } from "@/components/professional-identity/document-downloads";
 import type { DiscoveryAnswers, GeneratedRoadmap } from "@/lib/discovery/types";
 import { isPremiumUser } from "@/lib/launch/launch-service";
@@ -540,7 +540,7 @@ export async function createImportedCvDraft(
 export async function generateCoverLetter(supabase: Supabase, userId: string, options: GenerateOptions = {}): Promise<GeneratedProfessionalDocument> {
   const [inputs, latestCv] = await Promise.all([getInputs(supabase, userId), getLatestCvModel(supabase, userId)]);
   const language = normalizeLanguage(options.language ?? inputs.brain?.language);
-  const templateName = normalizeTemplate(options.templateName);
+  const templateName = normalizeCoverLetterTemplate(options.templateName);
   const company = prepareForProfessionalDocument(options.company || "the company").professional;
   const role = prepareForProfessionalDocument(options.role || careerGoal(inputs)).professional;
   const tone = prepareForProfessionalDocument(options.tone || "professional").professional.toLowerCase();
@@ -568,6 +568,7 @@ export async function generateCoverLetter(supabase: Supabase, userId: string, op
   const professionalTone = toneAdjective(tone);
   const coverLetterData: CoverLetterData = {
     fullName: candidateName,
+    professionalTitle: goal,
     phone: professionalizeUserInput(inputs.profile?.phone),
     email: professionalizeUserInput(inputs.profile?.email),
     linkedIn: professionalizeUserInput(inputs.profile?.linkedin_url),
@@ -578,21 +579,25 @@ export async function generateCoverLetter(supabase: Supabase, userId: string, op
     jobTitle: role,
     companyAddress: "",
     date: new Date().toLocaleDateString("en-ZA", { year: "numeric", month: "long", day: "numeric" }),
+    subject: language === "french" ? `Candidature - ${role}` : `Application for ${role}`,
     greeting: language === "french" ? "Bonjour," : "Dear Hiring Manager,",
     openingParagraph: language === "french"
-      ? `Je souhaite postuler pour le poste de ${role} chez ${company}. Mon objectif professionnel est de progresser vers ${goal}, et je developpe actuellement des competences en ${skills}.`
-      : `I am applying for the ${role} role at ${company}. My professional goal is to grow toward ${goal}, and I am actively building strengths in ${skills}.`,
-    bodyParagraphs: [
-      language === "french"
-        ? `${jobAlignment} Cette opportunite m'interesse parce qu'elle correspond a mon parcours actuel et a ma volonte de contribuer avec serieux.`
-        : `${jobAlignment} This opportunity stands out because it matches my current growth path and gives me a chance to contribute with care.`,
-      language === "french"
-        ? `${proofSentence} Je peux apporter une attitude ${professionalTone}, de la fiabilite, une communication claire et une forte envie de produire un travail utile.`
-        : `${proofSentence} I can bring a ${professionalTone} attitude, reliability, clear communication, and a strong willingness to produce useful work.`
-    ],
+      ? `Je vous presente ma candidature pour le poste de ${role} chez ${company}. Mon objectif professionnel est de progresser vers ${goal}, avec une base pratique en ${skills}.`
+      : `I am applying for the ${role} role at ${company}. My professional goal is to grow toward ${goal}, with a practical foundation in ${skills}.`,
+    motivationParagraph: language === "french"
+      ? `${jobAlignment} Cette opportunite correspond a mon parcours actuel et a ma volonte de contribuer de maniere serieuse, utile et progressive.`
+      : `${jobAlignment} This opportunity fits my current growth path and gives me a clear way to contribute with care, consistency, and useful work.`,
+    evidenceParagraph: language === "french"
+      ? `${proofSentence} Je peux apporter une attitude ${professionalTone}, de la fiabilite, une communication claire et une volonte d'apprendre rapidement sans pretendre a une experience que je n'ai pas encore.`
+      : `${proofSentence} I can bring a ${professionalTone} attitude, reliability, clear communication, and a commitment to learn quickly without overstating experience I have not yet built.`,
+    companyAlignmentParagraph: language === "french"
+      ? `Je souhaite rejoindre ${company} parce que ce role me permettrait de mettre mes competences en pratique tout en continuant a developper une contribution professionnelle mesurable.`
+      : `I am interested in ${company} because this role would allow me to apply my strengths while continuing to build measurable professional contribution.`,
+    bodyParagraphs: [],
     closingParagraph: language === "french"
       ? "Merci pour votre temps et votre consideration. Je serais heureux d'echanger sur ma candidature."
       : "Thank you for your time and consideration. I would welcome the opportunity to discuss my application.",
+    closingPhrase: language === "french" ? "Cordialement," : "Kind regards,",
     signature: candidateName,
     tone,
     designSystem: templateName

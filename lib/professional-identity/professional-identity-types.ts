@@ -1,7 +1,5 @@
 import type { GeneratedRoadmap } from "@/lib/discovery/types";
 import type { PathzyBrainRecord, ReadinessResult, SkillGap } from "@/lib/pathzy-brain/types";
-import type { PremiumDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
-
 export type ProfessionalLanguage = "english" | "french";
 export type ProfessionalStatus = "not_started" | "draft" | "improving" | "ready";
 export type ProfessionalIdentityLabel = "Not Started" | "Needs Work" | "Improving" | "Recruiter Ready" | "Strong Professional Identity";
@@ -75,7 +73,7 @@ export type ProfessionalIdentityInputs = {
 export type GenerateOptions = {
   language?: ProfessionalLanguage;
   cvType?: string;
-  templateName?: PremiumDocumentTemplate;
+  templateName?: string;
   company?: string;
   role?: string;
   jobDescription?: string;
