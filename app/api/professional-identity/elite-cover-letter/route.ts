@@ -37,7 +37,7 @@ async function loadFacts(supabase: any, userId: string) {
   const [{ data: profile }, { data: discovery }, { data: latestCv }] = await Promise.all([
     supabase
       .from("user_profiles")
-      .select("full_name,email,phone,city,country,career_goal,education,highest_qualification,field_of_study,current_status,employment_status,linkedin_url,portfolio_url")
+      .select("id,user_id,full_name,email,phone,city,country,language,career_goal,education,highest_qualification,field_of_study,current_status,employment_status,linkedin_url,portfolio_url")
       .or(`user_id.eq.${userId},id.eq.${userId}`)
       .maybeSingle(),
     supabase
@@ -49,7 +49,7 @@ async function loadFacts(supabase: any, userId: string) {
       .maybeSingle(),
     supabase
       .from("user_documents")
-      .select("content_json")
+      .select("id,document_title,content_json")
       .eq("user_id", userId)
       .eq("document_type", "cv")
       .order("updated_at", { ascending: false })
@@ -59,7 +59,7 @@ async function loadFacts(supabase: any, userId: string) {
 
   const discoveryAnswers = (discovery?.answers ?? {}) as Record<string, unknown>;
   const latestCvJson = (latestCv?.content_json ?? {}) as Record<string, unknown>;
-  return buildCoverLetterProfileFacts(profile ?? null, discoveryAnswers, latestCvJson);
+  return buildCoverLetterProfileFacts(profile ?? null, discoveryAnswers, { ...latestCvJson, id: latestCv?.id, title: latestCv?.document_title });
 }
 
 async function latestEliteCoverLetter(supabase: any, userId: string) {
@@ -111,14 +111,21 @@ export async function POST(request: Request) {
   const target: CoverLetterTargetJob = {
     jobTitle: body.jobTitle ?? "",
     companyName: body.companyName ?? "",
-    hiringManager: body.hiringManager ?? "",
-    companyAddress: body.companyAddress ?? "",
     jobDescription: body.jobDescription ?? "",
-    tone: normalizeCoverLetterTone(body.tone)
+    hiringManager: body.hiringManager ?? "",
+    hiringManagerTitle: body.hiringManagerTitle ?? "",
+    companyAddress: body.companyAddress ?? "",
+    jobLocation: body.jobLocation ?? "",
+    jobReferenceNumber: body.jobReferenceNumber ?? "",
+    applicationDeadline: body.applicationDeadline ?? "",
+    companyNotes: body.companyNotes ?? "",
+    tone: normalizeCoverLetterTone(body.tone),
+    language: body.language === "French" ? "French" : "English",
+    evidenceItems: Array.isArray(body.evidenceItems) ? body.evidenceItems : []
   };
 
-  if (!target.jobTitle.trim() || !target.companyName.trim()) {
-    return NextResponse.json({ error: "Please add the job title and company name before generating." }, { status: 400 });
+  if (!target.jobTitle.trim() || !target.companyName.trim() || !target.jobDescription.trim()) {
+    return NextResponse.json({ error: "Please add the company name, position title, and job description before generating." }, { status: 400 });
   }
 
   try {

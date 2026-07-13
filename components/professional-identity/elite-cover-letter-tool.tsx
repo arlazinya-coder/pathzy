@@ -5,16 +5,19 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   analyzeJobDescription,
   coverLetterFileName,
+  coverLetterLanguages,
   coverLetterRecommendations,
   coverLetterTitle,
   coverLetterTones,
   eliteCoverLetterPdfDocument,
   eliteCoverLetterTemplates,
+  normalizeCoverLetterLanguage,
   normalizeCoverLetterTemplate,
   normalizeCoverLetterTone,
-  renderEliteCoverLetterHtml
+  renderEliteCoverLetterHtml,
+  renderEliteCoverLetterPlainText
 } from "@/lib/professional-identity/elite-cover-letter-engine";
-import type { CoverLetterProfileFacts, CoverLetterTargetJob, EliteCoverLetterData, EliteCoverLetterSavedDocument } from "@/lib/professional-identity/elite-cover-letter-engine";
+import type { CoverLetterEvidenceItem, CoverLetterLanguage, CoverLetterProfileFacts, CoverLetterTargetJob, EliteCoverLetterData, EliteCoverLetterSavedDocument } from "@/lib/professional-identity/elite-cover-letter-engine";
 import { appRoutes } from "@/lib/navigation/routes";
 
 type Props = {
@@ -26,14 +29,22 @@ type Props = {
 };
 
 type SaveState = "idle" | "saving" | "saved" | "error";
+type StudioPanel = "write" | "design" | "preview";
+type PreviewMode = "designed" | "plain";
+type AccordionSection = "Applicant" | "Target Job" | "Employer" | "Greeting" | "Opening" | "Relevant Experience" | "Evidence of Fit" | "Why This Company" | "Closing" | "Signature";
 
-const paragraphFields = [
-  ["openingParagraph", "Opening Paragraph"],
-  ["relevanceParagraph", "Relevance Paragraph"],
-  ["evidenceParagraph", "Evidence / Achievements Paragraph"],
-  ["companyInterestParagraph", "Company Interest Paragraph"],
-  ["closingParagraph", "Closing Paragraph"]
-] as const;
+const accordionSections: AccordionSection[] = [
+  "Applicant",
+  "Target Job",
+  "Employer",
+  "Greeting",
+  "Opening",
+  "Relevant Experience",
+  "Evidence of Fit",
+  "Why This Company",
+  "Closing",
+  "Signature"
+];
 
 function downloadBlob(filename: string, type: string, content: BlobPart) {
   const url = URL.createObjectURL(new Blob([content], { type }));
@@ -47,25 +58,72 @@ function downloadBlob(filename: string, type: string, content: BlobPart) {
   URL.revokeObjectURL(url);
 }
 
-function emptyTarget(role = "", company = ""): CoverLetterTargetJob {
+function emptyTarget(role = "", company = "", language: CoverLetterLanguage = "English"): CoverLetterTargetJob {
   return {
     jobTitle: role,
     companyName: company,
-    hiringManager: "",
-    companyAddress: "",
     jobDescription: "",
-    tone: "Professional"
+    hiringManager: "",
+    hiringManagerTitle: "",
+    companyAddress: "",
+    jobLocation: "",
+    jobReferenceNumber: "",
+    applicationDeadline: "",
+    companyNotes: "",
+    tone: "Professional",
+    language,
+    evidenceItems: []
   };
 }
 
+function Field({ label, value, onChange, placeholder, multiline = false, required = false }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; multiline?: boolean; required?: boolean }) {
+  return (
+    <label className="grid gap-2 text-sm font-bold text-white/74">
+      <span>{label}{required ? <span className="text-[#c7d6ff]"> *</span> : null}</span>
+      {multiline ? (
+        <textarea value={value} onChange={(event) => onChange(event.target.value)} className="min-h-28 w-full rounded-2xl border border-white/10 bg-black/24 px-4 py-3 text-white outline-none transition focus:border-[#8fb0ff]" placeholder={placeholder} />
+      ) : (
+        <input value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-2xl border border-white/10 bg-black/24 px-4 py-3 text-white outline-none transition focus:border-[#8fb0ff]" placeholder={placeholder} />
+      )}
+    </label>
+  );
+}
+
+function TemplateMiniPreview({ templateName }: { templateName: string }) {
+  const template = eliteCoverLetterTemplates.find((item) => item.name === templateName) ?? eliteCoverLetterTemplates[0];
+  const rail = ["executive", "creative", "technical"].includes(template.architecture);
+  const centered = template.architecture === "international" || template.architecture === "classic";
+  return (
+    <div className="h-28 rounded-xl border border-white/10 bg-white p-2">
+      <div className={`h-full rounded-lg border border-slate-200 p-2 ${centered ? "text-center" : ""}`} style={{ background: template.paper }}>
+        <div className={`mb-2 h-3 rounded ${rail ? "w-1/2" : "w-3/4"}`} style={{ background: template.accent }} />
+        <div className="grid gap-1">
+          <div className="h-1.5 rounded bg-slate-800/80" />
+          <div className="h-1.5 w-2/3 rounded bg-slate-400" />
+          <div className={`mt-2 grid gap-1 ${rail ? "grid-cols-[.35fr_1fr]" : ""}`}>
+            {rail ? <div className="h-12 rounded" style={{ background: `${template.accent}33` }} /> : null}
+            <div className="grid gap-1">
+              <div className="h-1.5 rounded bg-slate-300" />
+              <div className="h-1.5 rounded bg-slate-300" />
+              <div className="h-1.5 w-4/5 rounded bg-slate-300" />
+              <div className="h-1.5 w-3/5 rounded bg-slate-300" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function EliteCoverLetterTool({ initialFacts, initialDocument, canExport, initialRole = "", initialCompany = "" }: Props) {
-  const [targetJob, setTargetJob] = useState<CoverLetterTargetJob>(() => emptyTarget(initialRole, initialCompany));
+  const [targetJob, setTargetJob] = useState<CoverLetterTargetJob>(() => emptyTarget(initialRole, initialCompany, initialFacts.language));
   const [documentId, setDocumentId] = useState(initialDocument?.id ?? "");
   const [title, setTitle] = useState(initialDocument?.title ?? "");
   const [letter, setLetter] = useState<EliteCoverLetterData | null>(initialDocument?.data ?? null);
-  const [selectedTemplate, setSelectedTemplate] = useState(() => initialDocument?.templateName ?? "Modern Professional");
-  const [activePanel, setActivePanel] = useState<"write" | "design" | "preview">("write");
-  const [previewZoom, setPreviewZoom] = useState<"fit" | "100">("fit");
+  const [selectedTemplate, setSelectedTemplate] = useState(() => initialDocument?.templateName ?? "Classic Professional");
+  const [activePanel, setActivePanel] = useState<StudioPanel>("write");
+  const [activeSection, setActiveSection] = useState<AccordionSection>("Target Job");
+  const [previewMode, setPreviewMode] = useState<PreviewMode>("designed");
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -73,10 +131,11 @@ export function EliteCoverLetterTool({ initialFacts, initialDocument, canExport,
   const [isPending, startTransition] = useTransition();
 
   const jobAnalysis = useMemo(() => analyzeJobDescription(targetJob, initialFacts), [targetJob, initialFacts]);
+  const evidenceForReview = letter?.selectedEvidence.length ? letter.selectedEvidence : targetJob.evidenceItems?.length ? targetJob.evidenceItems : jobAnalysis.selectedEvidence;
   const recommendations = useMemo(() => coverLetterRecommendations(letter, initialFacts), [letter, initialFacts]);
   const recommendedTemplate = useMemo(() => {
     const signalText = `${targetJob.jobTitle} ${targetJob.jobDescription}`.toLowerCase();
-    return eliteCoverLetterTemplates.find((template) => template.recommendedSignals.some((signal) => signalText.includes(signal))) ?? eliteCoverLetterTemplates[2];
+    return eliteCoverLetterTemplates.find((template) => template.recommendedSignals.some((signal) => signalText.includes(signal))) ?? eliteCoverLetterTemplates[0];
   }, [targetJob.jobTitle, targetJob.jobDescription]);
 
   useEffect(() => {
@@ -92,12 +151,19 @@ export function EliteCoverLetterTool({ initialFacts, initialDocument, canExport,
     setTargetJob((current) => ({ ...current, [key]: value }));
   }
 
+  function updateEvidence(nextEvidence: CoverLetterEvidenceItem[]) {
+    setTargetJob((current) => ({ ...current, evidenceItems: nextEvidence }));
+    if (letter) updateLetter((draft) => { draft.selectedEvidence = nextEvidence; draft.status = "Edited"; });
+  }
+
   function updateLetter(updater: (draft: EliteCoverLetterData) => void) {
     setLetter((current) => {
       if (!current) return current;
       const draft = structuredClone(current);
       updater(draft);
       draft.updatedAt = new Date().toISOString();
+      draft.lastPreviewedAt = new Date().toISOString();
+      if (draft.status === "Generated" || draft.status === "Ready") draft.status = "Edited";
       return draft;
     });
     setSaveState("idle");
@@ -107,12 +173,18 @@ export function EliteCoverLetterTool({ initialFacts, initialDocument, canExport,
     setError("");
     setNotice("");
     setLockedAction(false);
+    if (!targetJob.companyName.trim() || !targetJob.jobTitle.trim() || !targetJob.jobDescription.trim()) {
+      setError("Please add the company name, position title, and job description before generating.");
+      setActiveSection("Target Job");
+      return;
+    }
+    const evidenceItems = evidenceForReview.length ? evidenceForReview : jobAnalysis.selectedEvidence;
     startTransition(async () => {
       try {
         const response = await fetch("/api/professional-identity/elite-cover-letter", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...targetJob, selectedTemplate })
+          body: JSON.stringify({ ...targetJob, evidenceItems, selectedTemplate })
         });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error || "We could not generate your cover letter yet.");
@@ -190,7 +262,7 @@ export function EliteCoverLetterTool({ initialFacts, initialDocument, canExport,
       await fetch("/api/professional-identity/elite-cover-letter", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: documentId, title, data: letter, downloaded: true })
+        body: JSON.stringify({ id: documentId, title, data: { ...letter, lastDownloadedAt: new Date().toISOString() }, downloaded: true })
       });
       setNotice("Your PDF has downloaded to your browser's Downloads folder.");
     } catch {
@@ -210,66 +282,113 @@ export function EliteCoverLetterTool({ initialFacts, initialDocument, canExport,
     setActivePanel("preview");
   }
 
+  function renderEvidenceReview() {
+    const items = evidenceForReview.length ? evidenceForReview : jobAnalysis.selectedEvidence;
+    return (
+      <div className="grid gap-3">
+        <p className="text-sm leading-6 text-white/58">Review the truthful evidence PATHZY can use. Select only what you want included, edit wording if needed, or add another true item.</p>
+        {items.map((item, index) => (
+          <div key={item.id || index} className="rounded-2xl border border-white/10 bg-black/18 p-3">
+            <label className="flex items-start gap-3 text-sm font-bold text-white/70">
+              <input type="checkbox" className="mt-1" checked={item.selected} onChange={(event) => {
+                const next = [...items];
+                next[index] = { ...item, selected: event.target.checked };
+                updateEvidence(next);
+              }} />
+              <span>{item.source} - {item.matchedReason}</span>
+            </label>
+            <textarea value={item.text} onChange={(event) => {
+              const next = [...items];
+              next[index] = { ...item, text: event.target.value };
+              updateEvidence(next);
+            }} className="mt-3 min-h-20 w-full rounded-xl border border-white/10 bg-black/24 px-3 py-2 text-sm text-white outline-none focus:border-[#8fb0ff]" />
+            <button type="button" onClick={() => updateEvidence(items.filter((_, itemIndex) => itemIndex !== index))} className="mt-2 rounded-full bg-white/8 px-3 py-1.5 text-xs font-black text-white/62">Remove</button>
+          </div>
+        ))}
+        <button type="button" onClick={() => updateEvidence([...items, { id: `manual-${Date.now()}`, source: "Profile", text: "", matchedReason: "User-added truthful evidence", selected: true }])} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-black text-white/76">Add truthful evidence item</button>
+      </div>
+    );
+  }
+
+  function renderAccordionContent(section: AccordionSection) {
+    if (section === "Applicant") return (
+      <div className="grid gap-3">
+        <div className="rounded-2xl border border-white/10 bg-black/18 p-3 text-sm leading-6 text-white/60">Selected CV source: <span className="font-black text-white">{initialFacts.selectedCvTitle || "Latest saved CV"}</span></div>
+        {letter ? (
+          <>
+            <Field label="Full name" value={letter.applicantName} onChange={(value) => updateLetter((draft) => { draft.applicantName = value; draft.signatureName = value; draft.applicantSignatureName = value; })} />
+            <Field label="Email" value={letter.applicantContact.email} onChange={(value) => updateLetter((draft) => { draft.applicantContact.email = value; })} />
+            <Field label="Phone" value={letter.applicantContact.phone} onChange={(value) => updateLetter((draft) => { draft.applicantContact.phone = value; })} />
+            <Field label="LinkedIn" value={letter.applicantContact.linkedIn} onChange={(value) => updateLetter((draft) => { draft.applicantContact.linkedIn = value; })} />
+            <Field label="Portfolio / website" value={letter.applicantContact.portfolio} onChange={(value) => updateLetter((draft) => { draft.applicantContact.portfolio = value; })} />
+          </>
+        ) : <p className="text-sm leading-6 text-white/58">Generate a draft to edit applicant details directly. PATHZY will use your profile and selected CV as the source.</p>}
+      </div>
+    );
+    if (section === "Target Job") return (
+      <div className="grid gap-3" data-cover-letter-form-flow="single-column">
+        <Field label="Company name" value={targetJob.companyName} onChange={(value) => updateTarget("companyName", value)} placeholder="Example Company" required />
+        <Field label="Position title" value={targetJob.jobTitle} onChange={(value) => updateTarget("jobTitle", value)} placeholder="Junior Data Analyst" required />
+        <Field label="Job description" value={targetJob.jobDescription} onChange={(value) => updateTarget("jobDescription", value)} placeholder="Paste the job description here so PATHZY can target the letter." multiline required />
+        <label className="grid gap-2 text-sm font-bold text-white/74">Preferred tone
+          <select value={targetJob.tone} onChange={(event) => updateTarget("tone", normalizeCoverLetterTone(event.target.value))} className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none focus:border-[#8fb0ff]">
+            {coverLetterTones.map((tone) => <option key={tone}>{tone}</option>)}
+          </select>
+        </label>
+        <label className="grid gap-2 text-sm font-bold text-white/74">Language
+          <select value={targetJob.language} onChange={(event) => updateTarget("language", normalizeCoverLetterLanguage(event.target.value))} className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none focus:border-[#8fb0ff]">
+            {coverLetterLanguages.map((language) => <option key={language}>{language}</option>)}
+          </select>
+        </label>
+      </div>
+    );
+    if (section === "Employer") return (
+      <div className="grid gap-3">
+        <Field label="Hiring manager name" value={letter?.hiringManager ?? targetJob.hiringManager} onChange={(value) => letter ? updateLetter((draft) => { draft.hiringManager = value; draft.employerDetails.hiringManager = value; }) : updateTarget("hiringManager", value)} placeholder="Optional" />
+        <Field label="Hiring manager title" value={letter?.employerDetails.hiringManagerTitle ?? targetJob.hiringManagerTitle} onChange={(value) => letter ? updateLetter((draft) => { draft.employerDetails.hiringManagerTitle = value; }) : updateTarget("hiringManagerTitle", value)} placeholder="Optional" />
+        <Field label="Company address" value={letter?.companyAddress ?? targetJob.companyAddress} onChange={(value) => letter ? updateLetter((draft) => { draft.companyAddress = value; draft.employerDetails.companyAddress = value; }) : updateTarget("companyAddress", value)} multiline placeholder="Optional" />
+        <Field label="Job location" value={letter?.employerDetails.jobLocation ?? targetJob.jobLocation} onChange={(value) => letter ? updateLetter((draft) => { draft.employerDetails.jobLocation = value; }) : updateTarget("jobLocation", value)} placeholder="Optional" />
+        <Field label="Job reference number" value={letter?.employerDetails.jobReferenceNumber ?? targetJob.jobReferenceNumber} onChange={(value) => letter ? updateLetter((draft) => { draft.employerDetails.jobReferenceNumber = value; }) : updateTarget("jobReferenceNumber", value)} placeholder="Optional" />
+      </div>
+    );
+    if (!letter) return <p className="text-sm leading-6 text-white/58">Generate a draft first, then this section becomes editable.</p>;
+    if (section === "Greeting") return <Field label="Greeting" value={letter.greeting} onChange={(value) => updateLetter((draft) => { draft.greeting = value; })} />;
+    if (section === "Opening") return <Field label="Opening paragraph" value={letter.openingParagraph} onChange={(value) => updateLetter((draft) => { draft.openingParagraph = value; })} multiline />;
+    if (section === "Relevant Experience") return <Field label="Relevant experience and skills" value={letter.relevantExperienceParagraph} onChange={(value) => updateLetter((draft) => { draft.relevantExperienceParagraph = value; draft.relevanceParagraph = value; })} multiline />;
+    if (section === "Evidence of Fit") return renderEvidenceReview();
+    if (section === "Why This Company") return (
+      <div className="grid gap-3">
+        <Field label="Company or role notes" value={targetJob.companyNotes} onChange={(value) => updateTarget("companyNotes", value)} multiline placeholder="Optional. Use only information you know from the job post or approved notes." />
+        <Field label="Why this company paragraph" value={letter.whyCompanyParagraph} onChange={(value) => updateLetter((draft) => { draft.whyCompanyParagraph = value; draft.companyInterestParagraph = value; })} multiline />
+      </div>
+    );
+    if (section === "Closing") return <Field label="Closing paragraph" value={letter.closingParagraph} onChange={(value) => updateLetter((draft) => { draft.closingParagraph = value; })} multiline />;
+    return (
+      <div className="grid gap-3">
+        <Field label="Sign-off" value={letter.signOff} onChange={(value) => updateLetter((draft) => { draft.signOff = value; })} />
+        <Field label="Signature name" value={letter.signatureName} onChange={(value) => updateLetter((draft) => { draft.signatureName = value; draft.applicantSignatureName = value; })} />
+      </div>
+    );
+  }
+
   const statusLabel = saveState === "saving" ? "Saving..." : saveState === "saved" ? "Saved" : saveState === "error" ? "Could not save. Retry." : letter ? "Unsaved changes" : "Ready";
 
   return (
     <div className="grid gap-5">
-      <div className="flex flex-wrap gap-3">
-        <Link href={appRoutes.professionalIdentity} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/76 transition hover:bg-white/12">Back to My Professional Profile</Link>
-        <Link href={appRoutes.roadmap} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/76 transition hover:bg-white/12">Back to My Employment Journey</Link>
+      <div className="grid gap-4 md:grid-cols-2">
+        <section className="rounded-[28px] border border-white/10 bg-white/7 p-5 shadow-[0_24px_80px_rgba(0,0,0,.24)] md:p-7">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-white/46">Cover Letter</p>
+          <h2 className="mt-2 text-2xl font-black text-white">Build your professional cover letter</h2>
+          <p className="mt-3 text-sm leading-6 text-white/62">Create a clear, job-tailored cover letter using your PATHZY profile, selected CV and target-job information.</p>
+          <p className="mt-3 text-sm leading-6 text-white/52">PATHZY will prepare the first draft, and you can review, edit and improve it before downloading.</p>
+        </section>
+        <section className="rounded-[28px] border border-white/10 bg-white/7 p-5 shadow-[0_24px_80px_rgba(0,0,0,.24)] md:p-7">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-white/46">Why It Matters</p>
+          <h2 className="mt-2 text-2xl font-black text-white">Show why you fit the role</h2>
+          <p className="mt-3 text-sm leading-6 text-white/62">A strong cover letter connects your experience and achievements to the employer's needs instead of repeating your CV.</p>
+          <p className="mt-3 text-sm leading-6 text-white/52">PATHZY will help you present the strongest truthful evidence for the position.</p>
+        </section>
       </div>
-
-      <section className="rounded-[28px] border border-white/10 bg-white/7 p-5 shadow-[0_24px_80px_rgba(0,0,0,.24)] md:p-7">
-        <div className="grid gap-5 lg:grid-cols-[.95fr_1.05fr]">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-white/46">Target Job Information</p>
-            <h2 className="mt-2 text-2xl font-black text-white">Generate a role-specific cover letter</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/58">PATHZY uses your professional profile and the job description to write a truthful application letter. It will not invent employers, years, certificates, or achievements.</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="grid gap-2 text-sm font-bold text-white/74">Job title
-              <input value={targetJob.jobTitle} onChange={(event) => updateTarget("jobTitle", event.target.value)} className="rounded-2xl border border-white/10 bg-black/24 px-4 py-3 text-white outline-none focus:border-[#8fb0ff]" placeholder="Data Analyst" />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-white/74">Company name
-              <input value={targetJob.companyName} onChange={(event) => updateTarget("companyName", event.target.value)} className="rounded-2xl border border-white/10 bg-black/24 px-4 py-3 text-white outline-none focus:border-[#8fb0ff]" placeholder="Example Company" />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-white/74">Hiring manager
-              <input value={targetJob.hiringManager} onChange={(event) => updateTarget("hiringManager", event.target.value)} className="rounded-2xl border border-white/10 bg-black/24 px-4 py-3 text-white outline-none focus:border-[#8fb0ff]" placeholder="Optional" />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-white/74">Tone
-              <select value={targetJob.tone} onChange={(event) => updateTarget("tone", normalizeCoverLetterTone(event.target.value))} className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none focus:border-[#8fb0ff]">
-                {coverLetterTones.map((tone) => <option key={tone}>{tone}</option>)}
-              </select>
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-white/74 sm:col-span-2">Company address
-              <textarea value={targetJob.companyAddress} onChange={(event) => updateTarget("companyAddress", event.target.value)} className="min-h-20 rounded-2xl border border-white/10 bg-black/24 px-4 py-3 text-white outline-none focus:border-[#8fb0ff]" placeholder="Optional" />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-white/74 sm:col-span-2">Job description
-              <textarea value={targetJob.jobDescription} onChange={(event) => updateTarget("jobDescription", event.target.value)} className="min-h-32 rounded-2xl border border-white/10 bg-black/24 px-4 py-3 text-white outline-none focus:border-[#8fb0ff]" placeholder="Paste the job description here so PATHZY can target the letter." />
-            </label>
-            <div className="sm:col-span-2">
-              <button type="button" onClick={generateCoverLetter} disabled={isPending} className="w-full rounded-full bg-gradient-to-r from-[#4f8cff] to-[#8a5cff] px-6 py-4 text-sm font-black text-white shadow-[0_18px_48px_rgba(82,124,255,.34)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60">
-                {isPending ? "Generating..." : "Generate Cover Letter"}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 md:grid-cols-2">
-          <div className="rounded-2xl border border-white/10 bg-black/18 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-white/44">PATHZY will emphasize</p>
-            <ul className="mt-3 grid gap-2 text-sm leading-6 text-white/66">
-              {jobAnalysis.factMatches.map((item) => <li key={item}>- {item}</li>)}
-            </ul>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-black/18 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-white/44">Improve your cover letter</p>
-            <ul className="mt-3 grid gap-2 text-sm leading-6 text-white/66">
-              {recommendations.map((item) => <li key={item}>- {item}</li>)}
-            </ul>
-          </div>
-        </div>
-      </section>
 
       <div className="flex gap-2 rounded-full border border-white/10 bg-white/6 p-1 md:hidden">
         {(["write", "design", "preview"] as const).map((panel) => (
@@ -281,112 +400,109 @@ export function EliteCoverLetterTool({ initialFacts, initialDocument, canExport,
         <section className={`${activePanel !== "write" ? "hidden md:block" : ""} rounded-[28px] border border-white/10 bg-white/7 p-5 md:p-6`}>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-white/44">Edit Content</p>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-white/44">Structured Editor</p>
               <h2 className="mt-2 text-xl font-black text-white">Cover letter sections</h2>
             </div>
             <button type="button" onClick={() => void saveVersion()} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-xs font-black text-white/76">{statusLabel}</button>
           </div>
-
-          {!letter ? (
-            <div className="mt-5 rounded-2xl border border-white/10 bg-black/18 p-5 text-sm leading-6 text-white/60">Add the target job details and generate your first draft. You will be able to edit every paragraph before downloading.</div>
-          ) : (
-            <div className="mt-5 grid gap-4">
-              <div className="grid gap-3 rounded-2xl border border-white/10 bg-black/16 p-4">
-                <p className="text-sm font-black text-white">Personal Header</p>
-                <input value={letter.applicantName} onChange={(event) => updateLetter((draft) => { draft.applicantName = event.target.value; draft.applicantSignatureName = event.target.value; })} className="rounded-xl border border-white/10 bg-black/22 px-3 py-2 text-white outline-none" placeholder="Full name" />
-                <input value={letter.applicantContact.email} onChange={(event) => updateLetter((draft) => { draft.applicantContact.email = event.target.value; })} className="rounded-xl border border-white/10 bg-black/22 px-3 py-2 text-white outline-none" placeholder="Email" />
-                <input value={letter.applicantContact.phone} onChange={(event) => updateLetter((draft) => { draft.applicantContact.phone = event.target.value; })} className="rounded-xl border border-white/10 bg-black/22 px-3 py-2 text-white outline-none" placeholder="Phone" />
-                <input value={letter.applicantContact.linkedIn} onChange={(event) => updateLetter((draft) => { draft.applicantContact.linkedIn = event.target.value; })} className="rounded-xl border border-white/10 bg-black/22 px-3 py-2 text-white outline-none" placeholder="LinkedIn" />
-              </div>
-
-              <div className="grid gap-3 rounded-2xl border border-white/10 bg-black/16 p-4">
-                <p className="text-sm font-black text-white">Employer Details</p>
-                <input value={letter.companyName} onChange={(event) => updateLetter((draft) => { draft.companyName = event.target.value; })} className="rounded-xl border border-white/10 bg-black/22 px-3 py-2 text-white outline-none" />
-                <input value={letter.jobTitle} onChange={(event) => updateLetter((draft) => { draft.jobTitle = event.target.value; })} className="rounded-xl border border-white/10 bg-black/22 px-3 py-2 text-white outline-none" />
-                <input value={letter.hiringManager} onChange={(event) => updateLetter((draft) => { draft.hiringManager = event.target.value; draft.greeting = event.target.value ? `Dear ${event.target.value},` : "Dear Hiring Manager,"; })} className="rounded-xl border border-white/10 bg-black/22 px-3 py-2 text-white outline-none" placeholder="Hiring manager" />
-                <textarea value={letter.companyAddress} onChange={(event) => updateLetter((draft) => { draft.companyAddress = event.target.value; })} className="min-h-20 rounded-xl border border-white/10 bg-black/22 px-3 py-2 text-white outline-none" placeholder="Company address" />
-              </div>
-
-              <div className="grid gap-3 rounded-2xl border border-white/10 bg-black/16 p-4">
-                <p className="text-sm font-black text-white">Greeting</p>
-                <input value={letter.greeting} onChange={(event) => updateLetter((draft) => { draft.greeting = event.target.value; })} className="rounded-xl border border-white/10 bg-black/22 px-3 py-2 text-white outline-none" />
-              </div>
-
-              {paragraphFields.map(([field, label]) => (
-                <div key={field} className="grid gap-3 rounded-2xl border border-white/10 bg-black/16 p-4">
-                  <p className="text-sm font-black text-white">{label}</p>
-                  <textarea value={letter[field]} onChange={(event) => updateLetter((draft) => { draft[field] = event.target.value; })} className="min-h-28 rounded-xl border border-white/10 bg-black/22 px-3 py-2 text-white outline-none" />
+          <div className="mt-5 grid gap-3" data-cover-letter-accordion="vertical">
+            {accordionSections.map((section) => {
+              const open = activeSection === section;
+              const panelId = `cover-letter-${section.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+              return (
+                <div key={section} className="rounded-2xl border border-white/10 bg-black/18">
+                  <button type="button" aria-expanded={open} aria-controls={panelId} onClick={() => setActiveSection(open ? "Target Job" : section)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-black text-white outline-none transition focus-visible:ring-2 focus-visible:ring-[#8fb0ff]">
+                    <span>{section}</span>
+                    <span className="rounded-full bg-white/8 px-3 py-1 text-xs text-white/54">{open ? "Open" : "Edit"}</span>
+                  </button>
+                  {open ? <div id={panelId} className="grid gap-3 border-t border-white/10 p-4">{renderAccordionContent(section)}</div> : null}
                 </div>
-              ))}
-
-              <div className="grid gap-3 rounded-2xl border border-white/10 bg-black/16 p-4">
-                <p className="text-sm font-black text-white">Signature</p>
-                <input value={letter.signOff} onChange={(event) => updateLetter((draft) => { draft.signOff = event.target.value; })} className="rounded-xl border border-white/10 bg-black/22 px-3 py-2 text-white outline-none" />
-                <input value={letter.applicantSignatureName} onChange={(event) => updateLetter((draft) => { draft.applicantSignatureName = event.target.value; })} className="rounded-xl border border-white/10 bg-black/22 px-3 py-2 text-white outline-none" />
-              </div>
-            </div>
-          )}
-        </section>
-
-        <section className={`${activePanel !== "design" ? "hidden md:block" : ""} rounded-[28px] border border-white/10 bg-white/7 p-5 md:p-6`}>
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-white/44">Preview Designs</p>
-          <h2 className="mt-2 text-xl font-black text-white">Choose a recruiter-ready design</h2>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            {eliteCoverLetterTemplates.map((template) => (
-              <button key={template.name} type="button" onClick={() => selectTemplate(template.name)} className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 ${selectedTemplate === template.name ? "border-[#8fb0ff] bg-[#4f8cff]/14" : "border-white/10 bg-black/18"}`}>
-                <div className="flex items-start gap-3">
-                  <div className="grid h-14 w-12 shrink-0 place-items-center rounded-xl text-xs font-black text-white" style={{ background: template.accent }}>{template.thumbnail}</div>
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-black text-white">{template.name}</p>
-                      {recommendedTemplate.name === template.name ? <span className="rounded-full bg-white/12 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white/66">Recommended for you</span> : null}
-                    </div>
-                    <p className="mt-1 text-xs leading-5 text-white/54">Best for: {template.bestFor}</p>
-                    <p className="mt-1 text-xs text-white/42">ATS compatibility: {template.atsCompatibility}</p>
-                  </div>
-                </div>
-                <div className="mt-3 flex gap-2">
-                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white/62">Preview</span>
-                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white/62">Select Design</span>
-                </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
+          <div className="mt-5">
+            <button type="button" onClick={generateCoverLetter} disabled={isPending} className="w-full rounded-full bg-gradient-to-r from-[#4f8cff] to-[#8a5cff] px-6 py-4 text-sm font-black text-white shadow-[0_18px_48px_rgba(82,124,255,.34)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60">
+              {isPending ? "Generating..." : "Generate Cover Letter"}
+            </button>
+          </div>
+          {notice ? <div className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4 text-sm text-emerald-100">{notice}</div> : null}
+          {error ? <div className="mt-4 rounded-2xl border border-rose-300/20 bg-rose-400/10 p-4 text-sm text-rose-100">{error}</div> : null}
         </section>
 
-        <section className={`${activePanel !== "preview" ? "hidden md:block" : ""} rounded-[28px] border border-white/10 bg-white/7 p-5 md:p-6 lg:col-start-2`}>
+        <section className={`${activePanel !== "preview" ? "hidden md:block" : ""} rounded-[28px] border border-white/10 bg-white/7 p-5 md:p-6`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-white/44">Live Preview</p>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-white/44">Live A4 Preview</p>
               <h2 className="mt-2 text-xl font-black text-white">Published cover letter</h2>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => setPreviewZoom("fit")} className={`rounded-full px-4 py-2 text-xs font-black ${previewZoom === "fit" ? "bg-white text-[#111827]" : "bg-white/10 text-white/68"}`}>Fit width</button>
-              <button type="button" onClick={() => setPreviewZoom("100")} className={`rounded-full px-4 py-2 text-xs font-black ${previewZoom === "100" ? "bg-white text-[#111827]" : "bg-white/10 text-white/68"}`}>100%</button>
+              <button type="button" onClick={() => setPreviewMode("designed")} className={`rounded-full px-4 py-2 text-xs font-black ${previewMode === "designed" ? "bg-white text-[#111827]" : "bg-white/10 text-white/68"}`}>Designed Preview</button>
+              <button type="button" onClick={() => setPreviewMode("plain")} className={`rounded-full px-4 py-2 text-xs font-black ${previewMode === "plain" ? "bg-white text-[#111827]" : "bg-white/10 text-white/68"}`}>Plain Text / Recruiter View</button>
             </div>
           </div>
-
           <div className="mt-5 overflow-x-auto rounded-[22px] bg-black/22 p-3 md:p-5">
             {letter ? (
-              <div className={previewZoom === "fit" ? "mx-auto max-w-full origin-top" : "w-[794px] max-w-none"} dangerouslySetInnerHTML={{ __html: renderEliteCoverLetterHtml(letter) }} />
+              previewMode === "designed"
+                ? <div dangerouslySetInnerHTML={{ __html: renderEliteCoverLetterHtml(letter) }} />
+                : <pre className="plain-letter whitespace-pre-wrap rounded-[18px] bg-white p-8 text-sm leading-7 text-[#111827]">{renderEliteCoverLetterPlainText(letter)}</pre>
             ) : (
               <div className="grid min-h-[520px] place-items-center rounded-[22px] border border-dashed border-white/14 bg-black/18 p-8 text-center text-white/58">Generate a cover letter to see the live A4 preview.</div>
             )}
           </div>
-
           <div className="mt-5 flex flex-wrap gap-3">
-            <button type="button" onClick={() => letter && updateLetter((draft) => { draft.updatedAt = new Date().toISOString(); })} disabled={!letter} className="rounded-full border border-white/12 bg-white/10 px-5 py-3 text-sm font-black text-white/76 disabled:opacity-40">Improve Content</button>
+            <button type="button" onClick={() => letter && updateLetter((draft) => { draft.status = "Ready for review"; })} disabled={!letter} className="rounded-full border border-white/12 bg-white/10 px-5 py-3 text-sm font-black text-white/76 disabled:opacity-40">Improve Content</button>
             <button type="button" onClick={() => void saveVersion()} disabled={!letter || saveState === "saving"} className="rounded-full border border-white/12 bg-white/10 px-5 py-3 text-sm font-black text-white/76 disabled:opacity-40">Save Version</button>
             <button type="button" onClick={() => void saveDuplicate()} disabled={!letter || saveState === "saving"} className="rounded-full border border-white/12 bg-white/10 px-5 py-3 text-sm font-black text-white/76 disabled:opacity-40">Save Copy</button>
             <button type="button" onClick={() => void downloadPdf()} disabled={!letter} className="rounded-full bg-gradient-to-r from-[#4f8cff] to-[#8a5cff] px-5 py-3 text-sm font-black text-white disabled:opacity-40">Download PDF</button>
           </div>
-
           {lockedAction ? <div className="mt-4 rounded-2xl border border-[#8fb0ff]/30 bg-[#4f8cff]/12 p-4 text-sm leading-6 text-white/72">This feature is available with PATHZY Premium. You can keep editing and previewing your cover letter here.</div> : null}
-          {notice ? <div className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4 text-sm text-emerald-100">{notice}</div> : null}
-          {error ? <div className="mt-4 rounded-2xl border border-rose-300/20 bg-rose-400/10 p-4 text-sm text-rose-100">{error}</div> : null}
         </section>
+      </div>
+
+      <section className={`${activePanel !== "design" ? "hidden md:block" : ""} rounded-[28px] border border-white/10 bg-white/7 p-5 md:p-6`}>
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-white/44">Template Gallery</p>
+            <h2 className="mt-2 text-xl font-black text-white">Choose one of 10 cover letter designs</h2>
+            <p className="mt-2 text-sm leading-6 text-white/58">Template switching changes presentation only. Your letter content and edits stay the same.</p>
+          </div>
+          <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-black text-[#c7d6ff]">Recommended: {recommendedTemplate.name}</span>
+        </div>
+        <div className="mt-5 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+          {eliteCoverLetterTemplates.map((template) => (
+            <button key={template.name} type="button" onClick={() => selectTemplate(template.name)} className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 ${selectedTemplate === template.name ? "border-[#8fb0ff] bg-[#4f8cff]/14 shadow-[0_18px_54px_rgba(91,140,255,.18)]" : "border-white/10 bg-black/18"}`}>
+              <TemplateMiniPreview templateName={template.name} />
+              <div className="mt-4 flex items-start justify-between gap-2">
+                <p className="font-black text-white">{template.name}</p>
+                {selectedTemplate === template.name ? <span className="rounded-full bg-[#8fb0ff]/20 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#c7d6ff]">Selected</span> : null}
+              </div>
+              <p className="mt-2 text-xs leading-5 text-white/54">Best for: {template.bestFor}</p>
+              <p className="mt-2 text-xs leading-5 text-white/42">{template.visualDirection}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white/62">Preview</span>
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white/62">Select Design</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-[24px] border border-white/10 bg-white/7 p-5">
+        <h2 className="text-lg font-black text-white">Next actions</h2>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link href={appRoutes.professionalIdentity} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/76 transition hover:bg-white/12">Back to My Professional Profile</Link>
+          <Link href={appRoutes.roadmap} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/76 transition hover:bg-white/12">Back to My Employment Journey</Link>
+          <Link href={appRoutes.opportunities} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/76 transition hover:bg-white/12">Find Opportunities</Link>
+          <Link href={appRoutes.applications} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/76 transition hover:bg-white/12">My Applications</Link>
+        </div>
+      </section>
+
+      <div className="rounded-[20px] border border-white/10 bg-white/6 p-4">
+        <p className="text-xs font-black uppercase tracking-[0.14em] text-white/42">Document readiness</p>
+        <ul className="mt-3 grid gap-2 text-sm leading-6 text-white/64">
+          {recommendations.map((item) => <li key={item}>- {item}</li>)}
+        </ul>
       </div>
     </div>
   );
 }
-

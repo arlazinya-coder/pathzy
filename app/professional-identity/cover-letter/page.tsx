@@ -13,7 +13,7 @@ export default async function CoverLetterPage({ searchParams }: { searchParams?:
   const [{ data: profile }, { data: discovery }, { data: latestCv }, { data: latestCoverLetter }] = await Promise.all([
     supabase
       .from("user_profiles")
-      .select("full_name,email,phone,city,country,career_goal,education,highest_qualification,field_of_study,current_status,employment_status,linkedin_url,portfolio_url")
+      .select("id,user_id,full_name,email,phone,city,country,language,career_goal,education,highest_qualification,field_of_study,current_status,employment_status,linkedin_url,portfolio_url")
       .or(`user_id.eq.${user.id},id.eq.${user.id}`)
       .maybeSingle(),
     supabase
@@ -25,7 +25,7 @@ export default async function CoverLetterPage({ searchParams }: { searchParams?:
       .maybeSingle(),
     supabase
       .from("user_documents")
-      .select("content_json")
+      .select("id,document_title,content_json")
       .eq("user_id", user.id)
       .eq("document_type", "cv")
       .order("updated_at", { ascending: false })
@@ -44,7 +44,7 @@ export default async function CoverLetterPage({ searchParams }: { searchParams?:
   const facts = buildCoverLetterProfileFacts(
     profile ?? null,
     (discovery?.answers ?? {}) as Record<string, unknown>,
-    (latestCv?.content_json ?? {}) as Record<string, unknown>
+    { ...((latestCv?.content_json ?? {}) as Record<string, unknown>), id: latestCv?.id, title: latestCv?.document_title }
   );
   const contentJson = (latestCoverLetter?.content_json ?? {}) as Record<string, unknown>;
   const eliteCoverLetterData = contentJson.eliteCoverLetterData as EliteCoverLetterData | undefined;

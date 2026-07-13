@@ -412,30 +412,49 @@ assert.match(professionalIdentityTool, /draft\.bodyParagraphs = next;/, "Cover L
 
 assert.match(professionalCoverLetterPage, /requireAuthenticatedUser\("\/professional-identity\/cover-letter"\)/, "Elite Cover Letter route must remain authenticated.");
 assert.match(professionalCoverLetterPage, /<EliteCoverLetterTool/, "Canonical Cover Letter route must use the dedicated Elite Cover Letter tool.");
+assert.match(professionalCoverLetterPage, /id,document_title,content_json/, "Cover Letter page must load the selected/latest CV source metadata.");
 assert.doesNotMatch(professionalCoverLetterPage, /ProfessionalIdentityTool/, "Elite Cover Letter route must not reuse the CV/shared preview component.");
-for (const templateName of ["Executive Letter", "ATS Classic", "Modern Professional", "Graduate Signature", "Technology Letter", "Healthcare Professional", "Corporate Blue", "Creative Letter", "International Standard", "Minimal Elegance"]) {
+for (const templateName of ["Classic Professional", "Executive Elite", "Modern ATS", "Corporate Blue", "Consulting Signature", "Graduate Fresh", "Technical Professional", "Healthcare Professional", "Creative Editorial", "International Standard"]) {
   assert.match(eliteCoverLetterEngine, new RegExp(`"${templateName}"`), `${templateName} must be registered in the Elite Cover Letter template gallery.`);
 }
-for (const fieldName of ["applicantName", "applicantContact", "companyName", "hiringManager", "companyAddress", "jobTitle", "greeting", "openingParagraph", "relevanceParagraph", "evidenceParagraph", "companyInterestParagraph", "closingParagraph", "signOff", "applicantSignatureName", "selectedTone", "selectedTemplate", "sourceJobDescription", "generatedAt", "updatedAt"]) {
+for (const toneName of ["Professional", "Confident", "Warm", "Executive", "Concise", "Graduate / Early Career", "Technical", "Healthcare", "Consulting"]) {
+  assert.match(eliteCoverLetterEngine, new RegExp(`"${toneName}"`), `${toneName} tone must be available.`);
+}
+for (const fieldName of ["language", "sourceProfileId", "sourceCvId", "sourceOpportunityId", "applicantName", "applicantContact", "documentDate", "employerDetails", "targetCompany", "targetPosition", "jobDescription", "greeting", "openingParagraph", "relevantExperienceParagraph", "evidenceParagraph", "whyCompanyParagraph", "closingParagraph", "signOff", "signatureName", "selectedEvidence", "status", "createdAt", "updatedAt", "lastPreviewedAt", "lastDownloadedAt"]) {
   assert.match(eliteCoverLetterEngine, new RegExp(`${fieldName}:`), `Elite Cover Letter data model must include ${fieldName}.`);
 }
-assert.match(eliteCoverLetterEngine, /analyzeJobDescription/, "Elite Cover Letter must review the job description before generation.");
+assert.match(eliteCoverLetterEngine, /buildCoverLetterProfileFacts[\s\S]*selectedCvId[\s\S]*selectedCvTitle/, "Professional Profile and selected CV must be used as source facts.");
+assert.match(eliteCoverLetterEngine, /analyzeJobDescription[\s\S]*keyResponsibilities[\s\S]*requiredSkills[\s\S]*preferredSkills[\s\S]*qualifications[\s\S]*tools[\s\S]*experienceLevel[\s\S]*industryTerms[\s\S]*behaviouralExpectations/, "Elite Cover Letter must extract job-description matching signals.");
+assert.match(eliteCoverLetterEngine, /strongestEvidence/, "Elite Cover Letter must identify strongest truthful evidence.");
 assert.match(eliteCoverLetterEngine, /missingQualifications/, "Elite Cover Letter must separate missing qualifications from truthful claims.");
 assert.match(eliteCoverLetterEngine, /must not invent employers, years, qualifications, certificates, metrics, licences, or achievements/i, "Elite Cover Letter contract must prohibit invented facts.");
 assert.match(eliteCoverLetterEngine, /renderEliteCoverLetterHtml/, "Elite Cover Letter preview must render from the elite model.");
+assert.match(eliteCoverLetterEngine, /renderEliteCoverLetterPlainText/, "Elite Cover Letter must expose a plain recruiter view from the same model.");
 assert.match(eliteCoverLetterEngine, /eliteCoverLetterPdfDocument/, "Elite Cover Letter PDF must export from the elite model.");
 assert.match(eliteCoverLetterEngine, /PATHZY_Cover_Letter_\$\{safe\(data\.companyName\)\}_\$\{safe\(data\.jobTitle\)\}_\$\{stamp\}\.pdf/, "Elite Cover Letter PDF filename must include company, job title, and date.");
+assert.doesNotMatch(eliteCoverLetterEngine, /35%|revenue|team size|To Whom It May Concern|Dear Sir\/Madam/, "Elite Cover Letter must not inject fake metrics or weak default greetings.");
 assert.match(eliteCoverLetterApi, /from\("user_documents"\)[\s\S]*document_type: "cover_letter"/, "Elite Cover Letter API must save into user_documents as cover_letter.");
 assert.match(eliteCoverLetterApi, /content_json: \{[\s\S]*eliteCoverLetterData/, "Elite Cover Letter API must persist the structured eliteCoverLetterData model.");
 assert.match(eliteCoverLetterApi, /eq\("user_id", auth\.user\.id\)/, "Elite Cover Letter API must scope reads and writes to the authenticated user.");
+assert.match(eliteCoverLetterApi, /company name, position title, and job description/, "Job description must be required for complete tailoring.");
+assert.match(eliteCoverLetterTool, /Cover Letter[\s\S]*Build your professional cover letter[\s\S]*Why It Matters[\s\S]*Show why you fit the role/, "Elite Cover Letter Studio must show two intro cards.");
+assert.match(eliteCoverLetterTool, /data-cover-letter-accordion="vertical"/, "Elite Cover Letter editor must use a vertical accordion.");
+assert.match(eliteCoverLetterTool, /aria-expanded=\{open\}[\s\S]*aria-controls=\{panelId\}/, "Cover Letter accordion buttons must expose accessibility state.");
+for (const sectionName of ["Applicant", "Target Job", "Employer", "Greeting", "Opening", "Relevant Experience", "Evidence of Fit", "Why This Company", "Closing", "Signature"]) {
+  assert.match(eliteCoverLetterTool, new RegExp(`"${sectionName}"`), `Cover Letter accordion must include ${sectionName}.`);
+}
+assert.match(eliteCoverLetterTool, /data-cover-letter-form-flow="single-column"/, "Target job form must use a true single-column form flow.");
+assert.match(eliteCoverLetterTool, /Company name[\s\S]*Position title[\s\S]*Job description/, "Target job form must support company, position, and job description.");
+assert.match(eliteCoverLetterTool, /renderEvidenceReview/, "Evidence review must exist before and after generation.");
+assert.match(eliteCoverLetterTool, /Add truthful evidence item/, "Users must be able to add truthful evidence.");
 assert.match(eliteCoverLetterTool, /Generate Cover Letter/, "Elite Cover Letter UI must expose Generate Cover Letter.");
 assert.match(eliteCoverLetterTool, /Improve Content/, "Elite Cover Letter UI must expose Improve Content.");
-assert.match(eliteCoverLetterTool, /Preview Designs/, "Elite Cover Letter UI must expose Preview Designs.");
-assert.match(eliteCoverLetterTool, /Select Design/, "Elite Cover Letter UI must expose Select Design.");
-assert.match(eliteCoverLetterTool, /Save Version/, "Elite Cover Letter UI must expose Save Version.");
-assert.match(eliteCoverLetterTool, /Download PDF/, "Elite Cover Letter UI must expose Download PDF.");
-assert.match(eliteCoverLetterTool, /Back to My Professional Profile/, "Elite Cover Letter UI must link back to My Professional Profile.");
-assert.match(eliteCoverLetterTool, /Back to My Employment Journey/, "Elite Cover Letter UI must link back to My Employment Journey.");
+assert.match(eliteCoverLetterTool, /Template Gallery[\s\S]*Choose one of 10 cover letter designs/, "Template Gallery must appear after the editor and preview workspace.");
+assert.match(eliteCoverLetterTool, /TemplateMiniPreview/, "Template cards must include mini previews that reflect real architectures.");
+assert.match(eliteCoverLetterTool, /Preview[\s\S]*Select Design/, "Template cards must include Preview and Select Design controls.");
+assert.match(eliteCoverLetterTool, /Plain Text \/ Recruiter View/, "Cover Letter Studio must include a plain recruiter view.");
+assert.match(eliteCoverLetterTool, /Save Version[\s\S]*Save Copy[\s\S]*Download PDF/, "Save, duplicate, and PDF actions must be available.");
+assert.match(eliteCoverLetterTool, /Back to My Professional Profile[\s\S]*Back to My Employment Journey[\s\S]*Find Opportunities[\s\S]*My Applications/, "Elite Cover Letter must provide safe next actions.");
 assert.match(eliteCoverLetterTool, /setSelectedTemplate\(nextTemplate\)[\s\S]*draft\.selectedTemplate = nextTemplate/, "Template switching must preserve content and only update selectedTemplate.");
 assert.match(eliteCoverLetterTool, /This feature is available with PATHZY Premium/, "Locked export must explain the Premium action only after the user attempts it.");
 assert.doesNotMatch(eliteCoverLetterTool, />Download PDF \(Premium\)|Premium<\/button>|\/billing|\/settings|\/membership|\/professional-identity\/cv/, "Elite Cover Letter must not advertise Premium on buttons or route users to CV, Billing, Settings, or Membership.");
