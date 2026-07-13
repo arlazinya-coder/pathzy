@@ -1506,12 +1506,12 @@ export function ProfessionalIdentityTool({
     );
   }
 
-  const workspaceClass = tool === "cv" ? "grid gap-5 lg:grid-cols-4" : tool === "cover-letter" ? "grid gap-5 lg:grid-cols-2" : "grid gap-5 lg:grid-cols-[.82fr_1fr]";
+  const workspaceClass = tool === "cv" ? "grid gap-5 lg:grid-cols-4" : tool === "cover-letter" ? "grid gap-5 xl:grid-cols-4 xl:items-start" : "grid gap-5 lg:grid-cols-[.82fr_1fr]";
 
   return (
     <div className={workspaceClass}>
       {tool !== "cv" ? (
-        <Card className={tool === "cover-letter" ? "lg:col-span-2" : undefined}>
+        <Card className={tool === "cover-letter" ? "xl:col-span-4" : undefined}>
           <>
             <h2 className="text-2xl font-black">{title}</h2>
             <p className="mt-3 leading-7 text-white/62">{description}</p>
@@ -1572,7 +1572,7 @@ export function ProfessionalIdentityTool({
         </Card>
       ) : null}
 
-      <Card className={tool === "cv" ? "lg:col-span-1" : undefined}>
+      <Card className={tool === "cv" ? "lg:col-span-1" : tool === "cover-letter" ? "xl:col-span-1 xl:max-h-[calc(100vh-136px)] xl:overflow-y-auto" : undefined}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">{tool === "cv" || tool === "cover-letter" ? "Structured editor" : "Preview"}</p>
@@ -1755,7 +1755,7 @@ export function ProfessionalIdentityTool({
       ) : null}
 
       {tool === "cover-letter" ? (
-        <Card>
+        <Card className="xl:sticky xl:top-24 xl:col-span-3 xl:self-start">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Live A4 preview engine</p>
@@ -1767,7 +1767,7 @@ export function ProfessionalIdentityTool({
           </div>
           <p className="mt-3 text-sm leading-6 text-white/58">This is the published A4 cover letter using the selected template. Empty fields stay hidden and template changes preserve the same content.</p>
           {document?.content && previewCoverLetterData ? (
-            <div className="mt-5 rounded-[22px] bg-[#dfe7f3] p-3 text-black">
+            <div className="mt-5 overflow-hidden rounded-[22px] bg-[#dfe7f3] p-2 text-black sm:p-3">
               <div dangerouslySetInnerHTML={{ __html: renderCoverLetterHtmlFromData(previewCoverLetterData) }} />
             </div>
           ) : (

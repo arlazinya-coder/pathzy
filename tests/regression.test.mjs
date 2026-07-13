@@ -498,7 +498,8 @@ assert.match(professionalIdentityTool, /Full name[\s\S]*Target role[\s\S]*Email[
 assert.match(professionalIdentityTool, /tool === "cv" \? "grid gap-5 lg:grid-cols-4"/, "CV workspace must use the normal app grid layout.");
 assert.match(professionalIdentityTool, /<Card className=\{tool === "cv" \? "lg:col-span-1"/, "CV editor must stay in the normal left editing zone.");
 assert.match(professionalIdentityTool, /<Card className="lg:col-span-3">/, "CV A4 preview must stay in the normal layout beside the editing zone.");
-assert.doesNotMatch(professionalIdentityTool, /cvStudioMode|setCvStudioMode|xl:sticky|xl:max-h-\[calc\(100vh-112px\)\]|xl:overflow-y-auto/, "CV editor must not use the rejected complex sticky or independent-scroll studio architecture.");
+const cvWorkspaceImplementation = professionalIdentityTool.slice(professionalIdentityTool.indexOf('{tool === "cv" ? ('), professionalIdentityTool.indexOf('{tool === "cover-letter" ? ('));
+assert.doesNotMatch(cvWorkspaceImplementation, /cvStudioMode|setCvStudioMode|xl:sticky|xl:max-h-\[calc\(100vh-112px\)\]|xl:overflow-y-auto/, "CV editor must not use the rejected complex sticky or independent-scroll studio architecture.");
 assert.doesNotMatch(professionalIdentityTool, /absolute|fixed|z-\[|z-[1-9]/, "CV preview/gallery repair must not use positioning or z-index hacks.");
 assert.match(professionalIdentityTool, /function renderCvCompactStatus/, "CV Health and save state must be compact in the editor heading area.");
 assert.match(professionalIdentityTool, /function saveStatusLabel/, "CV Document Studio must centralize compact save status text.");
@@ -726,8 +727,11 @@ assert.match(professionalIdentityTool, /template_name: draft\.designSystem,[\s\S
 assert.doesNotMatch(professionalCoverLetterPage, /premiumDocumentTemplates|documentTemplateGallery\.map/, "Cover Letter page must not render the old borrowed CV template strip.");
 assert.match(professionalIdentityTool, /previewCoverLetterData/, "Cover Letter preview must use a stable debounced preview data state.");
 assert.match(professionalIdentityTool, /setTimeout\(\(\) => \{\s*setPreviewCoverLetterData\(coverLetterData\);\s*\}, 260\);/, "Cover Letter live preview must debounce updates to avoid shaking while typing.");
-assert.match(professionalIdentityTool, /tool === "cover-letter" \? "grid gap-5 lg:grid-cols-2"/, "Cover Letter workspace must split editor and preview into two columns on desktop.");
-assert.match(professionalIdentityTool, /tool === "cover-letter" \? "lg:col-span-2"/, "Cover Letter generator card must sit above the editor and preview columns.");
+assert.match(professionalIdentityTool, /tool === "cover-letter" \? "grid gap-5 xl:grid-cols-4 xl:items-start"/, "Cover Letter workspace must stay single-column on mobile and switch to a 25/75 layout only on wide desktop.");
+assert.match(professionalIdentityTool, /tool === "cover-letter" \? "xl:col-span-4"/, "Cover Letter generator card must sit above the editor and preview columns.");
+assert.match(professionalIdentityTool, /tool === "cover-letter" \? "xl:col-span-1 xl:max-h-\[calc\(100vh-136px\)\] xl:overflow-y-auto"/, "Cover Letter editor must scroll internally only on desktop.");
+assert.match(professionalIdentityTool, /<Card className="xl:sticky xl:top-24 xl:col-span-3 xl:self-start">/, "Cover Letter preview must be sticky in the 75% desktop column.");
+assert.match(professionalIdentityTool, /overflow-hidden rounded-\[22px\] bg-\[#dfe7f3\] p-2 text-black sm:p-3/, "Cover Letter A4 preview must scale inside mobile width without horizontal scrolling.");
 assert.match(professionalIdentityTool, /renderCoverLetterEditor\(\)[\s\S]*tool === "cover-letter" \? \([\s\S]*Live A4 preview engine[\s\S]*renderCoverLetterHtmlFromData\(previewCoverLetterData\)/, "Cover Letter editor and live A4 preview must render at the same time.");
 for (const sectionName of ["1. Personal Header", "2. Employer Details", "3. Greeting", "4. Opening Paragraph", "5. Motivation / Why This Role", "6. Evidence / Why Me", "7. Company Alignment", "8. Additional Paragraphs", "9. Closing Paragraph", "10. Sign-off"]) {
   assert.match(professionalIdentityTool, new RegExp(sectionName.replace(/[.]/g, "\\.")), `Cover Letter editor must include ${sectionName}.`);
