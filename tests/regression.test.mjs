@@ -288,7 +288,11 @@ assert.match(professionalIdentityTool, /function cvContentJson\(document: Genera
 assert.match(professionalIdentityTool, /cvModel: normalizeCvModelForExport\(cvModel\),[\s\S]*cvVersion: metadata/, "CV version saves must use one CV model plus separate version metadata.");
 assert.match(professionalIdentityTool, /function duplicateCvVersion/, "CV Builder must let users duplicate a CV design version.");
 assert.match(professionalIdentityTool, /function renameCvVersion/, "CV Builder must let users rename a CV design version.");
-assert.match(professionalIdentityTool, /Design changes only the layout\./, "CV Builder must explain that design changes do not erase content.");
+assert.doesNotMatch(professionalIdentityTool, /CV generated/, "My CV workspace must not show the old CV Generated management card.");
+assert.doesNotMatch(professionalIdentityTool, /CV version name/, "My CV workspace must hide technical CV version fields from ordinary users.");
+assert.doesNotMatch(professionalIdentityTool, /Content source: one CV model\./, "My CV workspace must hide technical content-source language.");
+assert.doesNotMatch(professionalIdentityTool, /Duplicate CV/, "My CV workspace must hide technical duplicate-version controls.");
+assert.match(professionalIdentityTool, /Live preview engine[\s\S]*Regenerate[\s\S]*Upload CV/, "Regenerate and Upload CV actions must live inside the Live Preview Engine card.");
 assert.match(myDocumentsClient, /function saveCvVersionPatch/, "My Documents must allow saved CV versions to be renamed or switched to another design.");
 assert.match(myDocumentsClient, /cvVersion: \{ \.\.\.version, versionName: title, createdAt: now, updatedAt: now, lastDownloadedAt: null \}/, "Duplicated CV documents must get fresh version metadata.");
 assert.match(myDocumentsClient, /renderCvHtmlFromModel\(selectedCvModel, selectedCvVersion\?\.designSystem/, "Saved CV preview must render from the selected version design metadata.");

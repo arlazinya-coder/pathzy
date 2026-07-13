@@ -857,8 +857,7 @@ export function ProfessionalIdentityTool({
     };
   }, [document?.content, document?.title, document?.id, hasUnsavedChanges, templateName]);
 
-  async function generate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function runGenerate() {
     if (upgradeRequired) return;
 
     setLoading(true);
@@ -899,6 +898,11 @@ export function ProfessionalIdentityTool({
     } finally {
       setLoading(false);
     }
+  }
+
+  async function generate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runGenerate();
   }
 
   async function copyDocument() {
@@ -1056,87 +1060,7 @@ export function ProfessionalIdentityTool({
     <div className={workspaceClass}>
       <Card className={tool === "cv" ? "lg:col-span-4" : tool === "cover-letter" ? "lg:col-span-2" : undefined}>
         {tool === "cv" ? (
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-xl">
-              <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">{document ? "CV generated" : "Generate your CV"}</p>
-              <h2 className="mt-2 text-2xl font-black">{document ? outputTitle : title}</h2>
-              <p className="mt-2 text-sm leading-6 text-white/58">{document ? "Your draft is ready. Keep editing below, save changes, or regenerate from your latest PATHZY profile." : description}</p>
-            </div>
-            <form onSubmit={generate} className="grid w-full gap-3 lg:max-w-3xl lg:grid-cols-[.85fr_1.15fr_.95fr_auto_auto] lg:items-end">
-              <label className="label">
-                Language
-                <select className="field" value={values.language ?? "english"} onChange={(event) => updateValue("language", event.target.value as ProfessionalLanguage)}>
-                  <option value="english">English</option>
-                  <option value="french">French</option>
-                </select>
-              </label>
-              <label className="label">
-                Template
-                <select className="field" value={templateName} onChange={(event) => updateValue("templateName", event.target.value)}>
-                  {cvDesignSystems.map((template) => (
-                    <option key={template} value={template}>{template}</option>
-                  ))}
-                </select>
-              </label>
-              {fields.map((field) => (
-                <label key={field.name} className="label">
-                  {field.label}
-                  {field.type === "select" ? (
-                    <select className="field" value={(values[field.name] as string | undefined) ?? field.options?.[0] ?? ""} onChange={(event) => updateValue(field.name, event.target.value)}>
-                      {(field.options ?? []).map((option) => (
-                        <option key={option} value={option}>{option}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input className="field" type={field.type ?? "text"} placeholder={field.placeholder} value={(values[field.name] as string | undefined) ?? ""} onChange={(event) => updateValue(field.name, event.target.value)} />
-                  )}
-                </label>
-              ))}
-              <button disabled={loading} className="h-[46px] rounded-full blue-purple px-5 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60">
-                {loading ? "Generating" : document ? "Regenerate" : "Generate"}
-              </button>
-              <button type="button" onClick={() => setCvEntryMode(cvEntryMode === "upload" ? "profile" : "upload")} className="h-[46px] rounded-full border border-white/12 bg-white/8 px-5 text-sm font-extrabold text-white/82">
-                {cvEntryMode === "upload" ? "Use Profile" : "Upload CV"}
-              </button>
-              {cvEntryMode === "upload" ? (
-                <div id="old-cv-upload" className="rounded-[18px] border border-white/10 bg-white/6 p-4 lg:col-span-5">
-                  <p className="text-sm font-extrabold text-white">Upload old CV</p>
-                  <input className="mt-3 block w-full text-sm text-white/62 file:mr-4 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-extrabold file:text-white" type="file" accept=".pdf,.docx,.png,.jpg,.jpeg,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg" onChange={(event) => handleOldCvUpload(event.target.files?.[0] ?? null)} />
-                  {oldCvNotice ? <p className="mt-3 rounded-[16px] border border-[#f8c45d]/25 bg-[#f8c45d]/10 px-4 py-3 text-sm font-bold text-[#ffe2a8]">{oldCvNotice}</p> : null}
-                  <textarea className="field mt-3 min-h-[96px]" placeholder="Paste text from your old CV here." value={values.oldCvText ?? ""} onChange={(event) => updateValue("oldCvText", event.target.value)} />
-                </div>
-              ) : null}
-            </form>
-            {document && cvModel && activeCvVersion ? (
-              <div className="rounded-[22px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 p-4 lg:col-span-2">
-                <div className="grid gap-3 lg:grid-cols-[1.2fr_.9fr_auto] lg:items-end">
-                  <label className="label">
-                    CV version name
-                    <input className="field" value={activeCvVersion.versionName} onChange={(event) => renameCvVersion(event.target.value)} />
-                  </label>
-                  <label className="label">
-                    Design system
-                    <select className="field" value={activeCvVersion.designSystem} onChange={(event) => updateValue("templateName", event.target.value)}>
-                      {cvDesignSystems.map((template) => (
-                        <option key={template} value={template}>{template}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <button type="button" onClick={duplicateCvVersion} className="h-[46px] rounded-full border border-white/12 bg-white/8 px-5 text-sm font-extrabold text-white/82">
-                    Duplicate CV
-                  </button>
-                </div>
-                <div className="mt-3 grid gap-2 text-xs font-bold text-[#c7d6ff]/80 sm:grid-cols-3">
-                  <span>Design changes only the layout.</span>
-                  <span>Content source: one CV model.</span>
-                  <span>Updated: {new Date(activeCvVersion.updatedAt).toLocaleDateString()}</span>
-                </div>
-                <label className="mt-4 flex items-start gap-3 rounded-[16px] border border-white/10 bg-white/6 p-3 text-sm font-bold text-white/70">
-                  <input type="checkbox" className="mt-1" checked={updateLinkedCvVersions} onChange={(event) => setUpdateLinkedCvVersions(event.target.checked)} />
-                  <span>When I save content edits, also update linked CV versions that share this content source.</span>
-                </label>
-              </div>
-            ) : null}
+          <>
             {tool === "cv" ? (
               <div className="rounded-[22px] border border-white/10 bg-white/6 p-4 lg:col-span-5">
                 <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
@@ -1182,7 +1106,7 @@ export function ProfessionalIdentityTool({
                 </div>
               </div>
             ) : null}
-          </div>
+          </>
         ) : (
           <>
             <h2 className="text-2xl font-black">{title}</h2>
@@ -1420,6 +1344,22 @@ export function ProfessionalIdentityTool({
             </div>
           </div>
           <p className="mt-3 text-sm leading-6 text-white/58">{cvPreviewMode === "ats" ? "ATS Preview shows the parser-friendly structure recruiters and screening systems can read." : "Designed Preview shows the print-ready A4 document that the PDF export uses."}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" onClick={() => void runGenerate()} disabled={loading} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">
+              {loading ? "Regenerating..." : "Regenerate"}
+            </button>
+            <button type="button" onClick={() => setCvEntryMode(cvEntryMode === "upload" ? "profile" : "upload")} className={`rounded-full border px-5 py-3 text-sm font-extrabold ${cvEntryMode === "upload" ? "border-[#8fb0ff] bg-[#5B8CFF]/18 text-white" : "border-white/12 bg-white/8 text-white/82"}`}>
+              Upload CV
+            </button>
+          </div>
+          {cvEntryMode === "upload" ? (
+            <div id="old-cv-upload" className="mt-4 rounded-[18px] border border-white/10 bg-white/6 p-4">
+              <p className="text-sm font-extrabold text-white">Upload old CV</p>
+              <input className="mt-3 block w-full text-sm text-white/62 file:mr-4 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-extrabold file:text-white" type="file" accept=".pdf,.docx,.png,.jpg,.jpeg,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg" onChange={(event) => handleOldCvUpload(event.target.files?.[0] ?? null)} />
+              {oldCvNotice ? <p className="mt-3 rounded-[16px] border border-[#f8c45d]/25 bg-[#f8c45d]/10 px-4 py-3 text-sm font-bold text-[#ffe2a8]">{oldCvNotice}</p> : null}
+              <textarea className="field mt-3 min-h-[96px]" placeholder="Paste text from your old CV here." value={values.oldCvText ?? ""} onChange={(event) => updateValue("oldCvText", event.target.value)} />
+            </div>
+          ) : null}
           {document?.content && previewCvModel ? (
             <div ref={previewScrollRef} className="mt-5 rounded-[22px] bg-[#dfe7f3] p-3 text-black">
               <div dangerouslySetInnerHTML={{ __html: cvPreviewMode === "ats" ? renderAtsCvHtmlFromModel(previewCvModel) : renderCvHtmlFromModel(previewCvModel, templateName, activeCvSection) }} />
