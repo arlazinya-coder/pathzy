@@ -1189,7 +1189,7 @@ function section(cv: CvRenderModel, title: string) {
 }
 
 function mainSections(cv: CvRenderModel) {
-  const order = ["Career Goal", "Professional Experience", "Work Experience", "Experience", "Internships", "Freelance Work", "Projects", "Volunteer Experience", "Education", "Certifications", "Achievements", "Awards", "Publications", "Conferences", "Professional Memberships", "Interests", "References"];
+  const order = ["Professional Summary", "Career Goal", "Professional Experience", "Work Experience", "Experience", "Internships", "Freelance Work", "Projects", "Volunteer Experience", "Education", "Certifications", "Achievements", "Awards", "Publications", "Conferences", "Professional Memberships", "Interests", "References"];
   return order.map((title) => section(cv, title)).filter((item) => item?.items.length) as CvSection[];
 }
 
@@ -1479,9 +1479,6 @@ function buildCvLayoutFromModelWithDesign(cvInput: CvModel, activeSection?: stri
   first.elements.push({ kind: "text", x: 52, y: 42, width: 500, text: cv.name || "", size: premiumTemplate.nameSize, color: premiumTemplate.heroText, weight: "bold" });
   if (cv.targetRole) first.elements.push({ kind: "text", x: 54, y: 96, width: 480, text: cv.targetRole, size: premiumTemplate.roleSize, color: premiumTemplate.heroMuted, weight: "bold" });
   first.elements.push({ kind: "line", x: 54, y: 128, width: premiumTemplate.identity === "executive" ? 190 : 138, color: premiumTemplate.blue, thickness: premiumTemplate.identity === "executive" ? 2 : 4 });
-  const heroSummary = section(cv, "Professional Summary")?.items[0];
-  if (heroSummary) pushWrappedText(first.elements, heroSummary, 54, 148, 470, premiumTemplate.summarySize, premiumTemplate.heroMuted, premiumTemplate.summarySize + 3.1);
-
   let contactY = 54;
   cv.contact.forEach((item) => {
     first.elements.push({ kind: "rounded", x: 552, y: contactY - 6, width: 18, height: 18, radius: 6, color: premiumTemplate.blue });

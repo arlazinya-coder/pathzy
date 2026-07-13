@@ -298,6 +298,12 @@ assert.match(myDocumentsClient, /cvVersion: \{ \.\.\.version, versionName: title
 assert.match(myDocumentsClient, /renderCvHtmlFromModel\(selectedCvModel, selectedCvVersion\?\.designSystem/, "Saved CV preview must render from the selected version design metadata.");
 assert.match(myDocumentsClient, /lastDownloadedAt: downloadedAt/, "Downloaded CV versions must store lastDownloadedAt metadata.");
 assert.match(documentDownloads, /return \{ name: cv\.fullName, targetRole: cv\.targetRole, contact: contactLines\(cv\), sections \};/, "CV renderer must map fullName and targetRole to separate output fields.");
+assert.match(documentDownloads, /first\.elements\.push\(\{ kind: "text", x: 52, y: 42[\s\S]*text: cv\.name/, "Designed CV header must render the candidate name from fullName.");
+assert.match(documentDownloads, /if \(cv\.targetRole\) first\.elements\.push\(\{ kind: "text"[\s\S]*text: cv\.targetRole/, "Designed CV header must render targetRole as the header role line.");
+assert.match(documentDownloads, /cv\.contact\.forEach\(\(item\) => \{[\s\S]*pushWrappedText\(first\.elements, item/, "Designed CV header must render only contact lines from contact data.");
+assert.match(documentDownloads, /const order = \["Professional Summary", "Career Goal", "Professional Experience"/, "Professional Summary must render as the first main CV section, not inside the header.");
+assert.doesNotMatch(documentDownloads, /heroSummary|headerSummary|tagline: professionalSummary|subtitle: professionalSummary|intro: professionalSummary/, "Professional Summary must never be mapped into the CV header.");
+assert.doesNotMatch(documentDownloads, /pushWrappedText\(first\.elements,\s*section\(cv,\s*"Professional Summary"/, "Designed CV header must not draw Professional Summary text.");
 assert.match(documentDownloads, /`FULL NAME: \$\{professionalizeLine\(cv\.name\)\}`/, "Serialized CV must keep full name mapped to full name.");
 assert.match(documentDownloads, /`TARGET ROLE: \$\{professionalizeLine\(cv\.targetRole\)\}`/, "Serialized CV must keep target role mapped to target role.");
 assert.match(documentDownloads, /\.replace\(\/\\bmicrosoft\\s\+microsoft\\s\+word\\b\/gi, "Microsoft Word"\)/, "CV cleanup must repair Microsoft Microsoft Word.");
@@ -345,6 +351,8 @@ assert.match(documentDownloads, /for \(const layoutPage of layout\.pages\)/, "PD
 assert.match(documentDownloads, /function roundedRectPath/, "PDF export must render rounded CV cards instead of flattening preview cards into plain rectangles.");
 assert.match(documentDownloads, /function circlePath/, "PDF export must render circular markers so the visual language matches preview.");
 assert.match(documentDownloads, /simplePdfDocumentFromModel[\s\S]*pdfFromLayout\(buildCvLayoutFromModel\(cv, templateName\)\)/, "PDF export must use the same CV layout renderer as preview.");
+assert.match(documentDownloads, /renderCvHtmlFromModel\(cv: CvModel, templateName\?: string, activeSection\?: string\)[\s\S]*buildCvLayoutFromModel\(cv, templateName, activeSection\)/, "Designed Preview must use the shared CV layout renderer.");
+assert.match(documentDownloads, /simplePdfDocumentFromModel\(title: string, cv: CvModel, templateName\?: string\)[\s\S]*buildCvLayoutFromModel\(cv, templateName\)/, "PDF export must use the same field mapping as Designed Preview.");
 assert.match(documentDownloads, /pathzyEliteDesignSystem/, "CV renderer must use the shared PATHZY elite document design system.");
 for (const templateName of ["Executive Black", "Modern ATS", "Google Style", "Microsoft Professional", "Deloitte Consulting", "Creative Premium", "Healthcare Professional", "Graduate Elite", "Engineering", "International Standard"]) {
   assert.match(documentTemplateEngine, new RegExp(`name: "${templateName}"`), `${templateName} must be registered in the reusable template engine.`);
@@ -359,6 +367,7 @@ assert.match(professionalIdentityTool, /Template switching changes presentation 
 assert.match(professionalIdentityTool, /Improve your CV/, "CV Builder must show Improve your CV recommendations instead of generic missing-field messages.");
 assert.match(professionalIdentityTool, /Add \{parsedCv\.missing\.join\(", "\)\.toLowerCase\(\)\}/, "CV recommendations must be based on the structured CV model gaps.");
 assert.match(documentDownloads, /export function renderAtsCvHtmlFromModel\(cvInput: CvModel\)/, "CV renderer must expose an ATS Preview renderer from the same CV model.");
+assert.match(documentDownloads, /renderAtsCvHtmlFromModel\(cvInput: CvModel\)[\s\S]*<h1[\s\S]*cv\.fullName[\s\S]*cv\.targetRole[\s\S]*sections\.map/, "ATS Preview must keep header fields separate from semantic sections.");
 assert.match(professionalIdentityTool, /const \[cvPreviewMode, setCvPreviewMode\] = useState<"designed" \| "ats">/, "CV Builder must support Designed and ATS preview modes.");
 assert.match(professionalIdentityTool, /ATS Preview/, "CV Builder must show an ATS Preview mode alongside the designed preview.");
 assert.match(professionalIdentityTool, /renderAtsCvHtmlFromModel\(previewCvModel\)/, "ATS Preview must render from the live CV model.");
