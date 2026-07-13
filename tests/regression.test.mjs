@@ -135,6 +135,11 @@ assert.match(roadmapPage, /TODAY'S RECOMMENDATION/, "My Employment Journey hero 
 assert.match(roadmapPage, /A professional CV is the foundation of every successful job application\./, "My Employment Journey hero must explain why the CV matters.");
 assert.match(roadmapPage, /<ButtonLink href=\{appRoutes\.professionalIdentityCv\}>Build My CV<\/ButtonLink>/, "My Employment Journey hero primary CTA must open the canonical CV Builder.");
 assert.doesNotMatch(roadmapPage, /Sample Career Plan|Your 90-day control center|Continue My Journey/, "My Employment Journey hero must not use the old cold wording.");
+assert.match(professionalCvPage, /PageHeader[\s\S]*Create My CV[\s\S]*My CV[\s\S]*Build your professional CV[\s\S]*PATHZY will prepare the first draft[\s\S]*Next Step[\s\S]*Create your cover letter[\s\S]*Build Cover Letter[\s\S]*ProfessionalIdentityTool/, "My CV page must show two intro cards above the CV workspace.");
+assert.match(professionalCvPage, /<ButtonLink href=\{appRoutes\.professionalIdentityCoverLetter\}>Build Cover Letter<\/ButtonLink>/, "My CV cover-letter intro card must use the canonical Cover Letter route.");
+const myCvIntroCard = professionalCvPage.match(/<Card className="flex h-full flex-col justify-between">[\s\S]*?Build your professional CV[\s\S]*?<\/Card>/)?.[0] ?? "";
+assert.ok(myCvIntroCard, "My CV explanatory intro card must exist.");
+assert.doesNotMatch(myCvIntroCard, /ButtonLink|href=/, "The explanatory My CV intro card must not contain a button or link.");
 assert.match(legacyCvBuilderPage, /redirect\(appRoutes\.professionalIdentityCv\)/, "Legacy /cv-builder must redirect to the canonical CV Builder.");
 assert.match(legacyEmploymentTrackerPage, /redirect\(appRoutes\.applications\)/, "Legacy /employment-tracker must redirect to My Applications.");
 assert.match(legacyProgressPage, /redirect\(appRoutes\.skills\)/, "Legacy /progress must redirect to Skills & Career Growth.");

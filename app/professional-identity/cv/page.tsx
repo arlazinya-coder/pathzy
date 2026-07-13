@@ -1,5 +1,6 @@
 import { ProfessionalIdentityTool } from "@/components/professional-identity/professional-identity-tool";
-import { PageHeader } from "@/components/ui";
+import { ButtonLink, Card, PageHeader } from "@/components/ui";
+import { appRoutes } from "@/lib/navigation/routes";
 import { canCurrentUserExportProfessionalDocuments, canCurrentUserUseProfessionalIdentityTools, premiumDocumentTemplates } from "@/lib/professional-identity/professional-identity-service";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
 
@@ -14,6 +15,35 @@ export default async function ProfessionalCvPage() {
       <PageHeader eyebrow="My Professional Profile" title="Create My CV">
         Build a clear CV draft using your PATHZY profile, career plan, skills, and Job Readiness context.
       </PageHeader>
+      <div className="mb-6 grid gap-4 md:mb-8 md:grid-cols-2">
+        <Card className="flex h-full flex-col justify-between">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">My CV</p>
+            <h2 className="mt-3 text-2xl font-black text-white">Build your professional CV</h2>
+            <p className="mt-3 text-sm leading-6 text-white/62">
+              Build a clear, professional CV draft using your PATHZY profile, career plan, skills and job readiness context.
+            </p>
+            <p className="mt-3 text-sm leading-6 text-white/54">
+              PATHZY will prepare the first draft, and you can review, edit and improve it before downloading.
+            </p>
+          </div>
+        </Card>
+        <Card className="flex h-full flex-col justify-between">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">Next Step</p>
+            <h2 className="mt-3 text-2xl font-black text-white">Create your cover letter</h2>
+            <p className="mt-3 text-sm leading-6 text-white/62">
+              After creating your CV, you can create a professional cover letter tailored to the job you want to apply for.
+            </p>
+            <p className="mt-3 text-sm leading-6 text-white/54">
+              PATHZY will use your professional profile, selected CV and job information to help you create it.
+            </p>
+          </div>
+          <div className="mt-5">
+            <ButtonLink href={appRoutes.professionalIdentityCoverLetter}>Build Cover Letter</ButtonLink>
+          </div>
+        </Card>
+      </div>
       <ProfessionalIdentityTool
         tool="cv"
         title="Generate your CV"
