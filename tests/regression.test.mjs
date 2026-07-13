@@ -320,15 +320,26 @@ assert.match(professionalCvPage, /locked=\{!unlocked\}[\s\S]*exportLocked=\{!can
 assert.match(professionalCoverLetterPage, /locked=\{!unlocked\}[\s\S]*exportLocked=\{!canExport\}/, "Cover Letter Builder must allow creation/editing while locking only export actions for free users.");
 assert.match(professionalIdentityPage, /button: "My CV"/, "Professional Profile must label the existing CV workspace as My CV.");
 assert.match(professionalCvPage, /title="My CV"/, "CV workspace page header must use the My CV label.");
+assert.match(professionalCoverLetterPage, /title="My Cover Letter"/, "Cover Letter workspace page header must use the My Cover Letter label.");
 assert.match(professionalCvPage, /Build your professional CV[\s\S]*PATHZY will prepare the first draft, and you can review, edit and improve it before downloading\./, "My CV page must show the explanatory intro card before the workspace.");
 assert.match(professionalCvPage, /Create your cover letter[\s\S]*Build Cover Letter/, "My CV page must show the cover letter next-step intro card.");
 assert.match(professionalCvPage, /ButtonLink href=\{PATHZY_ROUTES\.COVER_LETTER\}>Build Cover Letter<\/ButtonLink>/, "Build Cover Letter must use the canonical Cover Letter route.");
+assert.match(professionalCoverLetterPage, /Build your professional cover letter[\s\S]*PATHZY will prepare your first draft for you to review and improve\./, "My Cover Letter page must show the explanatory intro card before the workspace.");
+assert.match(professionalCoverLetterPage, /Optimise your LinkedIn[\s\S]*Optimise LinkedIn/, "My Cover Letter page must show the LinkedIn next-step intro card.");
+assert.match(professionalCoverLetterPage, /ButtonLink href=\{PATHZY_ROUTES\.LINKEDIN_OPTIMIZER\}>Optimise LinkedIn<\/ButtonLink>/, "Optimise LinkedIn must use the canonical LinkedIn route.");
+assert.match(professionalCoverLetterPage, /mb-6 grid gap-4 md:grid-cols-2/, "My Cover Letter intro cards must use the same two-card desktop architecture as My CV.");
 const myCvIntroIndex = professionalCvPage.indexOf("Build your professional CV");
 const coverLetterIntroIndex = professionalCvPage.indexOf("Create your cover letter");
 const cvToolIndex = professionalCvPage.indexOf("<ProfessionalIdentityTool");
 assert.ok(myCvIntroIndex > -1 && coverLetterIntroIndex > myCvIntroIndex && cvToolIndex > coverLetterIntroIndex, "My CV intro cards must render below the page heading and before the existing CV workspace.");
 const myCvIntroCard = professionalCvPage.slice(myCvIntroIndex, coverLetterIntroIndex);
 assert.doesNotMatch(myCvIntroCard, /ButtonLink|<Link|href=|<button/, "The My CV explanatory intro card must not contain a button or link.");
+const myCoverLetterIntroIndex = professionalCoverLetterPage.indexOf("Build your professional cover letter");
+const linkedInIntroIndex = professionalCoverLetterPage.indexOf("Optimise your LinkedIn");
+const coverLetterToolIndex = professionalCoverLetterPage.indexOf("<ProfessionalIdentityTool");
+assert.ok(myCoverLetterIntroIndex > -1 && linkedInIntroIndex > myCoverLetterIntroIndex && coverLetterToolIndex > linkedInIntroIndex, "My Cover Letter intro cards must render below the page heading and before the existing Cover Letter workspace.");
+const myCoverLetterIntroCard = professionalCoverLetterPage.slice(myCoverLetterIntroIndex, linkedInIntroIndex);
+assert.doesNotMatch(myCoverLetterIntroCard, /ButtonLink|<Link|href=|<button/, "The My Cover Letter explanatory intro card must not contain a button or link.");
 assert.match(settingsPage, />My CV<\/ButtonLink>/, "Settings shortcut must use the My CV label.");
 assert.match(navigation, /"My CV"/, "Shared user-facing product data must use the My CV label.");
 assert.doesNotMatch(`${professionalIdentityPage}\n${professionalCvPage}\n${settingsPage}\n${navigation}\n${readFileSync("app/qa-pathzy-journey/page.tsx", "utf8")}`, /Create My CV/, "Relevant user-facing CV workspace labels must not say Create My CV.");
@@ -476,9 +487,9 @@ assert.equal(professionalIdentityTool.indexOf("CV generated"), -1, "CV Builder m
 assert.doesNotMatch(professionalIdentityTool, /CV version name|Content source: one CV model\.|When I save content edits, also update linked CV versions|Duplicate CV/, "CV Builder must keep technical version controls out of the visible workspace.");
 assert.match(professionalIdentityTool, /Live preview engine[\s\S]*Regenerate[\s\S]*Upload CV[\s\S]*Download PDF[\s\S]*Designed Preview[\s\S]*ATS Preview/, "Live Preview Engine must contain CV management and preview/output actions.");
 assert.ok(cvEditorIndex > -1 && cvPreviewIndex > cvEditorIndex && cvGalleryIndex > cvPreviewIndex && cvNextActionIndex > cvGalleryIndex, "CV page flow must be editor, live preview workspace, template gallery, then next-action area.");
-assert.equal((professionalIdentityTool.match(/Choose a recruiter-ready design/g) ?? []).length, 1, "CV Builder must render one Template Gallery instance.");
+assert.equal((professionalIdentityTool.match(/Choose a recruiter-ready design/g) ?? []).length, 2, "CV and Cover Letter must each render one My CV-style Template Gallery instance.");
 assert.equal((professionalIdentityTool.match(/Structured editor/g) ?? []).length, 1, "CV Builder must render one Structured Editor instance.");
-assert.equal((professionalIdentityTool.match(/Live preview engine/g) ?? []).length, 1, "CV Builder must render one Live Preview instance.");
+assert.equal((professionalIdentityTool.match(/Live preview engine/g) ?? []).length, 2, "CV and Cover Letter must each render one Live Preview Engine instance.");
 for (const sectionLabel of ["Header", "Summary", "Experience", "Education", "Skills", "Projects", "Certifications", "More"]) {
   assert.match(professionalIdentityTool, new RegExp(`label: "${sectionLabel}"`), `CV Document Studio section navigator must include ${sectionLabel}.`);
 }
@@ -495,8 +506,8 @@ assert.match(professionalIdentityTool, /activeCvSection === title[\s\S]*setActiv
 assert.match(professionalIdentityTool, /data-cv-editor-form-flow="single-column"/, "Expanded CV accordion editors must use a single-column field flow.");
 assert.doesNotMatch(professionalIdentityTool, /renderHeaderEditor[\s\S]*sm:grid-cols-2/, "Header expanded accordion content must not place editable fields in two columns.");
 assert.match(professionalIdentityTool, /Full name[\s\S]*Target role[\s\S]*Email[\s\S]*Phone[\s\S]*City[\s\S]*Country[\s\S]*LinkedIn[\s\S]*Portfolio/, "Header editor must preserve all existing fields in vertical order.");
-assert.match(professionalIdentityTool, /tool === "cv" \? "grid gap-5 lg:grid-cols-4"/, "CV workspace must use the normal app grid layout.");
-assert.match(professionalIdentityTool, /<Card className=\{tool === "cv" \? "lg:col-span-1"/, "CV editor must stay in the normal left editing zone.");
+assert.match(professionalIdentityTool, /tool === "cv" \|\| tool === "cover-letter" \? "grid gap-5 lg:grid-cols-4"/, "CV workspace must keep the normal app grid layout while Cover Letter reuses it.");
+assert.match(professionalIdentityTool, /<Card className=\{tool === "cv" \|\| tool === "cover-letter" \? "lg:col-span-1"/, "CV editor must stay in the normal left editing zone.");
 assert.match(professionalIdentityTool, /<Card className="lg:col-span-3">/, "CV A4 preview must stay in the normal layout beside the editing zone.");
 assert.doesNotMatch(professionalIdentityTool, /cvStudioMode|setCvStudioMode|xl:sticky|xl:max-h-\[calc\(100vh-112px\)\]|xl:overflow-y-auto/, "CV editor must not use the rejected complex sticky or independent-scroll studio architecture.");
 assert.doesNotMatch(professionalIdentityTool, /absolute|fixed|z-\[|z-[1-9]/, "CV preview/gallery repair must not use positioning or z-index hacks.");
@@ -721,15 +732,26 @@ assert.match(professionalIdentityTool, /function renderCoverLetterEditor/, "Cove
 assert.match(professionalIdentityTool, /function renderCoverLetterTemplateGallery/, "Cover Letter Studio must expose a letter-specific template gallery.");
 assert.match(professionalIdentityTool, /function renderCoverLetterMiniPreview/, "Cover Letter template cards must show real mini document previews.");
 assert.match(professionalIdentityTool, /coverLetterTemplateGallery\.map/, "Cover Letter template gallery must render all letter-specific templates.");
-assert.match(professionalIdentityTool, /Switching templates changes presentation only\. Your company, role, paragraphs, and edits stay exactly the same\./, "Cover Letter template switching must explain that content is preserved.");
+assert.match(professionalIdentityTool, /Template switching changes presentation only\. Your cover letter content, edits, application details and saved data stay the same\./, "Cover Letter template switching must explain that content is preserved.");
 assert.match(professionalIdentityTool, /template_name: draft\.designSystem,[\s\S]*coverLetterData: draft/, "Cover Letter template switching must update presentation without losing content.");
 assert.doesNotMatch(professionalCoverLetterPage, /premiumDocumentTemplates|documentTemplateGallery\.map/, "Cover Letter page must not render the old borrowed CV template strip.");
 assert.match(professionalIdentityTool, /previewCoverLetterData/, "Cover Letter preview must use a stable debounced preview data state.");
 assert.match(professionalIdentityTool, /setTimeout\(\(\) => \{\s*setPreviewCoverLetterData\(coverLetterData\);\s*\}, 260\);/, "Cover Letter live preview must debounce updates to avoid shaking while typing.");
-assert.match(professionalIdentityTool, /tool === "cover-letter" \? "grid gap-5 lg:grid-cols-2"/, "Cover Letter workspace must split editor and preview into two columns on desktop.");
-assert.match(professionalIdentityTool, /tool === "cover-letter" \? "lg:col-span-2"/, "Cover Letter generator card must sit above the editor and preview columns.");
-assert.match(professionalIdentityTool, /renderCoverLetterEditor\(\)[\s\S]*tool === "cover-letter" \? \([\s\S]*Live A4 preview engine[\s\S]*renderCoverLetterHtmlFromData\(previewCoverLetterData\)/, "Cover Letter editor and live A4 preview must render at the same time.");
-for (const sectionName of ["1. Personal Header", "2. Employer Details", "3. Greeting", "4. Opening Paragraph", "5. Motivation / Why This Role", "6. Evidence / Why Me", "7. Company Alignment", "8. Additional Paragraphs", "9. Closing Paragraph", "10. Sign-off"]) {
+assert.match(professionalIdentityTool, /tool === "cv" \|\| tool === "cover-letter" \? "grid gap-5 lg:grid-cols-4"/, "Cover Letter workspace must reuse the same stable four-column desktop grid as My CV.");
+assert.match(professionalIdentityTool, /tool === "cv" \|\| tool === "cover-letter" \? "lg:col-span-1"/, "Cover Letter structured editor must use the same left-column span as My CV.");
+assert.match(professionalIdentityTool, /<Card className="lg:col-span-3">[\s\S]*Live preview engine[\s\S]*\{selectedTemplateMetadata\.name\} Cover Letter/, "Cover Letter live preview must use the same right-column preview card span as My CV.");
+assert.match(professionalIdentityTool, /renderCoverLetterCompactStatus\(\)/, "Cover Letter editor must show Cover Letter Health in the structured editor.");
+assert.match(professionalIdentityTool, /Cover Letter Health/, "Cover Letter health label must be visible.");
+assert.match(professionalIdentityTool, /Designed Preview shows the print-ready A4 document that the PDF export uses\./, "Cover Letter preview must use the same preview explanation as My CV.");
+assert.match(professionalIdentityTool, /Regenerate[\s\S]*Generate Draft[\s\S]*Download PDF[\s\S]*Designed Preview/, "Cover Letter live preview must expose generation, PDF, and designed preview actions.");
+assert.match(professionalIdentityTool, /Draft details[\s\S]*Language[\s\S]*Premium template[\s\S]*fields\.map/, "Cover Letter draft inputs must remain available inside the live preview engine.");
+assert.match(professionalCoverLetterPage, /name: "jobDescription"/, "Cover Letter route must still provide the optional job description input.");
+assert.match(professionalIdentityTool, /renderCoverLetterEditor\(\)[\s\S]*tool === "cover-letter" \? \([\s\S]*Live preview engine[\s\S]*renderCoverLetterHtmlFromData\(previewCoverLetterData\)/, "Cover Letter editor and real A4 preview must render at the same time.");
+assert.match(professionalIdentityTool, /function renderCoverLetterTemplateGallery\(\)[\s\S]*<Card className="lg:col-span-4">/, "Cover Letter template gallery must sit outside the workspace columns like My CV.");
+assert.match(professionalIdentityTool, /Choose a recruiter-ready design[\s\S]*renderCoverLetterMiniPreview\(template\)[\s\S]*Best for: \{template\.bestFor\}/, "Cover Letter gallery must use My CV gallery architecture with real mini previews and best-for labels.");
+assert.match(professionalIdentityTool, /template\.architecture\.replace\("-", " "\)} layout[\s\S]*PDF ready/, "Cover Letter template cards must show attribute labels.");
+assert.doesNotMatch(professionalIdentityTool, /tool !== "cv" \? \([\s\S]*tool === "cover-letter" \? "lg:col-span-2"/, "Cover Letter must not use the old full-width generator card above the workspace.");
+for (const sectionName of ["1. Personal Header", "2. Application Details", "3. Greeting", "4. Opening Paragraph", "5. Motivation / Why This Role", "6. Evidence / Why Me", "7. Company Alignment", "8. Additional Paragraphs", "9. Closing Paragraph", "10. Sign-off"]) {
   assert.match(professionalIdentityTool, new RegExp(sectionName.replace(/[.]/g, "\\.")), `Cover Letter editor must include ${sectionName}.`);
 }
 assert.match(professionalIdentityTool, /Add paragraph/, "Cover Letter body paragraphs must support adding a paragraph.");

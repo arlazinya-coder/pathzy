@@ -125,6 +125,33 @@ function cvHealthScore(cv: CvModel | null) {
   };
 }
 
+function coverLetterHealthStatus(data: CoverLetterData | null) {
+  if (!data) {
+    return {
+      label: "Draft not generated",
+      recommendation: "Generate a draft, then review each cover letter section before downloading."
+    };
+  }
+  const missing = [
+    !data.fullName.trim() ? "your name" : "",
+    !data.companyName.trim() ? "company name" : "",
+    !data.jobTitle.trim() ? "job title" : "",
+    !data.openingParagraph.trim() ? "opening paragraph" : "",
+    !data.evidenceParagraph.trim() ? "evidence paragraph" : "",
+    !data.closingParagraph.trim() ? "closing paragraph" : ""
+  ].filter(Boolean);
+  if (!missing.length) {
+    return {
+      label: "Ready to review",
+      recommendation: "Your main cover letter sections are complete. Review the A4 preview before downloading."
+    };
+  }
+  return {
+    label: "Needs review",
+    recommendation: `Improve your cover letter: add ${missing.slice(0, 2).join(" and ")}.`
+  };
+}
+
 type CvVersionMetadata = {
   designSystem: string;
   versionName: string;
@@ -296,6 +323,7 @@ export function ProfessionalIdentityTool({
   const selectedTemplateMetadata = tool === "cover-letter" ? coverLetterTemplateMetadata(templateName) : templateMetadata(templateName);
   const parsedCv = useMemo(() => tool === "cv" && cvModel ? cvModelWithMissing(cvModel) : null, [cvModel, tool]);
   const health = useMemo(() => cvHealthScore(previewCvModel ?? cvModel), [previewCvModel, cvModel]);
+  const coverLetterHealth = useMemo(() => coverLetterHealthStatus(previewCoverLetterData ?? coverLetterData), [previewCoverLetterData, coverLetterData]);
   const activeCvVersion = useMemo(() => tool === "cv" ? cvVersionFromDocument(document, templateName) : null, [document, templateName, tool]);
 
   useEffect(() => {
@@ -754,6 +782,27 @@ export function ProfessionalIdentityTool({
     );
   }
 
+  function renderCoverLetterCompactStatus() {
+    return (
+      <div className="grid gap-3 rounded-[20px] border border-white/10 bg-white/6 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="sr-only">Cover Letter Health</span>
+          <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">Cover Letter Health</span>
+          <span className="rounded-full border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 px-3 py-1 text-sm font-black text-[#c7d6ff]">{coverLetterHealth.label}</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <span className={`rounded-full border px-3 py-2 text-xs font-extrabold ${saveStatusClasses()}`}>{saveStatusLabel()}</span>
+          {saveState === "error" ? (
+            <button type="button" onClick={() => saveDocument(false)} className="rounded-full border border-white/12 bg-white/8 px-3 py-2 text-xs font-extrabold text-white">
+              Retry
+            </button>
+          ) : null}
+        </div>
+        <p className="text-xs font-bold leading-5 text-[#c7d6ff]/82 sm:col-span-2">{coverLetterHealth.recommendation}</p>
+      </div>
+    );
+  }
+
   function renderHeaderEditor() {
     if (!parsedCv) return null;
     return (
@@ -962,7 +1011,7 @@ export function ProfessionalIdentityTool({
             {renderCoverLetterField("Country", coverLetterData.country, (value) => updateCoverLetterDraft((draft) => { draft.country = value; }))}
           </>
         ))}
-        {renderCoverLetterSection("2. Employer Details", (
+        {renderCoverLetterSection("2. Application Details", (
           <>
             {renderCoverLetterField("Company name", coverLetterData.companyName, (value) => updateCoverLetterDraft((draft) => { draft.companyName = value; }))}
             {renderCoverLetterField("Hiring manager", coverLetterData.hiringManager, (value) => updateCoverLetterDraft((draft) => { draft.hiringManager = value; }))}
@@ -1081,32 +1130,38 @@ export function ProfessionalIdentityTool({
 
   function renderCoverLetterTemplateGallery() {
     return (
-      <Card className="lg:col-span-2">
-        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Template gallery</p>
-            <h2 className="mt-2 text-2xl font-black">Choose a cover letter design</h2>
-            <p className="mt-2 text-sm leading-6 text-white/58">Switching templates changes presentation only. Your company, role, paragraphs, and edits stay exactly the same.</p>
+      <Card className="lg:col-span-4">
+        <div className="rounded-[22px] border border-white/10 bg-white/6 p-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">Template gallery</p>
+              <h3 className="mt-2 text-xl font-black">Choose a recruiter-ready design</h3>
+              <p className="mt-2 text-sm leading-6 text-white/56">Template switching changes presentation only. Your cover letter content, edits, application details and saved data stay the same.</p>
+            </div>
+            <span className="w-fit rounded-full bg-white/10 px-4 py-2 text-xs font-extrabold text-[#c7d6ff]">Selected: {selectedTemplateMetadata.name}</span>
           </div>
-          <span className="w-fit rounded-full bg-white/10 px-4 py-2 text-xs font-extrabold text-[#c7d6ff]">Selected: {selectedTemplateMetadata.name}</span>
-        </div>
-        <div className="mt-5 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-          {coverLetterTemplateGallery.map((template) => (
-            <button
-              key={template.name}
-              type="button"
-              onClick={() => updateValue("templateName", template.name)}
-              className={`group flex h-full flex-col rounded-[20px] border p-4 text-left transition hover:-translate-y-0.5 ${templateName === template.name ? "border-[#8fb0ff] bg-[#5B8CFF]/16 shadow-[0_18px_54px_rgba(91,140,255,.22)]" : "border-white/10 bg-white/6 hover:border-white/18"}`}
-            >
-              {renderCoverLetterMiniPreview(template)}
-              <div className="mt-4 flex items-start justify-between gap-3">
-                <p className="text-base font-black leading-5 text-white">{template.name}</p>
-                {templateName === template.name ? <span className="shrink-0 rounded-full bg-[#8fb0ff]/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#c7d6ff]">Selected</span> : null}
-              </div>
-              <p className="mt-2 text-xs leading-5 text-white/56">{template.description}</p>
-              <p className="mt-3 text-xs font-bold leading-5 text-[#c7d6ff]">Best for: {template.bestFor}</p>
-            </button>
-          ))}
+          <div className="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+            {coverLetterTemplateGallery.map((template) => (
+              <button
+                key={template.name}
+                type="button"
+                onClick={() => updateValue("templateName", template.name)}
+                className={`group flex h-full flex-col rounded-[20px] border p-4 text-left transition hover:-translate-y-0.5 ${templateName === template.name ? "border-[#8fb0ff] bg-[#5B8CFF]/16 shadow-[0_18px_54px_rgba(91,140,255,.22)]" : "border-white/10 bg-white/6 hover:border-white/18"}`}
+              >
+                {renderCoverLetterMiniPreview(template)}
+                <div className="mt-4 flex items-start justify-between gap-3">
+                  <p className="text-base font-black leading-5 text-white">{template.name}</p>
+                  {templateName === template.name ? <span className="shrink-0 rounded-full bg-[#8fb0ff]/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#c7d6ff]">Selected</span> : null}
+                </div>
+                <p className="mt-2 flex-1 text-xs leading-5 text-white/56">{template.description}</p>
+                <p className="mt-3 text-xs font-bold leading-5 text-[#c7d6ff]">Best for: {template.bestFor}</p>
+                <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-extrabold uppercase tracking-[0.1em] text-white/72">
+                  <span className="rounded-full bg-white/8 px-2.5 py-1.5">{template.architecture.replace("-", " ")} layout</span>
+                  <span className="rounded-full bg-white/8 px-2.5 py-1.5">PDF ready</span>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       </Card>
     );
@@ -1506,12 +1561,12 @@ export function ProfessionalIdentityTool({
     );
   }
 
-  const workspaceClass = tool === "cv" ? "grid gap-5 lg:grid-cols-4" : tool === "cover-letter" ? "grid gap-5 lg:grid-cols-2" : "grid gap-5 lg:grid-cols-[.82fr_1fr]";
+  const workspaceClass = tool === "cv" || tool === "cover-letter" ? "grid gap-5 lg:grid-cols-4" : "grid gap-5 lg:grid-cols-[.82fr_1fr]";
 
   return (
     <div className={workspaceClass}>
-      {tool !== "cv" ? (
-        <Card className={tool === "cover-letter" ? "lg:col-span-2" : undefined}>
+      {tool !== "cv" && tool !== "cover-letter" ? (
+        <Card>
           <>
             <h2 className="text-2xl font-black">{title}</h2>
             <p className="mt-3 leading-7 text-white/62">{description}</p>
@@ -1538,16 +1593,6 @@ export function ProfessionalIdentityTool({
                   <option value="french">French</option>
                 </select>
               </label>
-              {(tool === "cover-letter") ? (
-                <label className="label">
-                  Premium template
-                  <select className="field" value={templateName} onChange={(event) => updateValue("templateName", event.target.value)}>
-                    {coverLetterDesignSystems.map((template) => (
-                      <option key={template} value={template}>{template}</option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
               {fields.map((field) => (
                 <label key={field.name} className="label">
                   {field.label}
@@ -1572,7 +1617,7 @@ export function ProfessionalIdentityTool({
         </Card>
       ) : null}
 
-      <Card className={tool === "cv" ? "lg:col-span-1" : undefined}>
+      <Card className={tool === "cv" || tool === "cover-letter" ? "lg:col-span-1" : undefined}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">{tool === "cv" || tool === "cover-letter" ? "Structured editor" : "Preview"}</p>
@@ -1615,6 +1660,10 @@ export function ProfessionalIdentityTool({
             {xpAwarded ? <p className="rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{celebrationCopy[tool]} +{xpAwarded} XP added to your PATHZY level.</p> : null}
             {downloadNotice ? <p className="rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{downloadNotice}</p> : null}
             {renderCvSectionNavigator()}
+          </div>
+        ) : tool === "cover-letter" ? (
+          <div className="mt-5 grid gap-4">
+            {renderCoverLetterCompactStatus()}
           </div>
         ) : (
           <>
@@ -1755,17 +1804,81 @@ export function ProfessionalIdentityTool({
       ) : null}
 
       {tool === "cover-letter" ? (
-        <Card>
+        <Card className="lg:col-span-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Live A4 preview engine</p>
-              <h2 className="mt-2 text-2xl font-black">{outputTitle}</h2>
+              <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Live preview engine</p>
+              <h2 className="mt-2 text-2xl font-black">{selectedTemplateMetadata.name} Cover Letter</h2>
             </div>
-            <button onClick={downloadPdf} disabled={!document?.content} className="rounded-full blue-purple px-5 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">
-              Download PDF
-            </button>
+            <div className="flex flex-col gap-2 sm:items-end">
+              <form onSubmit={generate} className="flex flex-wrap gap-2 sm:justify-end">
+                <button disabled={loading} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-60">
+                  {loading ? "Generating" : document ? "Regenerate" : "Generate Draft"}
+                </button>
+              </form>
+              <div className="flex flex-wrap gap-2 sm:justify-end">
+                <button onClick={downloadPdf} disabled={!document?.content} className="rounded-full blue-purple px-5 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">
+                  Download PDF
+                </button>
+                <button type="button" className="rounded-full border border-[#8fb0ff] bg-[#5B8CFF]/18 px-5 py-3 text-sm font-extrabold text-white">
+                  Designed Preview
+                </button>
+              </div>
+            </div>
           </div>
-          <p className="mt-3 text-sm leading-6 text-white/58">This is the published A4 cover letter using the selected template. Empty fields stay hidden and template changes preserve the same content.</p>
+          <p className="mt-3 text-sm leading-6 text-white/58">Designed Preview shows the print-ready A4 document that the PDF export uses.</p>
+          <div className="mt-5 rounded-[18px] border border-white/10 bg-white/6 p-4">
+            <p className="text-sm font-extrabold text-white">Draft details</p>
+            <p className="mt-1 text-sm leading-6 text-white/58">Add the company and role. Paste a job description when you want the draft tailored to a real opportunity.</p>
+            <form onSubmit={generate} className="mt-4 grid gap-4">
+              <label className="label">
+                Language
+                <select className="field" value={values.language ?? "english"} onChange={(event) => updateValue("language", event.target.value as ProfessionalLanguage)}>
+                  <option value="english">English</option>
+                  <option value="french">French</option>
+                </select>
+              </label>
+              <label className="label">
+                Premium template
+                <select className="field" value={templateName} onChange={(event) => updateValue("templateName", event.target.value)}>
+                  {coverLetterDesignSystems.map((template) => (
+                    <option key={template} value={template}>{template}</option>
+                  ))}
+                </select>
+              </label>
+              {fields.map((field) => (
+                <label key={field.name} className="label">
+                  {field.label}
+                  {field.type === "textarea" ? (
+                    <textarea className="field min-h-[130px]" placeholder={field.placeholder} value={(values[field.name] as string | undefined) ?? ""} onChange={(event) => updateValue(field.name, event.target.value)} />
+                  ) : field.type === "select" ? (
+                    <select className="field" value={(values[field.name] as string | undefined) ?? field.options?.[0] ?? ""} onChange={(event) => updateValue(field.name, event.target.value)}>
+                      {(field.options ?? []).map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input className="field" type={field.type ?? "text"} placeholder={field.placeholder} value={(values[field.name] as string | undefined) ?? ""} onChange={(event) => updateValue(field.name, event.target.value)} />
+                  )}
+                </label>
+              ))}
+              {guidance ? (
+                <div className="rounded-[18px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 p-4">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#c7d6ff]/72">Recommended</p>
+                  <h3 className="mt-2 text-lg font-black">{guidance.recommendation}</h3>
+                  <p className="mt-2 text-sm leading-6 text-white/62">{guidance.why}</p>
+                  <p className="mt-2 text-sm font-extrabold text-[#9df0c4]">{guidance.impact}</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Link href={guidance.followHref} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">
+                      {guidance.followLabel}
+                    </Link>
+                    <span className="rounded-full bg-white/8 px-4 py-2 text-sm font-extrabold text-white/70">{guidance.continueLabel}</span>
+                  </div>
+                </div>
+              ) : null}
+              <p className="rounded-[16px] border border-[#39d98a]/20 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold leading-6 text-[#b9f8d5]">{trustNote}</p>
+            </form>
+          </div>
           {document?.content && previewCoverLetterData ? (
             <div className="mt-5 rounded-[22px] bg-[#dfe7f3] p-3 text-black">
               <div dangerouslySetInnerHTML={{ __html: renderCoverLetterHtmlFromData(previewCoverLetterData) }} />

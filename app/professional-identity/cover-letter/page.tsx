@@ -1,5 +1,6 @@
 import { ProfessionalIdentityTool } from "@/components/professional-identity/professional-identity-tool";
-import { PageHeader } from "@/components/ui";
+import { ButtonLink, Card, PageHeader } from "@/components/ui";
+import { PATHZY_ROUTES } from "@/lib/navigation/routes";
 import { canCurrentUserExportProfessionalDocuments, canCurrentUserUseProfessionalIdentityTools, getProfessionalIdentityContext } from "@/lib/professional-identity/professional-identity-service";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
 
@@ -13,12 +14,37 @@ export default async function CoverLetterPage({ searchParams }: { searchParams?:
 
   return (
     <div className="container page-pad">
-      <PageHeader eyebrow="My Professional Profile" title="Create My Cover Letter">
-        Generate a concise, honest, role-specific cover letter that users can review before sending.
+      <PageHeader eyebrow="My Professional Profile" title="My Cover Letter">
+        Build a professional cover letter using your PATHZY profile, CV and career direction.
       </PageHeader>
+      <div className="mb-6 grid gap-4 md:grid-cols-2">
+        <Card className="flex h-full flex-col">
+          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">MY COVER LETTER</p>
+          <h2 className="mt-3 text-2xl font-black">Build your professional cover letter</h2>
+          <p className="mt-3 text-sm leading-6 text-white/62">
+            Create a clear cover letter tailored to the role you want to apply for.
+          </p>
+          <p className="mt-3 text-sm leading-6 text-white/52">
+            PATHZY will prepare your first draft for you to review and improve.
+          </p>
+        </Card>
+        <Card className="flex h-full flex-col">
+          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">NEXT STEP</p>
+          <h2 className="mt-3 text-2xl font-black">Optimise your LinkedIn</h2>
+          <p className="mt-3 text-sm leading-6 text-white/62">
+            Strengthen how recruiters see your professional profile online.
+          </p>
+          <p className="mt-3 text-sm leading-6 text-white/52">
+            PATHZY will use your profile and CV to help guide your LinkedIn profile.
+          </p>
+          <div className="mt-5">
+            <ButtonLink href={PATHZY_ROUTES.LINKEDIN_OPTIMIZER}>Optimise LinkedIn</ButtonLink>
+          </div>
+        </Card>
+      </div>
       <ProfessionalIdentityTool
         tool="cover-letter"
-        title="Create your cover letter"
+        title="Generate your cover letter"
         description="Add the company and role. Paste a job description when you want the draft tailored to a real opportunity."
         trustNote="PATHZY strengthens your wording but does not add experience you do not have."
         locked={!unlocked}
