@@ -1572,7 +1572,7 @@ export function ProfessionalIdentityTool({
         </Card>
       ) : null}
 
-      <Card className={tool === "cv" ? "lg:col-span-1" : tool === "cover-letter" ? "xl:col-span-1 xl:max-h-[calc(100vh-136px)] xl:overflow-y-auto" : undefined}>
+      <Card className={tool === "cv" ? "lg:col-span-1" : tool === "cover-letter" ? "xl:col-span-1 xl:h-[calc(100vh-136px)] xl:min-h-0 xl:overflow-y-auto" : undefined}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">{tool === "cv" || tool === "cover-letter" ? "Structured editor" : "Preview"}</p>
@@ -1755,7 +1755,7 @@ export function ProfessionalIdentityTool({
       ) : null}
 
       {tool === "cover-letter" ? (
-        <Card className="xl:sticky xl:top-24 xl:col-span-3 xl:self-start">
+        <Card className="xl:sticky xl:top-24 xl:col-span-3 xl:h-[calc(100vh-136px)] xl:min-h-0 xl:self-start xl:overflow-y-auto">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Live A4 preview engine</p>
@@ -1767,7 +1767,7 @@ export function ProfessionalIdentityTool({
           </div>
           <p className="mt-3 text-sm leading-6 text-white/58">This is the published A4 cover letter using the selected template. Empty fields stay hidden and template changes preserve the same content.</p>
           {document?.content && previewCoverLetterData ? (
-            <div className="mt-5 overflow-hidden rounded-[22px] bg-[#dfe7f3] p-2 text-black sm:p-3">
+            <div className="mx-auto mt-5 max-w-[920px] overflow-hidden rounded-[22px] bg-[#dfe7f3] p-2 text-black sm:p-3">
               <div dangerouslySetInnerHTML={{ __html: renderCoverLetterHtmlFromData(previewCoverLetterData) }} />
             </div>
           ) : (
