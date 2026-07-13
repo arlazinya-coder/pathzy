@@ -185,6 +185,7 @@ assert.match(roadmapPage, /safeFirstToken\(user\?\.user_metadata\?\.display_name
 assert.match(roadmapPage, /const firstName = profileFirstName \|\| accountFirstName \|\| "there";/, "First name fallback must safely use 'there' instead of undefined, null, or email.");
 assert.match(roadmapPage, /Start with your CV, and PATHZY will guide you through the process\./, "Authenticated landing page must keep the concise welcome guidance.");
 assert.match(roadmapPage, /Your employment journey, guided step by step/, "Authenticated landing page must include the PATHZY journey guidance card.");
+assert.match(roadmapPage, /We guide you step by step — from building your professional profile and CV to preparing for opportunities and moving toward employment\./, "Welcome card must use the approved explanatory copy.");
 assert.match(roadmapPage, /You don't need to figure out everything at once\. Start with the next step, and PATHZY will help you move forward from there\./, "Welcome card must include the supporting guidance copy.");
 assert.match(roadmapPage, /eyebrow: "WELCOME TO PATHZY"[\s\S]*button: ""[\s\S]*href: ""/, "Welcome card must not include a CTA button or link.");
 for (const label of ["Build My CV", "Upload My Old CV", "Upgrade My CV"]) {

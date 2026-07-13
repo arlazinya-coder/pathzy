@@ -7,7 +7,7 @@ const dashboardActions = [
     eyebrow: "WELCOME TO PATHZY",
     title: "Your employment journey, guided step by step",
     question: "",
-    body: "PATHZY is your employment support system.\n\nWe guide you step by step - from building your professional profile and CV to preparing for opportunities and moving toward employment.\n\nYou don't need to figure out everything at once. Start with the next step, and PATHZY will help you move forward from there.",
+    body: "PATHZY is your employment support system.\n\nWe guide you step by step — from building your professional profile and CV to preparing for opportunities and moving toward employment.\n\nYou don't need to figure out everything at once. Start with the next step, and PATHZY will help you move forward from there.",
     button: "",
     href: ""
   },
