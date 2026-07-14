@@ -1695,6 +1695,8 @@ export function ProfessionalIdentityTool({
           </div>
         ) : tool === "cover-letter" && coverLetterData ? (
           renderCoverLetterEditor()
+        ) : viewMode === "preview" && document?.content && tool === "linkedin" ? (
+          renderLinkedInPreview()
         ) : viewMode === "preview" && document?.content ? (
           <div className="mt-5 overflow-hidden rounded-[22px] bg-white p-2 text-black">
             <div dangerouslySetInnerHTML={{ __html: tool === "cover-letter" && coverLetterData ? renderCoverLetterHtmlFromData(coverLetterData) : renderCvHtml(document.content, templateName) }} />
@@ -1951,6 +1953,84 @@ export function ProfessionalIdentityTool({
       {renderDocumentNextActions()}
     </div>
   );
+
+  function linkedinField(name: string) {
+    const value = document?.fields?.[name];
+    if (Array.isArray(value)) return value.filter(Boolean).map(String);
+    return typeof value === "string" ? value.trim() : "";
+  }
+
+  function linkedinSection(label: string) {
+    const lines = (document?.content ?? "").split(/\r?\n/);
+    const index = lines.findIndex((line) => line.trim().toUpperCase() === label);
+    if (index < 0) return "";
+    const nextIndex = lines.findIndex((line, lineIndex) => lineIndex > index && /^[A-Z][A-Z\s/]+$/.test(line.trim()) && line.trim().length > 2);
+    return lines.slice(index + 1, nextIndex > -1 ? nextIndex : undefined).join("\n").trim();
+  }
+
+  function linkedInPreviewList(items: string[]) {
+    return items.map((item) => item.replace(/^[-*]\s*/, "").trim()).filter(Boolean);
+  }
+
+  function renderLinkedInPreview() {
+    const headline = linkedinField("headline") as string || (document?.content ?? "").split(/\r?\n/).find((line) => line.trim())?.trim() || "Career direction in progress";
+    const headlineParts = headline.split("|").map((part) => part.trim()).filter(Boolean);
+    const mainHeadline = headlineParts[0] ?? headline;
+    const secondaryHeadline = headlineParts.slice(1).join(" - ");
+    const about = linkedinField("about") as string || linkedinSection("ABOUT");
+    const experienceSummary = linkedinField("experienceSummary") as string || linkedinSection("EXPERIENCE SUMMARY");
+    const fieldSkills = linkedinField("skills");
+    const skills = Array.isArray(fieldSkills) ? fieldSkills : linkedInPreviewList(linkedinSection("SKILLS").split(/\r?\n/));
+    const featuredIdeas = linkedInPreviewList(linkedinSection("FEATURED SECTION IDEAS").split(/\r?\n/));
+
+    return (
+      <div className="mt-5 overflow-hidden rounded-[22px] bg-white p-2 text-black">
+        <div className="mx-auto w-full max-w-[760px] overflow-hidden rounded-[18px] border border-[#d7deea] bg-[#f7f9fc] text-[#111827] shadow-[0_18px_54px_rgba(15,23,42,.12)]">
+          <div className="h-20 bg-gradient-to-r from-[#0a66c2] via-[#2458a7] to-[#172554]" />
+          <div className="px-5 pb-5 pt-0 sm:px-7">
+            <div className="-mt-9 mb-5 flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-[#dbeafe] text-2xl font-black text-[#0a3f82] shadow-md">
+              {mainHeadline.charAt(0).toUpperCase()}
+            </div>
+            <div className="max-w-full">
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-[#0a66c2]">Profile header</p>
+              <h3 className="mt-3 max-w-full text-[clamp(1.35rem,3vw,2rem)] font-black leading-[1.12] text-[#0f172a] [overflow-wrap:anywhere]">
+                {mainHeadline}
+              </h3>
+              {secondaryHeadline ? (
+                <p className="mt-3 max-w-full text-sm font-bold leading-6 text-[#475569] [overflow-wrap:anywhere]">{secondaryHeadline}</p>
+              ) : null}
+            </div>
+          </div>
+          <div className="grid gap-0 border-t border-[#d7deea]">
+            <section className="px-5 py-5 sm:px-7">
+              <h4 className="text-xs font-black uppercase tracking-[0.14em] text-[#0a66c2]">About</h4>
+              <p className="mt-3 whitespace-pre-line text-sm font-medium leading-7 text-[#334155] [overflow-wrap:anywhere]">{about || "Add an honest About section that explains your direction, strengths, and the value you bring."}</p>
+            </section>
+            <section className="border-t border-[#d7deea] px-5 py-5 sm:px-7">
+              <h4 className="text-xs font-black uppercase tracking-[0.14em] text-[#0a66c2]">Core competencies / skills</h4>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(skills.length ? skills : ["Add verified skills"]).map((skill) => (
+                  <span key={skill} className="max-w-full rounded-full border border-[#bfdbfe] bg-white px-3 py-1.5 text-xs font-bold leading-5 text-[#1e3a8a] [overflow-wrap:anywhere]">{skill}</span>
+                ))}
+              </div>
+            </section>
+            <section className="border-t border-[#d7deea] px-5 py-5 sm:px-7">
+              <h4 className="text-xs font-black uppercase tracking-[0.14em] text-[#0a66c2]">Experience summary</h4>
+              <p className="mt-3 whitespace-pre-line text-sm font-medium leading-7 text-[#334155] [overflow-wrap:anywhere]">{experienceSummary || "Add relevant experience, projects, learning, or volunteer work that supports your career direction."}</p>
+            </section>
+            <section className="border-t border-[#d7deea] px-5 py-5 sm:px-7">
+              <h4 className="text-xs font-black uppercase tracking-[0.14em] text-[#0a66c2]">Featured section ideas</h4>
+              <ul className="mt-3 grid gap-2 text-sm font-medium leading-6 text-[#334155]">
+                {(featuredIdeas.length ? featuredIdeas : ["Portfolio project", "Certificate", "Short case study"]).map((idea) => (
+                  <li key={idea} className="[overflow-wrap:anywhere]">- {idea}</li>
+                ))}
+              </ul>
+            </section>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   function renderDocumentNextActions() {
     if (!document?.content || !["cv", "cover-letter", "linkedin"].includes(tool)) return null;
