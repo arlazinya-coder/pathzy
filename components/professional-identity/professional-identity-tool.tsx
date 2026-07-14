@@ -7,6 +7,7 @@ import { PremiumUpgradeCard } from "@/components/upgrade/premium-upgrade-card";
 import { TemplateMiniPreview } from "@/components/professional-identity/template-mini-preview";
 import { coverLetterDataFromUnknown, coverLetterPdfFilename, coverLetterTemplateGallery, coverLetterTemplateMetadata, cvModelFromUnknown, cvModelWithMissing, downloadBlob, normalizeCoverLetterDataForExport, normalizeCoverLetterTemplate, normalizeCvModelForExport, pathzyFilename, renderAtsCvHtmlFromModel, renderCoverLetterHtmlFromData, renderCvHtml, renderCvHtmlFromModel, serializeCoverLetterData, serializeCvModel, simpleCoverLetterPdfDocument, simplePdfDocument, simplePdfDocumentFromModel } from "@/components/professional-identity/document-downloads";
 import type { CoverLetterData, CvModel } from "@/components/professional-identity/document-downloads";
+import { PATHZY_ROUTES, appRoutes } from "@/lib/navigation/routes";
 import { documentTemplateGallery, normalizeDocumentTemplate, templateMetadata } from "@/lib/professional-identity/document-template-engine";
 import type { GeneratedProfessionalDocument, GenerateOptions, ProfessionalLanguage } from "@/lib/professional-identity/professional-identity-types";
 
@@ -312,6 +313,7 @@ export function ProfessionalIdentityTool({
   const [previewCoverLetterData, setPreviewCoverLetterData] = useState<CoverLetterData | null>(null);
   const [updateLinkedCvVersions, setUpdateLinkedCvVersions] = useState(false);
   const [cvPreviewMode, setCvPreviewMode] = useState<"designed" | "ats">("designed");
+  const [coverLetterHealthExpanded, setCoverLetterHealthExpanded] = useState(false);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const coverLetterPreviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -783,6 +785,8 @@ export function ProfessionalIdentityTool({
   }
 
   function renderCoverLetterCompactStatus() {
+    const panelId = accordionId("Cover Letter Health");
+
     return (
       <div className="grid gap-3 rounded-[20px] border border-white/10 bg-white/6 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
         <div className="flex flex-wrap items-center gap-2">
@@ -797,8 +801,19 @@ export function ProfessionalIdentityTool({
               Retry
             </button>
           ) : null}
+          <button
+            type="button"
+            aria-expanded={coverLetterHealthExpanded}
+            aria-controls={panelId}
+            onClick={() => setCoverLetterHealthExpanded((expanded) => !expanded)}
+            className="rounded-full border border-white/10 bg-white/8 px-3 py-2 text-xs font-black text-white/70 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8fb0ff]"
+          >
+            {coverLetterHealthExpanded ? "Collapse" : "Expand"}
+          </button>
         </div>
-        <p className="text-xs font-bold leading-5 text-[#c7d6ff]/82 sm:col-span-2">{coverLetterHealth.recommendation}</p>
+        {coverLetterHealthExpanded ? (
+          <p id={panelId} className="text-xs font-bold leading-5 text-[#c7d6ff]/82 sm:col-span-2">{coverLetterHealth.recommendation}</p>
+        ) : null}
       </div>
     );
   }
@@ -1933,21 +1948,53 @@ export function ProfessionalIdentityTool({
         </Card>
       ) : null}
 
-      {tool === "cv" && document?.content ? (
-        <Card className="lg:col-span-4">
-          <div className="rounded-[20px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-5">
-            <h3 className="text-xl font-black">Your CV is ready. What would you like to do next?</h3>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link href="/professional-identity/cover-letter" className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Build Cover Letter</Link>
-              <Link href="/professional-identity/linkedin" className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Optimize LinkedIn</Link>
-              <Link href="/opportunities" className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Find Opportunities</Link>
-              <Link href="/mentor?context=CV%20page%20-%20help%20with%20CV" className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Ask Your Mentor</Link>
-              <button type="button" onClick={() => setSaved(false)} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Improve This CV</button>
-              <a href="#old-cv-upload" className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">Upload Old CV</a>
-            </div>
-          </div>
-        </Card>
-      ) : null}
+      {renderDocumentNextActions()}
     </div>
   );
+
+  function renderDocumentNextActions() {
+    if (!document?.content || !["cv", "cover-letter", "linkedin"].includes(tool)) return null;
+
+    const buttonClass = "rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white";
+    const mentorHref = tool === "cv" ? `${appRoutes.mentor}?context=CV%20page%20-%20help%20with%20CV` : tool === "cover-letter" ? `${appRoutes.mentor}?context=Cover%20letter%20page%20-%20help%20with%20cover%20letter` : `${appRoutes.mentor}?context=LinkedIn%20page%20-%20help%20with%20LinkedIn`;
+    const heading = tool === "cv" ? "Your CV is ready. What would you like to do next?" : tool === "cover-letter" ? "Your cover letter is ready. What would you like to do next?" : "Your LinkedIn profile is ready. What would you like to do next?";
+
+    return (
+      <Card className="lg:col-span-4">
+        <div className="rounded-[20px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-5">
+          <h3 className="text-xl font-black">{heading}</h3>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {tool === "cv" ? (
+              <>
+                <Link href={PATHZY_ROUTES.COVER_LETTER} className={buttonClass}>Build Cover Letter</Link>
+                <Link href={PATHZY_ROUTES.LINKEDIN_OPTIMIZER} className={buttonClass}>Optimize LinkedIn</Link>
+                <Link href={PATHZY_ROUTES.FIND_OPPORTUNITIES} className={buttonClass}>Find Opportunities</Link>
+                <Link href={mentorHref} className={buttonClass}>Ask Your Mentor</Link>
+                <button type="button" onClick={() => setSaved(false)} className={buttonClass}>Improve This CV</button>
+                <a href="#old-cv-upload" className={buttonClass}>Upload Old CV</a>
+              </>
+            ) : null}
+            {tool === "cover-letter" ? (
+              <>
+                <Link href={PATHZY_ROUTES.CV_BUILDER} className={buttonClass}>Return to My CV</Link>
+                <Link href={PATHZY_ROUTES.LINKEDIN_OPTIMIZER} className={buttonClass}>Optimise LinkedIn</Link>
+                <Link href={PATHZY_ROUTES.FIND_OPPORTUNITIES} className={buttonClass}>Find Opportunities</Link>
+                <Link href={mentorHref} className={buttonClass}>Ask Your Mentor</Link>
+                <button type="button" onClick={() => setSaved(false)} className={buttonClass}>Improve Cover Letter</button>
+              </>
+            ) : null}
+            {tool === "linkedin" ? (
+              <>
+                <Link href={PATHZY_ROUTES.CV_BUILDER} className={buttonClass}>Return to My CV</Link>
+                <Link href={PATHZY_ROUTES.COVER_LETTER} className={buttonClass}>Build Cover Letter</Link>
+                <Link href={PATHZY_ROUTES.FIND_OPPORTUNITIES} className={buttonClass}>Find Opportunities</Link>
+                <Link href={mentorHref} className={buttonClass}>Ask Your Mentor</Link>
+                <button type="button" onClick={() => setSaved(false)} className={buttonClass}>Improve LinkedIn</button>
+              </>
+            ) : null}
+          </div>
+        </div>
+      </Card>
+    );
+  }
 }

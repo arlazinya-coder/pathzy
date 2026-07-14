@@ -742,6 +742,8 @@ assert.match(professionalIdentityTool, /tool === "cv" \|\| tool === "cover-lette
 assert.match(professionalIdentityTool, /<Card className="lg:col-span-3">[\s\S]*Live preview engine[\s\S]*\{selectedTemplateMetadata\.name\} Cover Letter/, "Cover Letter live preview must use the same right-column preview card span as My CV.");
 assert.match(professionalIdentityTool, /renderCoverLetterCompactStatus\(\)/, "Cover Letter editor must show Cover Letter Health in the structured editor.");
 assert.match(professionalIdentityTool, /Cover Letter Health/, "Cover Letter health label must be visible.");
+assert.match(professionalIdentityTool, /const \[coverLetterHealthExpanded, setCoverLetterHealthExpanded\] = useState\(false\)/, "Cover Letter Health disclosure must be collapsed by default.");
+assert.match(professionalIdentityTool, /aria-expanded=\{coverLetterHealthExpanded\}[\s\S]*aria-controls=\{panelId\}[\s\S]*setCoverLetterHealthExpanded/, "Cover Letter Health disclosure must use the existing accessible Expand/Collapse pattern.");
 assert.match(professionalIdentityTool, /Designed Preview shows the print-ready A4 document that the PDF export uses\./, "Cover Letter preview must use the same preview explanation as My CV.");
 assert.match(professionalIdentityTool, /Regenerate[\s\S]*Generate Draft[\s\S]*Download PDF[\s\S]*Designed Preview/, "Cover Letter live preview must expose generation, PDF, and designed preview actions.");
 assert.match(professionalIdentityTool, /Draft details[\s\S]*Language[\s\S]*Premium template[\s\S]*fields\.map/, "Cover Letter draft inputs must remain available inside the live preview engine.");
@@ -751,6 +753,12 @@ assert.match(professionalIdentityTool, /function renderCoverLetterTemplateGaller
 assert.match(professionalIdentityTool, /Choose a recruiter-ready design[\s\S]*renderCoverLetterMiniPreview\(template\)[\s\S]*Best for: \{template\.bestFor\}/, "Cover Letter gallery must use My CV gallery architecture with real mini previews and best-for labels.");
 assert.match(professionalIdentityTool, /template\.architecture\.replace\("-", " "\)} layout[\s\S]*PDF ready/, "Cover Letter template cards must show attribute labels.");
 assert.doesNotMatch(professionalIdentityTool, /tool !== "cv" \? \([\s\S]*tool === "cover-letter" \? "lg:col-span-2"/, "Cover Letter must not use the old full-width generator card above the workspace.");
+assert.match(professionalIdentityTool, /function renderDocumentNextActions\(\)/, "Professional document next-actions must use one shared renderer.");
+assert.match(professionalIdentityTool, /Your CV is ready\. What would you like to do next\?/, "The existing CV next-actions heading must be preserved.");
+assert.match(professionalIdentityTool, /Your cover letter is ready\. What would you like to do next\?/, "Cover Letter must show a document-specific next-actions heading.");
+assert.match(professionalIdentityTool, /Your LinkedIn profile is ready\. What would you like to do next\?/, "LinkedIn must show a document-specific next-actions heading.");
+assert.match(professionalIdentityTool, /tool === "cover-letter" \? \([\s\S]*Return to My CV[\s\S]*Optimise LinkedIn[\s\S]*Find Opportunities[\s\S]*Ask Your Mentor[\s\S]*Improve Cover Letter/, "Cover Letter next-actions must avoid linking back to the current page.");
+assert.match(professionalIdentityTool, /tool === "linkedin" \? \([\s\S]*Return to My CV[\s\S]*Build Cover Letter[\s\S]*Find Opportunities[\s\S]*Ask Your Mentor[\s\S]*Improve LinkedIn/, "LinkedIn next-actions must avoid linking back to the current page.");
 for (const sectionName of ["1. Personal Header", "2. Application Details", "3. Greeting", "4. Opening Paragraph", "5. Motivation / Why This Role", "6. Evidence / Why Me", "7. Company Alignment", "8. Additional Paragraphs", "9. Closing Paragraph", "10. Sign-off"]) {
   assert.match(professionalIdentityTool, new RegExp(sectionName.replace(/[.]/g, "\\.")), `Cover Letter editor must include ${sectionName}.`);
 }
