@@ -8,6 +8,7 @@ import { DocumentVisualReadingStatus } from "@/components/documents/DocumentVisu
 import { DocumentVisualReadingSummary } from "@/components/documents/DocumentVisualReadingSummary";
 import { DocumentSemanticUnderstandingStatus } from "@/components/documents/DocumentSemanticUnderstandingStatus";
 import { DocumentSemanticUnderstandingSummary } from "@/components/documents/DocumentSemanticUnderstandingSummary";
+import { DocumentReasoningSummary } from "@/components/documents/DocumentReasoningSummary";
 import { Card } from "@/components/ui";
 import { PremiumUpgradeCard } from "@/components/upgrade/premium-upgrade-card";
 import { TemplateMiniPreview } from "@/components/professional-identity/template-mini-preview";
@@ -18,6 +19,7 @@ import { documentTemplateGallery, normalizeDocumentTemplate, templateMetadata } 
 import type { DocumentInspectionResult } from "@/lib/documents/inspection";
 import type { VisualDocumentModel } from "@/lib/documents/visual";
 import type { SemanticDocumentModel } from "@/lib/documents/semantic";
+import type { ReasoningRunSummary } from "@/lib/documents/reasoning";
 import type { GeneratedProfessionalDocument, GenerateOptions, ProfessionalLanguage } from "@/lib/professional-identity/professional-identity-types";
 
 type Field = {
@@ -196,6 +198,7 @@ type CvImportSummary = {
   inspection?: DocumentInspectionResult | null;
   visualReading?: VisualDocumentModel | null;
   semanticReading?: SemanticDocumentModel | null;
+  reasoning?: ReasoningRunSummary | null;
 };
 
 function cvVersionFromDocument(document: GeneratedProfessionalDocument | null, fallbackDesign = "Modern ATS"): CvVersionMetadata {
@@ -1932,6 +1935,7 @@ export function ProfessionalIdentityTool({
               <DocumentVisualReadingSummary visualReading={cvImportSummary?.visualReading} />
               <DocumentSemanticUnderstandingStatus status={cvImportStatus === "semantic-understanding" ? "understanding" : cvImportSummary?.semanticReading ? "completed" : cvImportStatus === "error" ? "failed" : "idle"} />
               <DocumentSemanticUnderstandingSummary semanticReading={cvImportSummary?.semanticReading} />
+              <DocumentReasoningSummary reasoning={cvImportSummary?.reasoning} />
               {cvImportSummary && pendingImportedCv ? (
                 <div className="mt-4 rounded-[18px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

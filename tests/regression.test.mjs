@@ -100,6 +100,14 @@ const documentSemanticConstants = readFileSync("lib/documents/semantic/semantic.
 const documentSemanticMigration = readFileSync("supabase/migrations/20260716153000_create_document_semantic_readings.sql", "utf8");
 const documentSemanticSummary = readFileSync("components/documents/DocumentSemanticUnderstandingSummary.tsx", "utf8");
 const documentSemanticStatus = readFileSync("components/documents/DocumentSemanticUnderstandingStatus.tsx", "utf8");
+const documentReasoningTypes = readFileSync("lib/documents/reasoning/reasoning.types.ts", "utf8");
+const documentReasoningService = readFileSync("lib/documents/reasoning/career-reasoning.service.ts", "utf8");
+const documentReasoningUtils = readFileSync("lib/documents/reasoning/reasoning-utils.ts", "utf8");
+const documentReasoningProvider = readFileSync("lib/documents/reasoning/reasoning-provider.ts", "utf8");
+const documentReasoningSchema = readFileSync("lib/documents/reasoning/reasoning.schema.ts", "utf8");
+const documentReasoningConstants = readFileSync("lib/documents/reasoning/reasoning.constants.ts", "utf8");
+const documentReasoningMigration = readFileSync("supabase/migrations/20260716170000_create_career_reasoning_cases.sql", "utf8");
+const documentReasoningSummary = readFileSync("components/documents/DocumentReasoningSummary.tsx", "utf8");
 const legacyMedicalCvFixture = readFileSync("tests/fixtures/legacy-medical-cv.txt", "utf8");
 const cvImportFixtureMatrix = readFileSync("tests/fixtures/cv-import-matrix.txt", "utf8");
 const cvInterpretationFixtureMatrix = readFileSync("tests/fixtures/cv-interpretation-general-matrix.txt", "utf8");
@@ -793,6 +801,50 @@ for (const summaryText of ["Semantic Understanding Complete", "Profession detect
 for (const statusText of ["Understanding your career information", "Identifying your profession", "Connecting dates, employers, and roles"]) {
   assert.match(documentSemanticStatus, new RegExp(statusText), `Semantic status UI must show ${statusText}.`);
 }
+for (const reasoningCaseType of ["possible_same_employment", "possible_same_education", "possible_same_certification", "possible_promotion", "possible_source_confirmation", "insufficient_evidence"]) {
+  assert.match(documentReasoningTypes, new RegExp(`"${reasoningCaseType}"`), `Phase 5 reasoning ontology must define ${reasoningCaseType}.`);
+}
+for (const reasoningConclusion of ["likely_same_entity", "possible_promotion", "one_source_refines_another", "sources_conflict", "requires_user_confirmation"]) {
+  assert.match(documentReasoningTypes, new RegExp(`"${reasoningConclusion}"`), `Reasoning conclusions must include ${reasoningConclusion}.`);
+}
+for (const reasoningSignal of ["same_normalized_organisation", "semantic_title_similarity", "overlapping_date_range", "independent_source_confirmation", "contradictory_dates"]) {
+  assert.match(documentReasoningTypes, new RegExp(`"${reasoningSignal}"`), `Reasoning signals must include ${reasoningSignal}.`);
+}
+assert.match(documentReasoningTypes, /export type ReasoningDecision = \{[\s\S]*supportingEvidence: ReasoningEvidence\[\][\s\S]*contradictingEvidence: ReasoningEvidence\[\][\s\S]*assumptions: ReasoningAssumption\[\][\s\S]*unresolvedQuestions: ReasoningQuestion\[\][\s\S]*requiresUserConfirmation: boolean[\s\S]*reversible: true/, "Reasoning decisions must be explainable, evidence-grounded and reversible.");
+assert.match(documentReasoningTypes, /export type CareerReasoningProvider = \{ reason\(input:/, "Phase 5 must expose a provider-neutral reasoning interface.");
+assert.match(documentReasoningConstants, /EMPLOYMENT_MATCH_WEIGHTS[\s\S]*organisation[\s\S]*dates[\s\S]*titleMeaning[\s\S]*independentConfirmation/, "Employment match scoring weights must be centralized.");
+assert.match(documentReasoningConstants, /EMPLOYMENT_CONTRADICTION_WEIGHTS[\s\S]*incompatibleEmployer[\s\S]*incompatibleDates/, "Contradiction penalties must be centralized.");
+assert.match(documentReasoningConstants, /SOURCE_RELIABILITY_WEIGHTS[\s\S]*user_confirmed_profile[\s\S]*reference_letter[\s\S]*cover_letter/, "Source reliability must distinguish authoritative and generated/adapted sources.");
+assert.match(documentReasoningUtils, /normalizeOrganisationName[\s\S]*legalSuffixPattern/, "Reasoning must normalize employer suffixes before comparing organisations.");
+assert.match(documentReasoningUtils, /customer_service_sales[\s\S]*technology_data[\s\S]*healthcare_clinical[\s\S]*roleFamilyForTitle/, "Reasoning must compare title meaning through cautious occupation families, not raw strings only.");
+assert.match(documentReasoningUtils, /compareSemanticDateRanges[\s\S]*"exact"[\s\S]*"compatible"[\s\S]*"overlapping"[\s\S]*"adjacent"[\s\S]*"conflicting"/, "Reasoning must compare date ranges with precision-aware relations.");
+assert.match(documentReasoningUtils, /blockingKeysForRecord/, "Reasoning must use blocking keys before candidate case creation.");
+for (const blockingKey of ["organisation", "date_window", "role_family", "credential_id"]) {
+  assert.match(documentReasoningUtils, new RegExp(blockingKey), `Reasoning blocking keys must include ${blockingKey}.`);
+}
+assert.match(documentReasoningUtils, /createReasoningFingerprint[\s\S]*REASONING_ENGINE_VERSION[\s\S]*REASONING_TAXONOMY_VERSION/, "Reasoning cases must be idempotent by stable fingerprint.");
+assert.match(documentReasoningProvider, /class DeterministicCareerReasoningProvider[\s\S]*supportingEvidence[\s\S]*unresolvedQuestions[\s\S]*proposedActions/, "Phase 5 must provide deterministic explainable reasoning before future AI escalation.");
+assert.match(documentReasoningProvider, /class OpenAICareerReasoningProvider[\s\S]*not enabled for Phase 5 deterministic rollout/, "OpenAI reasoning must remain provider-boundary only during Phase 5.");
+assert.match(documentReasoningProvider, /Do not invent facts[\s\S]*Do not mutate the profile/, "Reasoning prompt strategy must prohibit fabricated facts and automatic profile mutation.");
+assert.match(documentReasoningSchema, /validateReasoningCase/, "Reasoning validation must validate complete cases.");
+assert.match(documentReasoningSchema, /validateReasoningDecision[\s\S]*irreversible_decision/, "Reasoning validation must reject incomplete or irreversible decisions.");
+assert.match(documentReasoningService, /collectReasoningRecords\(\{ semanticModels[\s\S]*pairRecords[\s\S]*candidateGroupFor[\s\S]*provider\.reason/, "Reasoning service must consume Phase 4 semantic models, group candidates and make decisions.");
+assert.match(documentReasoningService, /runAndPersistCareerReasoning[\s\S]*loadCompletedSemanticModels[\s\S]*generateCareerReasoningCases[\s\S]*saveReasoningCases/, "Phase 5 persistence must run across multiple semantic readings.");
+assert.match(documentReasoningService, /upsert\(rows, \{ onConflict: "user_id,fingerprint" \}\)/, "Career reasoning persistence must be idempotent by user and fingerprint.");
+assert.match(documentReasoningService, /recordReasoningUserDecision/, "Phase 5 must support separate user decision recording.");
+assert.match(documentReasoningMigration, /create table if not exists public\.career_reasoning_cases/, "Reasoning migration must create career reasoning cases.");
+assert.match(documentReasoningMigration, /create table if not exists public\.career_reasoning_case_entities/, "Reasoning migration must link cases to semantic entities and documents.");
+assert.match(documentReasoningMigration, /create table if not exists public\.career_reasoning_user_decisions/, "Reasoning migration must record user decisions separately.");
+assert.match(documentReasoningMigration, /create table if not exists public\.career_entity_merges/, "Reasoning migration must preserve merge provenance and reversibility.");
+assert.match(documentReasoningMigration, /unique \(user_id, fingerprint\)/, "Reasoning cases must avoid duplicate creation for unchanged evidence.");
+assert.match(documentReasoningMigration, /alter table public\.career_reasoning_cases enable row level security[\s\S]*alter table public\.career_reasoning_case_entities enable row level security[\s\S]*alter table public\.career_reasoning_user_decisions enable row level security/, "Reasoning tables must enable RLS.");
+assert.match(documentReasoningMigration, /auth\.uid\(\) = user_id/, "Reasoning RLS must restrict access to the owning user.");
+assert.match(cvImportRoute, /runAndPersistSemanticUnderstanding[\s\S]*runAndPersistCareerReasoning[\s\S]*reasoning[\s\S]*importSummary/, "CV import must run Phase 5 after semantic understanding and return a reasoning summary.");
+assert.match(professionalIdentityTool, /DocumentReasoningSummary[\s\S]*cvImportSummary\?\.reasoning/, "CV import UI must surface Phase 5 career information checks.");
+for (const reasoningSummaryText of ["Career Information Check", "Possible matches", "Information conflicts", "Needs confirmation"]) {
+  assert.match(documentReasoningSummary, new RegExp(reasoningSummaryText), `Reasoning summary UI must show ${reasoningSummaryText}.`);
+}
+assert.doesNotMatch(`${documentReasoningService}\n${documentReasoningUtils}\n${documentReasoningProvider}`, /Florent|TARGET|haematology|microbiology|laboratory assistant/i, "Reasoning code must not hardcode fixture-specific candidate or industry terms.");
 const inspectionScanRuntime = loadProductionTsModule("lib/documents/inspection/scan-detector.ts");
 const inspectionTypeRuntime = loadProductionTsModule("lib/documents/inspection/document-type-detector.ts");
 const inspectionLanguageRuntime = loadProductionTsModule("lib/documents/inspection/language-detector.ts");

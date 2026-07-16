@@ -11,6 +11,7 @@ import {
 import { DocumentInspectionError, inspectAndPersistDocument } from "@/lib/documents/inspection";
 import { VisualReadingError, runAndPersistVisualReading } from "@/lib/documents/visual";
 import { SemanticUnderstandingError, runAndPersistSemanticUnderstanding } from "@/lib/documents/semantic";
+import { runAndPersistCareerReasoning } from "@/lib/documents/reasoning";
 import { levelFromXp } from "@/lib/missions/engine";
 import type { GenerateOptions } from "@/lib/professional-identity/professional-identity-types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -179,6 +180,7 @@ export async function POST(request: Request) {
       let inspection = null;
       let visualReading = null;
       let semanticReading = null;
+      let reasoning = null;
       if (upload.fileName && upload.fileType && upload.fileSize) {
         inspection = await inspectAndPersistDocument(supabase, {
           documentId: data.id,
@@ -206,6 +208,15 @@ export async function POST(request: Request) {
           visualReading,
           existingProfile: existingProfile ?? null
         });
+        try {
+          reasoning = await runAndPersistCareerReasoning(supabase, {
+            userId: user.id,
+            semanticReading,
+            existingProfile: existingProfile ?? null
+          });
+        } catch (reasoningError) {
+          console.warn("[career-reasoning] skipped", { userId: user.id, documentId: data.id, message: reasoningError instanceof Error ? reasoningError.message : "Reasoning unavailable" });
+        }
       }
       return NextResponse.json({
         document: {
@@ -224,11 +235,13 @@ export async function POST(request: Request) {
           file_url: data.file_url,
           inspection,
           visualReading,
-          semanticReading
+          semanticReading,
+          reasoning
         },
         inspection,
         visualReading,
-        semanticReading
+        semanticReading,
+        reasoning
       });
     } catch (error) {
       if (error instanceof DocumentInspectionError) {

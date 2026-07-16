@@ -5,6 +5,7 @@ import type { ImportedCvResult } from "@/lib/professional-identity/cv-import";
 import { DocumentInspectionError, inspectAndPersistDocument } from "@/lib/documents/inspection";
 import { VisualReadingError, runAndPersistVisualReading } from "@/lib/documents/visual";
 import { SemanticUnderstandingError, runAndPersistSemanticUnderstanding } from "@/lib/documents/semantic";
+import { runAndPersistCareerReasoning } from "@/lib/documents/reasoning";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -144,13 +145,24 @@ export async function POST(request: Request) {
       visualReading,
       existingProfile: existingProfile ?? null
     });
+    let reasoning = null;
+    try {
+      reasoning = await runAndPersistCareerReasoning(auth.supabase, {
+        userId: auth.user.id,
+        semanticReading,
+        existingProfile: existingProfile ?? null
+      });
+    } catch (reasoningError) {
+      console.warn("[career-reasoning] skipped", { userId: auth.user.id, documentId: uploadDocumentId, message: reasoningError instanceof Error ? reasoningError.message : "Reasoning unavailable" });
+    }
 
     const imported = {
       ...importCvFromUpload(upload),
       uploadDocumentId,
       inspection,
       visualReading,
-      semanticReading
+      semanticReading,
+      reasoning
     };
 
     return NextResponse.json({
@@ -164,6 +176,7 @@ export async function POST(request: Request) {
         inspection,
         visualReading,
         semanticReading,
+        reasoning,
         message: "We've prepared your CV."
       }
     });

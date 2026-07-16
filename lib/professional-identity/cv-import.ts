@@ -36,6 +36,7 @@ export type ImportedCvResult = {
   inspection?: Record<string, unknown>;
   visualReading?: Record<string, unknown>;
   semanticReading?: Record<string, unknown>;
+  reasoning?: Record<string, unknown> | null;
   confidence: CvImportConfidence;
   reviewItems: string[];
   counts: CvImportCounts;
