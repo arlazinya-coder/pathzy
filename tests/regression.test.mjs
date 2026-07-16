@@ -108,6 +108,14 @@ const documentReasoningSchema = readFileSync("lib/documents/reasoning/reasoning.
 const documentReasoningConstants = readFileSync("lib/documents/reasoning/reasoning.constants.ts", "utf8");
 const documentReasoningMigration = readFileSync("supabase/migrations/20260716170000_create_career_reasoning_cases.sql", "utf8");
 const documentReasoningSummary = readFileSync("components/documents/DocumentReasoningSummary.tsx", "utf8");
+const canonicalProfileTypes = readFileSync("lib/canonical-profile/canonical-profile.types.ts", "utf8");
+const canonicalProfileService = readFileSync("lib/canonical-profile/canonical-profile-service.ts", "utf8");
+const canonicalProfileQuality = readFileSync("lib/canonical-profile/canonical-profile-quality.ts", "utf8");
+const canonicalProfileValidation = readFileSync("lib/canonical-profile/canonical-profile-validation.ts", "utf8");
+const canonicalProfileView = readFileSync("lib/canonical-profile/canonical-profile-view.ts", "utf8");
+const canonicalProfileTranslations = readFileSync("lib/canonical-profile/canonical-profile-translations.ts", "utf8");
+const canonicalProfileOverview = readFileSync("components/professional-identity/canonical-profile-overview.tsx", "utf8");
+const canonicalProfileMigration = readFileSync("supabase/migrations/20260716183000_create_canonical_professional_identity.sql", "utf8");
 const legacyMedicalCvFixture = readFileSync("tests/fixtures/legacy-medical-cv.txt", "utf8");
 const cvImportFixtureMatrix = readFileSync("tests/fixtures/cv-import-matrix.txt", "utf8");
 const cvInterpretationFixtureMatrix = readFileSync("tests/fixtures/cv-interpretation-general-matrix.txt", "utf8");
@@ -845,6 +853,70 @@ for (const reasoningSummaryText of ["Career Information Check", "Possible matche
   assert.match(documentReasoningSummary, new RegExp(reasoningSummaryText), `Reasoning summary UI must show ${reasoningSummaryText}.`);
 }
 assert.doesNotMatch(`${documentReasoningService}\n${documentReasoningUtils}\n${documentReasoningProvider}`, /Florent|TARGET|haematology|microbiology|laboratory assistant/i, "Reasoning code must not hardcode fixture-specific candidate or industry terms.");
+assert.match(canonicalProfileTypes, /export type CanonicalProfessionalIdentity = \{[\s\S]*version: number;[\s\S]*identity: CanonicalIdentity;[\s\S]*employment: CanonicalEmployment\[];[\s\S]*education: CanonicalEducation\[];[\s\S]*skills: CanonicalSkill\[];[\s\S]*careerTimeline: CanonicalTimelineEvent\[];/, "Phase 6 must define one versioned canonical professional identity.");
+assert.match(canonicalProfileTypes, /export type CanonicalValue<T> = \{[\s\S]*status: CanonicalReviewStatus;[\s\S]*confidence: number;[\s\S]*sourceReferences: CanonicalSourceReference\[];[\s\S]*reasoningCaseId\?: string;[\s\S]*userDecisionId\?: string;/, "Canonical values must carry confidence, review status and provenance.");
+assert.match(canonicalProfileTypes, /export type CanonicalSourceReference = \{[\s\S]*sourceType: CanonicalSourceType;[\s\S]*documentId\?: string;[\s\S]*semanticEntityId\?: string;[\s\S]*reasoningCaseId\?: string;[\s\S]*originalValue\?: string;/, "Canonical fields must remain traceable to document, semantic, reasoning or user sources.");
+for (const entityType of ["CanonicalEmployment", "CanonicalEducation", "CanonicalCertification", "CanonicalLicence", "CanonicalSkill", "CanonicalLanguage", "CanonicalTimelineEvent", "ProfessionalIdentityView", "ViewFieldOverride", "ViewFreshness"]) {
+  assert.match(canonicalProfileTypes, new RegExp(`export type ${entityType}`), `Phase 6 must define ${entityType}.`);
+}
+assert.match(canonicalProfileTypes, /type: ProfessionalIdentityViewType[\s\S]*configuration:[\s\S]*selectedEmploymentIds\?: string\[][\s\S]*profileVersion: number;/, "Professional identity views must reference canonical entity IDs and profile versions.");
+assert.match(canonicalProfileTypes, /overrideType: "hide" \| "reorder" \| "presentation_text" \| "shortened_text" \| "targeted_text"/, "CV-specific rewrites must be stored as view overrides, not canonical fact mutations.");
+assert.match(canonicalProfileService, /export async function getOrCreateCanonicalProfile/, "Phase 6 must create or load exactly one canonical profile per user.");
+assert.match(canonicalProfileService, /from\("user_profiles"\)/, "Canonical profile initialization must audit legacy user_profiles fields.");
+assert.match(canonicalProfileService, /sourceType: "existing_profile"/, "Legacy user_profiles fields must be treated as migrated evidence, not a separate profile system.");
+assert.match(canonicalProfileService, /export async function addManualProfileEntity/, "Manual profile entry must go through a canonical command service.");
+assert.match(canonicalProfileService, /export async function applyConfirmedReasoningDecision/, "Confirmed Phase 5 reasoning decisions must apply through the canonical profile service.");
+assert.match(canonicalProfileService, /career_reasoning_cases/, "Reasoning application must verify the owning reasoning case.");
+assert.match(canonicalProfileService, /career_reasoning_user_decisions/, "Reasoning application must record the user decision separately.");
+assert.match(canonicalProfileService, /canonical_employments/, "Reasoning application must be able to create canonical employment data.");
+assert.match(canonicalProfileService, /createProfileVersion/, "Reasoning application must version the canonical profile change.");
+assert.match(canonicalProfileService, /markDependentViewsStale/, "Canonical profile changes must mark older generated views as stale.");
+assert.match(canonicalProfileService, /export async function reverseProfileChange/, "Profile changes must be reversible through a rollback command boundary.");
+assert.match(canonicalProfileService, /canonicalProfileCommandService/, "Canonical mutations must be exposed from one shared command service.");
+assert.doesNotMatch(canonicalProfileService, /console\.(log|info|warn|error)\([^)]*(full_name|email|phone|document_text|content_text)/i, "Canonical profile logs must not include raw personal values or document text.");
+assert.match(canonicalProfileQuality, /calculateCanonicalCompletion/, "Profile completion must be centralized.");
+assert.match(canonicalProfileQuality, /calculateCanonicalConfidence/, "Profile confidence must be separate from completion.");
+assert.match(canonicalProfileQuality, /calculateCanonicalReadiness/, "Readiness must be calculated separately from completion and confidence.");
+assert.match(canonicalProfileQuality, /consistency/, "Canonical quality must include consistency.");
+assert.match(canonicalProfileValidation, /validateCanonicalEmployment[\s\S]*employment_end_before_start[\s\S]*current_employment_has_end_date/, "Employment validation must catch impossible dates without blocking unusual careers.");
+assert.match(canonicalProfileValidation, /validateCanonicalEducation[\s\S]*education_end_before_start/, "Education validation must validate date consistency.");
+assert.match(canonicalProfileValidation, /validateCanonicalContact[\s\S]*contact_email_invalid[\s\S]*contact_url_invalid[\s\S]*contact_visibility_invalid/, "Contact validation must centralize email, URL and visibility checks.");
+assert.match(canonicalProfileView, /export function buildProfessionalIdentityView/, "Phase 6 must expose a reusable view builder.");
+assert.match(canonicalProfileView, /export function canonicalProfileToCvModel/, "Existing CVs must be supported through a compatibility adapter from canonical profile to CvModel.");
+assert.match(canonicalProfileView, /export function viewFreshnessFor/, "Views must detect stale profile versions.");
+assert.match(canonicalProfileView, /item\.status !== "archived"/, "CV views must exclude archived canonical records.");
+assert.match(canonicalProfileView, /fieldOverrides/, "CV views must support field-specific presentation overrides.");
+assert.match(canonicalProfileView, /overrideType === "hide"/, "CV views must hide canonical records without deleting canonical facts.");
+assert.match(canonicalProfileView, /item\.explicitness !== "unconfirmed_implied"/, "Unconfirmed implied skills must be excluded from confirmed CV output.");
+for (const tableName of [
+  "canonical_professional_profiles",
+  "canonical_employments",
+  "canonical_education",
+  "canonical_certifications",
+  "canonical_licences",
+  "canonical_skills",
+  "canonical_languages",
+  "canonical_timeline_events",
+  "canonical_entity_sources",
+  "canonical_entity_aliases",
+  "canonical_profile_versions",
+  "professional_identity_views"
+]) {
+  assert.match(canonicalProfileMigration, new RegExp(`create table if not exists public\\.${tableName}`), `Canonical migration must create ${tableName}.`);
+  assert.match(canonicalProfileMigration, new RegExp(`alter table public\\.${tableName} enable row level security`), `${tableName} must enable RLS.`);
+}
+assert.match(canonicalProfileMigration, /constraint canonical_professional_profiles_user_unique unique \(user_id\)/, "Canonical profiles must be one per user.");
+assert.match(canonicalProfileMigration, /references public\.user_documents\(id\) on delete set null/, "Canonical sources must preserve profile history if supporting documents are removed.");
+assert.match(canonicalProfileMigration, /references public\.career_reasoning_cases\(id\) on delete set null/, "Canonical sources must reference Phase 5 reasoning cases.");
+assert.match(canonicalProfileMigration, /constraint canonical_profile_versions_unique unique \(profile_id, version_number\)/, "Profile versions must be unique per canonical profile.");
+assert.match(canonicalProfileMigration, /auth\.uid\(\) = user_id/g, "Canonical RLS policies must restrict every table to the owning authenticated user.");
+for (const text of ["Professional Identity", "Identite professionnelle", "Review needed", "Verification necessaire", "Profile history", "Historique du profil", "Documents and evidence", "Documents et justificatifs"]) {
+  assert.match(canonicalProfileTranslations, new RegExp(text), `Canonical profile translations must include ${text}.`);
+}
+assert.match(professionalIdentityPage, /getCanonicalProfileSummary\(supabase, user\.id\)/, "My Professional Profile must read the shared canonical profile summary.");
+assert.match(professionalIdentityPage, /<CanonicalProfileOverview summary=\{canonicalSummary\} \/>/, "My Professional Profile must show the canonical identity overview without replacing existing editors.");
+assert.match(canonicalProfileOverview, /One profile for every career document\./, "Canonical profile UI must explain the single-source-of-truth model in human language.");
+assert.match(canonicalProfileOverview, /Completion[\s\S]*Confidence[\s\S]*Consistency/, "Canonical profile UI must keep completion, confidence and consistency separate.");
 const inspectionScanRuntime = loadProductionTsModule("lib/documents/inspection/scan-detector.ts");
 const inspectionTypeRuntime = loadProductionTsModule("lib/documents/inspection/document-type-detector.ts");
 const inspectionLanguageRuntime = loadProductionTsModule("lib/documents/inspection/language-detector.ts");

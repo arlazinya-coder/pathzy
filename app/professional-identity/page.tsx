@@ -1,5 +1,7 @@
 import { Card, PageHeader, ProgressBar, ButtonLink } from "@/components/ui";
+import { CanonicalProfileOverview } from "@/components/professional-identity/canonical-profile-overview";
 import { ProfileActionEditor, type ProfileActionRow } from "@/components/professional-identity/profile-action-editor";
+import { getCanonicalProfileSummary } from "@/lib/canonical-profile";
 import { appRoutes } from "@/lib/navigation/routes";
 import { getProfessionalIdentityContext } from "@/lib/professional-identity/professional-identity-service";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
@@ -117,8 +119,9 @@ function labelStatus(status?: string | null) {
 
 export default async function ProfessionalIdentityPage() {
   const { user, supabase } = await requireAuthenticatedUser("/professional-identity");
-  const [context, { data: profile }, { data: discovery }, { data: uploadedDocuments }] = await Promise.all([
+  const [context, canonicalSummary, { data: profile }, { data: discovery }, { data: uploadedDocuments }] = await Promise.all([
     getProfessionalIdentityContext(supabase, user.id),
+    getCanonicalProfileSummary(supabase, user.id),
     supabase
       .from("user_profiles")
       .select("full_name,email,phone,city,country,education,field_of_study,current_status,career_goal,linkedin_url,portfolio_url,language,has_certificates")
@@ -166,6 +169,8 @@ export default async function ProfessionalIdentityPage() {
       <PageHeader eyebrow="My Professional Profile" title="Build your professional profile">
         Create the documents and profile you need to apply with confidence.
       </PageHeader>
+
+      <CanonicalProfileOverview summary={canonicalSummary} />
 
       <div className="mb-6 grid gap-5 lg:grid-cols-[.72fr_1fr]">
         <Card>
