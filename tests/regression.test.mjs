@@ -67,6 +67,19 @@ const professionalIdentityService = readFileSync("lib/professional-identity/prof
 const cvImportPipeline = readFileSync("lib/professional-identity/cv-import.ts", "utf8");
 const cvInterpretationEngine = readFileSync("lib/professional-identity/cv-interpretation-engine.ts", "utf8");
 const cvImportRoute = readFileSync("app/api/professional-identity/import-cv/route.ts", "utf8");
+const documentInspectionTypes = readFileSync("lib/documents/inspection/inspection.types.ts", "utf8");
+const documentInspectionConstants = readFileSync("lib/documents/inspection/inspection.constants.ts", "utf8");
+const documentInspectionSchema = readFileSync("lib/documents/inspection/inspection.schema.ts", "utf8");
+const documentInspectionService = readFileSync("lib/documents/inspection/document-inspection.service.ts", "utf8");
+const documentTypeDetector = readFileSync("lib/documents/inspection/document-type-detector.ts", "utf8");
+const languageDetector = readFileSync("lib/documents/inspection/language-detector.ts", "utf8");
+const scanDetector = readFileSync("lib/documents/inspection/scan-detector.ts", "utf8");
+const layoutDetector = readFileSync("lib/documents/inspection/layout-detector.ts", "utf8");
+const qualityAnalyzer = readFileSync("lib/documents/inspection/quality-analyzer.ts", "utf8");
+const processingStrategy = readFileSync("lib/documents/inspection/processing-strategy.ts", "utf8");
+const documentInspectionMigration = readFileSync("supabase/migrations/20260716133000_create_document_inspections.sql", "utf8");
+const documentInspectionSummary = readFileSync("components/documents/DocumentInspectionSummary.tsx", "utf8");
+const documentInspectionStatus = readFileSync("components/documents/DocumentInspectionStatus.tsx", "utf8");
 const legacyMedicalCvFixture = readFileSync("tests/fixtures/legacy-medical-cv.txt", "utf8");
 const cvImportFixtureMatrix = readFileSync("tests/fixtures/cv-import-matrix.txt", "utf8");
 const cvInterpretationFixtureMatrix = readFileSync("tests/fixtures/cv-interpretation-general-matrix.txt", "utf8");
@@ -654,6 +667,53 @@ assert.match(professionalIdentityTool, /setCvDocument\(data\.document, true\)/, 
 assert.doesNotMatch(professionalIdentityTool, /accept="\.pdf,\.docx,\.png|image\/png|image\/jpeg/, "CV import UI must not advertise unsupported image OCR.");
 assert.match(professionalIdentityTool, /text\/plain/, "CV import UI must accept TXT files.");
 assert.match(professionalIdentityTool, /stayed unclassified for review instead of being guessed/, "CV import review must explain unclassified content safely.");
+assert.match(documentInspectionTypes, /export type DocumentType =[\s\S]*"cv"[\s\S]*"cover_letter"[\s\S]*"academic_transcript"[\s\S]*"job_advertisement"[\s\S]*"unknown"/, "Document inspection must define a shared multi-document type model.");
+assert.match(documentInspectionTypes, /export type DocumentSourceType = "digital" \| "scanned" \| "image" \| "mixed"/, "Document inspection must classify digital, scanned, image and mixed sources.");
+assert.match(documentInspectionTypes, /export type DocumentInspector[\s\S]*inspect\(input: DocumentInspectionInput\): Promise<DocumentInspectionResult>/, "Document inspection must expose provider abstraction contracts.");
+for (const threshold of ["maxPageCount", "minNativeCharactersPerPage", "minNativeTextPageRatio", "manualReviewConfidence"]) {
+  assert.match(documentInspectionConstants, new RegExp(threshold), `Inspection threshold ${threshold} must live in shared configuration.`);
+}
+for (const mime of ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "image/png", "image/jpeg"]) {
+  assert.match(documentInspectionConstants, new RegExp(mime.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `Inspection must support ${mime}.`);
+}
+assert.match(documentInspectionSchema, /export function validateInspectionInput/, "Upload validation must run before inspection.");
+for (const validationCase of ["unsupported_format", "empty_document", "password_protected", "extension_mismatch"]) {
+  assert.match(documentInspectionSchema, new RegExp(validationCase), `Upload validation must handle ${validationCase} safely.`);
+}
+assert.match(scanDetector, /determineOcrRequirement[\s\S]*sourceType === "image"[\s\S]*sourceType === "scanned"[\s\S]*sourceType === "mixed"[\s\S]*Native text appears reliable/, "OCR decision logic must require OCR only when the source or text quality needs it.");
+assert.match(documentTypeDetector, /curriculum vitae|r\[ée\]sum\[ée\][\s\S]*lettre de motivation[\s\S]*relev\[ée\] de notes[\s\S]*responsabilit\[ée\]s/, "Document type detection must include English and French signals.");
+assert.match(languageDetector, /French[\s\S]*English[\s\S]*mixed|languages/, "Language detection must support English, French and multi-language output.");
+assert.match(layoutDetector, /columnCount[\s\S]*hasTables[\s\S]*hasImages[\s\S]*readingOrder/, "Layout detection must produce reusable column, table, image and reading-order data.");
+assert.match(qualityAnalyzer, /low_resolution[\s\S]*rotated_page[\s\S]*missing_text_layer/, "Quality analysis must generate actionable warnings.");
+for (const strategy of ["native_text", "ocr", "hybrid", "image_ocr", "manual_review"]) {
+  assert.match(processingStrategy, new RegExp(`strategy: "${strategy}"`), `Processing strategy selection must cover ${strategy}.`);
+}
+assert.match(documentInspectionService, /validateInspectionInput\(input\)[\s\S]*sampleNativeText[\s\S]*detectDocumentSource[\s\S]*detectDocumentType[\s\S]*selectProcessingStrategy/, "Inspection service must orchestrate validation, sampling, source detection, type detection and strategy selection.");
+assert.match(documentInspectionService, /markDocumentInspectionProcessing[\s\S]*markDocumentInspectionFailed[\s\S]*onConflict: "document_id"/, "Inspection persistence must be idempotent and status-driven by document ID.");
+assert.match(documentInspectionMigration, /create table if not exists public\.document_inspections/, "Document inspection migration must create a dedicated inspection record linked to documents.");
+assert.match(documentInspectionMigration, /document_id uuid not null references public\.user_documents\(id\) on delete cascade/, "Inspection records must link to existing user_documents and clean up with deleted documents.");
+assert.match(documentInspectionMigration, /alter table public\.document_inspections enable row level security/, "Document inspections must have RLS enabled.");
+assert.match(documentInspectionMigration, /Users can select inspections for own documents[\s\S]*d\.id = document_id and d\.user_id = auth\.uid\(\)/, "Users must only access inspections for their own documents.");
+for (const summaryText of ["Document Inspection Complete", "Document type", "OCR", "Confidence", "Ready for extraction"]) {
+  assert.match(documentInspectionSummary, new RegExp(summaryText), `Inspection summary UI must show ${summaryText}.`);
+}
+for (const statusText of ["Inspecting your document", "Checking document type", "Deciding whether OCR is needed"]) {
+  assert.match(documentInspectionStatus, new RegExp(statusText), `Upload UI must show ${statusText} before extraction.`);
+}
+assert.match(cvImportRoute, /createUploadShell[\s\S]*inspectAndPersistDocument[\s\S]*importCvFromUpload/, "CV import must inspect and persist the uploaded document before extraction and mapping.");
+assert.match(cvImportRoute, /recommendedPipeline\.extractionAllowed/, "CV import must stop before extraction when inspection disallows it.");
+const inspectionScanRuntime = loadProductionTsModule("lib/documents/inspection/scan-detector.ts");
+const inspectionTypeRuntime = loadProductionTsModule("lib/documents/inspection/document-type-detector.ts");
+const inspectionLanguageRuntime = loadProductionTsModule("lib/documents/inspection/language-detector.ts");
+const inspectionStrategyRuntime = loadProductionTsModule("lib/documents/inspection/processing-strategy.ts");
+assert.equal(inspectionScanRuntime.determineOcrRequirement({ sourceType: "digital", hasTextLayer: true, textPageRatio: 1, nativeText: "Professional summary with reliable selectable text ".repeat(8), pageCount: 1 }).required, false, "Clean digital documents must skip OCR.");
+assert.equal(inspectionScanRuntime.determineOcrRequirement({ sourceType: "scanned", hasTextLayer: false, textPageRatio: 0, nativeText: "", pageCount: 1 }).required, true, "Scanned documents must require OCR.");
+assert.equal(inspectionTypeRuntime.detectDocumentType({ filename: "candidate-cv.pdf", mimeType: "application/pdf", text: "Curriculum vitae. Work experience. Education. Skills." }).value, "cv", "Clean digital one-column CV fixture must classify as CV.");
+assert.equal(inspectionTypeRuntime.detectDocumentType({ filename: "lettre-motivation.pdf", mimeType: "application/pdf", text: "Lettre de motivation. Candidature pour le poste. Cordialement." }).value, "cover_letter", "French cover letter fixture must classify as cover letter.");
+assert.equal(inspectionTypeRuntime.detectDocumentType({ filename: "unknown.bin", mimeType: "application/pdf", text: "unstructured fragment" }).value, "unknown", "Low-confidence documents must remain unknown.");
+assert.equal(inspectionLanguageRuntime.detectLanguages("Expérience professionnelle et compétences avec English summary and skills.").length >= 2, true, "Mixed English and French documents must expose multiple language candidates.");
+assert.equal(inspectionStrategyRuntime.selectProcessingStrategy({ source: { type: "mixed", ocrRequired: true }, quality: { overall: "fair" }, confidence: { overall: 0.7 }, warnings: [] }).strategy, "hybrid", "Mixed scanned and digital PDFs must use the hybrid strategy.");
+assert.equal(inspectionStrategyRuntime.selectProcessingStrategy({ source: { type: "image", ocrRequired: true }, quality: { overall: "fair" }, confidence: { overall: 0.7 }, warnings: [] }).strategy, "image_ocr", "JPG/PNG documents must use image OCR strategy.");
 assert.match(legacyMedicalCvFixture, /LABORATORY ASSISTANT: BLOOD TRANSFUSION[\s\S]*PERIOD: 01\/02\/2014-30\/06\/2014[\s\S]*COMPANY\/INSTITUTION: VAAL UNIVERSITY OF TECHNOLOGY/, "Legacy medical CV fixture must cover grouped experience label/value records.");
 assert.match(legacyMedicalCvFixture, /TERTIARY EDUCATION[\s\S]*COURSE: BIOMEDICAL TECHNOLOGY/, "Legacy medical CV fixture must cover tertiary education grouping.");
 assert.match(legacyMedicalCvFixture, /HOME LANGUAGE: FRENCH[\s\S]*OTHER LANGUAGES: ENGLISH, KISWAHILI/, "Legacy medical CV fixture must cover explicit language extraction.");

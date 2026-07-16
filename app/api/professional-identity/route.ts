@@ -8,6 +8,7 @@ import {
   generateLinkedInProfile,
   generateRecruiterMessage
 } from "@/lib/professional-identity/professional-identity-service";
+import { DocumentInspectionError, inspectAndPersistDocument } from "@/lib/documents/inspection";
 import { levelFromXp } from "@/lib/missions/engine";
 import type { GenerateOptions } from "@/lib/professional-identity/professional-identity-types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -173,6 +174,17 @@ export async function POST(request: Request) {
         .select("*")
         .single();
       if (error) throw error;
+      let inspection = null;
+      if (upload.fileName && upload.fileType && upload.fileSize) {
+        inspection = await inspectAndPersistDocument(supabase, {
+          documentId: data.id,
+          userId: user.id,
+          fileName: upload.fileName,
+          mimeType: upload.fileType,
+          sizeBytes: upload.fileSize,
+          textSample: upload.content ?? ""
+        });
+      }
       return NextResponse.json({
         document: {
           id: data.id,
@@ -187,10 +199,15 @@ export async function POST(request: Request) {
           created_at: data.created_at,
           updated_at: data.updated_at,
           last_downloaded_at: data.last_downloaded_at,
-          file_url: data.file_url
-        }
+          file_url: data.file_url,
+          inspection
+        },
+        inspection
       });
     } catch (error) {
+      if (error instanceof DocumentInspectionError) {
+        return NextResponse.json({ error: error.userMessage }, { status: 400 });
+      }
       console.error("[professional-identity] upload save failed", error);
       return NextResponse.json({ error: friendlyError }, { status: 500 });
     }

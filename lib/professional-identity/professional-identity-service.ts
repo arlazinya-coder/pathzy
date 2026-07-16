@@ -498,7 +498,7 @@ export async function createImportedCvDraft(
     contentSourceId: data?.id ?? null
   };
 
-  await supabase.from("user_documents").insert({
+  const uploadedCvRecord = {
     user_id: userId,
     document_type: "old_cv",
     document_title: `Uploaded CV - ${imported.fileName}`,
@@ -508,6 +508,7 @@ export async function createImportedCvDraft(
       original_file_name: imported.fileName,
       original_file_type: imported.fileType,
       original_file_size: imported.fileSize,
+      inspection: imported.inspection ?? null,
       confidence: imported.confidence,
       counts: imported.counts,
       review_items: imported.reviewItems,
@@ -523,7 +524,12 @@ export async function createImportedCvDraft(
     status: "ready",
     version_number: 1,
     updated_at: now
-  });
+  };
+  if (imported.uploadDocumentId) {
+    await supabase.from("user_documents").update(uploadedCvRecord).eq("id", imported.uploadDocumentId).eq("user_id", userId);
+  } else {
+    await supabase.from("user_documents").insert(uploadedCvRecord);
+  }
 
   await refreshIdentity(supabase, userId);
 
