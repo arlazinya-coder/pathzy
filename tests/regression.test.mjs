@@ -80,6 +80,15 @@ const processingStrategy = readFileSync("lib/documents/inspection/processing-str
 const documentInspectionMigration = readFileSync("supabase/migrations/20260716133000_create_document_inspections.sql", "utf8");
 const documentInspectionSummary = readFileSync("components/documents/DocumentInspectionSummary.tsx", "utf8");
 const documentInspectionStatus = readFileSync("components/documents/DocumentInspectionStatus.tsx", "utf8");
+const documentVisualTypes = readFileSync("lib/documents/visual/visual-reading.types.ts", "utf8");
+const documentVisualService = readFileSync("lib/documents/visual/visual-reading.service.ts", "utf8");
+const documentVisualReader = readFileSync("lib/documents/visual/local-visual-reader.ts", "utf8");
+const documentVisualRenderer = readFileSync("lib/documents/visual/document-renderer.ts", "utf8");
+const documentVisualPrompt = readFileSync("lib/documents/visual/visual-prompt.ts", "utf8");
+const documentVisualCostControl = readFileSync("lib/documents/visual/visual-cost-control.ts", "utf8");
+const documentVisualMigration = readFileSync("supabase/migrations/20260716143000_create_document_visual_readings.sql", "utf8");
+const documentVisualSummary = readFileSync("components/documents/DocumentVisualReadingSummary.tsx", "utf8");
+const documentVisualStatus = readFileSync("components/documents/DocumentVisualReadingStatus.tsx", "utf8");
 const legacyMedicalCvFixture = readFileSync("tests/fixtures/legacy-medical-cv.txt", "utf8");
 const cvImportFixtureMatrix = readFileSync("tests/fixtures/cv-import-matrix.txt", "utf8");
 const cvInterpretationFixtureMatrix = readFileSync("tests/fixtures/cv-interpretation-general-matrix.txt", "utf8");
@@ -702,6 +711,32 @@ for (const statusText of ["Inspecting your document", "Checking document type", 
 }
 assert.match(cvImportRoute, /createUploadShell[\s\S]*inspectAndPersistDocument[\s\S]*importCvFromUpload/, "CV import must inspect and persist the uploaded document before extraction and mapping.");
 assert.match(cvImportRoute, /recommendedPipeline\.extractionAllowed/, "CV import must stop before extraction when inspection disallows it.");
+assert.match(documentVisualTypes, /export type VisualDocumentModel = \{[\s\S]*pages: VisualPage\[\][\s\S]*hierarchy: VisualHierarchyNode\[\][\s\S]*sections: VisualSection\[\][\s\S]*timelines: VisualTimeline\[\][\s\S]*tables: VisualTable\[\][\s\S]*relationships: VisualRelationship\[\][\s\S]*readingOrder: VisualReadingOrderItem\[\]/, "Visual reading must define a canonical visual document model with layout, hierarchy, timelines, tables, relationships and reading order.");
+assert.match(documentVisualTypes, /export type DocumentRenderer[\s\S]*render\(input: DocumentRenderInput\): Promise<RenderedDocument>/, "Visual reading must expose a renderer abstraction before provider analysis.");
+assert.match(documentVisualTypes, /export type VisualDocumentReader[\s\S]*analyze\(input: \{ inspection: DocumentInspectionResult; rendered: RenderedDocument; nativeText: string; decision: VisualReadingDecision \}\): Promise<VisualDocumentModel>/, "Visual reading must expose a provider abstraction that consumes Phase 2 inspection.");
+assert.match(documentVisualService, /runVisualReading[\s\S]*shouldRunVisualReading\(input\.inspection\)[\s\S]*LocalMetadataDocumentRenderer[\s\S]*LocalVisualDocumentReader[\s\S]*validateVisualDocumentModel/, "Visual reading service must orchestrate decision, rendering, provider reading and schema validation.");
+assert.match(documentVisualService, /saveVisualReading[\s\S]*from\("document_visual_readings"\)[\s\S]*onConflict: "document_id"[\s\S]*from\("document_visual_pages"\)\.upsert/, "Visual reading persistence must be idempotent and save page-level models.");
+assert.match(documentVisualService, /markVisualReadingProcessing[\s\S]*markVisualReadingFailed/, "Visual reading must persist processing and failed states.");
+assert.match(documentVisualReader, /buildLocalVisualModel[\s\S]*sections[\s\S]*timelines[\s\S]*tables[\s\S]*icons[\s\S]*relationships/, "Local visual reader must preserve sections, timelines, tables, icons and relationships.");
+assert.match(documentVisualReader, /professionalSummary|summary|experience|education|skills|certifications|languages|references/i, "Visual reading must detect document section hierarchy from visual/text regions.");
+assert.match(documentVisualRenderer, /class LocalMetadataDocumentRenderer[\s\S]*render/, "Visual reading must isolate document rendering behind a renderer class.");
+assert.match(documentVisualPrompt, /not a semantic extraction prompt[\s\S]*visual layout analysis/i, "Visual prompt must separate visual layout reading from semantic extraction.");
+assert.match(documentVisualCostControl, /shouldRunVisualReading[\s\S]*native_layout[\s\S]*vision_layout[\s\S]*hybrid_layout/, "Visual reading must centralize cost and mode decisions.");
+assert.match(documentVisualMigration, /create table if not exists public\.document_visual_readings/, "Visual reading migration must create a visual document model table.");
+assert.match(documentVisualMigration, /create table if not exists public\.document_visual_pages/, "Visual reading migration must create page-level visual records.");
+assert.match(documentVisualMigration, /document_id uuid not null references public\.user_documents\(id\) on delete cascade/, "Visual reading records must link to existing user documents.");
+assert.match(documentVisualMigration, /alter table public\.document_visual_readings enable row level security[\s\S]*alter table public\.document_visual_pages enable row level security/, "Visual reading tables must enable RLS.");
+assert.match(documentVisualMigration, /Users can select own document visual readings[\s\S]*auth\.uid\(\) = user_id[\s\S]*Users can select own document visual pages/, "Visual reading RLS must restrict records to the owning user.");
+assert.match(cvImportRoute, /inspectAndPersistDocument[\s\S]*runAndPersistVisualReading[\s\S]*importCvFromUpload/, "CV import must visually read and persist the document after inspection and before semantic extraction.");
+assert.match(cvImportRoute, /visualReading[\s\S]*importSummary/, "CV import response must include the saved visual reading summary for the frontend.");
+assert.match(professionalIdentityService, /visual_reading: imported\.visualReading/, "Imported old CV records must preserve visual reading metadata.");
+assert.match(professionalIdentityTool, /DocumentVisualReadingStatus[\s\S]*DocumentVisualReadingSummary/, "CV import UI must surface visual reading progress and summary.");
+for (const summaryText of ["Visual Reading Complete", "Pages read", "Reading order", "Layout confidence"]) {
+  assert.match(documentVisualSummary, new RegExp(summaryText), `Visual reading summary UI must show ${summaryText}.`);
+}
+for (const statusText of ["Understanding document layout", "Reading page structure", "Preserving reading order"]) {
+  assert.match(documentVisualStatus, new RegExp(statusText), `Visual reading status UI must show ${statusText}.`);
+}
 const inspectionScanRuntime = loadProductionTsModule("lib/documents/inspection/scan-detector.ts");
 const inspectionTypeRuntime = loadProductionTsModule("lib/documents/inspection/document-type-detector.ts");
 const inspectionLanguageRuntime = loadProductionTsModule("lib/documents/inspection/language-detector.ts");

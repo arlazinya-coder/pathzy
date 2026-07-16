@@ -34,6 +34,7 @@ export type ImportedCvResult = {
   fileSize: number;
   uploadDocumentId?: string;
   inspection?: Record<string, unknown>;
+  visualReading?: Record<string, unknown>;
   confidence: CvImportConfidence;
   reviewItems: string[];
   counts: CvImportCounts;

@@ -3,6 +3,7 @@ import { canCurrentUserUseProfessionalIdentityTools, createImportedCvDraft } fro
 import { CvImportError, importCvFromUpload, validateCvImportFile } from "@/lib/professional-identity/cv-import";
 import type { ImportedCvResult } from "@/lib/professional-identity/cv-import";
 import { DocumentInspectionError, inspectAndPersistDocument } from "@/lib/documents/inspection";
+import { VisualReadingError, runAndPersistVisualReading } from "@/lib/documents/visual";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -123,11 +124,19 @@ export async function POST(request: Request) {
         inspection
       }, { status: 400 });
     }
+    const visualReading = await runAndPersistVisualReading(auth.supabase, {
+      documentId: uploadDocumentId,
+      userId: auth.user.id,
+      inspection,
+      nativeText: "",
+      base64: upload.base64
+    });
 
     const imported = {
       ...importCvFromUpload(upload),
       uploadDocumentId,
-      inspection
+      inspection,
+      visualReading
     };
 
     return NextResponse.json({
@@ -139,6 +148,7 @@ export async function POST(request: Request) {
         unclassifiedItems: imported.unclassifiedItems,
         excludedSensitiveNotice: imported.excludedSensitiveNotice ?? null,
         inspection,
+        visualReading,
         message: "We've prepared your CV."
       }
     });
@@ -147,6 +157,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: caught.userMessage }, { status: 400 });
     }
     if (caught instanceof CvImportError) {
+      return NextResponse.json({ error: caught.userMessage }, { status: 400 });
+    }
+    if (caught instanceof VisualReadingError) {
       return NextResponse.json({ error: caught.userMessage }, { status: 400 });
     }
 
