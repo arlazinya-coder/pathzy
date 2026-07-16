@@ -6,6 +6,8 @@ import { DocumentInspectionStatus } from "@/components/documents/DocumentInspect
 import { DocumentInspectionSummary } from "@/components/documents/DocumentInspectionSummary";
 import { DocumentVisualReadingStatus } from "@/components/documents/DocumentVisualReadingStatus";
 import { DocumentVisualReadingSummary } from "@/components/documents/DocumentVisualReadingSummary";
+import { DocumentSemanticUnderstandingStatus } from "@/components/documents/DocumentSemanticUnderstandingStatus";
+import { DocumentSemanticUnderstandingSummary } from "@/components/documents/DocumentSemanticUnderstandingSummary";
 import { Card } from "@/components/ui";
 import { PremiumUpgradeCard } from "@/components/upgrade/premium-upgrade-card";
 import { TemplateMiniPreview } from "@/components/professional-identity/template-mini-preview";
@@ -15,6 +17,7 @@ import { PATHZY_ROUTES, appRoutes } from "@/lib/navigation/routes";
 import { documentTemplateGallery, normalizeDocumentTemplate, templateMetadata } from "@/lib/professional-identity/document-template-engine";
 import type { DocumentInspectionResult } from "@/lib/documents/inspection";
 import type { VisualDocumentModel } from "@/lib/documents/visual";
+import type { SemanticDocumentModel } from "@/lib/documents/semantic";
 import type { GeneratedProfessionalDocument, GenerateOptions, ProfessionalLanguage } from "@/lib/professional-identity/professional-identity-types";
 
 type Field = {
@@ -188,6 +191,7 @@ type CvImportSummary = {
   excludedSensitiveNotice?: string | null;
   inspection?: DocumentInspectionResult | null;
   visualReading?: VisualDocumentModel | null;
+  semanticReading?: SemanticDocumentModel | null;
 };
 
 function cvVersionFromDocument(document: GeneratedProfessionalDocument | null, fallbackDesign = "Modern ATS"): CvVersionMetadata {
@@ -308,7 +312,7 @@ export function ProfessionalIdentityTool({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [downloadNotice, setDownloadNotice] = useState("");
   const [oldCvNotice, setOldCvNotice] = useState("");
-  const [cvImportStatus, setCvImportStatus] = useState<"idle" | "reading" | "inspecting" | "visual-reading" | "extracting" | "organizing" | "saving" | "ready" | "error">("idle");
+  const [cvImportStatus, setCvImportStatus] = useState<"idle" | "reading" | "inspecting" | "visual-reading" | "semantic-understanding" | "extracting" | "organizing" | "saving" | "ready" | "error">("idle");
   const [cvImportSummary, setCvImportSummary] = useState<CvImportSummary | null>(null);
   const [pendingImportedCv, setPendingImportedCv] = useState<Record<string, unknown> | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -1525,6 +1529,8 @@ export function ProfessionalIdentityTool({
       });
       setCvImportStatus("visual-reading");
       setOldCvNotice("Understanding your document layout and reading order...");
+      setCvImportStatus("semantic-understanding");
+      setOldCvNotice("Understanding your career information...");
       setCvImportStatus("extracting");
       setOldCvNotice("Finding your experience...");
       setCvImportStatus("organizing");
@@ -1781,13 +1787,15 @@ export function ProfessionalIdentityTool({
               ) : null}
               {cvImportStatus !== "idle" && cvImportStatus !== "ready" && cvImportStatus !== "error" ? (
                 <div className="mt-3 overflow-hidden rounded-full bg-white/10">
-                  <div className="h-2 rounded-full bg-gradient-to-r from-[#5B8CFF] to-[#9D5BFF]" style={{ width: cvImportStatus === "reading" ? "18%" : cvImportStatus === "inspecting" ? "36%" : cvImportStatus === "visual-reading" ? "52%" : cvImportStatus === "extracting" ? "64%" : cvImportStatus === "organizing" ? "78%" : "90%" }} />
+                  <div className="h-2 rounded-full bg-gradient-to-r from-[#5B8CFF] to-[#9D5BFF]" style={{ width: cvImportStatus === "reading" ? "18%" : cvImportStatus === "inspecting" ? "34%" : cvImportStatus === "visual-reading" ? "48%" : cvImportStatus === "semantic-understanding" ? "62%" : cvImportStatus === "extracting" ? "72%" : cvImportStatus === "organizing" ? "82%" : "90%" }} />
                 </div>
               ) : null}
               <DocumentInspectionStatus status={cvImportStatus === "inspecting" ? "inspecting" : cvImportSummary?.inspection ? "completed" : cvImportStatus === "error" ? "failed" : "idle"} />
               <DocumentInspectionSummary inspection={cvImportSummary?.inspection} />
               <DocumentVisualReadingStatus status={cvImportStatus === "visual-reading" ? "reading" : cvImportSummary?.visualReading ? "completed" : cvImportStatus === "error" ? "failed" : "idle"} />
               <DocumentVisualReadingSummary visualReading={cvImportSummary?.visualReading} />
+              <DocumentSemanticUnderstandingStatus status={cvImportStatus === "semantic-understanding" ? "understanding" : cvImportSummary?.semanticReading ? "completed" : cvImportStatus === "error" ? "failed" : "idle"} />
+              <DocumentSemanticUnderstandingSummary semanticReading={cvImportSummary?.semanticReading} />
               {cvImportSummary && pendingImportedCv ? (
                 <div className="mt-4 rounded-[18px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

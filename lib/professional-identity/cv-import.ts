@@ -35,6 +35,7 @@ export type ImportedCvResult = {
   uploadDocumentId?: string;
   inspection?: Record<string, unknown>;
   visualReading?: Record<string, unknown>;
+  semanticReading?: Record<string, unknown>;
   confidence: CvImportConfidence;
   reviewItems: string[];
   counts: CvImportCounts;

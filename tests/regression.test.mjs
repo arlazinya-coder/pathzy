@@ -89,6 +89,17 @@ const documentVisualCostControl = readFileSync("lib/documents/visual/visual-cost
 const documentVisualMigration = readFileSync("supabase/migrations/20260716143000_create_document_visual_readings.sql", "utf8");
 const documentVisualSummary = readFileSync("components/documents/DocumentVisualReadingSummary.tsx", "utf8");
 const documentVisualStatus = readFileSync("components/documents/DocumentVisualReadingStatus.tsx", "utf8");
+const documentSemanticTypes = readFileSync("lib/documents/semantic/semantic.types.ts", "utf8");
+const documentSemanticService = readFileSync("lib/documents/semantic/semantic-understanding.service.ts", "utf8");
+const documentSemanticReader = readFileSync("lib/documents/semantic/local-semantic-reader.ts", "utf8");
+const documentSemanticClassifiers = readFileSync("lib/documents/semantic/semantic-classifiers.ts", "utf8");
+const documentSemanticDate = readFileSync("lib/documents/semantic/date-understanding.ts", "utf8");
+const documentSemanticSchema = readFileSync("lib/documents/semantic/semantic.schema.ts", "utf8");
+const documentSemanticPrompt = readFileSync("lib/documents/semantic/semantic-prompt.ts", "utf8");
+const documentSemanticConstants = readFileSync("lib/documents/semantic/semantic.constants.ts", "utf8");
+const documentSemanticMigration = readFileSync("supabase/migrations/20260716153000_create_document_semantic_readings.sql", "utf8");
+const documentSemanticSummary = readFileSync("components/documents/DocumentSemanticUnderstandingSummary.tsx", "utf8");
+const documentSemanticStatus = readFileSync("components/documents/DocumentSemanticUnderstandingStatus.tsx", "utf8");
 const legacyMedicalCvFixture = readFileSync("tests/fixtures/legacy-medical-cv.txt", "utf8");
 const cvImportFixtureMatrix = readFileSync("tests/fixtures/cv-import-matrix.txt", "utf8");
 const cvInterpretationFixtureMatrix = readFileSync("tests/fixtures/cv-interpretation-general-matrix.txt", "utf8");
@@ -736,6 +747,45 @@ for (const summaryText of ["Visual Reading Complete", "Pages read", "Reading ord
 }
 for (const statusText of ["Understanding document layout", "Reading page structure", "Preserving reading order"]) {
   assert.match(documentVisualStatus, new RegExp(statusText), `Visual reading status UI must show ${statusText}.`);
+}
+for (const semanticEntityType of ["profession", "job_title", "qualification", "employer", "language_proficiency", "unknown"]) {
+  assert.match(documentSemanticTypes, new RegExp(`"${semanticEntityType}"`), `Semantic ontology must define ${semanticEntityType}.`);
+}
+assert.match(documentSemanticTypes, /export type SemanticDocumentModel = \{[\s\S]*visualReadingId: string[\s\S]*employment: SemanticEmploymentEntry\[\][\s\S]*education: SemanticEducationEntry\[\][\s\S]*entities: SemanticEntity\[\][\s\S]*relationships: SemanticRelationship\[\][\s\S]*conflicts: SemanticConflict\[\]/, "Semantic model must link to Phase 3 and preserve entities, relationships, entries and conflicts.");
+assert.match(documentSemanticTypes, /reviewStatus: ReviewStatus/, "Semantic values must prepare for user review instead of profile overwrite.");
+assert.match(documentSemanticConstants, /SEMANTIC_CONFIDENCE_WEIGHTS[\s\S]*sourceText[\s\S]*visualContext[\s\S]*relationshipContext/, "Semantic confidence weights must be centralized.");
+assert.match(documentSemanticConstants, /SEMANTIC_STATUS_COPY[\s\S]*Understanding your career information[\s\S]*Compréhension de votre parcours/, "Semantic status copy must include English and French user-facing text.");
+for (const semanticValidationCase of ["missing_source_evidence", "duplicate_entity", "invalid_relationship"]) {
+  assert.match(documentSemanticSchema, new RegExp(semanticValidationCase), `Semantic validation must reject ${semanticValidationCase}.`);
+}
+assert.match(documentSemanticDate, /parseSemanticDateRange[\s\S]*present|current|expected|depuis/i, "Semantic date parser must support ranges, current roles and expected dates.");
+assert.match(documentSemanticClassifiers, /semanticSectionFor[\s\S]*employment[\s\S]*education[\s\S]*certification[\s\S]*languages/, "Semantic classifiers must map multilingual sections to semantic categories.");
+assert.match(documentSemanticClassifiers, /entityTypeForText[\s\S]*Software|software|qualificationPattern[\s\S]*certificationPattern/s, "Semantic classifiers must distinguish professions, qualifications and certifications.");
+for (const languageClassifierSignal of ["isHumanLanguage", "programmingTerms", "normalizeLanguageProficiency"]) {
+  assert.match(documentSemanticClassifiers, new RegExp(languageClassifierSignal), `Semantic classifiers must include ${languageClassifierSignal}.`);
+}
+assert.match(documentSemanticReader, /buildLocalSemanticModel[\s\S]*orderedRegions\(input\.visualReading\)[\s\S]*buildEmployment[\s\S]*buildEducation[\s\S]*buildSkills[\s\S]*buildLanguages/, "Semantic reader must consume Phase 3 visual regions and build career structures.");
+assert.match(documentSemanticReader, /responsibility[\s\S]*achievement|achievement[\s\S]*responsibility/, "Semantic reader must distinguish responsibilities and achievements.");
+assert.match(documentSemanticReader, /conflictWithProfile[\s\S]*career_goal/, "Semantic reader must detect conflicts with the existing profile without overwriting it.");
+assert.match(documentSemanticPrompt, /not copywriting[\s\S]*Do not invent missing facts[\s\S]*source region IDs/, "Semantic prompt must prohibit rewriting, hallucination and ungrounded values.");
+assert.match(documentSemanticService, /runSemanticUnderstanding[\s\S]*visualReading\.status[\s\S]*buildLocalSemanticModel[\s\S]*validateSemanticDocumentModel/, "Semantic service must require Phase 3 output and validate the model.");
+assert.match(documentSemanticService, /saveSemanticUnderstanding[\s\S]*document_semantic_readings[\s\S]*document_semantic_entities[\s\S]*document_semantic_relationships/, "Semantic persistence must save readings, entities and relationships.");
+assert.match(documentSemanticService, /onConflict: "document_id"/, "Semantic processing must be idempotent by document.");
+assert.match(documentSemanticMigration, /create table if not exists public\.document_semantic_readings/, "Semantic migration must create document-level readings.");
+assert.match(documentSemanticMigration, /create table if not exists public\.document_semantic_entities/, "Semantic migration must create entity records.");
+assert.match(documentSemanticMigration, /create table if not exists public\.document_semantic_relationships/, "Semantic migration must create relationship records.");
+assert.match(documentSemanticMigration, /visual_reading_record_id uuid references public\.document_visual_readings\(id\)/, "Semantic readings must link to Phase 3 visual reading records.");
+assert.match(documentSemanticMigration, /alter table public\.document_semantic_readings enable row level security[\s\S]*alter table public\.document_semantic_entities enable row level security[\s\S]*alter table public\.document_semantic_relationships enable row level security/, "Semantic tables must enable RLS.");
+assert.match(documentSemanticMigration, /auth\.uid\(\) = user_id/, "Semantic RLS must restrict records to the owning user.");
+assert.match(cvImportRoute, /inspectAndPersistDocument[\s\S]*runAndPersistVisualReading[\s\S]*runAndPersistSemanticUnderstanding[\s\S]*importCvFromUpload/, "CV import must run inspection, visual reading and semantic understanding before extraction mapping.");
+assert.match(cvImportRoute, /existingProfile[\s\S]*runAndPersistSemanticUnderstanding/, "Semantic understanding must compare existing profile data without overwriting it.");
+assert.match(professionalIdentityService, /semantic_reading: imported\.semanticReading/, "Imported old CV records must preserve semantic reading metadata.");
+assert.match(professionalIdentityTool, /DocumentSemanticUnderstandingStatus[\s\S]*DocumentSemanticUnderstandingSummary/, "CV import UI must surface semantic processing and summary.");
+for (const summaryText of ["Semantic Understanding Complete", "Profession detected", "Employment entries", "Ready for review"]) {
+  assert.match(documentSemanticSummary, new RegExp(summaryText), `Semantic summary UI must show ${summaryText}.`);
+}
+for (const statusText of ["Understanding your career information", "Identifying your profession", "Connecting dates, employers, and roles"]) {
+  assert.match(documentSemanticStatus, new RegExp(statusText), `Semantic status UI must show ${statusText}.`);
 }
 const inspectionScanRuntime = loadProductionTsModule("lib/documents/inspection/scan-detector.ts");
 const inspectionTypeRuntime = loadProductionTsModule("lib/documents/inspection/document-type-detector.ts");

@@ -4,6 +4,7 @@ import { CvImportError, importCvFromUpload, validateCvImportFile } from "@/lib/p
 import type { ImportedCvResult } from "@/lib/professional-identity/cv-import";
 import { DocumentInspectionError, inspectAndPersistDocument } from "@/lib/documents/inspection";
 import { VisualReadingError, runAndPersistVisualReading } from "@/lib/documents/visual";
+import { SemanticUnderstandingError, runAndPersistSemanticUnderstanding } from "@/lib/documents/semantic";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -131,12 +132,25 @@ export async function POST(request: Request) {
       nativeText: "",
       base64: upload.base64
     });
+    const { data: existingProfile } = await auth.supabase
+      .from("user_profiles")
+      .select("full_name,career_goal,current_status,education,country,city")
+      .eq("user_id", auth.user.id)
+      .maybeSingle();
+    const semanticReading = await runAndPersistSemanticUnderstanding(auth.supabase, {
+      documentId: uploadDocumentId,
+      userId: auth.user.id,
+      inspection,
+      visualReading,
+      existingProfile: existingProfile ?? null
+    });
 
     const imported = {
       ...importCvFromUpload(upload),
       uploadDocumentId,
       inspection,
-      visualReading
+      visualReading,
+      semanticReading
     };
 
     return NextResponse.json({
@@ -149,6 +163,7 @@ export async function POST(request: Request) {
         excludedSensitiveNotice: imported.excludedSensitiveNotice ?? null,
         inspection,
         visualReading,
+        semanticReading,
         message: "We've prepared your CV."
       }
     });
@@ -160,6 +175,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: caught.userMessage }, { status: 400 });
     }
     if (caught instanceof VisualReadingError) {
+      return NextResponse.json({ error: caught.userMessage }, { status: 400 });
+    }
+    if (caught instanceof SemanticUnderstandingError) {
       return NextResponse.json({ error: caught.userMessage }, { status: 400 });
     }
 

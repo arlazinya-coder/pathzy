@@ -10,6 +10,7 @@ import {
 } from "@/lib/professional-identity/professional-identity-service";
 import { DocumentInspectionError, inspectAndPersistDocument } from "@/lib/documents/inspection";
 import { VisualReadingError, runAndPersistVisualReading } from "@/lib/documents/visual";
+import { SemanticUnderstandingError, runAndPersistSemanticUnderstanding } from "@/lib/documents/semantic";
 import { levelFromXp } from "@/lib/missions/engine";
 import type { GenerateOptions } from "@/lib/professional-identity/professional-identity-types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -177,6 +178,7 @@ export async function POST(request: Request) {
       if (error) throw error;
       let inspection = null;
       let visualReading = null;
+      let semanticReading = null;
       if (upload.fileName && upload.fileType && upload.fileSize) {
         inspection = await inspectAndPersistDocument(supabase, {
           documentId: data.id,
@@ -191,6 +193,18 @@ export async function POST(request: Request) {
           userId: user.id,
           inspection,
           nativeText: upload.content ?? ""
+        });
+        const { data: existingProfile } = await supabase
+          .from("user_profiles")
+          .select("full_name,career_goal,current_status,education,country,city")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        semanticReading = await runAndPersistSemanticUnderstanding(supabase, {
+          documentId: data.id,
+          userId: user.id,
+          inspection,
+          visualReading,
+          existingProfile: existingProfile ?? null
         });
       }
       return NextResponse.json({
@@ -209,16 +223,21 @@ export async function POST(request: Request) {
           last_downloaded_at: data.last_downloaded_at,
           file_url: data.file_url,
           inspection,
-          visualReading
+          visualReading,
+          semanticReading
         },
         inspection,
-        visualReading
+        visualReading,
+        semanticReading
       });
     } catch (error) {
       if (error instanceof DocumentInspectionError) {
         return NextResponse.json({ error: error.userMessage }, { status: 400 });
       }
       if (error instanceof VisualReadingError) {
+        return NextResponse.json({ error: error.userMessage }, { status: 400 });
+      }
+      if (error instanceof SemanticUnderstandingError) {
         return NextResponse.json({ error: error.userMessage }, { status: 400 });
       }
       console.error("[professional-identity] upload save failed", error);
