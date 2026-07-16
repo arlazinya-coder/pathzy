@@ -2,8 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { cvModelFromUnknown, normalizeCoverLetterTemplate, normalizeCvModelForExport, serializeCoverLetterData, serializeCvModel } from "@/components/professional-identity/document-downloads";
 import type { CoverLetterData, CvModel } from "@/components/professional-identity/document-downloads";
 import type { DiscoveryAnswers, GeneratedRoadmap } from "@/lib/discovery/types";
-import { isPremiumUser } from "@/lib/launch/launch-service";
-import { canExportProfessionalDocuments, canUseProfessionalIdentity } from "@/lib/navigation/permissions";
+import { canAccessFeature, getUserEntitlements, userCanAccessFeature } from "@/lib/access/entitlements";
+import { canExportProfessionalDocuments } from "@/lib/navigation/permissions";
 import { getBrainContextForAI } from "@/lib/pathzy-brain/brain-service";
 import { documentTemplateGallery, normalizeDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
 import type { PremiumDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
@@ -86,16 +86,37 @@ function scoreLabel(score: number): ProfessionalIdentityLabel {
   return "Strong Professional Identity";
 }
 
-export function canUseProfessionalIdentityTools(profile: { plan?: string | null; premium_status?: string | null } | null) {
-  return canUseProfessionalIdentity({ isAuthenticated: true, membership: profile?.plan, premiumStatus: profile?.premium_status });
+export function canUseProfessionalIdentityTools(profile: { plan?: string | null; premium_status?: string | null; founder?: boolean | null; is_admin?: boolean | null } | null) {
+  return canAccessFeature({
+    userId: "",
+    accessLevel: "free",
+    status: "active",
+    isFounder: Boolean(profile?.founder),
+    isAdmin: Boolean(profile?.is_admin),
+    isBetaFull: false,
+    isTrial: false,
+    isPaid: Boolean(["starter", "pro", "premium", "enterprise"].includes(profile?.plan ?? "") || ["starter", "pro", "premium", "enterprise"].includes(profile?.premium_status ?? "")),
+    startsAt: null,
+    expiresAt: null,
+    badge: profile?.founder ? "FOUNDING TESTER" : "PATHZY Member",
+    message: null
+  }, "professional_identity");
 }
 
 export async function canCurrentUserUseProfessionalIdentityTools(supabase: Supabase, userId: string) {
-  return canUseProfessionalIdentity({ isAuthenticated: Boolean(userId), membership: "free" });
+  return Boolean(userId) && userCanAccessFeature(supabase, userId, "professional_identity");
 }
 
 export async function canCurrentUserExportProfessionalDocuments(supabase: Supabase, userId: string) {
-  return canExportProfessionalDocuments({ isAuthenticated: Boolean(userId), membership: (await isPremiumUser(supabase, userId)) ? "premium" : "free" });
+  if (!userId) return false;
+  const entitlements = await getUserEntitlements(supabase, userId);
+  return canExportProfessionalDocuments({
+    isAuthenticated: true,
+    accessLevel: entitlements.accessLevel,
+    entitlementStatus: entitlements.status,
+    isFounder: entitlements.isFounder,
+    isAdmin: entitlements.isAdmin
+  });
 }
 
 function firstString(value: unknown, fallback = "Not provided") {

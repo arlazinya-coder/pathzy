@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { FloatingMentorButton } from "@/components/mentor/floating-mentor-button";
+import { getUserEntitlements } from "@/lib/access/entitlements";
 import { appRoutes } from "@/lib/navigation/routes";
 import { navigation } from "@/lib/pathzy-data";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { createSupabaseServerClient, getCurrentUser } from "@/lib/supabase/server";
 
 type NavigationItem = { label: string; href: string };
 
@@ -18,6 +19,8 @@ function uniqueByHref<T extends NavigationItem>(items: readonly T[]) {
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
+  const supabase = user ? await createSupabaseServerClient() : null;
+  const entitlements = user && supabase ? await getUserEntitlements(supabase, user.id) : null;
   const loggedOutNavigation: NavigationItem[] = [
     { label: "Home", href: appRoutes.home },
     { label: "Pricing", href: appRoutes.pricing }
@@ -50,6 +53,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2">
             {user ? (
               <>
+                {entitlements?.badge === "FOUNDING TESTER" ? (
+                  <span className="hidden rounded-full border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#9df0c4] md:inline-flex" title={entitlements.message ?? undefined}>
+                    FOUNDING TESTER
+                  </span>
+                ) : null}
                 <Link href={appRoutes.roadmap} className="hidden rounded-full border border-white/12 bg-white/8 px-4 py-2 text-sm font-bold text-white/72 transition hover:bg-white/12 hover:text-white sm:inline-flex">
                   Back to My Employment Journey
                 </Link>

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getUserEntitlements } from "@/lib/access/entitlements";
 
 export type LaunchPhase = "founding_tester" | "early_adopter" | "public_user";
 
@@ -174,12 +175,25 @@ export async function getLaunchMembershipStats(supabase: SupabaseClient, current
 
 export async function getCurrentUserAccess(supabase: SupabaseClient, userId: string) {
   const membership = await getMembershipState(supabase, userId);
+  const entitlements = await getUserEntitlements(supabase, userId);
+  const hasFullAccess = entitlements.isFounder || entitlements.isAdmin || entitlements.isBetaFull || entitlements.isTrial || entitlements.isPaid;
   return {
     membership: membershipToLaunchMembership(membership),
-    plan: membership.accessLevel,
-    isPremium: membership.isPremium,
-    badge: membership.label,
-    state: membership
+    plan: entitlements.accessLevel,
+    isPremium: hasFullAccess,
+    hasFullAccess,
+    badge: entitlements.badge === "FOUNDING TESTER" ? "Founding Tester" : membership.label,
+    betaMessage: entitlements.message,
+    entitlements,
+    state: {
+      ...membership,
+      isFounder: entitlements.isFounder || membership.isFounder,
+      isPremium: hasFullAccess,
+      accessLevel: hasFullAccess ? "premium" : "free",
+      badge: entitlements.badge === "FOUNDING TESTER" ? "Founding Tester" : membership.badge,
+      label: entitlements.badge === "FOUNDING TESTER" ? "Founding Tester" : membership.label,
+      premiumUntil: entitlements.expiresAt ?? membership.premiumUntil
+    } satisfies MembershipState
   };
 }
 
