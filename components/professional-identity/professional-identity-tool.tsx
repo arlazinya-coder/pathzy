@@ -29,6 +29,10 @@ type Field = {
 };
 
 type Tool = GeneratedProfessionalDocument["tool"];
+type CvPreviewScaleMode = "fit_page" | "fit_width" | "custom";
+type CvMobileWorkspaceTab = "edit" | "preview";
+
+const cvA4Page = { width: 794, height: 1123 };
 
 const upgradeBenefits = [
   "Unlimited Downloads",
@@ -325,11 +329,16 @@ export function ProfessionalIdentityTool({
   const [previewCoverLetterData, setPreviewCoverLetterData] = useState<CoverLetterData | null>(null);
   const [updateLinkedCvVersions, setUpdateLinkedCvVersions] = useState(false);
   const [cvPreviewMode, setCvPreviewMode] = useState<"designed" | "ats">("designed");
+  const [cvPreviewScaleMode, setCvPreviewScaleMode] = useState<CvPreviewScaleMode>("fit_page");
+  const [cvCustomScale, setCvCustomScale] = useState(0.82);
+  const [cvPreviewScale, setCvPreviewScale] = useState(0.82);
+  const [cvMobileTab, setCvMobileTab] = useState<CvMobileWorkspaceTab>("edit");
   const [coverLetterHealthExpanded, setCoverLetterHealthExpanded] = useState(false);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const coverLetterPreviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewScrollRef = useRef<HTMLDivElement | null>(null);
+  const cvPreviewViewportRef = useRef<HTMLDivElement | null>(null);
 
   const outputTitle = useMemo(() => document?.title ?? "Your generated draft will appear here.", [document]);
   const recoveryKey = `pathzy-document-draft:${tool}`;
@@ -339,6 +348,8 @@ export function ProfessionalIdentityTool({
   const health = useMemo(() => cvHealthScore(previewCvModel ?? cvModel), [previewCvModel, cvModel]);
   const coverLetterHealth = useMemo(() => coverLetterHealthStatus(previewCoverLetterData ?? coverLetterData), [previewCoverLetterData, coverLetterData]);
   const activeCvVersion = useMemo(() => tool === "cv" ? cvVersionFromDocument(document, templateName) : null, [document, templateName, tool]);
+  const cvPreviewHtml = useMemo(() => tool === "cv" && previewCvModel ? (cvPreviewMode === "ats" ? renderAtsCvHtmlFromModel(previewCvModel) : renderCvHtmlFromModel(previewCvModel, templateName, activeCvSection)) : "", [activeCvSection, cvPreviewMode, previewCvModel, templateName, tool]);
+  const cvPreviewPageCount = useMemo(() => Math.max(1, (cvPreviewHtml.match(/cv-render-page-frame/g) ?? []).length || (cvPreviewHtml ? 1 : 0)), [cvPreviewHtml]);
 
   useEffect(() => {
     if (tool !== "cv" || !activeCvSection) return;
@@ -362,6 +373,35 @@ export function ProfessionalIdentityTool({
       if (previewTimer.current) clearTimeout(previewTimer.current);
     };
   }, [cvModel, tool]);
+
+  useEffect(() => {
+    if (tool !== "cv") return;
+    const target = cvPreviewViewportRef.current;
+    if (!target) return;
+    let frame = 0;
+    const calculateScale = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const rect = target.getBoundingClientRect();
+        const padding = 72;
+        const availableWidth = Math.max(240, rect.width - padding);
+        const availableHeight = Math.max(320, rect.height - padding);
+        const fitPageScale = Math.min(availableWidth / cvA4Page.width, availableHeight / cvA4Page.height);
+        const fitWidthScale = availableWidth / cvA4Page.width;
+        const nextScale = cvPreviewScaleMode === "fit_page" ? fitPageScale : cvPreviewScaleMode === "fit_width" ? fitWidthScale : cvCustomScale;
+        setCvPreviewScale(Number(Math.max(0.32, Math.min(1.35, nextScale)).toFixed(3)));
+      });
+    };
+    calculateScale();
+    const observer = new ResizeObserver(calculateScale);
+    observer.observe(target);
+    window.addEventListener("orientationchange", calculateScale);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener("orientationchange", calculateScale);
+    };
+  }, [cvCustomScale, cvPreviewScaleMode, tool, cvPreviewMode]);
 
   useEffect(() => {
     if (tool !== "cover-letter") return;
@@ -1578,6 +1618,101 @@ export function ProfessionalIdentityTool({
     }
   }
 
+  function setCvZoom(nextScale: number) {
+    const clamped = Number(Math.max(0.35, Math.min(1.35, nextScale)).toFixed(2));
+    setCvCustomScale(clamped);
+    setCvPreviewScaleMode("custom");
+    setCvPreviewScale(clamped);
+  }
+
+  function renderCvMobileTabs() {
+    if (tool !== "cv") return null;
+    return (
+      <div className="grid grid-cols-2 gap-2 rounded-[18px] border border-white/10 bg-white/6 p-2 lg:hidden" role="tablist" aria-label="CV workspace view">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={cvMobileTab === "edit"}
+          onClick={() => setCvMobileTab("edit")}
+          className={`rounded-[14px] px-4 py-3 text-sm font-extrabold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8fb0ff] ${cvMobileTab === "edit" ? "bg-[#5B8CFF]/20 text-white" : "text-white/62"}`}
+        >
+          Edit CV
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={cvMobileTab === "preview"}
+          onClick={() => setCvMobileTab("preview")}
+          className={`rounded-[14px] px-4 py-3 text-sm font-extrabold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8fb0ff] ${cvMobileTab === "preview" ? "bg-[#5B8CFF]/20 text-white" : "text-white/62"}`}
+        >
+          Preview CV
+        </button>
+      </div>
+    );
+  }
+
+  function renderCvPreviewToolbar() {
+    return (
+      <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-2 rounded-[18px] border border-white/10 bg-[#071025]/95 p-2 backdrop-blur" aria-label="CV preview controls">
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setCvPreviewScaleMode("fit_page")} aria-pressed={cvPreviewScaleMode === "fit_page"} className={`rounded-full border px-3 py-2 text-xs font-extrabold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8fb0ff] ${cvPreviewScaleMode === "fit_page" ? "border-[#8fb0ff] bg-[#5B8CFF]/18 text-white" : "border-white/12 bg-white/8 text-white/72"}`}>
+            Fit Page
+          </button>
+          <button type="button" onClick={() => setCvPreviewScaleMode("fit_width")} aria-pressed={cvPreviewScaleMode === "fit_width"} className={`rounded-full border px-3 py-2 text-xs font-extrabold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8fb0ff] ${cvPreviewScaleMode === "fit_width" ? "border-[#8fb0ff] bg-[#5B8CFF]/18 text-white" : "border-white/12 bg-white/8 text-white/72"}`}>
+            Fit Width
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setCvZoom(cvPreviewScale - 0.08)} aria-label="Zoom Out" className="grid h-9 w-9 place-items-center rounded-full border border-white/12 bg-white/8 text-sm font-black text-white/78 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8fb0ff]">
+            -
+          </button>
+          <span className="min-w-[54px] text-center text-xs font-black text-white/72" aria-live="polite">{Math.round(cvPreviewScale * 100)}%</span>
+          <button type="button" onClick={() => setCvZoom(cvPreviewScale + 0.08)} aria-label="Zoom In" className="grid h-9 w-9 place-items-center rounded-full border border-white/12 bg-white/8 text-sm font-black text-white/78 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8fb0ff]">
+            +
+          </button>
+          <span className="hidden rounded-full bg-white/8 px-3 py-2 text-xs font-extrabold text-white/54 sm:inline-flex">Page 1 of {cvPreviewPageCount}</span>
+        </div>
+      </div>
+    );
+  }
+
+  function renderCvPreviewViewer() {
+    if (!document?.content || !previewCvModel) {
+      return (
+        <div className="mt-5 grid min-h-[420px] place-items-center rounded-[22px] border border-dashed border-white/14 bg-white/5 text-center">
+          <div>
+            <h3 className="text-xl font-black">Your A4 preview will appear here.</h3>
+            <p className="mt-3 max-w-sm text-sm leading-6 text-white/58">Generate a draft first, then the preview will update live as you edit.</p>
+          </div>
+        </div>
+      );
+    }
+
+    const pageGap = 28;
+    const scaledWidth = cvA4Page.width * cvPreviewScale;
+    const scaledHeight = cvPreviewPageCount * cvA4Page.height * cvPreviewScale + Math.max(0, cvPreviewPageCount - 1) * pageGap * cvPreviewScale;
+
+    return (
+      <div className="mt-5 grid min-h-0 gap-3 lg:h-[calc(100%_-_92px)]">
+        {renderCvPreviewToolbar()}
+        <div
+          ref={cvPreviewViewportRef}
+          className="min-h-[360px] overflow-visible rounded-[22px] border border-white/10 bg-[#dfe7f3] p-4 text-black lg:min-h-0 lg:flex-1 lg:overflow-auto"
+          aria-label="Live CV A4 preview"
+        >
+          <div ref={previewScrollRef} className="relative mx-auto" style={{ width: scaledWidth, minHeight: `${scaledHeight + 32}px` }}>
+            <div
+              className="absolute left-1/2 top-0 origin-top"
+              style={{ width: cvA4Page.width, transform: `translateX(-50%) scale(${cvPreviewScale})`, transformOrigin: "top center" }}
+            >
+              <div dangerouslySetInnerHTML={{ __html: cvPreviewHtml }} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (upgradeRequired || exportUpgradeRequired) {
     return (
       <PremiumUpgradeCard
@@ -1594,10 +1729,11 @@ export function ProfessionalIdentityTool({
     );
   }
 
-  const workspaceClass = tool === "cv" || tool === "cover-letter" ? "grid gap-5 lg:grid-cols-4" : "grid gap-5 lg:grid-cols-[.82fr_1fr]";
+  const workspaceClass = tool === "cv" ? "grid gap-5 lg:grid-cols-2 lg:items-stretch" : tool === "cover-letter" ? "grid gap-5 lg:grid-cols-4" : "grid gap-5 lg:grid-cols-[.82fr_1fr]";
 
   return (
     <div className={workspaceClass}>
+      {renderCvMobileTabs()}
       {tool !== "cv" && tool !== "cover-letter" ? (
         <Card>
           <>
@@ -1650,7 +1786,7 @@ export function ProfessionalIdentityTool({
         </Card>
       ) : null}
 
-      <Card className={tool === "cv" || tool === "cover-letter" ? "lg:col-span-1" : undefined}>
+      <Card className={tool === "cv" ? `${cvMobileTab === "edit" ? "block" : "hidden"} lg:block lg:h-[calc(100vh_-_164px)] lg:min-h-[680px] lg:overflow-y-auto` : tool === "cover-letter" ? "lg:col-span-1" : undefined}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">{tool === "cv" || tool === "cover-letter" ? "Structured editor" : "Preview"}</p>
@@ -1746,7 +1882,7 @@ export function ProfessionalIdentityTool({
       </Card>
 
       {tool === "cv" ? (
-        <Card className="lg:col-span-3">
+        <Card className={`${cvMobileTab === "preview" ? "block" : "hidden"} lg:block lg:h-[calc(100vh_-_164px)] lg:min-h-[680px] lg:overflow-hidden`}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Live preview engine</p>
@@ -1829,18 +1965,7 @@ export function ProfessionalIdentityTool({
               ) : null}
             </div>
           ) : null}
-          {document?.content && previewCvModel ? (
-            <div ref={previewScrollRef} className="mt-5 rounded-[22px] bg-[#dfe7f3] p-3 text-black">
-              <div dangerouslySetInnerHTML={{ __html: cvPreviewMode === "ats" ? renderAtsCvHtmlFromModel(previewCvModel) : renderCvHtmlFromModel(previewCvModel, templateName, activeCvSection) }} />
-            </div>
-          ) : (
-            <div className="mt-5 grid min-h-[420px] place-items-center rounded-[22px] border border-dashed border-white/14 bg-white/5 text-center">
-              <div>
-                <h3 className="text-xl font-black">Your A4 preview will appear here.</h3>
-                <p className="mt-3 max-w-sm text-sm leading-6 text-white/58">Generate a draft first, then the preview will update live as you edit.</p>
-              </div>
-            </div>
-          )}
+          {renderCvPreviewViewer()}
         </Card>
       ) : null}
 
@@ -1938,7 +2063,7 @@ export function ProfessionalIdentityTool({
       {tool === "cover-letter" ? renderCoverLetterTemplateGallery() : null}
 
       {tool === "cv" ? (
-        <Card className="lg:col-span-4">
+        <Card className="lg:col-span-2">
           <div className="rounded-[22px] border border-white/10 bg-white/6 p-4">
             <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
@@ -2064,7 +2189,7 @@ export function ProfessionalIdentityTool({
     const heading = tool === "cv" ? "Your CV is ready. What would you like to do next?" : tool === "cover-letter" ? "Your cover letter is ready. What would you like to do next?" : "Your LinkedIn profile is ready. What would you like to do next?";
 
     return (
-      <Card className="lg:col-span-4">
+      <Card className={tool === "cv" ? "lg:col-span-2" : "lg:col-span-4"}>
         <div className="rounded-[20px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-5">
           <h3 className="text-xl font-black">{heading}</h3>
           <div className="mt-4 flex flex-wrap gap-2">

@@ -481,8 +481,13 @@ assert.match(professionalIdentityTool, /setFocusedNewRepeatableItem\(`\$\{title\
 for (const sectionName of ["Certifications", "Achievements", "References", "Volunteer Experience", "Awards", "Publications", "Conferences", "Professional Memberships", "Interests", "Portfolio Links"]) {
   assert.match(professionalIdentityTool, new RegExp(`"${sectionName}"`), `${sectionName} must remain available as a repeatable CV section.`);
 }
-assert.doesNotMatch(professionalIdentityTool, /previewZoom|setPreviewZoom|Fit width|75%|100%|125%/, "CV builder must not show manual zoom controls in the stabilized layout.");
-assert.doesNotMatch(professionalIdentityTool, /max-h-\[calc\(100vh-.*overflow-auto/, "CV builder must not use nested scroll containers for editor or preview.");
+assert.match(professionalIdentityTool, /type CvPreviewScaleMode = "fit_page" \| "fit_width" \| "custom"/, "CV preview must support fit-page, fit-width, and custom zoom modes.");
+assert.match(professionalIdentityTool, /const cvA4Page = \{ width: 794, height: 1123 \}/, "CV preview scaling must use the same A4 page dimensions as the export renderer.");
+assert.match(professionalIdentityTool, /ResizeObserver\(calculateScale\)/, "CV preview must recalculate fit-page scaling when its viewport changes.");
+assert.match(professionalIdentityTool, /availableWidth \/ cvA4Page\.width[\s\S]*availableHeight \/ cvA4Page\.height/, "CV Fit Page must account for both preview width and height.");
+assert.match(professionalIdentityTool, /Fit Page[\s\S]*Fit Width[\s\S]*aria-label="Zoom Out"[\s\S]*aria-label="Zoom In"/, "CV preview must expose Fit Page, Fit Width, Zoom Out, and Zoom In controls.");
+assert.match(professionalIdentityTool, /Edit CV[\s\S]*Preview CV/, "Mobile CV workspace must use Edit CV and Preview CV tabs.");
+assert.match(professionalIdentityTool, /const scaledWidth = cvA4Page\.width \* cvPreviewScale[\s\S]*style=\{\{ width: scaledWidth, minHeight:/, "Mobile CV preview must reserve only the scaled A4 width to prevent horizontal overflow.");
 assert.match(documentDownloads, /if \(clean\.length\) sections\.push\(\{ title, items: clean \}\);/, "Empty CV sections must be hidden from preview and PDF.");
 assert.match(documentDownloads, /forbiddenOutputPatterns[\s\S]*\/pathzy\/i[\s\S]*\/will not invent\/i[\s\S]*\/add your\/i/, "Export renderer must filter internal PATHZY guidance and placeholders.");
 assert.match(documentDownloads, /function chunkLines/, "Long CV content must be chunked for pagination.");
@@ -567,11 +572,12 @@ assert.match(professionalIdentityTool, /activeCvSection === title[\s\S]*setActiv
 assert.match(professionalIdentityTool, /data-cv-editor-form-flow="single-column"/, "Expanded CV accordion editors must use a single-column field flow.");
 assert.doesNotMatch(professionalIdentityTool, /renderHeaderEditor[\s\S]*sm:grid-cols-2/, "Header expanded accordion content must not place editable fields in two columns.");
 assert.match(professionalIdentityTool, /Full name[\s\S]*Target role[\s\S]*Email[\s\S]*Phone[\s\S]*City[\s\S]*Country[\s\S]*LinkedIn[\s\S]*Portfolio/, "Header editor must preserve all existing fields in vertical order.");
-assert.match(professionalIdentityTool, /tool === "cv" \|\| tool === "cover-letter" \? "grid gap-5 lg:grid-cols-4"/, "CV workspace must keep the normal app grid layout while Cover Letter reuses it.");
-assert.match(professionalIdentityTool, /<Card className=\{tool === "cv" \|\| tool === "cover-letter" \? "lg:col-span-1"/, "CV editor must stay in the normal left editing zone.");
-assert.match(professionalIdentityTool, /<Card className="lg:col-span-3">/, "CV A4 preview must stay in the normal layout beside the editing zone.");
-assert.doesNotMatch(professionalIdentityTool, /cvStudioMode|setCvStudioMode|xl:sticky|xl:max-h-\[calc\(100vh-112px\)\]|xl:overflow-y-auto/, "CV editor must not use the rejected complex sticky or independent-scroll studio architecture.");
-assert.doesNotMatch(professionalIdentityTool, /absolute|fixed|z-\[|z-[1-9]/, "CV preview/gallery repair must not use positioning or z-index hacks.");
+assert.match(professionalIdentityTool, /tool === "cv" \? "grid gap-5 lg:grid-cols-2 lg:items-stretch"/, "CV workspace must use a 50/50 desktop editor and preview layout.");
+assert.match(professionalIdentityTool, /tool === "cover-letter" \? "grid gap-5 lg:grid-cols-4"/, "Cover Letter workspace must keep its existing four-column layout.");
+assert.match(professionalIdentityTool, /tool === "cv" \? `\$\{cvMobileTab === "edit" \? "block" : "hidden"\} lg:block lg:h-\[calc\(100vh_-_164px\)\] lg:min-h-\[680px\] lg:overflow-y-auto`/, "CV editor must be independently scrollable in the desktop 50% column and tabbed on mobile.");
+assert.match(professionalIdentityTool, /cvMobileTab === "preview" \? "block" : "hidden"[\s\S]*lg:h-\[calc\(100vh_-_164px\)\] lg:min-h-\[680px\] lg:overflow-hidden/, "CV preview must stay in a viewport-controlled desktop column and switch behind the Preview CV mobile tab.");
+assert.match(professionalIdentityTool, /renderCvPreviewViewer\(\)/, "CV A4 preview must render through the shared fit-page preview viewer.");
+assert.match(professionalIdentityTool, /ref=\{cvPreviewViewportRef\}[\s\S]*aria-label="Live CV A4 preview"/, "CV preview viewer must measure the real preview viewport.");
 assert.match(professionalIdentityTool, /function renderCvCompactStatus/, "CV Health and save state must be compact in the editor heading area.");
 assert.match(professionalIdentityTool, /function saveStatusLabel/, "CV Document Studio must centralize compact save status text.");
 assert.doesNotMatch(professionalIdentityTool, /mainCvSections\.slice\(1\)\.map/, "CV editor must not render the old endless stacked section editor.");
@@ -910,8 +916,8 @@ assert.match(professionalIdentityTool, /template_name: draft\.designSystem,[\s\S
 assert.doesNotMatch(professionalCoverLetterPage, /premiumDocumentTemplates|documentTemplateGallery\.map/, "Cover Letter page must not render the old borrowed CV template strip.");
 assert.match(professionalIdentityTool, /previewCoverLetterData/, "Cover Letter preview must use a stable debounced preview data state.");
 assert.match(professionalIdentityTool, /setTimeout\(\(\) => \{\s*setPreviewCoverLetterData\(coverLetterData\);\s*\}, 260\);/, "Cover Letter live preview must debounce updates to avoid shaking while typing.");
-assert.match(professionalIdentityTool, /tool === "cv" \|\| tool === "cover-letter" \? "grid gap-5 lg:grid-cols-4"/, "Cover Letter workspace must reuse the same stable four-column desktop grid as My CV.");
-assert.match(professionalIdentityTool, /tool === "cv" \|\| tool === "cover-letter" \? "lg:col-span-1"/, "Cover Letter structured editor must use the same left-column span as My CV.");
+assert.match(professionalIdentityTool, /tool === "cover-letter" \? "grid gap-5 lg:grid-cols-4"/, "Cover Letter workspace must keep its stable four-column desktop grid.");
+assert.match(professionalIdentityTool, /tool === "cover-letter" \? "lg:col-span-1"/, "Cover Letter structured editor must keep the left-column span.");
 assert.match(professionalIdentityTool, /<Card className="lg:col-span-3">[\s\S]*Live preview engine[\s\S]*\{selectedTemplateMetadata\.name\} Cover Letter/, "Cover Letter live preview must use the same right-column preview card span as My CV.");
 assert.match(professionalIdentityTool, /renderCoverLetterCompactStatus\(\)/, "Cover Letter editor must show Cover Letter Health in the structured editor.");
 assert.match(professionalIdentityTool, /Cover Letter Health/, "Cover Letter health label must be visible.");
