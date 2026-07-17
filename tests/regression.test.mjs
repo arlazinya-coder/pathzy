@@ -720,6 +720,9 @@ assert.match(professionalIdentityService, /document_type: "old_cv"[\s\S]*content
 assert.match(professionalIdentityService, /contentJson: \{[\s\S]*cvModel,[\s\S]*cvVersion,[\s\S]*cvImport:/, "Imported CV draft must persist the canonical cvModel and import metadata.");
 assert.match(professionalIdentityTool, /\/api\/professional-identity\/import-cv/, "CV upload UI must call the real import route.");
 assert.match(professionalIdentityTool, /Review Imported CV/, "Successful CV import must pause at a review summary before opening the editor.");
+assert.match(professionalIdentityTool, /setCvImportSummary\(data\.importSummary \?\? null\);[\s\S]*setCvImportStatus\("ready"\);[\s\S]*Your PATHZY CV is ready to review/, "Successful CV import must clear the preparing state and show review-ready copy.");
+assert.match(professionalIdentityTool, /cvImportStatus === "ready" && pendingImportedCv \? \([\s\S]*id="imported-cv-review"[\s\S]*Review Imported CV/, "Successful CV import must expose a visible review action whenever a staged CV is ready.");
+assert.match(professionalIdentityTool, /Review Imported CV[\s\S]*focus-visible:outline/, "Imported CV review action must keep a visible keyboard focus state.");
 assert.match(professionalIdentityTool, /confirmImportedCv/, "Reviewing an imported CV must confirm staging before creating the saved draft.");
 assert.match(professionalIdentityTool, /setCvDocument\(data\.document, true\)/, "Confirmed imported CV drafts must open the existing structured CV editor.");
 assert.doesNotMatch(professionalIdentityTool, /accept="\.pdf,\.docx,\.png|image\/png|image\/jpeg/, "CV import UI must not advertise unsupported image OCR.");

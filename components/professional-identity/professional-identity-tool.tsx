@@ -1580,11 +1580,15 @@ export function ProfessionalIdentityTool({
       setOldCvNotice("Organising your education and skills...");
       const data = await response.json();
       if (!response.ok || data.error) throw new Error(data.error ?? "We could not complete the CV import. Your existing PATHZY information is safe.");
+      if (!data.staging) throw new Error("We could not prepare your imported CV for review. Please try again.");
       setCvImportStatus("saving");
       setPendingImportedCv(data.staging);
-      setCvImportSummary(data.importSummary);
-      setOldCvNotice("Preparing your PATHZY CV...");
+      setCvImportSummary(data.importSummary ?? null);
       setCvImportStatus("ready");
+      setOldCvNotice("Your PATHZY CV is ready to review. Select Review Imported CV to open it in the editor.");
+      window.requestAnimationFrame(() => {
+        window.document.getElementById("imported-cv-review")?.scrollIntoView({ block: "center", behavior: "smooth" });
+      });
     } catch (caught) {
       console.error("[professional-identity] CV import failed", caught instanceof Error ? caught.message : caught);
       setCvImportStatus("error");
@@ -1936,21 +1940,25 @@ export function ProfessionalIdentityTool({
               <DocumentSemanticUnderstandingStatus status={cvImportStatus === "semantic-understanding" ? "understanding" : cvImportSummary?.semanticReading ? "completed" : cvImportStatus === "error" ? "failed" : "idle"} />
               <DocumentSemanticUnderstandingSummary semanticReading={cvImportSummary?.semanticReading} />
               <DocumentReasoningSummary reasoning={cvImportSummary?.reasoning} />
-              {cvImportSummary && pendingImportedCv ? (
-                <div className="mt-4 rounded-[18px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-4">
+              {cvImportStatus === "ready" && pendingImportedCv ? (
+                <div id="imported-cv-review" className="mt-4 rounded-[18px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <p className="text-sm font-black text-white">{cvImportSummary.message}</p>
-                      <p className="mt-1 text-sm leading-6 text-[#b9f8d5]">
-                        We found {cvImportSummary.counts.workExperiences} work experiences, {cvImportSummary.counts.educationRecords} education records, {cvImportSummary.counts.skills} skills, {cvImportSummary.counts.certifications} qualifications, {cvImportSummary.counts.languages} languages, and {cvImportSummary.counts.references} references.
-                      </p>
-                      {cvImportSummary.counts.unclassifiedItems ? (
+                      <p className="text-sm font-black text-white">{cvImportSummary?.message ?? "Your imported CV is ready for review."}</p>
+                      {cvImportSummary?.counts ? (
+                        <p className="mt-1 text-sm leading-6 text-[#b9f8d5]">
+                          We found {cvImportSummary.counts.workExperiences} work experiences, {cvImportSummary.counts.educationRecords} education records, {cvImportSummary.counts.skills} skills, {cvImportSummary.counts.certifications} qualifications, {cvImportSummary.counts.languages} languages, and {cvImportSummary.counts.references} references.
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-sm leading-6 text-[#b9f8d5]">PATHZY prepared your imported CV. Review it before saving it as your draft.</p>
+                      )}
+                      {cvImportSummary?.counts.unclassifiedItems ? (
                         <p className="mt-2 text-xs font-bold text-[#ffe2a8]">{cvImportSummary.counts.unclassifiedItems} item{cvImportSummary.counts.unclassifiedItems === 1 ? "" : "s"} stayed unclassified for review instead of being guessed.</p>
                       ) : null}
-                      {cvImportSummary.excludedSensitiveNotice ? (
+                      {cvImportSummary?.excludedSensitiveNotice ? (
                         <p className="mt-2 text-xs font-bold text-[#c7d6ff]">{cvImportSummary.excludedSensitiveNotice}</p>
                       ) : null}
-                      {cvImportSummary.reviewItems.length ? (
+                      {cvImportSummary?.reviewItems.length ? (
                         <p className="mt-2 text-xs font-bold text-[#ffe2a8]">{cvImportSummary.reviewItems.length} item{cvImportSummary.reviewItems.length === 1 ? "" : "s"} may need your review.</p>
                       ) : (
                         <p className="mt-2 text-xs font-bold text-[#b9f8d5]">Imported details are ready for review.</p>
@@ -1959,10 +1967,9 @@ export function ProfessionalIdentityTool({
                     <button
                       type="button"
                       onClick={confirmImportedCv}
-                      disabled={cvImportStatus === "saving"}
-                      className="h-[44px] shrink-0 rounded-full blue-purple px-5 text-sm font-extrabold text-white"
+                      className="h-[44px] shrink-0 rounded-full blue-purple px-5 text-sm font-extrabold text-white transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8fb0ff]"
                     >
-                      {cvImportStatus === "saving" ? "Saving Draft" : "Review Imported CV"}
+                      Review Imported CV
                     </button>
                   </div>
                 </div>
