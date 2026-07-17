@@ -116,6 +116,18 @@ const canonicalProfileView = readFileSync("lib/canonical-profile/canonical-profi
 const canonicalProfileTranslations = readFileSync("lib/canonical-profile/canonical-profile-translations.ts", "utf8");
 const canonicalProfileOverview = readFileSync("components/professional-identity/canonical-profile-overview.tsx", "utf8");
 const canonicalProfileMigration = readFileSync("supabase/migrations/20260716183000_create_canonical_professional_identity.sql", "utf8");
+const professionalDocumentTypes = readFileSync("lib/professional-documents/professional-document.types.ts", "utf8");
+const professionalDocumentService = readFileSync("lib/professional-documents/professional-document-service.ts", "utf8");
+const professionalDocumentsMigration = readFileSync("supabase/migrations/20260716193000_create_professional_documents.sql", "utf8");
+const jobIntelligenceTypes = readFileSync("lib/job-intelligence/job-intelligence.types.ts", "utf8");
+const jobRequirementParser = readFileSync("lib/job-intelligence/job-requirement-parser.ts", "utf8");
+const jobMatchEngine = readFileSync("lib/job-intelligence/job-match-engine.ts", "utf8");
+const jobTargetedCvBridge = readFileSync("lib/job-intelligence/targeted-cv-bridge.ts", "utf8");
+const jobIntelligenceService = readFileSync("lib/job-intelligence/job-intelligence-service.ts", "utf8");
+const jobIntelligenceTranslations = readFileSync("lib/job-intelligence/job-intelligence-translations.ts", "utf8");
+const jobIntelligenceMigration = readFileSync("supabase/migrations/20260717103000_create_job_intelligence.sql", "utf8");
+const opportunitiesPage = readFileSync("app/opportunities/page.tsx", "utf8");
+const opportunitiesHub = readFileSync("components/opportunities/opportunities-hub.tsx", "utf8");
 const legacyMedicalCvFixture = readFileSync("tests/fixtures/legacy-medical-cv.txt", "utf8");
 const cvImportFixtureMatrix = readFileSync("tests/fixtures/cv-import-matrix.txt", "utf8");
 const cvInterpretationFixtureMatrix = readFileSync("tests/fixtures/cv-interpretation-general-matrix.txt", "utf8");
@@ -1067,5 +1079,58 @@ for (const sectionName of ["1. Personal Header", "2. Application Details", "3. G
 }
 assert.match(professionalIdentityTool, /Add paragraph/, "Cover Letter body paragraphs must support adding a paragraph.");
 assert.match(professionalIdentityTool, /draft\.bodyParagraphs = next;/, "Cover Letter body paragraphs must support editing and ordering through coverLetterData.");
+assert.match(professionalDocumentTypes, /export type ProfessionalDocumentType = "cv" \| "cover_letter" \| "professional_bio" \| "linkedin_profile" \| "application_summary"/, "Phase 7 professional documents must define reusable document types.");
+assert.match(professionalDocumentTypes, /export type CvViewConfiguration = \{[\s\S]*purpose: CvPurpose;[\s\S]*targetRole\?: string;[\s\S]*targetJobId\?: string;[\s\S]*selectedEntityIds:/, "Phase 7 CV configuration must be target-aware without duplicating the canonical profile.");
+assert.match(professionalDocumentService, /getOrCreateCanonicalProfile\(supabase, input\.userId\)/, "Professional documents must use the canonical professional identity as source of truth.");
+assert.match(professionalDocumentService, /persistProfessionalDocument/, "Phase 7 must persist generated documents through a dedicated document service.");
+for (const tableName of ["professional_documents", "professional_document_fields", "professional_document_exports"]) {
+  assert.match(professionalDocumentsMigration, new RegExp(`create table if not exists public\\.${tableName}`), `Phase 7 migration must create ${tableName}.`);
+  assert.match(professionalDocumentsMigration, new RegExp(`alter table public\\.${tableName} enable row level security`), `${tableName} must enable RLS.`);
+}
+assert.match(jobIntelligenceTypes, /export type JobRequirementImportance = "mandatory" \| "preferred" \| "context"/, "Phase 8 must distinguish mandatory, preferred, and context requirements.");
+assert.match(jobIntelligenceTypes, /export type JobRequirementCategory =[\s\S]*"skill"[\s\S]*"experience"[\s\S]*"education"[\s\S]*"certification"[\s\S]*"language"/, "Phase 8 must classify job requirements into reusable categories.");
+assert.match(jobIntelligenceTypes, /export type JobMatchAnalysis = \{[\s\S]*canonicalProfileId: string;[\s\S]*profileVersion: number;[\s\S]*strengths: JobRequirementMatch\[];[\s\S]*gaps: JobGap\[];[\s\S]*uncertainties: JobRequirementMatch\[];[\s\S]*targetedCvPlan: TargetedCvPreparationPlan;/, "Phase 8 analysis must connect job fit to a canonical profile version and targeted CV plan.");
+assert.match(jobIntelligenceTypes, /export type TargetedCvPreparationPlan = \{[\s\S]*cvConfiguration:[\s\S]*truthfulPositioning: string\[];[\s\S]*blockedClaims: string\[];/, "Targeted CV preparation must separate truthful evidence from blocked unsupported claims.");
+assert.match(jobRequirementParser, /export function inspectJobAdvertisement/, "Phase 8 must inspect raw job advertisements into structured opportunities.");
+assert.match(jobRequirementParser, /mandatorySignals[\s\S]*preferredSignals[\s\S]*inferCategory/, "Job inspection must separate importance and category instead of using a single generic score.");
+assert.match(jobMatchEngine, /export function analyzeJobAgainstCanonicalProfile/, "Phase 8 must compare jobs against the canonical professional identity.");
+assert.match(jobMatchEngine, /collectEvidence\(profile: CanonicalProfessionalIdentity\)/, "Job matching must collect evidence from CanonicalProfessionalIdentity.");
+assert.match(jobMatchEngine, /profile\.skills[\s\S]*profile\.employment[\s\S]*profile\.education[\s\S]*profile\.certifications[\s\S]*profile\.languages[\s\S]*profile\.projects/, "Job matching must consider profile, employment, education, certifications, languages, projects and skills.");
+assert.match(jobMatchEngine, /explicitness === "unconfirmed_implied"/, "Job matching must not treat unconfirmed implied skills as verified evidence.");
+assert.match(jobMatchEngine, /nextActions:[\s\S]*Prepare truthful targeted CV[\s\S]*Track this opportunity/, "Job Intelligence must guide the user without becoming an automatic application bot.");
+assert.doesNotMatch(jobMatchEngine, /from\("user_documents"\)|last uploaded|latest CV|cv_documents/i, "Job matching must not use the last uploaded CV or saved documents as source of truth.");
+assert.match(jobTargetedCvBridge, /defaultCvViewConfiguration\(\{[\s\S]*purpose: "targeted"[\s\S]*targetJobId: input\.job\.id/, "Phase 8 must bridge to the Phase 7 targeted CV configuration.");
+assert.match(jobTargetedCvBridge, /blockedClaims: input\.gaps\.map/, "Targeted CV preparation must block unsupported job claims.");
+assert.match(jobIntelligenceService, /getOrCreateCanonicalProfile\(supabase, input\.userId\)/, "Saved Job Intelligence must load the canonical profile, not create a second professional profile.");
+assert.match(jobIntelligenceService, /persistJobIntelligenceAnalysis/, "Job Intelligence must have a persistence boundary for reviewed analyses.");
+for (const tableName of ["job_intelligence_analyses", "job_intelligence_requirements", "job_intelligence_evidence"]) {
+  assert.match(jobIntelligenceMigration, new RegExp(`create table if not exists public\\.${tableName}`), `Phase 8 migration must create ${tableName}.`);
+  assert.match(jobIntelligenceMigration, new RegExp(`alter table public\\.${tableName} enable row level security`), `${tableName} must enable RLS.`);
+}
+assert.match(jobIntelligenceMigration, /references public\.canonical_professional_profiles\(id\) on delete cascade/, "Job Intelligence analyses must reference canonical professional profiles.");
+assert.match(jobIntelligenceMigration, /auth\.uid\(\) = user_id/g, "Job Intelligence RLS policies must restrict every table to the owning user.");
+for (const label of ["Job Intelligence", "Analyse de l'offre", "Evidence found", "Preuves trouvees", "Prepare truthful CV", "Preparer un CV honnete"]) {
+  assert.match(jobIntelligenceTranslations, new RegExp(label), `Phase 8 translations must include ${label}.`);
+}
+assert.match(opportunitiesPage, /getOrCreateCanonicalProfile\(supabase, user\.id\)/, "Opportunities must read the canonical profile before job analysis.");
+assert.match(opportunitiesPage, /analyzeJobAgainstCanonicalProfile\(\{ profile: canonicalProfile, job, userId: user\.id \}\)/, "Opportunities must use the shared Job Intelligence matcher.");
+assert.match(opportunitiesHub, /JobIntelligencePanel/, "Opportunities UI must display more than a single match percentage.");
+assert.match(opportunitiesHub, /User reviews before applying/, "Opportunities UI must keep the user in control.");
+const jobParserRuntime = loadProductionTsModule("lib/job-intelligence/job-requirement-parser.ts");
+const inspectedJob = jobParserRuntime.inspectJobAdvertisement({
+  title: "Junior Data Analyst",
+  company: "Example Company",
+  rawText: `Job title: Junior Data Analyst
+Company: Example Company
+Requirements
+Must have Excel skills
+Required SQL knowledge
+Preferred dashboard experience
+Responsibilities
+Prepare weekly reports`
+});
+assert.equal(inspectedJob.requirements.some((requirement) => requirement.importance === "mandatory"), true, "Job parser must identify mandatory requirements.");
+assert.equal(inspectedJob.requirements.some((requirement) => requirement.importance === "preferred"), true, "Job parser must identify preferred requirements.");
+assert.equal(inspectedJob.requirements.some((requirement) => ["skill", "technology"].includes(requirement.category)), true, "Job parser must classify skills and technology requirements.");
 
 console.log("PATHZY journey and export standard regression tests passed.");

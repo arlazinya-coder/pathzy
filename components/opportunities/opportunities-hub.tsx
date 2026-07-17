@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Card, ProgressBar } from "@/components/ui";
+import { jobIntelligenceCopy } from "@/lib/job-intelligence/job-intelligence-translations";
+import type { JobMatchAnalysis } from "@/lib/job-intelligence/job-intelligence.types";
 import { getOpportunityStats } from "@/lib/opportunities/data";
 import type { OpportunityAction, OpportunityCategory, PersonalizedOpportunity } from "@/lib/opportunities/types";
 
@@ -25,7 +27,13 @@ function sectionTitle(category: OpportunityCategory | "All") {
   return "Jobs for You";
 }
 
-export function OpportunitiesHub({ initialOpportunities }: { initialOpportunities: PersonalizedOpportunity[] }) {
+export function OpportunitiesHub({
+  initialOpportunities,
+  initialJobIntelligence = {}
+}: {
+  initialOpportunities: PersonalizedOpportunity[];
+  initialJobIntelligence?: Record<string, JobMatchAnalysis>;
+}) {
   const [opportunities, setOpportunities] = useState(initialOpportunities);
   const [activeCategory, setActiveCategory] = useState<OpportunityCategory | "All">("All");
   const [busyId, setBusyId] = useState("");
@@ -135,6 +143,9 @@ export function OpportunitiesHub({ initialOpportunities }: { initialOpportunitie
                 <span className="w-fit rounded-full blue-purple px-4 py-2 text-sm font-extrabold text-white">{opportunity.fit}% match</span>
               </div>
               <p className="mt-4 leading-7 text-white/64">{opportunity.description}</p>
+              {initialJobIntelligence[opportunity.id] ? (
+                <JobIntelligencePanel analysis={initialJobIntelligence[opportunity.id]} />
+              ) : null}
               <div className="mt-4 grid gap-3 md:grid-cols-[1fr_.8fr]">
                 <div className="rounded-[18px] border border-white/10 bg-black/10 p-4">
                   <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/40">Why it matches</p>
@@ -172,6 +183,49 @@ export function OpportunitiesHub({ initialOpportunities }: { initialOpportunitie
           ) : null}
         </div>
       </Card>
+    </div>
+  );
+}
+
+function JobIntelligencePanel({ analysis }: { analysis: JobMatchAnalysis }) {
+  const copy = jobIntelligenceCopy[analysis.job.language];
+  return (
+    <div className="mt-4 rounded-[20px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#aac1ff]">{copy.title}</p>
+          <h4 className="mt-2 text-lg font-black text-white">{analysis.headline}</h4>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-white/62">{copy.subtitle}</p>
+        </div>
+        <span className="w-fit rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-extrabold text-white/72">
+          {copy.suitability[analysis.suitability]}
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="rounded-[16px] border border-white/10 bg-black/12 p-3">
+          <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-white/42">{copy.strengths}</p>
+          <p className="mt-2 text-2xl font-black text-white">{analysis.strengths.length}</p>
+          <p className="mt-1 text-xs leading-5 text-white/52">{analysis.strengths[0]?.requirement.text ?? "Complete your profile to unlock evidence-based matches."}</p>
+        </div>
+        <div className="rounded-[16px] border border-white/10 bg-black/12 p-3">
+          <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-white/42">{copy.gaps}</p>
+          <p className="mt-2 text-2xl font-black text-white">{analysis.gaps.length}</p>
+          <p className="mt-1 text-xs leading-5 text-white/52">{analysis.gaps[0]?.action ?? "No major gap detected from the confirmed profile."}</p>
+        </div>
+        <div className="rounded-[16px] border border-white/10 bg-black/12 p-3">
+          <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-white/42">{copy.uncertain}</p>
+          <p className="mt-2 text-2xl font-black text-white">{analysis.uncertainties.length}</p>
+          <p className="mt-1 text-xs leading-5 text-white/52">{analysis.questionsForUser[0] ?? "Review before applying. PATHZY will not send applications for you."}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Link href={analysis.nextActions[1]?.route ?? "/professional-identity/cv"} className="rounded-full bg-[#5B8CFF] px-4 py-2 text-sm font-extrabold text-white transition hover:bg-[#7aa3ff]">
+          {copy.prepareCv}
+        </Link>
+        <span className="rounded-full bg-white/10 px-4 py-2 text-sm font-bold text-white/58">User reviews before applying</span>
+      </div>
     </div>
   );
 }

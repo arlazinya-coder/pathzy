@@ -5,6 +5,7 @@ import type { DiscoveryAnswers, GeneratedRoadmap } from "@/lib/discovery/types";
 import { canAccessFeature, getUserEntitlements, userCanAccessFeature } from "@/lib/access/entitlements";
 import { canExportProfessionalDocuments } from "@/lib/navigation/permissions";
 import { getBrainContextForAI } from "@/lib/pathzy-brain/brain-service";
+import { createCanonicalCvDocument, legacyCvCompatibilityMetadata, type CanonicalCvDocumentResult } from "@/lib/professional-documents";
 import { documentTemplateGallery, normalizeDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
 import type { PremiumDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
 import type { ImportedCvResult } from "@/lib/professional-identity/cv-import";
@@ -367,6 +368,14 @@ function coverLetterCvFacts(cv: CvModel | null, fallbackSkills: string[]) {
   };
 }
 
+function cvPurposeFromType(value: string | undefined) {
+  const lower = (value ?? "").toLowerCase();
+  if (lower.includes("graduate") || lower.includes("intern") || lower.includes("entry")) return "early_career";
+  if (lower.includes("career change")) return "career_change";
+  if (lower.includes("professional")) return "experienced";
+  return "general";
+}
+
 function jobDescriptionFocus(value?: string) {
   const clean = prepareForProfessionalDocument(value ?? "").professional;
   if (!clean) return "";
@@ -397,29 +406,46 @@ export async function generateCV(supabase: Supabase, userId: string, options: Ge
   const skills = collectSkills(inputs);
   const education = professionalizeUserInput(inputs.profile?.education || inputs.profile?.highest_qualification || firstString(inputs.discoveryAnswers?.educationLevel ?? inputs.discoveryAnswers?.education, ""));
   const oldCvText = prepareForProfessionalDocument(options.oldCvText || "").professional;
+  let canonicalDocument: CanonicalCvDocumentResult | null = null;
+  try {
+    canonicalDocument = await createCanonicalCvDocument(supabase, {
+      userId,
+      name: `${templateName} ${cvType}`,
+      purpose: cvPurposeFromType(cvType),
+      language: language === "french" ? "fr" : "en",
+      targetRole: goal,
+      templateId: templateName
+    });
+  } catch (error) {
+    console.warn("[professional-documents] canonical CV view unavailable; using legacy-compatible CV generation", {
+      userId,
+      message: error instanceof Error ? error.message : "unknown"
+    });
+  }
+  const canonicalCvModel = canonicalDocument?.cvModel;
   const cvModel: CvModel = {
     fullName: cvCandidateName(inputs),
     targetRole: goal,
-    phone: professionalizeUserInput(inputs.profile?.phone),
-    email: professionalizeUserInput(inputs.profile?.email),
-    city: professionalizeUserInput(inputs.profile?.city),
-    country: professionalizeUserInput(inputs.profile?.country),
-    linkedIn: professionalizeUserInput(inputs.profile?.linkedin_url),
-    portfolio: professionalizeUserInput(inputs.profile?.portfolio_url),
-    github: "",
-    website: "",
-    professionalSummary: language === "french"
+    phone: canonicalCvModel?.phone || professionalizeUserInput(inputs.profile?.phone),
+    email: canonicalCvModel?.email || professionalizeUserInput(inputs.profile?.email),
+    city: canonicalCvModel?.city || professionalizeUserInput(inputs.profile?.city),
+    country: canonicalCvModel?.country || professionalizeUserInput(inputs.profile?.country),
+    linkedIn: canonicalCvModel?.linkedIn || professionalizeUserInput(inputs.profile?.linkedin_url),
+    portfolio: canonicalCvModel?.portfolio || professionalizeUserInput(inputs.profile?.portfolio_url),
+    github: canonicalCvModel?.github || "",
+    website: canonicalCvModel?.website || "",
+    professionalSummary: canonicalCvModel?.professionalSummary || (language === "french"
       ? `Professionnel en developpement oriente vers ${goal}, avec une progression active en competences, preuves de portfolio et preparation a l'emploi.`
-      : `Early-career professional building practical experience toward ${goal}. Focused on relevant skills, portfolio proof, and stronger career direction.`,
-    coreSkills: skills,
-    technicalSkills: [],
-    professionalSkills: [],
-    professionalExperience: oldCvText ? [{ role: "Previous CV experience", company: "", location: "", startDate: "", endDate: "", current: false, achievements: [formatRecruiterBullet(oldCvText)] }] : [],
-    projects: getRecommendedCareers(inputs.roadmap).length ? [{ projectName: `Portfolio focus linked to: ${getRecommendedCareers(inputs.roadmap).join(", ")}`, role: "", tools: [], description: formatRecruiterBullet("built practical proof for selected career direction"), impact: "" }] : [],
-    education: education ? [{ qualification: education, institution: "", fieldOfStudy: "", year: "", status: "" }] : [],
-    certifications: [],
-    achievements: [],
-    languages: [],
+      : `Early-career professional building practical experience toward ${goal}. Focused on relevant skills, portfolio proof, and stronger career direction.`),
+    coreSkills: canonicalCvModel?.coreSkills?.length ? canonicalCvModel.coreSkills : skills,
+    technicalSkills: canonicalCvModel?.technicalSkills ?? [],
+    professionalSkills: canonicalCvModel?.professionalSkills ?? [],
+    professionalExperience: canonicalCvModel?.professionalExperience?.length ? canonicalCvModel.professionalExperience : oldCvText ? [{ role: "Previous CV experience", company: "", location: "", startDate: "", endDate: "", current: false, achievements: [formatRecruiterBullet(oldCvText)] }] : [],
+    projects: canonicalCvModel?.projects?.length ? canonicalCvModel.projects : getRecommendedCareers(inputs.roadmap).length ? [{ projectName: `Portfolio focus linked to: ${getRecommendedCareers(inputs.roadmap).join(", ")}`, role: "", tools: [], description: formatRecruiterBullet("built practical proof for selected career direction"), impact: "" }] : [],
+    education: canonicalCvModel?.education?.length ? canonicalCvModel.education : education ? [{ qualification: education, institution: "", fieldOfStudy: "", year: "", status: "" }] : [],
+    certifications: canonicalCvModel?.certifications ?? [],
+    achievements: canonicalCvModel?.achievements ?? [],
+    languages: canonicalCvModel?.languages ?? [],
     references: { availableUponRequest: false, items: [] },
     optionalSections: {
       volunteerExperience: [],
@@ -443,11 +469,20 @@ export async function generateCV(supabase: Supabase, userId: string, options: Ge
     createdAt: now,
     updatedAt: now,
     lastDownloadedAt: null,
-    contentSourceId: data?.id ?? null
+    contentSourceId: data?.id ?? null,
+    professionalDocumentId: canonicalDocument?.document.id ?? null
   };
   await refreshIdentity(supabase, userId);
+  const professionalDocumentMetadata = canonicalDocument
+    ? legacyCvCompatibilityMetadata({
+        canonicalProfileId: canonicalDocument.profile.id,
+        profileVersion: canonicalDocument.profile.version,
+        templateName,
+        purpose: cvPurposeFromType(cvType)
+      })
+    : null;
 
-  return saveUnifiedDocument(supabase, userId, { id: data?.id, tool: "cv", title, content, contentJson: { cvModel, cvVersion }, score }, templateName, { cv_type: cvType });
+  return saveUnifiedDocument(supabase, userId, { id: data?.id, tool: "cv", title, content, contentJson: { cvModel, cvVersion }, score }, templateName, { cv_type: cvType, ...(professionalDocumentMetadata ?? {}) });
 }
 
 export async function createImportedCvDraft(
