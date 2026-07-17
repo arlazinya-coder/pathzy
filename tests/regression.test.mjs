@@ -118,7 +118,11 @@ const canonicalProfileOverview = readFileSync("components/professional-identity/
 const canonicalProfileMigration = readFileSync("supabase/migrations/20260716183000_create_canonical_professional_identity.sql", "utf8");
 const professionalDocumentTypes = readFileSync("lib/professional-documents/professional-document.types.ts", "utf8");
 const professionalDocumentService = readFileSync("lib/professional-documents/professional-document-service.ts", "utf8");
+const professionalDocumentAdapter = readFileSync("lib/professional-documents/cv-content-adapter.ts", "utf8");
+const professionalDocumentSelector = readFileSync("lib/professional-documents/cv-content-selector.ts", "utf8");
+const professionalDocumentValidation = readFileSync("lib/professional-documents/professional-document-validation.ts", "utf8");
 const professionalDocumentsMigration = readFileSync("supabase/migrations/20260716193000_create_professional_documents.sql", "utf8");
+const professionalDocumentFieldMigration = readFileSync("supabase/migrations/20260717120000_extend_professional_document_fields.sql", "utf8");
 const jobIntelligenceTypes = readFileSync("lib/job-intelligence/job-intelligence.types.ts", "utf8");
 const jobRequirementParser = readFileSync("lib/job-intelligence/job-requirement-parser.ts", "utf8");
 const jobMatchEngine = readFileSync("lib/job-intelligence/job-match-engine.ts", "utf8");
@@ -1081,12 +1085,38 @@ assert.match(professionalIdentityTool, /Add paragraph/, "Cover Letter body parag
 assert.match(professionalIdentityTool, /draft\.bodyParagraphs = next;/, "Cover Letter body paragraphs must support editing and ordering through coverLetterData.");
 assert.match(professionalDocumentTypes, /export type ProfessionalDocumentType = "cv" \| "cover_letter" \| "professional_bio" \| "linkedin_profile" \| "application_summary"/, "Phase 7 professional documents must define reusable document types.");
 assert.match(professionalDocumentTypes, /export type CvViewConfiguration = \{[\s\S]*purpose: CvPurpose;[\s\S]*targetRole\?: string;[\s\S]*targetJobId\?: string;[\s\S]*selectedEntityIds:/, "Phase 7 CV configuration must be target-aware without duplicating the canonical profile.");
+assert.match(professionalDocumentTypes, /export type PresentationField = \{[\s\S]*originalCanonicalValue\?: string;[\s\S]*approvedMasterValue\?: string;[\s\S]*presentationValue: string;[\s\S]*approvalState: PresentationApprovalState;[\s\S]*sourceFactIds: string\[];[\s\S]*unsupportedClaimDetected: boolean;/, "Phase 7 must separate canonical facts, approved wording, document wording, approval state and grounding.");
 assert.match(professionalDocumentService, /getOrCreateCanonicalProfile\(supabase, input\.userId\)/, "Professional documents must use the canonical professional identity as source of truth.");
 assert.match(professionalDocumentService, /persistProfessionalDocument/, "Phase 7 must persist generated documents through a dedicated document service.");
+assert.match(professionalDocumentService, /persistProfessionalDocumentFields/, "Phase 7 must persist document-specific presentation fields separately from canonical facts.");
+assert.match(professionalDocumentService, /cvModelFromCvContent\(document\.content as CvContent\)/, "Phase 7 CV Builder compatibility must render from professional-document content, not a second CV content source.");
+assert.match(professionalDocumentService, /listProfessionalDocuments/, "Phase 7 must expose a document-library read boundary for multiple CV versions.");
+assert.match(professionalDocumentService, /refreshProfessionalDocumentFreshness/, "Phase 7 must detect stale documents when the canonical profile version changes.");
+assert.match(professionalDocumentService, /createUpdatedProfessionalDocumentCopy/, "Phase 7 must let users create an updated copy without overwriting older CV versions.");
+assert.match(professionalDocumentService, /createCoverLetterDocumentDraft/, "Phase 7 must prepare a cover-letter document foundation after the CV engine boundary.");
+assert.match(professionalDocumentAdapter, /export function cvModelFromCvContent\(content: CvContent\)/, "Phase 7 must convert shared CV content into the existing preview/PDF model.");
+assert.match(professionalDocumentSelector, /configuration\.selectedEntityIds\.certifications[\s\S]*configuration\.selectedEntityIds\.projects[\s\S]*configuration\.selectedEntityIds\.languages/, "Phase 7 selection must support certifications, projects and languages, not only employment and skills.");
+assert.match(professionalDocumentValidation, /validateProfessionalDocument/, "Phase 7 must validate document configuration, grounding and freshness before export.");
 for (const tableName of ["professional_documents", "professional_document_fields", "professional_document_exports"]) {
   assert.match(professionalDocumentsMigration, new RegExp(`create table if not exists public\\.${tableName}`), `Phase 7 migration must create ${tableName}.`);
   assert.match(professionalDocumentsMigration, new RegExp(`alter table public\\.${tableName} enable row level security`), `${tableName} must enable RLS.`);
 }
+for (const column of ["approval_state", "source_fact_ids", "unsupported_claim_detected", "field_language", "original_canonical_value", "approved_master_value"]) {
+  assert.match(professionalDocumentFieldMigration, new RegExp(`add column if not exists ${column}`), `Phase 7 field migration must store ${column}.`);
+}
+const professionalDocumentValidationRuntime = loadProductionTsModule("lib/professional-documents/professional-document-validation.ts");
+const validationWarnings = professionalDocumentValidationRuntime.validateCvConfiguration({
+  purpose: "general",
+  language: "en",
+  pagePreference: "automatic",
+  sections: [
+    { type: "header", visible: true, order: 0 },
+    { type: "header", visible: true, order: 1 }
+  ],
+  selectedEntityIds: { employment: [], education: [], certifications: [], skills: [], projects: [], languages: [] },
+  presentationPreferences: { showPhoto: false, showFullAddress: false, showReferences: false, showSkillLevels: false, showDates: true, dateFormat: "MMM yyyy" }
+});
+assert.equal(validationWarnings.some((warning) => warning.id === "duplicate-section-header"), true, "Phase 7 validation must catch duplicate CV sections.");
 assert.match(jobIntelligenceTypes, /export type JobRequirementImportance = "mandatory" \| "preferred" \| "context"/, "Phase 8 must distinguish mandatory, preferred, and context requirements.");
 assert.match(jobIntelligenceTypes, /export type JobRequirementCategory =[\s\S]*"skill"[\s\S]*"experience"[\s\S]*"education"[\s\S]*"certification"[\s\S]*"language"/, "Phase 8 must classify job requirements into reusable categories.");
 assert.match(jobIntelligenceTypes, /export type JobMatchAnalysis = \{[\s\S]*canonicalProfileId: string;[\s\S]*profileVersion: number;[\s\S]*strengths: JobRequirementMatch\[];[\s\S]*gaps: JobGap\[];[\s\S]*uncertainties: JobRequirementMatch\[];[\s\S]*targetedCvPlan: TargetedCvPreparationPlan;/, "Phase 8 analysis must connect job fit to a canonical profile version and targeted CV plan.");

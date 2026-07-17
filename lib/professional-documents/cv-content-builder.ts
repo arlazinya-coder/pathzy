@@ -19,6 +19,9 @@ export function buildCvContentFromCanonicalProfile(profile: CanonicalProfessiona
   const employmentIds = selectedIds("employment", configuration, profile);
   const educationIds = selectedIds("education", configuration, profile);
   const skillIds = selectedIds("core_skills", configuration, profile);
+  const certificationIds = selectedIds("certifications", configuration, profile);
+  const projectIds = selectedIds("projects", configuration, profile);
+  const languageIds = selectedIds("languages", configuration, profile);
   const header = {
     fullName: createPresentationField({ value: valueText(profile.identity.fullName), canonicalFieldPath: "identity.fullName", language }),
     targetRole: createPresentationField({ value: configuration.targetRole ?? valueText(profile.professionalProfile.headline) ?? valueText(profile.identity.professionalHeadline), canonicalFieldPath: "professionalProfile.headline", language }),
@@ -66,7 +69,7 @@ export function buildCvContentFromCanonicalProfile(profile: CanonicalProfessiona
       included: true,
       selectionReason: "Selected education record"
     })),
-    certifications: profile.certifications.map((certification) => ({
+    certifications: profile.certifications.filter((item) => certificationIds.has(item.id)).map((certification) => ({
       id: certification.id,
       name: createPresentationField({ value: valueText(certification.canonicalName), canonicalEntityId: certification.id, canonicalFieldPath: "certifications.canonicalName", language }),
       issuer: createPresentationField({ value: valueText(certification.issuer), canonicalEntityId: certification.id, canonicalFieldPath: "certifications.issuer", language }),
@@ -74,7 +77,7 @@ export function buildCvContentFromCanonicalProfile(profile: CanonicalProfessiona
       included: certification.status !== "archived",
       selectionReason: "Certification evidence"
     })),
-    projects: profile.projects.map((project) => ({
+    projects: profile.projects.filter((item) => projectIds.has(item.id)).map((project) => ({
       id: project.id,
       name: createPresentationField({ value: valueText(project.name), canonicalEntityId: project.id, canonicalFieldPath: "projects.name", language }),
       role: createPresentationField({ value: valueText(project.role), canonicalEntityId: project.id, canonicalFieldPath: "projects.role", language }),
@@ -83,7 +86,7 @@ export function buildCvContentFromCanonicalProfile(profile: CanonicalProfessiona
       included: project.status !== "archived",
       selectionReason: "Project proof"
     })),
-    languages: profile.languages.map((item) => ({
+    languages: profile.languages.filter((item) => languageIds.has(item.id)).map((item) => ({
       id: item.id,
       language: createPresentationField({ value: valueText(item.language), canonicalEntityId: item.id, canonicalFieldPath: "languages.language", language }),
       proficiency: createPresentationField({ value: valueText(item.normalizedProficiency ?? item.proficiency), canonicalEntityId: item.id, canonicalFieldPath: "languages.proficiency", language }),
@@ -117,4 +120,3 @@ export function buildCvViewFromContent(profile: CanonicalProfessionalIdentity, c
     updatedAt: new Date().toISOString()
   };
 }
-

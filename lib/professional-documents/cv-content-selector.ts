@@ -45,6 +45,27 @@ export function selectCvContent(profile: CanonicalProfessionalIdentity, configur
     (include ? selected : excluded).push(selectionItem("core_skills", skill.id, include, include ? "Confirmed or user-entered skill" : "Excluded to keep the CV concise", priority));
   }
 
+  for (const certification of profile.certifications) {
+    const explicitSelection = configuration.selectedEntityIds.certifications.includes(certification.id);
+    const priority = (certification.status === "confirmed" ? 18 : 8) + certification.confidence * 18 + relevanceScore([valueText(certification.canonicalName), valueText(certification.issuer)].join(" "), configuration.targetRole, configuration.targetIndustry);
+    const include = explicitSelection || (certification.status !== "archived" && (!onePageLimit || selected.filter((item) => item.entityType === "certifications").length < 4));
+    (include ? selected : excluded).push(selectionItem("certifications", certification.id, include, explicitSelection ? "Selected by user" : include ? "Credential evidence supports this CV" : "Excluded to keep the CV concise", priority));
+  }
+
+  for (const project of profile.projects) {
+    const explicitSelection = configuration.selectedEntityIds.projects.includes(project.id);
+    const priority = (project.status === "confirmed" ? 18 : 8) + project.confidence * 18 + relevanceScore([valueText(project.name), valueText(project.role), valueText(project.description), valueText(project.impact)].join(" "), configuration.targetRole, configuration.targetIndustry);
+    const include = explicitSelection || (project.status !== "archived" && (!onePageLimit || selected.filter((item) => item.entityType === "projects").length < 3));
+    (include ? selected : excluded).push(selectionItem("projects", project.id, include, explicitSelection ? "Selected by user" : include ? "Project proof supports this CV" : "Excluded to keep the CV concise", priority));
+  }
+
+  for (const language of profile.languages) {
+    const explicitSelection = configuration.selectedEntityIds.languages.includes(language.id);
+    const priority = (language.status === "confirmed" ? 14 : 6) + language.confidence * 12;
+    const include = explicitSelection || language.status !== "archived";
+    (include ? selected : excluded).push(selectionItem("languages", language.id, include, explicitSelection ? "Selected by user" : "Language record", priority));
+  }
+
   if (!selected.some((item) => item.entityType === "employment")) {
     warnings.push({
       id: "cv-no-employment-selected",
@@ -63,4 +84,3 @@ export function selectCvContent(profile: CanonicalProfessionalIdentity, configur
     warnings
   };
 }
-

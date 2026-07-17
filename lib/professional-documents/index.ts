@@ -1,4 +1,5 @@
 export * from "./cv-configuration";
+export * from "./cv-content-adapter";
 export * from "./cv-content-builder";
 export * from "./cv-content-selector";
 export * from "./cv-quality";
@@ -6,6 +7,6 @@ export * from "./presentation-fields";
 export * from "./professional-document-service";
 export * from "./professional-document-templates";
 export * from "./professional-document-translations";
+export * from "./professional-document-validation";
 export * from "./professional-document-writer";
 export * from "./professional-document.types";
-
