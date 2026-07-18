@@ -39,6 +39,7 @@ const navigation = readFileSync("lib/pathzy-data.ts", "utf8");
 const appShell = readFileSync("components/app-shell.tsx", "utf8");
 const journeyRouter = readFileSync("lib/progress/journey-router.ts", "utf8");
 const nextActionEngine = readFileSync("lib/progress/next-action-engine.ts", "utf8");
+const operatingSystem = readFileSync("lib/operating-system/employment-operating-system.ts", "utf8");
 const routes = readFileSync("lib/navigation/routes.ts", "utf8");
 const roadmapPage = readFileSync("app/roadmap/page.tsx", "utf8");
 const professionalIdentityPage = readFileSync("app/professional-identity/page.tsx", "utf8");
@@ -156,6 +157,16 @@ const opportunitiesHub = readFileSync("components/opportunities/opportunities-hu
 const employmentTrackerClient = readFileSync("components/employment-tracker/employment-tracker-client.tsx", "utf8");
 const employmentTrackerPage = readFileSync("app/employment-tracker/page.tsx", "utf8");
 const employmentTrackerApi = readFileSync("app/api/employment-tracker/route.ts", "utf8");
+const interviewPrepClient = readFileSync("components/interview/interview-prep-client.tsx", "utf8");
+const interviewPrepApi = readFileSync("app/api/interview-prep/route.ts", "utf8");
+const interviewPrepService = readFileSync("lib/interview/interview-prep-service.ts", "utf8");
+const interviewPrepTypes = readFileSync("lib/interview/interview-prep.types.ts", "utf8");
+const interviewPrepMigration = readFileSync("supabase/migrations/20260718180000_extend_interview_preps_for_application_prep.sql", "utf8");
+const followUpTypes = readFileSync("lib/follow-up/follow-up.types.ts", "utf8");
+const followUpService = readFileSync("lib/follow-up/follow-up-service.ts", "utf8");
+const followUpApi = readFileSync("app/api/application-follow-ups/route.ts", "utf8");
+const followUpMigration = readFileSync("supabase/migrations/20260718190000_create_application_follow_ups.sql", "utf8");
+const careerAnalyticsService = readFileSync("lib/analytics/career-analytics-service.ts", "utf8");
 const legacyMedicalCvFixture = readFileSync("tests/fixtures/legacy-medical-cv.txt", "utf8");
 const cvImportFixtureMatrix = readFileSync("tests/fixtures/cv-import-matrix.txt", "utf8");
 const cvInterpretationFixtureMatrix = readFileSync("tests/fixtures/cv-interpretation-general-matrix.txt", "utf8");
@@ -250,6 +261,9 @@ for (const [key, route] of [
   ["MY_DOCUMENTS", "/professional-identity/documents"],
   ["FIND_OPPORTUNITIES", "/opportunities"],
   ["MY_APPLICATIONS", "/applications"],
+  ["INTERVIEW_PREPARATION", "/interview"],
+  ["CAREER_ANALYTICS", "/applications#career-analytics"],
+  ["COACH", "/mentor"],
   ["SKILLS_CAREER_GROWTH", "/skills"],
   ["BILLING", "/billing"],
   ["SETTINGS", "/settings"]
@@ -305,6 +319,17 @@ assert.match(roadmapPage, /grid gap-5 lg:grid-cols-2/, "Authenticated landing ca
 assert.doesNotMatch(roadmapPage, /row-span|featured/, "Authenticated landing page must not keep one oversized recommendation card.");
 assert.doesNotMatch(roadmapPage, /overflow-x-auto|whitespace-nowrap|min-w-\[/, "Authenticated landing page must not require horizontal scrolling on mobile.");
 assert.doesNotMatch(roadmapPage, /Sample Career Plan|Your 90-day control center|Continue My Journey|Interactive 90-day plan|Compare careers/, "Authenticated landing page must not show the previous crowded journey content.");
+assert.match(roadmapPage, /getPathzyNextAction/, "Phase 9F dashboard must use the shared next-action engine.");
+assert.match(roadmapPage, /buildDashboardAttentionItems/, "Phase 9F dashboard must derive attention cards from one shared operating-system helper.");
+assert.match(roadmapPage, /summarizeApplicationTracker/, "Phase 9F dashboard must use shared tracker summary logic.");
+assert.match(roadmapPage, /buildCareerAnalytics/, "Phase 9F dashboard must use the shared analytics service.");
+assert.match(roadmapPage, /PathzyTimeline/, "Phase 9F dashboard must render the existing PATHZY Timeline component.");
+assert.match(roadmapPage, /buildCareerPlanSuggestions/, "Phase 9F dashboard must surface Career Plan suggestions without mutating the plan automatically.");
+assert.match(roadmapPage, /PATHZY_OPERATING_AREAS/, "Phase 9F dashboard must expose the unified workspace map.");
+assert.match(roadmapPage, /safeQuery/, "Phase 9F dashboard must use safe partial-failure query handling.");
+assert.match(roadmapPage, /Unknown outcomes are not counted as rejection|Unknown outcomes are not counted as rejection|Unknown outcomes are not treated as rejection/, "Phase 9F dashboard must preserve honest analytics wording.");
+assert.match(operatingSystem, /applicationEventsForPathzyTimeline/, "Phase 9F must reuse application tracker timeline signals for the PATHZY Timeline.");
+assert.match(operatingSystem, /buildCareerPlanSuggestions[\s\S]*You stay in control|without PATHZY changing your plan automatically|Do not automatically modify/, "Phase 9F must connect Career Plan suggestions without automatic mutation.");
 assert.match(legacyCvBuilderPage, /redirect\(appRoutes\.professionalIdentityCv\)/, "Legacy /cv-builder must redirect to the canonical CV Builder.");
 assert.match(legacyEmploymentTrackerPage, /redirect\(appRoutes\.applications\)/, "Legacy /employment-tracker must redirect to My Applications.");
 assert.match(legacyProgressPage, /redirect\(appRoutes\.skills\)/, "Legacy /progress must redirect to Skills & Career Growth.");
@@ -330,28 +355,19 @@ assert.doesNotMatch(timeline, /Coming soon/, "Timeline must not label normal jou
 assert.match(appShell, /key=\{`\$\{item\.href\}-\$\{item\.label\}`\}/, "Navigation links must use a unique key fallback.");
 assert.match(appShell, /<Link href=\{user \? appRoutes\.roadmap : appRoutes\.home\}/, "PATHZY logo must send logged-out visitors home and logged-in users to My Employment Journey.");
 assert.match(appShell, /<Link href=\{appRoutes\.roadmap\}[\s\S]*Back to My Employment Journey[\s\S]*<\/Link>/, "Authenticated pages must provide a clear universal return action to My Employment Journey.");
-assert.match(navigation, /label: "My Employment Journey", href: appRoutes\.roadmap/, "My Employment Journey must route to /roadmap.");
-assert.match(navigation, /label: "My Professional Profile", href: appRoutes\.professionalIdentity/, "My Professional Profile must route to /professional-identity.");
-assert.match(navigation, /label: "Find Opportunities", href: appRoutes\.opportunities/, "Find Opportunities must route to /opportunities.");
-assert.match(navigation, /label: "My Applications", href: appRoutes\.applications/, "My Applications must route to /applications.");
-assert.match(navigation, /label: "Skills & Career Growth", href: appRoutes\.skills/, "Skills & Career Growth must route to /skills.");
-assert.match(navigation, /label: "Billing", href: appRoutes\.billing/, "Billing must route to /billing.");
-assert.match(navigation, /label: "Settings", href: appRoutes\.settings/, "Settings must route to /settings.");
-const authenticatedNavigationBlock = navigation.match(/export const navigation = \[([\s\S]*?)\] as const;/)?.[1] ?? "";
-const authenticatedNavigationItems = [...authenticatedNavigationBlock.matchAll(/\{ label: "([^"]+)", href: appRoutes\.([a-zA-Z]+) \}/g)].map((match) => ({
-  label: match[1],
-  route: match[2]
-}));
-assert.deepEqual(authenticatedNavigationItems, [
-  { label: "My Employment Journey", route: "roadmap" },
-  { label: "My Professional Profile", route: "professionalIdentity" },
-  { label: "Find Opportunities", route: "opportunities" },
-  { label: "My Applications", route: "applications" },
-  { label: "Skills & Career Growth", route: "skills" },
-  { label: "Billing", route: "billing" },
-  { label: "Settings", route: "settings" }
-], "Authenticated navigation must contain exactly the seven canonical PATHZY sections in order.");
-assert.match(appShell, /const loggedInNavigation: NavigationItem\[\] = \[\.\.\.navigation\];/, "Desktop and mobile authenticated navigation must both read the same canonical seven-item list.");
+assert.match(operatingSystem, /export const PATHZY_OPERATING_AREAS/, "Phase 9F must centralize the unified employment operating-system map.");
+for (const label of ["Home", "Professional Identity", "Documents", "Jobs", "Applications", "Interview Preparation", "Career Plan", "Career Analytics", "Coach", "Settings"]) {
+  assert.match(operatingSystem, new RegExp(`label: "${label}"`), `Unified navigation must include ${label}.`);
+}
+assert.match(operatingSystem, /getOperatingNavigation/, "Unified navigation must be derived from the operating-system map.");
+assert.match(navigation, /export const navigation = getOperatingNavigation\(\);/, "Authenticated navigation must read from the unified operating-system map.");
+assert.match(operatingSystem, /href: appRoutes\.documents/, "Documents must route to the canonical documents workspace.");
+assert.match(operatingSystem, /href: appRoutes\.opportunities/, "Jobs must route to the existing opportunities and job intelligence workspace.");
+assert.match(operatingSystem, /href: appRoutes\.applications/, "Applications must route to the existing tracker workspace.");
+assert.match(operatingSystem, /href: appRoutes\.interview/, "Interview Preparation must route to the existing interview workspace.");
+assert.match(operatingSystem, /href: appRoutes\.careerAnalytics/, "Career Analytics must route to the analytics section without a duplicate page.");
+assert.match(operatingSystem, /href: appRoutes\.mentor/, "Coach must route to the existing mentor workspace.");
+assert.match(appShell, /const loggedInNavigation: NavigationItem\[\] = \[\.\.\.navigation\];/, "Desktop and mobile authenticated navigation must both read the same unified navigation list.");
 assert.doesNotMatch(appShell, /navigation\.filter/, "Authenticated navigation must not vary by hiding or reshaping shared navigation items in the shell.");
 assert.match(routes, /applications: PATHZY_ROUTES\.MY_APPLICATIONS/, "The Applications app route must use the canonical /applications definition.");
 assert.match(routes, /skills: PATHZY_ROUTES\.SKILLS_CAREER_GROWTH/, "The Skills app route must use the canonical /skills definition.");
@@ -1448,6 +1464,132 @@ assert.match(employmentTrackerClient, /Search applications/, "Phase 9B UI must p
 assert.match(employmentTrackerClient, /Follow-Up Needed/, "Phase 9B UI must expose the follow-up-needed view.");
 assert.match(employmentTrackerClient, /Next Action[\s\S]*Closing date[\s\S]*Interview date[\s\S]*Contacts[\s\S]*Timeline/, "Phase 9B cards must show next actions, dates, contacts, and timeline.");
 assert.match(jobIntelligenceTranslations, /Applications[\s\S]*Preparing[\s\S]*Ready to Apply[\s\S]*Add Note[\s\S]*Candidatures[\s\S]*En préparation[\s\S]*Prêt à postuler[\s\S]*Ajouter une note/, "Phase 9B must include English and French tracker copy.");
+for (const type of ["screening", "behavioural", "technical", "panel", "case_study", "presentation", "final", "unknown"]) {
+  assert.match(interviewPrepTypes, new RegExp(`"${type}"`), `Phase 9C must support ${type} interviews.`);
+  assert.match(interviewPrepMigration, new RegExp(`'${type}'`), `Phase 9C migration must allow ${type} interviews.`);
+}
+for (const category of ["introduction", "motivation", "experience", "behavioural", "technical", "role_specific", "industry", "leadership", "problem_solving", "strengths", "development_area", "career_change", "employment_gap", "salary", "availability", "closing"]) {
+  assert.match(interviewPrepTypes, new RegExp(`"${category}"`), `Phase 9C must model ${category} questions.`);
+}
+assert.match(interviewPrepTypes, /InterviewPrepQuestion[\s\S]*whyAsked[\s\S]*evidenceToUse[\s\S]*answerStructure[\s\S]*pointsToInclude[\s\S]*claimsToAvoid[\s\S]*practiceResponse/, "Phase 9C questions must include why, evidence, structure, points, claims to avoid, and editable practice response.");
+assert.match(interviewPrepTypes, /StarStory[\s\S]*sourceCanonicalEntityIds[\s\S]*situation[\s\S]*task[\s\S]*action[\s\S]*result/, "Phase 9C STAR stories must reference canonical evidence.");
+assert.match(interviewPrepTypes, /GapResponse[\s\S]*missing_skill[\s\S]*career_change[\s\S]*employment_gap[\s\S]*qualification_uncertainty/, "Phase 9C must model honest gap responses.");
+assert.match(interviewPrepTypes, /PracticeResponse[\s\S]*answer[\s\S]*notes[\s\S]*selfRating[\s\S]*evidenceChecklist/, "Phase 9C must store typed practice answers, notes, self-rating, and evidence checklist.");
+assert.match(interviewPrepTypes, /InterviewFeedback[\s\S]*relevance[\s\S]*clarity[\s\S]*structure[\s\S]*evidenceUse[\s\S]*conciseness[\s\S]*unsupportedClaims[\s\S]*completeness/, "Phase 9C feedback must assess safe written-answer dimensions.");
+assert.match(interviewPrepTypes, /VoicePracticeAdapter[\s\S]*protected_characteristics[\s\S]*emotion_from_voice_or_video/, "Phase 9C must prepare future voice interfaces without unsafe assessments.");
+assert.match(interviewPrepTypes, /InterviewPreparationProvider[\s\S]*timeoutMs[\s\S]*createApplicationPreparation/, "Phase 9C must expose a clean provider boundary for future AI interview preparation.");
+assert.match(interviewPrepMigration, /alter table public\.interview_preps[\s\S]*application_id uuid[\s\S]*job_understanding_id text[\s\S]*job_match_analysis_id text[\s\S]*canonical_profile_id uuid[\s\S]*targeted_cv_document_id uuid/, "Phase 9C migration must link interview prep to application, job, match, profile, and targeted CV.");
+assert.match(interviewPrepMigration, /questions_json jsonb[\s\S]*star_stories_json jsonb[\s\S]*gap_responses_json jsonb[\s\S]*employer_questions_json jsonb[\s\S]*practice_responses_json jsonb[\s\S]*feedback_json jsonb/, "Phase 9C migration must store structured prep, practice, and feedback.");
+assert.match(interviewPrepMigration, /interview_preps_application_idx[\s\S]*interview_preps_job_match_idx[\s\S]*interview_preps_status_idx/, "Phase 9C migration must index application prep lookup paths.");
+assert.match(interviewPrepService, /buildInterviewQuestions[\s\S]*responsibilities[\s\S]*mandatory[\s\S]*preferred[\s\S]*gaps[\s\S]*targetedCvClaims/, "Phase 9C service must generate questions from job responsibilities, requirements, gaps, and targeted CV claims.");
+assert.match(interviewPrepService, /buildStarStories[\s\S]*sourceCanonicalEntityIds/, "Phase 9C service must build STAR stories from canonical evidence.");
+assert.match(interviewPrepService, /buildGapResponses[\s\S]*Acknowledge this directly[\s\S]*Do not claim/, "Phase 9C gap responses must be honest and transferable.");
+assert.match(interviewPrepService, /buildEmployerQuestions[\s\S]*priorities[\s\S]*team[\s\S]*success_measures[\s\S]*systems[\s\S]*development[\s\S]*challenges[\s\S]*next_steps/, "Phase 9C must create role-specific employer questions.");
+assert.match(interviewPrepService, /assessPracticeAnswer[\s\S]*relevance[\s\S]*clarity[\s\S]*structure[\s\S]*evidenceUse[\s\S]*conciseness[\s\S]*completeness/, "Phase 9C must provide safe practice feedback.");
+assert.match(interviewPrepService, /withInterviewProviderTimeout[\s\S]*Interview provider timeout/, "Phase 9C must handle provider timeout boundaries.");
+assert.match(interviewPrepService, /normalizeInterviewProviderOutput[\s\S]*Array\.isArray\(record\.questions\)/, "Phase 9C must normalize malformed provider output before use.");
+assert.doesNotMatch(interviewPrepService, /scoreAccent|appearanceScore|emotionScore|protectedCharacteristicScore|personalityScore/, "Phase 9C must not score accent, appearance, protected characteristics, stereotypes, or emotion.");
+assert.match(interviewPrepApi, /createApplicationInterviewPreparation\(auth\.supabase, auth\.user\.id/, "Phase 9C API must create application-linked interview prep for the authenticated owner.");
+assert.match(interviewPrepApi, /updateInterviewPracticeResponse\(auth\.supabase, auth\.user\.id/, "Phase 9C API must save typed practice through the authenticated owner.");
+assert.match(interviewPrepClient, /Application[\s\S]*Interview type[\s\S]*Practice Questions[\s\S]*STAR Stories[\s\S]*Gap Responses[\s\S]*Questions for the Employer/, "Phase 9C UI must expose the complete structured prep workspace.");
+assert.match(interviewPrepClient, /Practice Answer[\s\S]*Self-rating[\s\S]*Evidence checklist[\s\S]*Save Practice/, "Phase 9C UI must support typed practice.");
+assert.match(jobIntelligenceTranslations, /Interview Preparation[\s\S]*Practice Questions[\s\S]*STAR Stories[\s\S]*Evidence to Use[\s\S]*Claims to Avoid[\s\S]*Préparation à l’entretien[\s\S]*Questions d’entraînement[\s\S]*Exemples STAR[\s\S]*Éléments à utiliser[\s\S]*Affirmations à éviter/, "Phase 9C must include English and French interview copy.");
+for (const type of ["application_follow_up", "recruiter_follow_up", "interview_thank_you", "interview_status_follow_up", "referral_thank_you", "offer_response", "custom"]) {
+  assert.match(followUpTypes, new RegExp(`"${type}"`), `Phase 9D must model ${type} follow-ups.`);
+  assert.match(followUpService, new RegExp(`"${type}"`), `Phase 9D service must support ${type} follow-ups.`);
+  assert.match(followUpMigration, new RegExp(`'${type}'`), `Phase 9D migration must allow ${type} follow-ups.`);
+}
+for (const status of ["suggested", "scheduled", "drafted", "approved", "sent", "dismissed", "cancelled"]) {
+  assert.match(followUpTypes, new RegExp(`"${status}"`), `Phase 9D must model ${status} follow-up status.`);
+  assert.match(followUpMigration, new RegExp(`'${status}'`), `Phase 9D migration must allow ${status} follow-up status.`);
+}
+assert.match(followUpMigration, /create table if not exists public\.application_follow_ups[\s\S]*application_id uuid not null references public\.employment_applications/, "Phase 9D must store follow-ups against tracked applications.");
+assert.match(followUpMigration, /alter table public\.application_follow_ups enable row level security/, "Phase 9D follow-ups must enable RLS.");
+assert.match(followUpMigration, /Users can view own application follow ups[\s\S]*auth\.uid\(\) = user_id[\s\S]*Users can insert own application follow ups[\s\S]*application\.user_id = auth\.uid\(\)[\s\S]*Users can update own application follow ups/, "Phase 9D RLS must enforce ownership and cross-user protection.");
+assert.match(followUpMigration, /application_follow_ups_active_duplicate_idx[\s\S]*status in \('suggested', 'scheduled', 'drafted', 'approved'\)/, "Phase 9D must prevent duplicate active follow-up drafts.");
+assert.match(followUpMigration, /recommended_date date[\s\S]*scheduled_date timestamptz[\s\S]*sent_at timestamptz[\s\S]*recipient_json jsonb[\s\S]*approval_json jsonb[\s\S]*timezone text/, "Phase 9D must store timing, recipient, approval, and timezone data.");
+for (const helperName of ["isWeekend", "nextBusinessDay", "addBusinessDays"]) {
+  assert.match(followUpService, new RegExp(`export function ${helperName}`), `Phase 9D timing must expose ${helperName}.`);
+}
+assert.match(followUpService, /five to seven business days|five-to-seven-business-day/, "Phase 9D application follow-up timing must use practical five-to-seven-business-day guidance.");
+assert.match(followUpService, /within 24 hours[\s\S]*adjusted away from weekends/, "Phase 9D interview thank-you timing must support the 24-hour guidance without ignoring weekends.");
+assert.match(followUpService, /expected_response_date[\s\S]*employer response timeline has passed/, "Phase 9D interview status follow-up must respect known employer response timelines.");
+assert.match(followUpService, /closing_date[\s\S]*closing date is respected/, "Phase 9D timing must respect closing dates.");
+assert.match(followUpService, /withdrawn[\s\S]*closed[\s\S]*archived[\s\S]*No follow-up is recommended/, "Phase 9D must cancel inappropriate follow-ups after withdrawal, closure, or archive.");
+assert.match(followUpService, /rejected[\s\S]*No follow-up is recommended after rejection/, "Phase 9D must prevent pressure follow-ups after rejection.");
+assert.match(followUpService, /function selectContact/, "Phase 9D must centralize contextual application contact selection.");
+for (const contactType of ["recruiter", "hiring_manager", "referral_contact", "interviewer"]) {
+  assert.match(followUpService, new RegExp(`"${contactType}"`), `Phase 9D must support ${contactType} contacts without mutating canonical identity.`);
+}
+assert.match(followUpService, /recipient\.name \? `Hello \$\{recipient\.name\},` : "Hello,"/, "Phase 9D must not invent recipient names.");
+assert.match(followUpService, /canMarkFollowUpSent[\s\S]*Add a known recipient[\s\S]*Approve the follow-up/, "Phase 9D must require a known recipient and approval before marking sent.");
+assert.doesNotMatch(`${followUpService}\n${followUpApi}`, /sendMail|smtpTransport|nodemailer|mailgun|awsSes|postmark|submitApplication|fetch\(["']https?:\/\/.*mail/i, "Phase 9D must not send communication automatically.");
+assert.match(followUpApi, /prepareFollowUpDraft\(application as FollowUpApplicationContext/, "Phase 9D API must prepare grounded drafts from the tracked application context.");
+assert.match(followUpApi, /duplicateKeyForFollowUp[\s\S]*\.in\("status", \["suggested", "scheduled", "drafted", "approved"\]\)/, "Phase 9D API must reuse active follow-up drafts instead of creating duplicates.");
+assert.match(followUpApi, /canMarkFollowUpSent/, "Phase 9D API must enforce sent-state approval rules server-side.");
+assert.match(followUpApi, /event_type: "follow_up"/, "Phase 9D API must write follow-up timeline events into the existing application timeline.");
+assert.match(followUpApi, /follow_up_state[\s\S]*next_action[\s\S]*next_action_date/, "Phase 9D API must update tracker follow-up state and next action.");
+assert.match(followUpApi, /safeTimezone[\s\S]*Intl\.DateTimeFormat/, "Phase 9D must validate user-controlled timezone input.");
+assert.match(employmentTrackerPage, /application_follow_ups[\s\S]*eq\("user_id", user\.id\)/, "Applications page must load owned follow-up records.");
+assert.match(employmentTrackerClient, /Follow-Up[\s\S]*Follow-Up Due[\s\S]*Prepare a follow-up[\s\S]*Schedule[\s\S]*Approve[\s\S]*Mark as Sent[\s\S]*Dismiss/, "Tracker UI must expose follow-up due, draft, schedule, approval, sent, and dismiss controls.");
+assert.match(employmentTrackerClient, /Nothing is sent automatically/, "Tracker follow-up UI must state that PATHZY does not send automatically.");
+assert.match(employmentTrackerClient, /Add a known contact before recording this follow-up as sent/, "Tracker UI must guard unknown recipients.");
+assert.match(employmentTrackerClient, /Intl\.DateTimeFormat\(\)\.resolvedOptions\(\)\.timeZone/, "Tracker UI must pass the user's timezone to follow-up timing.");
+assert.match(jobIntelligenceTranslations, /Follow-Up[\s\S]*Follow-Up Due[\s\S]*Prepare Follow-Up[\s\S]*Schedule[\s\S]*Approve[\s\S]*Mark as Sent[\s\S]*Dismiss[\s\S]*Relance[\s\S]*Relance a effectuer[\s\S]*Preparer la relance[\s\S]*Planifier[\s\S]*Approuver[\s\S]*Marquer comme envoyee[\s\S]*Ignorer/, "Phase 9D must include English and French follow-up copy.");
+assert.match(careerAnalyticsService, /export function buildCareerAnalytics/, "Phase 9E must centralize analytics calculations in a shared service.");
+assert.match(careerAnalyticsService, /Unknown outcomes are not counted as rejection/, "Phase 9E conversion methodology must document unknown outcomes.");
+assert.match(careerAnalyticsService, /Conversion rates use only known tracker states/, "Phase 9E conversion methodology must document known-outcome calculations.");
+assert.match(careerAnalyticsService, /Document performance is correlation only/, "Phase 9E document analytics must avoid causal claims.");
+assert.match(careerAnalyticsService, /Private notes, contacts, interview responses and document contents are excluded from analytics/, "Phase 9E analytics must preserve privacy.");
+for (const funnelStage of ["prepared", "applied", "employer_response", "screening", "assessment", "interview", "offer", "accepted"]) {
+  assert.match(careerAnalyticsService, new RegExp(`${funnelStage}:`), `Phase 9E funnel must include ${funnelStage}.`);
+}
+for (const metric of ["responseRate", "interviewRate", "offerRate", "averageDaysToResponse", "averageDaysToInterview"]) {
+  assert.match(careerAnalyticsService, new RegExp(metric), `Phase 9E response metrics must include ${metric}.`);
+}
+assert.match(careerAnalyticsService, /groupApplications[\s\S]*byRole[\s\S]*bySource/, "Phase 9E must calculate role and source analytics through the shared service.");
+assert.match(careerAnalyticsService, /documentSignals[\s\S]*Not enough data yet[\s\S]*does not prove causation/, "Phase 9E document analytics must use cautious early-signal wording.");
+assert.match(careerAnalyticsService, /function recurringGaps/, "Phase 9E must aggregate recurring requirement and gap categories.");
+for (const gapCategory of ["confirmed_gap", "evidence_gap", "presentation_gap", "qualification_gap", "experience_gap"]) {
+  assert.match(careerAnalyticsService, new RegExp(gapCategory), `Phase 9E must support ${gapCategory}.`);
+}
+for (const period of ["7d", "30d", "90d", "year", "custom"]) {
+  assert.match(careerAnalyticsService, new RegExp(`"${period}"`), `Phase 9E must support ${period} time filtering.`);
+}
+assert.match(careerAnalyticsService, /function periodRange/, "Phase 9E must centralize period filtering.");
+assert.match(careerAnalyticsService, /timezone/, "Phase 9E must carry user timezone context.");
+assert.match(careerAnalyticsService, /Not Enough Data Yet[\s\S]*Early signal/, "Phase 9E must show insufficient-data and early-signal states.");
+assert.match(careerAnalyticsService, /review follow-ups|Review follow-ups|Practise recurring interview questions|Add verified evidence/, "Phase 9E recommendations must be grounded in tracker and gap evidence.");
+assert.match(employmentTrackerPage, /job_match_analyses[\s\S]*professional_documents[\s\S]*eq\("user_id", user\.id\)/, "Applications page must load only owned match/document metadata for analytics.");
+assert.match(employmentTrackerClient, /CareerAnalyticsDashboard/, "Applications page must render the Career Analytics dashboard.");
+assert.match(employmentTrackerClient, /Career Analytics[\s\S]*Application Funnel[\s\S]*Applications by Role[\s\S]*Applications by Source[\s\S]*CV Performance[\s\S]*Recurring Gaps[\s\S]*Recommended Actions/, "Phase 9E UI must expose the core analytics sections without dozens of charts.");
+assert.match(employmentTrackerClient, /7 days[\s\S]*30 days[\s\S]*90 days[\s\S]*This year[\s\S]*Custom[\s\S]*Custom start[\s\S]*Custom end/, "Phase 9E UI must expose standard and custom time filters.");
+assert.match(employmentTrackerClient, /Unknown outcomes are not treated as rejection/, "Phase 9E UI must avoid misleading outcome assumptions.");
+assert.match(employmentTrackerClient, /CV version \{index \+ 1\}/, "Phase 9E document analytics must avoid exposing employer names or private document titles in the dashboard.");
+assert.doesNotMatch(careerAnalyticsService, /employer_name|contact_email|contacts_json|notes\s*[:?]|private_notes|practiceResponse|content_json/, "Phase 9E analytics service must not expose private notes, contacts, interview answers, or document contents.");
+assert.match(jobIntelligenceTranslations, /Career Analytics[\s\S]*Application Funnel[\s\S]*Response Rate[\s\S]*Interview Rate[\s\S]*Offer Rate[\s\S]*Applications by Role[\s\S]*Applications by Source[\s\S]*Recurring Gaps[\s\S]*Recommended Actions[\s\S]*Not Enough Data Yet[\s\S]*Early Signal[\s\S]*Analyse de carriere[\s\S]*Parcours des candidatures[\s\S]*Taux de reponse[\s\S]*Taux d'entretien[\s\S]*Taux d'offre[\s\S]*Candidatures par poste[\s\S]*Candidatures par source[\s\S]*Lacunes recurrentes[\s\S]*Actions recommandees[\s\S]*Pas encore assez de donnees[\s\S]*Premiere tendance/, "Phase 9E must include English and French analytics copy.");
+const careerAnalyticsRuntime = loadProductionTsModule("lib/analytics/career-analytics-service.ts");
+const sampleAnalytics = careerAnalyticsRuntime.buildCareerAnalytics({
+  applications: [
+    { id: "a1", role: "Data Analyst", company_name: "Hidden", status: "applied", application_date: "2026-07-01", source: "LinkedIn", updated_at: "2026-07-01", targeted_cv_document_id: "cv1" },
+    { id: "a2", role: "Data Analyst", company_name: "Hidden", status: "interview_scheduled", application_date: "2026-07-02", interview_date: "2026-07-08", source: "Referral", updated_at: "2026-07-08", targeted_cv_document_id: "cv1" },
+    { id: "a3", role: "Support Analyst", company_name: "Hidden", status: "rejected", application_date: "2026-07-03", source: "Job board", updated_at: "2026-07-10" }
+  ],
+  timelineEvents: [
+    { id: "e1", application_id: "a2", event_type: "interview_scheduled", event_at: "2026-07-08T10:00:00.000Z" },
+    { id: "e2", application_id: "a3", event_type: "rejection", event_at: "2026-07-10T10:00:00.000Z" }
+  ],
+  matchAnalyses: [{ id: "m1", gaps_json: [{ title: "SQL evidence", requirementType: "skill" }], requirement_matches_json: [{ requirementText: "Power BI", status: "not_confirmed", requirementType: "tool" }] }],
+  professionalDocuments: [{ id: "cv1", name: "Private CV Name", document_type: "cv" }],
+  period: { type: "90d" },
+  timezone: "Africa/Johannesburg",
+  now: new Date("2026-07-18T12:00:00.000Z")
+});
+assert.equal(sampleAnalytics.funnel.applied, 3, "Phase 9E funnel must count applied and known later outcomes.");
+assert.equal(sampleAnalytics.funnel.interview, 1, "Phase 9E funnel must count interview stages.");
+assert.equal(sampleAnalytics.metrics.responseRate.value, "67%", "Phase 9E response rate must count known responses without treating unknown applied records as rejection.");
+assert.equal(sampleAnalytics.recurringGaps.length >= 1, true, "Phase 9E must aggregate recurring gaps from match analyses.");
+
 const jobParserRuntime = loadProductionTsModule("lib/job-intelligence/job-requirement-parser.ts");
 const inspectedJob = jobParserRuntime.inspectJobAdvertisement({
   title: "Junior Data Analyst",

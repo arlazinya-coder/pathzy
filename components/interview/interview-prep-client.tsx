@@ -1,204 +1,377 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Card } from "@/components/ui";
 import { downloadBlob, pathzyFilename, simplePdfDocument } from "@/components/professional-identity/document-downloads";
+import type { EmployerQuestion, GapResponse, InterviewFeedback, InterviewPrepQuestion, InterviewPrepRecord, InterviewType, StarStory } from "@/lib/interview/interview-prep.types";
 
-function buildPrep({ role, company, jobDescription, language }: { role: string; company: string; jobDescription: string; language: string }) {
-  const target = company ? `${role} at ${company}` : role;
-  const jdHint = jobDescription ? "Use the job description to connect your examples to the role requirements." : "Use your career plan, CV, and real projects to keep answers specific.";
+type ApplicationOption = {
+  id: string;
+  company_name: string;
+  role: string;
+  status: string;
+  job_understanding_id?: string | null;
+  job_match_analysis_id?: string | null;
+  targeted_cv_document_id?: string | null;
+  interview_date?: string | null;
+};
 
-  if (language === "french") {
-    return `PREPARATION D'ENTRETIEN: ${target}
+const interviewTypes: InterviewType[] = ["screening", "behavioural", "technical", "panel", "case_study", "presentation", "final", "unknown"];
 
-10 QUESTIONS PROBABLES
-1. Parlez-moi de vous et de votre parcours.
-2. Pourquoi ce poste vous interesse-t-il?
-3. Quelles competences pouvez-vous apporter a ce role?
-4. Decrivez un projet ou vous avez appris rapidement.
-5. Comment gerez-vous une tache difficile?
-6. Quelle est votre plus grande force pour ce poste?
-7. Quelle competence devez-vous encore ameliorer?
-8. Comment travaillez-vous en equipe?
-9. Pourquoi devrions-nous considerer votre candidature?
-10. Avez-vous des questions pour nous?
-
-STRUCTURE STAR
-Situation: Expliquez le contexte reel.
-Task: Decrivez votre responsabilite.
-Action: Montrez ce que vous avez fait.
-Result: Partagez un resultat honnete ou ce que vous avez appris.
-
-FORCES A METTRE EN AVANT
-- Votre motivation pour ${role}
-- Vos competences liees a PATHZY et a votre plan de carriere
-- Vos projets reels, formations, benevolat ou experiences verifiables
-
-POINTS A PREPARER
-- Les competences manquantes
-- Les exemples concrets
-- La clarte sur votre objectif professionnel
-
-CHECKLIST FINALE
-- Relire le CV
-- Preparer 2 projets reels a expliquer
-- Preparer 3 questions pour l'employeur
-- Verifier l'heure, le lien et la tenue
-- ${jdHint}
-
-PATHZY vous aide a mieux vous preparer, sans promettre le resultat de l'entretien.`;
-  }
-
-  return `INTERVIEW PRACTICE: ${target}
-
-10 LIKELY INTERVIEW QUESTIONS
-1. Tell me about yourself and your career direction.
-2. Why are you interested in this role?
-3. Which skills can you bring to this position?
-4. Describe a project where you learned quickly.
-5. How do you handle a difficult task?
-6. What is your strongest fit for this role?
-7. Which skill are you still improving?
-8. How do you work in a team?
-9. Why should we consider your application?
-10. What questions do you have for us?
-
-STAR ANSWER STRUCTURE
-Situation: Give the real context.
-Task: Explain your responsibility.
-Action: Show what you did.
-Result: Share an honest outcome or what you learned.
-
-STRENGTHS TO HIGHLIGHT
-- Your motivation for ${role}
-- Skills from your PATHZY career plan
-- Real projects, education, volunteering, or work experience
-
-WEAKNESSES TO PREPARE FOR
-- Missing skills
-- Vague examples
-- Unclear career goal
-
-FINAL CHECKLIST
-- Review your CV
-- Prepare 2 real projects to explain
-- Prepare 3 questions for the employer
-- Check the time, link, and outfit
-- ${jdHint}
-
-PATHZY helps you prepare better. It does not promise interview success.`;
+function label(value: string) {
+  return value.split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
 }
 
-export function InterviewPrepClient() {
+function structuredText(prep: InterviewPrepRecord) {
+  return [
+    `Interview Preparation: ${prep.role}${prep.company ? ` at ${prep.company}` : ""}`,
+    `Interview type: ${label(prep.interviewType)}`,
+    "",
+    "Practice Questions",
+    ...prep.questions.map((question, index) => `${index + 1}. ${question.question}\nWhy: ${question.whyAsked}\nEvidence to use: ${question.evidenceToUse.map((item) => item.label).join(", ") || "Confirm evidence first."}\nClaims to avoid: ${question.claimsToAvoid.join("; ")}`),
+    "",
+    "STAR Stories",
+    ...prep.starStories.map((story) => `${story.title}\nSituation: ${story.situation}\nTask: ${story.task}\nAction: ${story.action}\nResult: ${story.result}`),
+    "",
+    "Gap Responses",
+    ...prep.gapResponses.map((gap) => `${gap.gap}\n${gap.honestPositioning}`),
+    "",
+    "Questions for the Employer",
+    ...prep.employerQuestions.map((item) => `- ${item.question}`)
+  ].join("\n\n");
+}
+
+function QuestionCard({
+  question,
+  feedback,
+  onPractice
+}: {
+  question: InterviewPrepQuestion;
+  feedback?: InterviewFeedback;
+  onPractice: (question: InterviewPrepQuestion) => void;
+}) {
+  return (
+    <article className="rounded-[20px] border border-white/10 bg-white/7 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#c7d6ff]/70">{label(question.category)}</p>
+          <h3 className="mt-2 text-lg font-black">{question.question}</h3>
+        </div>
+        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/58">{label(question.source)}</span>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-white/58">{question.whyAsked}</p>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="rounded-[16px] border border-white/10 bg-black/14 p-3">
+          <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-white/42">Evidence to Use</p>
+          <ul className="mt-2 grid gap-1 text-sm leading-6 text-white/60">
+            {question.evidenceToUse.length ? question.evidenceToUse.map((item) => <li key={`${question.id}-${item.canonicalEntityId}`}>{item.label}: {item.evidenceText}</li>) : <li>Confirm evidence in your Professional Identity before relying on this answer.</li>}
+          </ul>
+        </div>
+        <div className="rounded-[16px] border border-white/10 bg-black/14 p-3">
+          <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-white/42">Claims to Avoid</p>
+          <ul className="mt-2 grid gap-1 text-sm leading-6 text-white/60">
+            {question.claimsToAvoid.map((item) => <li key={item}>{item}</li>)}
+          </ul>
+        </div>
+      </div>
+      <div className="mt-4 rounded-[16px] border border-white/10 bg-black/14 p-3">
+        <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-white/42">Answer Structure</p>
+        <p className="mt-2 text-sm leading-6 text-white/60">{question.answerStructure.join(" -> ")}</p>
+      </div>
+      {feedback ? (
+        <div className="mt-4 rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-3 text-sm leading-6 text-[#b9f8d5]">
+          <strong>Feedback:</strong> Relevance {feedback.relevance}/100, clarity {feedback.clarity}/100, evidence use {feedback.evidenceUse}/100.
+          {feedback.unsupportedClaims.length ? <span className="block text-[#ffc5c5]">Review: {feedback.unsupportedClaims.join(" ")}</span> : null}
+        </div>
+      ) : null}
+      <button onClick={() => onPractice(question)} className="mt-4 rounded-full blue-purple px-4 py-2 text-sm font-extrabold text-white">Practice Answer</button>
+    </article>
+  );
+}
+
+function StarStories({ stories }: { stories: StarStory[] }) {
+  return (
+    <div className="grid gap-3">
+      {stories.map((story) => (
+        <article key={story.id} className="rounded-[18px] border border-white/10 bg-white/7 p-4">
+          <h3 className="text-lg font-black">{story.title}</h3>
+          <div className="mt-3 grid gap-2 text-sm leading-6 text-white/60">
+            <p><strong className="text-white/78">Situation:</strong> {story.situation}</p>
+            <p><strong className="text-white/78">Task:</strong> {story.task}</p>
+            <p><strong className="text-white/78">Action:</strong> {story.action}</p>
+            <p><strong className="text-white/78">Result:</strong> {story.result}</p>
+          </div>
+          <p className="mt-3 text-xs font-bold text-white/42">Evidence entities: {story.sourceCanonicalEntityIds.join(", ") || "Confirm evidence first"}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function GapResponses({ gaps }: { gaps: GapResponse[] }) {
+  return (
+    <div className="grid gap-3">
+      {gaps.map((gap) => (
+        <article key={gap.id} className="rounded-[18px] border border-[#FFD166]/25 bg-[#FFD166]/8 p-4">
+          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#ffe2a3]/70">{label(gap.type)}</p>
+          <h3 className="mt-2 text-lg font-black">{gap.gap}</h3>
+          <p className="mt-2 text-sm leading-6 text-white/62">{gap.honestPositioning}</p>
+          <p className="mt-3 text-xs font-bold text-white/42">Avoid: {gap.claimsToAvoid.join("; ")}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function EmployerQuestions({ questions }: { questions: EmployerQuestion[] }) {
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      {questions.map((item) => (
+        <article key={item.id} className="rounded-[18px] border border-white/10 bg-white/7 p-4">
+          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">{label(item.category)}</p>
+          <h3 className="mt-2 text-base font-black">{item.question}</h3>
+          <p className="mt-2 text-sm leading-6 text-white/56">{item.rationale}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+export function InterviewPrepClient({ applications }: { applications: ApplicationOption[] }) {
   const searchParams = useSearchParams();
-  const [output, setOutput] = useState("");
-  const [celebration, setCelebration] = useState("");
-  const [prepId, setPrepId] = useState("");
+  const initialApplicationId = searchParams?.get("applicationId") ?? applications[0]?.id ?? "";
+  const [selectedApplicationId, setSelectedApplicationId] = useState(initialApplicationId);
+  const [interviewType, setInterviewType] = useState<InterviewType>("unknown");
+  const [language, setLanguage] = useState<"english" | "french">("english");
+  const [prep, setPrep] = useState<InterviewPrepRecord | null>(null);
+  const [activeQuestion, setActiveQuestion] = useState<InterviewPrepQuestion | null>(null);
+  const [practiceAnswer, setPracticeAnswer] = useState("");
+  const [practiceNotes, setPracticeNotes] = useState("");
+  const [selfRating, setSelfRating] = useState("3");
+  const [selectedEvidence, setSelectedEvidence] = useState<string[]>([]);
+  const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
-  const [target, setTarget] = useState({ role: searchParams?.get("role") ?? "", company: searchParams?.get("company") ?? "", language: "english", jobDescription: "" });
+  const selectedApplication = useMemo(() => applications.find((application) => application.id === selectedApplicationId), [applications, selectedApplicationId]);
 
   async function generate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const nextTarget = {
-      role: String(form.get("role") || "the role"),
-      company: String(form.get("company") || ""),
-      jobDescription: String(form.get("jobDescription") || ""),
-      language: String(form.get("language") || "english")
-    };
-    const content = buildPrep(nextTarget);
-    setTarget(nextTarget);
-    setOutput(content);
-    setCelebration("Great step. You are preparing better for interview conversations.");
+    if (!selectedApplicationId) return;
+    setBusy("generate");
     setError("");
-
     try {
       const response = await fetch("/api/interview-prep", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...nextTarget, content })
+        body: JSON.stringify({ applicationId: selectedApplicationId, interviewType, language })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "Your progress is safe. Please try again.");
-      setPrepId(data.prep.id);
+      if (!response.ok) throw new Error(data.error ?? "Could not create interview preparation.");
+      setPrep(data.prep);
+      setActiveQuestion(data.prep.questions?.[0] ?? null);
+      setPracticeAnswer("");
+      setSelectedEvidence([]);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Your progress is safe. Please try again.");
+      setError(caught instanceof Error ? caught.message : "Could not create interview preparation.");
+    } finally {
+      setBusy("");
     }
   }
 
-  function downloadText() {
-    if (!output) return;
-    const blob = new Blob([output], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${target.role || "interview-prep"}.txt`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  function downloadPdf() {
-    if (!output) return;
-    downloadBlob(pathzyFilename("InterviewPrep", target.role || "interview-prep", "pdf"), "application/pdf", simplePdfDocument("Interview Practice", output));
-  }
-
-  async function markComplete() {
-    if (!prepId) return;
+  async function savePractice(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!prep || !activeQuestion) return;
+    setBusy("practice");
     setError("");
     try {
       const response = await fetch("/api/interview-prep", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: prepId, completed: true, content: output })
+        body: JSON.stringify({
+          id: prep.id,
+          questionId: activeQuestion.id,
+          answer: practiceAnswer,
+          notes: practiceNotes,
+          selfRating: Number(selfRating),
+          evidenceChecklist: selectedEvidence
+        })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "Your progress is safe. Please try again.");
-      setCelebration("Interview practice completed. Your journey can now reflect this step.");
+      if (!response.ok) throw new Error(data.error ?? "Could not save practice answer.");
+      setPrep(data.prep);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Your progress is safe. Please try again.");
+      setError(caught instanceof Error ? caught.message : "Could not save practice answer.");
+    } finally {
+      setBusy("");
     }
   }
 
-  return (
-    <div className="grid gap-5 lg:grid-cols-[.42fr_1fr]">
-      <Card>
-        <h2 className="text-2xl font-black">Prepare for an interview</h2>
-        <p className="mt-3 text-sm leading-6 text-white/58">Generate a focused practice plan using the role, company, and optional job description.</p>
-        <form onSubmit={generate} className="mt-5 grid gap-4">
-          <label className="label">Role<input className="field" name="role" defaultValue={target.role} placeholder="Junior Data Analyst" required /></label>
-          <label className="label">Company optional<input className="field" name="company" defaultValue={target.company} placeholder="Company name" /></label>
-          <label className="label">
-            Language
-            <select className="field" name="language" defaultValue="english">
-              <option value="english">English</option>
-              <option value="french">French</option>
-            </select>
-          </label>
-          <label className="label">Job description optional<textarea className="field" name="jobDescription" placeholder="Paste role requirements here" /></label>
-          <button className="rounded-full blue-purple px-6 py-3 text-sm font-extrabold text-white">Generate prep plan</button>
-        </form>
-      </Card>
+  async function markComplete() {
+    if (!prep) return;
+    setBusy("complete");
+    setError("");
+    try {
+      const response = await fetch("/api/interview-prep", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: prep.id, completed: true, content: structuredText(prep) })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not mark interview prep complete.");
+      setPrep((current) => current ? { ...current, completed: true, status: "completed" } : current);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not mark interview prep complete.");
+    } finally {
+      setBusy("");
+    }
+  }
 
-      <Card>
-        <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Interview practice output</p>
-        {celebration ? <p className="mt-5 rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{celebration}</p> : null}
-        {error ? <p className="mt-4 rounded-[16px] border border-[#ff6b6b]/30 bg-[#ff6b6b]/10 px-4 py-3 text-sm text-[#ffc5c5]">{error}</p> : null}
-        <textarea
-          className="mt-5 min-h-[520px] w-full resize-y rounded-[22px] border border-white/10 bg-[#050816]/70 p-5 text-sm leading-7 text-white/76 outline-none focus:border-[#5B8CFF]/50"
-          value={output || "Your interview questions, STAR structure, strengths, weaknesses, and checklist will appear here."}
-          onChange={(event) => setOutput(event.target.value)}
-          readOnly={!output}
-        />
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button onClick={() => navigator.clipboard.writeText(output)} disabled={!output} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:opacity-50">Copy</button>
-          <button onClick={downloadPdf} disabled={!output} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:opacity-50">Download PDF</button>
-          <button onClick={downloadText} disabled={!output} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:opacity-50">Download text</button>
-          <button onClick={markComplete} disabled={!prepId} className="rounded-full blue-purple px-5 py-3 text-sm font-extrabold text-white disabled:opacity-50">Mark completed</button>
-        </div>
-      </Card>
+  function toggleEvidence(labelValue: string) {
+    setSelectedEvidence((current) => current.includes(labelValue) ? current.filter((item) => item !== labelValue) : [...current, labelValue]);
+  }
+
+  function downloadPdf() {
+    if (!prep) return;
+    downloadBlob(pathzyFilename("InterviewPrep", prep.role || "interview-prep", "pdf"), "application/pdf", simplePdfDocument("Interview Preparation", structuredText(prep)));
+  }
+
+  return (
+    <div className="grid gap-5 lg:grid-cols-[.34fr_1fr]">
+      <div className="grid gap-5">
+        <Card>
+          <h2 className="text-2xl font-black">Interview Preparation</h2>
+          <p className="mt-3 text-sm leading-6 text-white/58">Create job-specific practice from your tracked application, confirmed Professional Identity, job match, gaps, and targeted CV.</p>
+          {error ? <p className="mt-4 rounded-[16px] border border-[#ff6b6b]/30 bg-[#ff6b6b]/10 px-4 py-3 text-sm text-[#ffc5c5]">{error}</p> : null}
+          {applications.length ? (
+            <form onSubmit={generate} className="mt-5 grid gap-4">
+              <label className="label">
+                Application
+                <select className="field" value={selectedApplicationId} onChange={(event) => setSelectedApplicationId(event.target.value)} required>
+                  {applications.map((application) => (
+                    <option key={application.id} value={application.id}>{application.role} - {application.company_name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="label">
+                Interview type
+                <select className="field" value={interviewType} onChange={(event) => setInterviewType(event.target.value as InterviewType)}>
+                  {interviewTypes.map((type) => <option key={type} value={type}>{label(type)}</option>)}
+                </select>
+              </label>
+              <label className="label">
+                Language
+                <select className="field" value={language} onChange={(event) => setLanguage(event.target.value as "english" | "french")}>
+                  <option value="english">English</option>
+                  <option value="french">French</option>
+                </select>
+              </label>
+              {selectedApplication && !selectedApplication.job_match_analysis_id ? (
+                <p className="rounded-[16px] border border-[#FFD166]/30 bg-[#FFD166]/10 p-3 text-sm font-bold text-[#ffe2a3]">This application needs Job Intelligence before PATHZY can create evidence-grounded interview prep.</p>
+              ) : null}
+              <button disabled={busy === "generate" || !selectedApplication?.job_match_analysis_id} className="rounded-full blue-purple px-6 py-3 text-sm font-extrabold text-white disabled:opacity-50">
+                {busy === "generate" ? "Preparing" : "Create Interview Prep"}
+              </button>
+            </form>
+          ) : (
+            <div className="mt-5 rounded-[18px] border border-dashed border-white/14 bg-white/5 p-5">
+              <h3 className="text-lg font-black">Track an application first.</h3>
+              <p className="mt-2 text-sm leading-6 text-white/56">Interview preparation is strongest after Job Intelligence has matched a real opportunity to your Professional Identity.</p>
+              <Link href="/applications" className="mt-4 inline-flex rounded-full blue-purple px-5 py-3 text-sm font-extrabold text-white">Go to Applications</Link>
+            </div>
+          )}
+        </Card>
+
+        {prep ? (
+          <Card>
+            <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">Practice Answer</p>
+            {activeQuestion ? (
+              <form onSubmit={savePractice} className="mt-4 grid gap-4">
+                <h3 className="text-lg font-black">{activeQuestion.question}</h3>
+                <label className="label">Practice Answer<textarea className="field min-h-[180px]" value={practiceAnswer} onChange={(event) => setPracticeAnswer(event.target.value)} /></label>
+                <label className="label">Notes<textarea className="field" value={practiceNotes} onChange={(event) => setPracticeNotes(event.target.value)} /></label>
+                <label className="label">Self-rating<select className="field" value={selfRating} onChange={(event) => setSelfRating(event.target.value)}><option value="1">1 - Needs work</option><option value="2">2</option><option value="3">3 - Getting there</option><option value="4">4</option><option value="5">5 - Strong</option></select></label>
+                <div className="rounded-[16px] border border-white/10 bg-white/5 p-3">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">Evidence checklist</p>
+                  <div className="mt-2 grid gap-2">
+                    {activeQuestion.evidenceToUse.map((item) => (
+                      <label key={item.canonicalEntityId} className="flex items-start gap-3 text-sm leading-6 text-white/62">
+                        <input className="mt-1" type="checkbox" checked={selectedEvidence.includes(item.label)} onChange={() => toggleEvidence(item.label)} />
+                        <span>{item.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <button disabled={busy === "practice"} className="rounded-full blue-purple px-5 py-3 text-sm font-extrabold text-white disabled:opacity-50">{busy === "practice" ? "Saving" : "Save Practice"}</button>
+              </form>
+            ) : null}
+          </Card>
+        ) : null}
+      </div>
+
+      <div className="grid gap-5">
+        {prep ? (
+          <>
+            <Card>
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Interview Preparation</p>
+                  <h2 className="mt-2 text-3xl font-black">{prep.role}{prep.company ? ` at ${prep.company}` : ""}</h2>
+                  <p className="mt-3 text-sm leading-6 text-white/58">Grounded in the tracked application, job requirements, match analysis, targeted CV, and confirmed Professional Identity evidence.</p>
+                </div>
+                <span className="w-fit rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/62">{label(prep.interviewType)}</span>
+              </div>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button onClick={downloadPdf} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82">Download PDF</button>
+                <button onClick={() => navigator.clipboard.writeText(structuredText(prep))} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82">Copy Prep</button>
+                <button onClick={markComplete} disabled={busy === "complete"} className="rounded-full blue-purple px-5 py-3 text-sm font-extrabold text-white disabled:opacity-50">{prep.completed ? "Completed" : "Mark Completed"}</button>
+              </div>
+            </Card>
+
+            <Card>
+              <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Practice Questions</p>
+              <div className="mt-5 grid gap-4">
+                {prep.questions.map((question) => (
+                  <QuestionCard
+                    key={question.id}
+                    question={question}
+                    feedback={prep.feedback.find((item) => item.questionId === question.id)}
+                    onPractice={(item) => {
+                      setActiveQuestion(item);
+                      const existing = prep.practiceResponses.find((response) => response.questionId === item.id);
+                      setPracticeAnswer(existing?.answer ?? "");
+                      setPracticeNotes(existing?.notes ?? "");
+                      setSelfRating(String(existing?.selfRating ?? 3));
+                      setSelectedEvidence(existing?.evidenceChecklist ?? []);
+                    }}
+                  />
+                ))}
+              </div>
+            </Card>
+
+            <Card>
+              <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">STAR Stories</p>
+              <div className="mt-5"><StarStories stories={prep.starStories} /></div>
+            </Card>
+
+            <Card>
+              <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Gap Responses</p>
+              <div className="mt-5"><GapResponses gaps={prep.gapResponses} /></div>
+            </Card>
+
+            <Card>
+              <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Questions for the Employer</p>
+              <div className="mt-5"><EmployerQuestions questions={prep.employerQuestions} /></div>
+            </Card>
+          </>
+        ) : (
+          <Card>
+            <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Ready when your application is ready</p>
+            <h2 className="mt-2 text-3xl font-black">Choose one tracked application to begin.</h2>
+            <p className="mt-3 leading-7 text-white/58">PATHZY will avoid generic lists and prepare questions from the real job responsibilities, requirements, match evidence, gaps, and targeted CV claims.</p>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

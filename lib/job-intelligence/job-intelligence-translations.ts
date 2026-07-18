@@ -190,3 +190,76 @@ export const applicationTrackerCopy = {
     updateStatus: "Mettre à jour le statut"
   }
 } as const;
+
+export const interviewPreparationCopy = {
+  en: {
+    title: "Interview Preparation",
+    practiceQuestions: "Practice Questions",
+    starStories: "STAR Stories",
+    questionsForEmployer: "Questions for the Employer",
+    practiceAnswer: "Practice Answer",
+    feedback: "Feedback",
+    evidenceToUse: "Evidence to Use",
+    claimsToAvoid: "Claims to Avoid"
+  },
+  fr: {
+    title: "Préparation à l’entretien",
+    practiceQuestions: "Questions d’entraînement",
+    starStories: "Exemples STAR",
+    questionsForEmployer: "Questions à poser à l’employeur",
+    practiceAnswer: "Réponse d’entraînement",
+    feedback: "Commentaires",
+    evidenceToUse: "Éléments à utiliser",
+    claimsToAvoid: "Affirmations à éviter"
+  }
+} as const;
+
+export const followUpCopy = {
+  en: {
+    title: "Follow-Up",
+    followUpDue: "Follow-Up Due",
+    prepareFollowUp: "Prepare Follow-Up",
+    schedule: "Schedule",
+    approve: "Approve",
+    markAsSent: "Mark as Sent",
+    dismiss: "Dismiss"
+  },
+  fr: {
+    title: "Relance",
+    followUpDue: "Relance a effectuer",
+    prepareFollowUp: "Preparer la relance",
+    schedule: "Planifier",
+    approve: "Approuver",
+    markAsSent: "Marquer comme envoyee",
+    dismiss: "Ignorer"
+  }
+} as const;
+
+export const careerAnalyticsCopy = {
+  en: {
+    title: "Career Analytics",
+    applicationFunnel: "Application Funnel",
+    responseRate: "Response Rate",
+    interviewRate: "Interview Rate",
+    offerRate: "Offer Rate",
+    applicationsByRole: "Applications by Role",
+    applicationsBySource: "Applications by Source",
+    recurringGaps: "Recurring Gaps",
+    recommendedActions: "Recommended Actions",
+    notEnoughDataYet: "Not Enough Data Yet",
+    earlySignal: "Early Signal"
+  },
+  fr: {
+    title: "Analyse de carriere",
+    applicationFunnel: "Parcours des candidatures",
+    responseRate: "Taux de reponse",
+    interviewRate: "Taux d'entretien",
+    offerRate: "Taux d'offre",
+    applicationsByRole: "Candidatures par poste",
+    applicationsBySource: "Candidatures par source",
+    recurringGaps: "Lacunes recurrentes",
+    recommendedActions: "Actions recommandees",
+    notEnoughDataYet: "Pas encore assez de donnees",
+    earlySignal: "Premiere tendance"
+  }
+} as const;

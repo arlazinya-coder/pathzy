@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, ProgressBar } from "@/components/ui";
+import { buildCareerAnalytics, type AnalyticsPeriod, type CareerAnalyticsDocument, type CareerAnalyticsJobMatch } from "@/lib/analytics/career-analytics-service";
 import {
   APPLICATION_TRACKER_STATUSES,
   APPLICATION_TRACKER_VIEWS,
@@ -15,6 +16,7 @@ import {
   summarizeApplicationTracker
 } from "@/lib/applications/application-tracker-service";
 import type { ApplicationContact, ApplicationTrackerView, SmartApplicationApprovals, SmartApplicationChecklistItem, SmartApplicationReadiness } from "@/lib/applications/smart-application.types";
+import type { ApplicationFollowUp, FollowUpStatus, FollowUpType } from "@/lib/follow-up/follow-up.types";
 
 type ApplicationStatus = (typeof APPLICATION_TRACKER_STATUSES)[number];
 
@@ -73,10 +75,27 @@ type TimelineEventRow = {
   event_at: string;
 };
 
+type FollowUpRow = ApplicationFollowUp;
+
 const statuses = [...APPLICATION_TRACKER_STATUSES];
+const followUpTypes: FollowUpType[] = ["application_follow_up", "recruiter_follow_up", "interview_thank_you", "interview_status_follow_up", "referral_thank_you", "offer_response", "custom"];
 
 function statusLabel(status: string) {
   return labelApplicationStatus(status);
+}
+
+const followUpTypeLabels: Record<FollowUpType, string> = {
+  application_follow_up: "Application follow-up",
+  recruiter_follow_up: "Recruiter follow-up",
+  interview_thank_you: "Interview thank-you",
+  interview_status_follow_up: "Interview status follow-up",
+  referral_thank_you: "Referral thank-you",
+  offer_response: "Offer response",
+  custom: "Custom"
+};
+
+function followUpStatusLabel(status: FollowUpStatus | string) {
+  return String(status).split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
 }
 
 const viewLabels: Record<ApplicationTrackerView, string> = {
@@ -154,11 +173,17 @@ function isSmartApplication(application: EmploymentApplication) {
 export function EmploymentTrackerClient({
   initialApplications,
   supportingDocuments = [],
-  timelineEvents = []
+  timelineEvents = [],
+  initialFollowUps = [],
+  matchAnalyses = [],
+  professionalDocuments = []
 }: {
   initialApplications: EmploymentApplication[];
   supportingDocuments?: SupportingDocumentOption[];
   timelineEvents?: TimelineEventRow[];
+  initialFollowUps?: FollowUpRow[];
+  matchAnalyses?: CareerAnalyticsJobMatch[];
+  professionalDocuments?: CareerAnalyticsDocument[];
 }) {
   const searchParams = useSearchParams();
   const [applications, setApplications] = useState(initialApplications);
@@ -168,7 +193,23 @@ export function EmploymentTrackerClient({
   const [celebration, setCelebration] = useState("");
   const [activeView, setActiveView] = useState<ApplicationTrackerView>("all");
   const [search, setSearch] = useState("");
+  const [followUps, setFollowUps] = useState(initialFollowUps);
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<AnalyticsPeriod>("90d");
+  const [analyticsCustomStart, setAnalyticsCustomStart] = useState("");
+  const [analyticsCustomEnd, setAnalyticsCustomEnd] = useState("");
   const summary = useMemo(() => summarizeApplicationTracker(applications), [applications]);
+  const careerAnalytics = useMemo(() => buildCareerAnalytics({
+    applications,
+    timelineEvents,
+    matchAnalyses,
+    professionalDocuments,
+    period: {
+      type: analyticsPeriod,
+      start: analyticsPeriod === "custom" ? analyticsCustomStart || undefined : undefined,
+      end: analyticsPeriod === "custom" ? analyticsCustomEnd || undefined : undefined
+    },
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+  }), [analyticsCustomEnd, analyticsCustomStart, analyticsPeriod, applications, matchAnalyses, professionalDocuments, timelineEvents]);
   const visibleApplications = useMemo(() => {
     const query = search.trim().toLowerCase();
     return applications.filter((application) => {
@@ -187,6 +228,29 @@ export function EmploymentTrackerClient({
     }
     return groups;
   }, [timelineEvents]);
+  const followUpsByApplication = useMemo(() => {
+    const groups = new Map<string, FollowUpRow[]>();
+    for (const followUp of followUps) {
+      const current = groups.get(followUp.application_id) ?? [];
+      current.push(followUp);
+      groups.set(followUp.application_id, current);
+    }
+    return groups;
+  }, [followUps]);
+
+  function updateApplicationAfterFollowUp(followUp: FollowUpRow) {
+    setApplications((current) => current.map((application) => {
+      if (application.id !== followUp.application_id) return application;
+      const state = followUp.status === "sent" ? "sent" : followUp.status === "dismissed" ? "dismissed" : followUp.status === "cancelled" ? "cancelled" : "draft ready";
+      return {
+        ...application,
+        follow_up_date: followUp.recommended_date,
+        follow_up_state: state,
+        next_action: followUp.status === "sent" ? "Wait for employer response" : followUp.status === "dismissed" || followUp.status === "cancelled" ? "Keep application updated" : "Review follow-up draft",
+        next_action_date: followUp.recommended_date
+      };
+    }));
+  }
 
   async function addApplication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -355,6 +419,55 @@ export function EmploymentTrackerClient({
     }
   }
 
+  async function prepareFollowUp(application: EmploymentApplication, type: FollowUpType) {
+    setBusyId(`followup:${application.id}`);
+    setError("");
+    try {
+      const response = await fetch("/api/application-follow-ups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationId: application.id,
+          type,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not prepare follow-up.");
+      setFollowUps((current) => {
+        const withoutExisting = current.filter((item) => item.id !== data.followUp.id);
+        return [data.followUp, ...withoutExisting];
+      });
+      updateApplicationAfterFollowUp(data.followUp);
+      setCelebration(data.reused ? "Existing follow-up draft opened." : "Follow-up draft prepared. Review it before sending anything.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not prepare follow-up.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function updateFollowUp(followUp: FollowUpRow, patch: Record<string, unknown>) {
+    setBusyId(`followup:${followUp.application_id}`);
+    setError("");
+    try {
+      const response = await fetch("/api/application-follow-ups", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: followUp.id, ...patch })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not update follow-up.");
+      setFollowUps((current) => current.map((item) => (item.id === data.followUp.id ? data.followUp : item)));
+      updateApplicationAfterFollowUp(data.followUp);
+      if (patch.markSent) setCelebration("Follow-up recorded as sent. PATHZY did not send it automatically.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not update follow-up.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
   return (
     <div className="grid gap-5 lg:grid-cols-[.38fr_1fr]">
       <Card className="h-fit">
@@ -411,6 +524,16 @@ export function EmploymentTrackerClient({
           </div>
           <div className="mt-5"><ProgressBar value={progress} /></div>
         </Card>
+
+        <CareerAnalyticsDashboard
+          analytics={careerAnalytics}
+          activePeriod={analyticsPeriod}
+          onPeriodChange={setAnalyticsPeriod}
+          customStart={analyticsCustomStart}
+          customEnd={analyticsCustomEnd}
+          onCustomStartChange={setAnalyticsCustomStart}
+          onCustomEndChange={setAnalyticsCustomEnd}
+        />
 
         <Card>
           <h2 className="text-2xl font-black">Application board</h2>
@@ -510,6 +633,13 @@ export function EmploymentTrackerClient({
                         </div>
                       ) : null}
                       {application.notes ? <p className="mt-3 text-sm leading-6 text-white/58">{application.notes}</p> : null}
+                      <FollowUpWorkspace
+                        application={application}
+                        followUps={followUpsByApplication.get(application.id) ?? []}
+                        busy={busyId === `followup:${application.id}`}
+                        onPrepare={(type) => prepareFollowUp(application, type)}
+                        onUpdate={updateFollowUp}
+                      />
                       {(timelineByApplication.get(application.id) ?? []).length ? (
                         <div className="mt-3 rounded-[14px] border border-white/10 bg-black/14 p-3">
                           <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">Timeline</p>
@@ -555,6 +685,299 @@ export function EmploymentTrackerClient({
             ) : null}
           </div>
         </Card>
+      </div>
+    </div>
+  );
+}
+
+function CareerAnalyticsDashboard({
+  analytics,
+  activePeriod,
+  onPeriodChange,
+  customStart,
+  customEnd,
+  onCustomStartChange,
+  onCustomEndChange
+}: {
+  analytics: ReturnType<typeof buildCareerAnalytics>;
+  activePeriod: AnalyticsPeriod;
+  onPeriodChange: (period: AnalyticsPeriod) => void;
+  customStart: string;
+  customEnd: string;
+  onCustomStartChange: (value: string) => void;
+  onCustomEndChange: (value: string) => void;
+}) {
+  const periods: Array<{ key: AnalyticsPeriod; label: string }> = [
+    { key: "7d", label: "7 days" },
+    { key: "30d", label: "30 days" },
+    { key: "90d", label: "90 days" },
+    { key: "year", label: "This year" },
+    { key: "custom", label: "Custom" }
+  ];
+  const funnelStages = [
+    ["prepared", "Prepared"],
+    ["applied", "Applied"],
+    ["employer_response", "Employer response"],
+    ["screening", "Screening"],
+    ["assessment", "Assessment"],
+    ["interview", "Interview"],
+    ["offer", "Offer"],
+    ["accepted", "Accepted"]
+  ] as const;
+  const maxFunnel = Math.max(...Object.values(analytics.funnel), 1);
+
+  return (
+    <div id="career-analytics" className="scroll-mt-28">
+    <Card>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#aac1ff]">Career Analytics</p>
+          <h2 className="mt-2 text-2xl font-black">Private job-search signals you can act on.</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-white/58">
+            PATHZY uses your tracker, match analyses, and document metadata to show early patterns. Unknown outcomes are not treated as rejection.
+          </p>
+        </div>
+        <div className="grid gap-3">
+          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Career Analytics time filters">
+            {periods.map((period) => (
+              <button
+                key={period.key}
+                type="button"
+                onClick={() => onPeriodChange(period.key)}
+                className={`rounded-full px-3 py-2 text-xs font-extrabold ${activePeriod === period.key ? "blue-purple text-white" : "bg-white/10 text-white/62"}`}
+              >
+                {period.label}
+              </button>
+            ))}
+          </div>
+          {activePeriod === "custom" ? (
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="label">
+                Custom start
+                <input className="field" type="date" value={customStart} onChange={(event) => onCustomStartChange(event.target.value)} />
+              </label>
+              <label className="label">
+                Custom end
+                <input className="field" type="date" value={customEnd} onChange={(event) => onCustomEndChange(event.target.value)} />
+              </label>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-5">
+        {Object.values(analytics.metrics).map((metric) => (
+          <div key={metric.label} className="rounded-[16px] border border-white/10 bg-black/14 p-3">
+            <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-white/42">{metric.label}</p>
+            <strong className="mt-2 block text-xl font-black">{metric.value}</strong>
+            <p className={`mt-2 text-xs font-bold ${metric.state === "known" ? "text-[#b9f8d5]" : metric.state === "early_signal" ? "text-[#ffe2a3]" : "text-white/42"}`}>{metric.state === "early_signal" ? "Early Signal" : metric.state === "insufficient_data" ? "Not Enough Data Yet" : "Known"}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-[.9fr_1.1fr]">
+        <div className="rounded-[18px] border border-white/10 bg-white/5 p-4">
+          <h3 className="text-lg font-black">Application Funnel</h3>
+          <div className="mt-4 grid gap-3">
+            {funnelStages.map(([key, label]) => (
+              <div key={key} className="grid gap-2">
+                <div className="flex justify-between gap-3 text-sm font-bold text-white/66">
+                  <span>{label}</span>
+                  <span>{analytics.funnel[key]}</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                  <div className="h-full rounded-full bg-[#5B8CFF]" style={{ width: `${Math.max(4, (analytics.funnel[key] / maxFunnel) * 100)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-4">
+          <div className="rounded-[18px] border border-white/10 bg-white/5 p-4">
+            <h3 className="text-lg font-black">Applications by Role</h3>
+            <div className="mt-3 grid gap-2">
+              {analytics.byRole.length ? analytics.byRole.slice(0, 4).map((item) => <AnalyticsGroupRow key={item.label} item={item} />) : <EmptyAnalyticsState />}
+            </div>
+          </div>
+          <div className="rounded-[18px] border border-white/10 bg-white/5 p-4">
+            <h3 className="text-lg font-black">Applications by Source</h3>
+            <div className="mt-3 grid gap-2">
+              {analytics.bySource.length ? analytics.bySource.slice(0, 4).map((item) => <AnalyticsGroupRow key={item.label} item={item} />) : <EmptyAnalyticsState />}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <div className="rounded-[18px] border border-white/10 bg-white/5 p-4">
+          <h3 className="text-lg font-black">CV Performance</h3>
+          <div className="mt-3 grid gap-2">
+            {analytics.documentSignals.length ? analytics.documentSignals.map((item, index) => (
+              <div key={item.documentId} className="rounded-[14px] bg-black/14 p-3">
+                <p className="text-sm font-black">CV version {index + 1}</p>
+                <p className="mt-1 text-xs leading-5 text-white/50">{item.applications} applications - {item.interviews} interviews - {item.signal === "not_enough_data" ? "Not enough data yet" : "Early signal"}</p>
+                <p className="mt-2 text-xs leading-5 text-white/42">{item.note}</p>
+              </div>
+            )) : <EmptyAnalyticsState />}
+          </div>
+        </div>
+
+        <div className="rounded-[18px] border border-white/10 bg-white/5 p-4">
+          <h3 className="text-lg font-black">Recurring Gaps</h3>
+          <div className="mt-3 grid gap-2">
+            {analytics.recurringGaps.length ? analytics.recurringGaps.slice(0, 5).map((gap) => (
+              <div key={`${gap.category}-${gap.label}`} className="rounded-[14px] bg-black/14 p-3">
+                <p className="text-sm font-black">{gap.label}</p>
+                <p className="mt-1 text-xs font-bold text-[#ffe2a3]">{gap.category.replace(/_/g, " ")} - seen {gap.count} time{gap.count === 1 ? "" : "s"}</p>
+                <p className="mt-2 text-xs leading-5 text-white/46">{gap.action}</p>
+              </div>
+            )) : <EmptyAnalyticsState />}
+          </div>
+        </div>
+
+        <div className="rounded-[18px] border border-white/10 bg-white/5 p-4">
+          <h3 className="text-lg font-black">Recommended Actions</h3>
+          <div className="mt-3 grid gap-2">
+            {analytics.recommendedActions.length ? analytics.recommendedActions.map((action) => (
+              <div key={`${action.label}-${action.reason}`} className="rounded-[14px] bg-black/14 p-3">
+                <p className="text-sm font-black">{action.label}</p>
+                <p className="mt-2 text-xs leading-5 text-white/50">{action.reason}</p>
+                {action.route ? <Link href={action.route} className="mt-2 inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/66">Open</Link> : null}
+              </div>
+            )) : <EmptyAnalyticsState />}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 rounded-[18px] border border-white/10 bg-black/14 p-4 text-xs leading-5 text-white/46 md:grid-cols-2">
+        <div>
+          <p className="font-extrabold uppercase tracking-[0.12em] text-white/60">Calculation methodology</p>
+          <ul className="mt-2 grid gap-1">
+            {analytics.methodology.map((item) => <li key={item}>{item}</li>)}
+          </ul>
+        </div>
+        <div>
+          <p className="font-extrabold uppercase tracking-[0.12em] text-white/60">Data honesty</p>
+          <ul className="mt-2 grid gap-1">
+            {analytics.dataWarnings.map((item) => <li key={item}>{item}</li>)}
+          </ul>
+        </div>
+      </div>
+    </Card>
+    </div>
+  );
+}
+
+function AnalyticsGroupRow({ item }: { item: { label: string; applications: number; responses: number; interviews: number; offers: number; note: string } }) {
+  return (
+    <div className="rounded-[14px] bg-black/14 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-black">{item.label}</p>
+        <span className="rounded-full bg-white/10 px-2 py-1 text-xs font-extrabold text-white/54">{item.applications} applications</span>
+      </div>
+      <p className="mt-2 text-xs leading-5 text-white/50">{item.responses} responses - {item.interviews} interviews - {item.offers} offers</p>
+      <p className="mt-1 text-xs leading-5 text-white/36">{item.note}</p>
+    </div>
+  );
+}
+
+function EmptyAnalyticsState() {
+  return <p className="rounded-[14px] border border-dashed border-white/12 bg-black/14 p-3 text-sm leading-6 text-white/46">Not Enough Data Yet. Keep tracking applications and PATHZY will show useful signals.</p>;
+}
+
+function FollowUpWorkspace({
+  application,
+  followUps,
+  busy,
+  onPrepare,
+  onUpdate
+}: {
+  application: EmploymentApplication;
+  followUps: FollowUpRow[];
+  busy: boolean;
+  onPrepare: (type: FollowUpType) => void;
+  onUpdate: (followUp: FollowUpRow, patch: Record<string, unknown>) => void;
+}) {
+  const status = normalizeApplicationStatus(application.status);
+  const activeFollowUps = followUps.filter((followUp) => !["dismissed", "cancelled"].includes(followUp.status));
+  const today = dateOnly(new Date().toISOString());
+  const due = activeFollowUps.some((followUp) => followUp.recommended_date && followUp.recommended_date <= today && followUp.status !== "sent");
+  const suggestedTypes = followUpTypes.filter((type) => {
+    if (type === "interview_thank_you") return status === "interview_scheduled" || status === "interview_completed";
+    if (type === "interview_status_follow_up") return status === "interview_completed" || Boolean(application.expected_response_date);
+    if (type === "offer_response") return status === "offer_received";
+    if (type === "referral_thank_you") return Boolean(application.contacts_json?.some((contact) => contact.type === "referral_contact"));
+    return true;
+  });
+
+  function submitDraft(event: FormEvent<HTMLFormElement>, followUp: FollowUpRow) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    onUpdate(followUp, {
+      subject: form.get("subject"),
+      body: form.get("body"),
+      scheduledDate: form.get("scheduled_date") || null
+    });
+  }
+
+  return (
+    <div className="mt-3 rounded-[16px] border border-[#7C5CFF]/22 bg-[#7C5CFF]/8 p-3">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#d7ccff]">Follow-Up</p>
+          <h4 className="mt-1 text-base font-black">{due ? "Follow-Up Due" : activeFollowUps.length ? "Draft ready" : "Prepare a follow-up"}</h4>
+          <p className="mt-2 text-sm leading-6 text-white/56">PATHZY can prepare a concise message and timing suggestion. Nothing is sent automatically.</p>
+        </div>
+        <span className={`w-fit rounded-full px-3 py-1 text-xs font-extrabold ${due ? "bg-[#FFD166]/15 text-[#ffe2a3]" : "bg-white/10 text-white/58"}`}>
+          {application.follow_up_state || (due ? "due" : "user approval required")}
+        </span>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {suggestedTypes.map((type) => (
+          <button
+            key={type}
+            type="button"
+            disabled={busy}
+            onClick={() => onPrepare(type)}
+            className="rounded-full bg-white/10 px-3 py-2 text-xs font-extrabold text-white/68 disabled:opacity-50"
+          >
+            Prepare {followUpTypeLabels[type]}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 grid gap-3">
+        {activeFollowUps.map((followUp) => {
+          const canRecordSent = Boolean(followUp.approval_json?.approved && followUp.recipient_json?.known && followUp.status !== "sent");
+          return (
+            <form key={followUp.id} onSubmit={(event) => submitDraft(event, followUp)} className="grid gap-3 rounded-[14px] border border-white/10 bg-black/14 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-black text-white/82">{followUpTypeLabels[followUp.follow_up_type]}</p>
+                  <p className="mt-1 text-xs text-white/44">
+                    {followUp.recommended_date ? `Recommended: ${followUp.recommended_date}` : "No recommended date"} - {followUpStatusLabel(followUp.status)}
+                  </p>
+                </div>
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/58">{followUp.recipient_json?.label ?? "Recipient not set"}</span>
+              </div>
+              {!followUp.recipient_json?.known ? (
+                <p className="rounded-[12px] border border-[#FFD166]/24 bg-[#FFD166]/10 p-2 text-xs font-bold text-[#ffe2a3]">Add a known contact before recording this follow-up as sent.</p>
+              ) : null}
+              <p className="text-xs leading-5 text-white/42">{followUp.timing_reason}</p>
+              <label className="label">Subject<input className="field" name="subject" defaultValue={followUp.subject} /></label>
+              <label className="label">Message<textarea className="field min-h-[150px]" name="body" defaultValue={followUp.body} /></label>
+              <label className="label">Schedule<input className="field" name="scheduled_date" type="datetime-local" defaultValue={followUp.scheduled_date?.slice(0, 16) ?? ""} /></label>
+              <div className="flex flex-wrap gap-2">
+                <button disabled={busy} className="rounded-full blue-purple px-4 py-2 text-xs font-extrabold text-white disabled:opacity-50">Save Draft</button>
+                <button type="button" disabled={busy || followUp.status === "sent"} onClick={() => onUpdate(followUp, { approve: true })} className="rounded-full bg-white/10 px-4 py-2 text-xs font-extrabold text-white/68 disabled:opacity-50">Approve</button>
+                <button type="button" disabled={busy || !canRecordSent} onClick={() => onUpdate(followUp, { markSent: true })} className="rounded-full bg-[#39d98a]/14 px-4 py-2 text-xs font-extrabold text-[#b9f8d5] disabled:opacity-50">Mark as Sent</button>
+                <button type="button" disabled={busy || followUp.status === "sent"} onClick={() => onUpdate(followUp, { dismiss: true })} className="rounded-full bg-white/10 px-4 py-2 text-xs font-extrabold text-white/58 disabled:opacity-50">Dismiss</button>
+              </div>
+            </form>
+          );
+        })}
       </div>
     </div>
   );

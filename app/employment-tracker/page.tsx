@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 
 export async function EmploymentTrackerPage({ redirectTo = appRoutes.applications }: { redirectTo?: string } = {}) {
   const { user, supabase } = await requireAuthenticatedUser(redirectTo);
-  const [{ data: applications }, { data: supportingDocuments }, { data: timelineEvents }] = await Promise.all([
+  const [{ data: applications }, { data: supportingDocuments }, { data: timelineEvents }, { data: followUps }, { data: matchAnalyses }, { data: professionalDocuments }] = await Promise.all([
     supabase.from("employment_applications").select("*").eq("user_id", user.id).order("updated_at", { ascending: false }),
     supabase
       .from("user_documents")
@@ -20,6 +20,25 @@ export async function EmploymentTrackerPage({ redirectTo = appRoutes.application
       .select("id, application_id, event_type, from_status, to_status, note, event_at")
       .eq("user_id", user.id)
       .order("event_at", { ascending: false })
+      .limit(200),
+    supabase
+      .from("application_follow_ups")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false })
+      .limit(200),
+    supabase
+      .from("job_match_analyses")
+      .select("id, gaps_json, requirement_matches_json, recommendations_json, created_at")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false })
+      .limit(200),
+    supabase
+      .from("professional_documents")
+      .select("id, name, document_type, template_id, target_role, updated_at")
+      .eq("user_id", user.id)
+      .eq("document_type", "cv")
+      .order("updated_at", { ascending: false })
       .limit(200)
   ]);
 
@@ -28,7 +47,14 @@ export async function EmploymentTrackerPage({ redirectTo = appRoutes.application
       <PageHeader eyebrow="My Applications" title="Track every application clearly.">
         Save roles, mark applications, prepare follow-ups, and see interviews and offers flow back into your journey.
       </PageHeader>
-      <EmploymentTrackerClient initialApplications={(applications ?? []) as never[]} supportingDocuments={(supportingDocuments ?? []) as never[]} timelineEvents={(timelineEvents ?? []) as never[]} />
+      <EmploymentTrackerClient
+        initialApplications={(applications ?? []) as never[]}
+        supportingDocuments={(supportingDocuments ?? []) as never[]}
+        timelineEvents={(timelineEvents ?? []) as never[]}
+        initialFollowUps={(followUps ?? []) as never[]}
+        matchAnalyses={(matchAnalyses ?? []) as never[]}
+        professionalDocuments={(professionalDocuments ?? []) as never[]}
+      />
     </div>
   );
 }

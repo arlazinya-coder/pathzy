@@ -1,14 +1,7 @@
 import { appRoutes } from "@/lib/navigation/routes";
+import { getOperatingNavigation } from "@/lib/operating-system/employment-operating-system";
 
-export const navigation = [
-  { label: "My Employment Journey", href: appRoutes.roadmap },
-  { label: "My Professional Profile", href: appRoutes.professionalIdentity },
-  { label: "Find Opportunities", href: appRoutes.opportunities },
-  { label: "My Applications", href: appRoutes.applications },
-  { label: "Skills & Career Growth", href: appRoutes.skills },
-  { label: "Billing", href: appRoutes.billing },
-  { label: "Settings", href: appRoutes.settings }
-] as const;
+export const navigation = getOperatingNavigation();
 
 export const productPages = [
   { label: "Login", href: appRoutes.login },
