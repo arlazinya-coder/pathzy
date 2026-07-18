@@ -1531,7 +1531,10 @@ export function ProfessionalIdentityTool({
   async function handleOldCvUpload(file: File | null) {
     if (!file) return;
     const allowed = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/plain"];
-    if (!allowed.includes(file.type)) {
+    const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+    const extensionType = extension === "pdf" ? "application/pdf" : extension === "docx" ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : extension === "txt" ? "text/plain" : "";
+    const detectedType = !file.type || file.type === "application/octet-stream" ? extensionType : file.type;
+    if (!allowed.includes(detectedType) || (file.type && file.type !== "application/octet-stream" && extensionType && file.type !== extensionType)) {
       setCvImportStatus("error");
       setOldCvNotice("This file format isn't supported yet. Please upload a PDF, DOCX, or TXT CV.");
       return;
@@ -1564,7 +1567,7 @@ export function ProfessionalIdentityTool({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fileName: file.name,
-          fileType: file.type,
+          fileType: detectedType,
           fileSize: file.size,
           base64,
           templateName

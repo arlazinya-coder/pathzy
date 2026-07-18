@@ -1,4 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { isApplicationActive, normalizeApplicationStatus, summarizeApplicationTracker } from "@/lib/applications/application-tracker-service";
 import { appRoutes } from "@/lib/navigation/routes";
 import { getProfessionalIdentityContext } from "@/lib/professional-identity/professional-identity-service";
 import { getJourneyActions, getProgressMilestones, getProgressPercent, type JourneyAction, type ProgressInputs, type ProgressMilestone } from "@/lib/progress/progress-engine";
@@ -132,24 +133,25 @@ export async function getPathzyNextAction(supabase: Supabase, user: User): Promi
       .maybeSingle(),
     getProfessionalIdentityContext(supabase, user.id),
     supabase.from("user_opportunity_actions").select("applied,completed,saved").eq("user_id", user.id),
-    supabase.from("employment_applications").select("status").eq("user_id", user.id),
+    supabase.from("employment_applications").select("id,status,company_name,role,follow_up_date,next_action_date,next_action,updated_at,created_at").eq("user_id", user.id),
     supabase.from("interview_preps").select("completed").eq("user_id", user.id)
   ]);
 
   const typedProfile = profile as ProfileSnapshot | null;
   const typedDiscovery = discovery as DiscoverySnapshot | null;
   const trackedApplications = applications ?? [];
+  const applicationSummary = summarizeApplicationTracker(trackedApplications as never[]);
   const applicationActions = opportunityActions ?? [];
   const applicationsSent = trackedApplications.length
-    ? trackedApplications.filter((application) => ["applied", "interview", "offer", "accepted"].includes(application.status)).length
+    ? trackedApplications.filter((application) => ["applied", "viewed", "screening", "assessment", "interview_scheduled", "interview_completed", "offer_received", "offer_accepted"].includes(normalizeApplicationStatus(application.status))).length
     : applicationActions.filter((action) => action.applied).length;
   const hasCv = Boolean(professionalIdentity && professionalIdentity.identity.cv_status !== "not_started");
   const hasCoverLetter = Boolean(professionalIdentity && professionalIdentity.identity.cover_letter_status !== "not_started");
   const hasLinkedIn = Boolean(professionalIdentity && professionalIdentity.identity.linkedin_status !== "not_started");
   const hasCareerPassport = Boolean(professionalIdentity && professionalIdentity.identity.career_passport_status !== "not_started");
-  const activeApplicationTracked = trackedApplications.some((application) => ["applied", "interview", "offer", "accepted"].includes(application.status));
-  const offerReceived = trackedApplications.some((application) => application.status === "offer" || application.status === "accepted");
-  const employed = trackedApplications.some((application) => application.status === "accepted");
+  const activeApplicationTracked = trackedApplications.some((application) => isApplicationActive(application.status) && normalizeApplicationStatus(application.status) !== "planning");
+  const offerReceived = trackedApplications.some((application) => ["offer_received", "offer_accepted"].includes(normalizeApplicationStatus(application.status)));
+  const employed = trackedApplications.some((application) => normalizeApplicationStatus(application.status) === "offer_accepted");
   const interviewPrepComplete = (interviewPreps ?? []).some((prep) => prep.completed);
   const onboardingComplete = Boolean(typedProfile?.onboarding_completed);
 
@@ -164,7 +166,7 @@ export async function getPathzyNextAction(supabase: Supabase, user: User): Promi
     opportunitiesSaved: applicationActions.filter((action) => action.saved).length,
     trackerEntries: trackedApplications.length,
     applicationsSent,
-    activeApplicationTracked,
+    activeApplicationTracked: activeApplicationTracked || applicationSummary.activeApplications > 0,
     interviewPrepComplete,
     offerReceived,
     employed,

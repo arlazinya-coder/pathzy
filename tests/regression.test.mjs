@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import vm from "node:vm";
@@ -128,10 +128,34 @@ const jobRequirementParser = readFileSync("lib/job-intelligence/job-requirement-
 const jobMatchEngine = readFileSync("lib/job-intelligence/job-match-engine.ts", "utf8");
 const jobTargetedCvBridge = readFileSync("lib/job-intelligence/targeted-cv-bridge.ts", "utf8");
 const jobIntelligenceService = readFileSync("lib/job-intelligence/job-intelligence-service.ts", "utf8");
+const jobImportService = readFileSync("lib/job-intelligence/job-import-service.ts", "utf8");
+const jobUnderstandingProvider = readFileSync("lib/job-intelligence/job-understanding-provider.ts", "utf8");
+const jobUnderstandingService = readFileSync("lib/job-intelligence/job-understanding-service.ts", "utf8");
+const profileJobMatchEngine = readFileSync("lib/job-intelligence/profile-job-match-engine.ts", "utf8");
+const profileJobMatchService = readFileSync("lib/job-intelligence/profile-job-match-service.ts", "utf8");
+const targetedDocumentStrategy = readFileSync("lib/job-intelligence/targeted-document-strategy.ts", "utf8");
+const targetedDocumentService = readFileSync("lib/job-intelligence/targeted-document-service.ts", "utf8");
 const jobIntelligenceTranslations = readFileSync("lib/job-intelligence/job-intelligence-translations.ts", "utf8");
 const jobIntelligenceMigration = readFileSync("supabase/migrations/20260717103000_create_job_intelligence.sql", "utf8");
+const jobImportsApi = readFileSync("app/api/job-imports/route.ts", "utf8");
+const jobImportsMigration = readFileSync("supabase/migrations/20260718120000_create_job_imports.sql", "utf8");
+const jobUnderstandingApi = readFileSync("app/api/job-understanding/route.ts", "utf8");
+const jobUnderstandingMigration = readFileSync("supabase/migrations/20260718133000_create_job_understandings.sql", "utf8");
+const profileJobMatchApi = readFileSync("app/api/job-match-analysis/route.ts", "utf8");
+const profileJobMatchMigration = readFileSync("supabase/migrations/20260718143000_create_job_match_analyses.sql", "utf8");
+const targetedDocumentsApi = readFileSync("app/api/targeted-documents/route.ts", "utf8");
+const targetedDocumentsMigration = readFileSync("supabase/migrations/20260718153000_extend_professional_documents_for_targeting.sql", "utf8");
+const smartApplicationTypes = readFileSync("lib/applications/smart-application.types.ts", "utf8");
+const smartApplicationService = readFileSync("lib/applications/smart-application-service.ts", "utf8");
+const applicationTrackerService = readFileSync("lib/applications/application-tracker-service.ts", "utf8");
+const smartApplicationsApi = readFileSync("app/api/smart-applications/route.ts", "utf8");
+const smartApplicationsMigration = readFileSync("supabase/migrations/20260718163000_extend_employment_applications_for_smart_workspace.sql", "utf8");
+const applicationTrackerMigration = readFileSync("supabase/migrations/20260718170000_extend_application_tracker_phase9b.sql", "utf8");
 const opportunitiesPage = readFileSync("app/opportunities/page.tsx", "utf8");
 const opportunitiesHub = readFileSync("components/opportunities/opportunities-hub.tsx", "utf8");
+const employmentTrackerClient = readFileSync("components/employment-tracker/employment-tracker-client.tsx", "utf8");
+const employmentTrackerPage = readFileSync("app/employment-tracker/page.tsx", "utf8");
+const employmentTrackerApi = readFileSync("app/api/employment-tracker/route.ts", "utf8");
 const legacyMedicalCvFixture = readFileSync("tests/fixtures/legacy-medical-cv.txt", "utf8");
 const cvImportFixtureMatrix = readFileSync("tests/fixtures/cv-import-matrix.txt", "utf8");
 const cvInterpretationFixtureMatrix = readFileSync("tests/fixtures/cv-interpretation-general-matrix.txt", "utf8");
@@ -152,15 +176,26 @@ function loadProductionTsModule(filePath) {
   }).outputText;
   const module = { exports: {} };
   runtimeModuleCache.set(absolutePath, module);
+  const resolveLocalTs = (candidate) => {
+    const withExtension = candidate.endsWith(".ts") || candidate.endsWith(".tsx") ? candidate : `${candidate}.ts`;
+    if (existsSync(withExtension)) return withExtension;
+    const withTsx = candidate.endsWith(".ts") || candidate.endsWith(".tsx") ? candidate : `${candidate}.tsx`;
+    if (existsSync(withTsx)) return withTsx;
+    const indexTs = path.join(candidate, "index.ts");
+    if (existsSync(indexTs)) return indexTs;
+    const indexTsx = path.join(candidate, "index.tsx");
+    if (existsSync(indexTsx)) return indexTsx;
+    return withExtension;
+  };
   const localRequire = (request) => {
     if (request.startsWith("node:")) return require(request.replace(/^node:/, ""));
     if (request.startsWith("@/")) {
       const candidate = path.resolve(request.replace(/^@\//, ""));
-      return loadProductionTsModule(candidate.endsWith(".ts") || candidate.endsWith(".tsx") ? candidate : `${candidate}.ts`);
+      return loadProductionTsModule(resolveLocalTs(candidate));
     }
     if (request.startsWith(".")) {
       const candidate = path.resolve(path.dirname(absolutePath), request);
-      return loadProductionTsModule(candidate.endsWith(".ts") || candidate.endsWith(".tsx") ? candidate : `${candidate}.ts`);
+      return loadProductionTsModule(resolveLocalTs(candidate));
     }
     return require(request);
   };
@@ -635,7 +670,10 @@ assert.match(cvImportPipeline, /application\/pdf/, "CV import must support PDF f
 assert.match(cvImportPipeline, /application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document/, "CV import must support DOCX files.");
 assert.match(cvImportPipeline, /text\/plain/, "CV import must support TXT and pasted-text style files.");
 assert.match(cvImportPipeline, /throw new CvImportError\("Unsupported file type\./, "CV import must reject unsupported files with a safe error.");
-assert.match(cvImportPipeline, /extractPdfText\(buffer: Buffer\)/, "CV import must extract text from text-based PDFs server-side.");
+assert.match(cvImportPipeline, /PDFParse/, "CV import must use a real PDF parser server-side.");
+assert.match(cvImportPipeline, /mammoth\.extractRawText/, "CV import must use a real DOCX parser server-side.");
+assert.doesNotMatch(cvImportPipeline, /buffer\.toString\("latin1"\)/, "PDF bytes must never be decoded as raw Latin-1 text.");
+assert.match(cvImportPipeline, /containsStructuralPdfSyntax/, "CV import must reject structural PDF syntax from extraction output.");
 assert.match(cvImportPipeline, /extractDocxText\(buffer: Buffer\)/, "CV import must extract text from DOCX files server-side.");
 assert.match(cvImportPipeline, /export type NormalizedCvBlock = \{[\s\S]*blockType: CvBlockType;[\s\S]*sourceFormat: CvSourceFormat;[\s\S]*tableContext: string \| null;[\s\S]*bulletContext: string \| null;/, "CV import must normalize all formats into a shared block model before interpretation.");
 assert.match(cvImportPipeline, /export function createNormalizedBlocksFromText/, "CV import must create normalized blocks for TXT and pasted text.");
@@ -749,7 +787,7 @@ assert.match(qualityAnalyzer, /low_resolution[\s\S]*rotated_page[\s\S]*missing_t
 for (const strategy of ["native_text", "ocr", "hybrid", "image_ocr", "manual_review"]) {
   assert.match(processingStrategy, new RegExp(`strategy: "${strategy}"`), `Processing strategy selection must cover ${strategy}.`);
 }
-assert.match(documentInspectionService, /validateInspectionInput\(input\)[\s\S]*sampleNativeText[\s\S]*detectDocumentSource[\s\S]*detectDocumentType[\s\S]*selectProcessingStrategy/, "Inspection service must orchestrate validation, sampling, source detection, type detection and strategy selection.");
+assert.match(documentInspectionService, /validateInspectionInput\(input\)[\s\S]*sampleNativeDocument[\s\S]*detectDocumentSource[\s\S]*detectDocumentType[\s\S]*selectProcessingStrategy/, "Inspection service must orchestrate validation, sampling, source detection, type detection and strategy selection.");
 assert.match(documentInspectionService, /markDocumentInspectionProcessing[\s\S]*markDocumentInspectionFailed[\s\S]*onConflict: "document_id"/, "Inspection persistence must be idempotent and status-driven by document ID.");
 assert.match(documentInspectionMigration, /create table if not exists public\.document_inspections/, "Document inspection migration must create a dedicated inspection record linked to documents.");
 assert.match(documentInspectionMigration, /document_id uuid not null references public\.user_documents\(id\) on delete cascade/, "Inspection records must link to existing user_documents and clean up with deleted documents.");
@@ -761,7 +799,7 @@ for (const summaryText of ["Document Inspection Complete", "Document type", "OCR
 for (const statusText of ["Inspecting your document", "Checking document type", "Deciding whether OCR is needed"]) {
   assert.match(documentInspectionStatus, new RegExp(statusText), `Upload UI must show ${statusText} before extraction.`);
 }
-assert.match(cvImportRoute, /createUploadShell[\s\S]*inspectAndPersistDocument[\s\S]*importCvFromUpload/, "CV import must inspect and persist the uploaded document before extraction and mapping.");
+assert.match(cvImportRoute, /await importCvFromUpload\(upload\)[\s\S]*createUploadShell[\s\S]*inspectAndPersistDocument/, "CV import must complete safe extraction before creating records or starting inspection.");
 assert.match(cvImportRoute, /recommendedPipeline\.extractionAllowed/, "CV import must stop before extraction when inspection disallows it.");
 assert.match(documentVisualTypes, /export type VisualDocumentModel = \{[\s\S]*pages: VisualPage\[\][\s\S]*hierarchy: VisualHierarchyNode\[\][\s\S]*sections: VisualSection\[\][\s\S]*timelines: VisualTimeline\[\][\s\S]*tables: VisualTable\[\][\s\S]*relationships: VisualRelationship\[\][\s\S]*readingOrder: VisualReadingOrderItem\[\]/, "Visual reading must define a canonical visual document model with layout, hierarchy, timelines, tables, relationships and reading order.");
 assert.match(documentVisualTypes, /export type DocumentRenderer[\s\S]*render\(input: DocumentRenderInput\): Promise<RenderedDocument>/, "Visual reading must expose a renderer abstraction before provider analysis.");
@@ -779,7 +817,8 @@ assert.match(documentVisualMigration, /create table if not exists public\.docume
 assert.match(documentVisualMigration, /document_id uuid not null references public\.user_documents\(id\) on delete cascade/, "Visual reading records must link to existing user documents.");
 assert.match(documentVisualMigration, /alter table public\.document_visual_readings enable row level security[\s\S]*alter table public\.document_visual_pages enable row level security/, "Visual reading tables must enable RLS.");
 assert.match(documentVisualMigration, /Users can select own document visual readings[\s\S]*auth\.uid\(\) = user_id[\s\S]*Users can select own document visual pages/, "Visual reading RLS must restrict records to the owning user.");
-assert.match(cvImportRoute, /inspectAndPersistDocument[\s\S]*runAndPersistVisualReading[\s\S]*importCvFromUpload/, "CV import must visually read and persist the document after inspection and before semantic extraction.");
+assert.match(cvImportRoute, /await importCvFromUpload\(upload\)[\s\S]*inspectAndPersistDocument[\s\S]*runAndPersistVisualReading/, "CV import must gate inspection and visual reading on successful extraction.");
+assert.match(cvImportRoute, /nativeText: extractedImport\.normalizedText/, "Visual and semantic processing must receive the exact validated extracted text.");
 assert.match(cvImportRoute, /visualReading[\s\S]*importSummary/, "CV import response must include the saved visual reading summary for the frontend.");
 assert.match(professionalIdentityService, /visual_reading: imported\.visualReading/, "Imported old CV records must preserve visual reading metadata.");
 assert.match(professionalIdentityTool, /DocumentVisualReadingStatus[\s\S]*DocumentVisualReadingSummary/, "CV import UI must surface visual reading progress and summary.");
@@ -818,7 +857,7 @@ assert.match(documentSemanticMigration, /create table if not exists public\.docu
 assert.match(documentSemanticMigration, /visual_reading_record_id uuid references public\.document_visual_readings\(id\)/, "Semantic readings must link to Phase 3 visual reading records.");
 assert.match(documentSemanticMigration, /alter table public\.document_semantic_readings enable row level security[\s\S]*alter table public\.document_semantic_entities enable row level security[\s\S]*alter table public\.document_semantic_relationships enable row level security/, "Semantic tables must enable RLS.");
 assert.match(documentSemanticMigration, /auth\.uid\(\) = user_id/, "Semantic RLS must restrict records to the owning user.");
-assert.match(cvImportRoute, /inspectAndPersistDocument[\s\S]*runAndPersistVisualReading[\s\S]*runAndPersistSemanticUnderstanding[\s\S]*importCvFromUpload/, "CV import must run inspection, visual reading and semantic understanding before extraction mapping.");
+assert.match(cvImportRoute, /await importCvFromUpload\(upload\)[\s\S]*inspectAndPersistDocument[\s\S]*runAndPersistVisualReading[\s\S]*runAndPersistSemanticUnderstanding/, "Failed extraction must prevent inspection, semantic understanding and career reasoning.");
 assert.match(cvImportRoute, /existingProfile[\s\S]*runAndPersistSemanticUnderstanding/, "Semantic understanding must compare existing profile data without overwriting it.");
 assert.match(professionalIdentityService, /semantic_reading: imported\.semanticReading/, "Imported old CV records must preserve semantic reading metadata.");
 assert.match(professionalIdentityTool, /DocumentSemanticUnderstandingStatus[\s\S]*DocumentSemanticUnderstandingSummary/, "CV import UI must surface semantic processing and summary.");
@@ -1000,6 +1039,93 @@ for (const invariant of [
   assert.match(cvInterpretationFixtureMatrix, new RegExp(invariant), `General interpretation fixtures must document invariant: ${invariant}.`);
 }
 const productionCvImport = loadProductionTsModule("lib/professional-identity/cv-import.ts");
+
+function regressionPdf(lines = []) {
+  const escaped = lines.map((line) => line.replace(/([\\()])/g, "\\$1"));
+  const stream = `BT\n/F1 11 Tf\n50 750 Td\n${escaped.map((line, index) => `${index ? "0 -16 Td\n" : ""}(${line}) Tj`).join("\n")}\nET`;
+  const objects = [
+    "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj",
+    "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj",
+    "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj",
+    "4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj",
+    `5 0 obj << /Length ${Buffer.byteLength(stream)} >> stream\n${stream}\nendstream\nendobj`
+  ];
+  let body = "%PDF-1.4\n";
+  const offsets = [0];
+  for (const object of objects) {
+    offsets.push(Buffer.byteLength(body));
+    body += `${object}\n`;
+  }
+  const xrefOffset = Buffer.byteLength(body);
+  body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  body += offsets.slice(1).map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join("");
+  body += `trailer << /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return Buffer.from(body, "latin1");
+}
+
+async function validDocx(text) {
+  const mammothRequire = createRequire(require.resolve("mammoth"));
+  const JSZip = mammothRequire("jszip");
+  const zip = new JSZip();
+  zip.file("[Content_Types].xml", `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
+  zip.file("_rels/.rels", `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
+  zip.file("word/document.xml", `<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${text.split("\n").map((line) => `<w:p><w:r><w:t>${line}</w:t></w:r></w:p>`).join("")}<w:sectPr/></w:body></w:document>`);
+  return zip.generateAsync({ type: "nodebuffer" });
+}
+
+const readableCvLines = [
+  "ALEX MORGAN", "Software Engineer", "alex@example.com", "PROFESSIONAL SUMMARY",
+  "Software engineer with eight years of experience building reliable web applications and services.",
+  "EXPERIENCE", "Senior Software Engineer - Example Company - 2020 to Present",
+  "Built accessible customer platforms, improved delivery quality, and mentored engineering colleagues.",
+  "EDUCATION", "Bachelor of Science in Computer Science - Example University - 2016", "SKILLS", "TypeScript, React, Node.js, SQL, testing, accessibility"
+];
+const parsedPdfText = await productionCvImport.extractPdfText(regressionPdf(readableCvLines));
+assert.match(parsedPdfText, /Software Engineer/, "Normal text-based PDF extraction must return human-readable CV text.");
+assert.ok(parsedPdfText.length > 160, "Successful PDF extraction must contain meaningful readable content.");
+assert.doesNotMatch(parsedPdfText, /%PDF-|\bendobj\b|\bxref\b|\bstream\b|\btrailer\b/i, "Extracted PDF text must not contain PDF structural markers.");
+const importedPdf = await productionCvImport.importCvFromUpload({ fileName: "cv.pdf", fileType: "application/pdf", fileSize: regressionPdf(readableCvLines).length, base64: regressionPdf(readableCvLines).toString("base64") });
+assert.match(importedPdf.normalizedText, /EXPERIENCE/, "Successful PDF import must pass meaningful text into CV mapping.");
+assert.doesNotMatch(JSON.stringify(importedPdf.cvModel), /%PDF-|\bendobj\b|\bxref\b|\bstream\b|\btrailer\b/i, "Imported CV output must not contain PDF syntax.");
+assert.equal(productionCvImport.containsStructuralPdfSyntax("%PDF-1.4\n1 0 obj\nstream\nendobj\nxref\ntrailer"), true, "Raw PDF syntax must be rejected by the extraction guard.");
+assert.equal(productionCvImport.normalizeCvImportUpload({ fileName: "cv.pdf", fileType: "", fileSize: 100, base64: "AA==" }).fileType, "application/pdf", "Missing browser MIME type must be safely inferred from a supported extension.");
+assert.throws(() => productionCvImport.normalizeCvImportUpload({ fileName: "cv.docx", fileType: "application/pdf", fileSize: 100, base64: "AA==" }), /extension does not match MIME/i, "MIME and extension mismatches must be rejected.");
+
+const docxText = await productionCvImport.extractDocxText(await validDocx(readableCvLines.join("\n")));
+assert.match(docxText, /Software Engineer/, "DOCX import extraction must remain working.");
+const txtText = await productionCvImport.extractTextFromUploadedCv({ fileName: "cv.txt", fileType: "text/plain", fileSize: Buffer.byteLength(readableCvLines.join("\n")), base64: Buffer.from(readableCvLines.join("\n")).toString("base64") });
+assert.match(txtText, /Software Engineer/, "TXT import extraction must remain working.");
+assert.throws(() => productionCvImport.validateExtractedCvText(`Readable CV text ${"\u0001".repeat(10)} ${"career history ".repeat(20)}`, "txt"), /Binary or document-format syntax/, "Binary-like extracted output must be rejected.");
+assert.throws(() => productionCvImport.validateExtractedCvText("", "txt"), /Insufficient readable text/, "Empty extracted output must be rejected.");
+assert.throws(() => productionCvImport.validateExtractedCvText(`<w:document>${"employment education skills ".repeat(20)}</w:document>`, "docx"), /Binary or document-format syntax/, "Raw DOCX XML must be rejected.");
+await assert.rejects(productionCvImport.extractDocxText(Buffer.from("PK malformed DOCX")), (error) => /could not safely read this DOCX/i.test(error.userMessage), "Malformed DOCX extraction must return a safe error.");
+
+await assert.rejects(
+  productionCvImport.extractPdfText(regressionPdf([])),
+  (error) => /OCR is required/i.test(error.userMessage),
+  "Scanned or image-only PDFs must produce the user-safe OCR-required state."
+);
+await assert.rejects(
+  productionCvImport.extractPdfText(Buffer.from("%PDF-1.4\nthis is not a valid PDF\n%%EOF")),
+  (error) => /could not safely read this PDF/i.test(error.userMessage),
+  "Malformed PDFs must produce a safe parsing error."
+);
+
+const semanticValue = (value) => ({ value, originalText: value, confidence: 0.9, sourceRegionIds: ["region-1"], explicitness: "explicit", requiresReview: false, reviewStatus: "unreviewed" });
+const semanticStage = productionCvImport.stageImportedCvFromSemantic(importedPdf, {
+  id: "semantic-test", documentId: "document-test", inspectionId: "inspection-test", visualReadingId: "visual-test", userId: "user-test", status: "completed", documentType: "cv",
+  identity: { fullName: semanticValue("Alex Morgan"), sourceRegionIds: ["region-1"], confidence: 0.9, requiresReview: false },
+  contact: { emails: [semanticValue("alex@example.com")], phones: [], locations: [], websites: [], confidence: 0.9, requiresReview: false },
+  professionalProfile: { headline: semanticValue("Software Engineer"), confidence: 0.9, requiresReview: false },
+  employment: [{ id: "employment-1", jobTitle: semanticValue("Senior Software Engineer"), employer: semanticValue("Example Company"), startDate: semanticValue("2020"), endDate: semanticValue("Present"), isCurrent: semanticValue(true), responsibilities: [semanticValue("Built accessible customer platforms")], achievements: [], tools: [], technologies: [], skills: [], sourceRegionIds: ["region-1"], confidence: 0.9, requiresReview: false }],
+  education: [{ id: "education-1", qualification: semanticValue("Bachelor of Science in Computer Science"), institution: semanticValue("Example University"), endDate: semanticValue("2016"), sourceRegionIds: ["region-2"], confidence: 0.9, requiresReview: false }],
+  certifications: [], skills: [{ id: "skill-1", name: "TypeScript", category: "programming_language", sourceRegionIds: ["region-3"], confidence: 0.9, explicitness: "explicit", requiresReview: false, reviewStatus: "unreviewed" }], languages: [], projects: [], awards: [], memberships: [], publications: [], volunteering: [], references: [], entities: [{ id: "entity-1" }], relationships: [], unclassifiedContent: [], conflicts: [], warnings: [], confidence: { identity: 0.9, contact: 0.9, professionalProfile: 0.9, employment: 0.9, education: 0.9, certifications: 0.9, skills: 0.9, languages: 0.9, overall: 0.9 }, createdAt: new Date().toISOString()
+});
+assert.equal(semanticStage.cvModel.fullName, "Alex Morgan", "Staged CV identity must come from semantic entities.");
+assert.equal(semanticStage.cvModel.professionalExperience[0]?.company, "Example Company", "Staged CV employment must come from semantic entities.");
+assert.equal(semanticStage.cvModel.education[0]?.institution, "Example University", "Staged CV education must come from semantic entities.");
+assert.ok(semanticStage.cvModel.technicalSkills.includes("TypeScript"), "Staged CV skills must come from semantic entities.");
+
 const florentCanonicalCv = productionCvImport.mapImportedTextToCvModel(legacyMedicalCvFixture);
 assert.ok(florentCanonicalCv && typeof florentCanonicalCv === "object", "Production CV import must return a CanonicalCv object for CV Studio.");
 assert.ok(Array.isArray(florentCanonicalCv.languages), "CanonicalCv must expose structured languages.");
@@ -1136,6 +1262,26 @@ assert.match(jobTargetedCvBridge, /defaultCvViewConfiguration\(\{[\s\S]*purpose:
 assert.match(jobTargetedCvBridge, /blockedClaims: input\.gaps\.map/, "Targeted CV preparation must block unsupported job claims.");
 assert.match(jobIntelligenceService, /getOrCreateCanonicalProfile\(supabase, input\.userId\)/, "Saved Job Intelligence must load the canonical profile, not create a second professional profile.");
 assert.match(jobIntelligenceService, /persistJobIntelligenceAnalysis/, "Job Intelligence must have a persistence boundary for reviewed analyses.");
+assert.match(jobIntelligenceTypes, /export type JobImportSourceType = "pasted_text" \| "manual_entry" \| "uploaded_document" \| "public_url" \| "existing_opportunity"/, "Phase 8A must support pasted, manual, uploaded, URL and existing opportunity job imports.");
+assert.match(jobIntelligenceTypes, /export type JobImportStatus = "processing" \| "review_required" \| "ready" \| "ocr_required" \| "failed"/, "Phase 8A must model processing, review, OCR-required and failure states.");
+assert.match(jobIntelligenceTypes, /export type JobImportRequirementImportance = "mandatory" \| "preferred" \| "optional" \| "unclear"/, "Phase 8A imported requirements must distinguish mandatory, preferred, optional and unclear requirements.");
+assert.match(jobImportService, /inspectAndPersistDocument/, "Phase 8A uploaded job adverts must reuse the shared document inspection pipeline.");
+assert.match(jobImportService, /extractPdfText[\s\S]*extractDocxText[\s\S]*text\/plain/, "Phase 8A must extract PDF, DOCX and TXT job adverts without creating a second extractor.");
+assert.match(jobImportService, /ocr_required[\s\S]*Paste the job description text for now/, "Phase 8A scanned or image job adverts must produce an OCR-required fallback state.");
+assert.match(jobImportService, /export async function validatePublicJobUrl/, "Phase 8A public URL import must have a central URL validator.");
+assert.match(jobImportService, /unsafeHostnames = new Set\(\["localhost", "0\.0\.0\.0"\]\)/, "Phase 8A public URL import must block local hostnames.");
+assert.match(jobImportService, /function isPrivateIp/, "Phase 8A public URL import must check private IP ranges.");
+assert.match(jobImportService, /dns\.lookup\(hostname, \{ all: true \}\)/, "Phase 8A public URL import must inspect resolved addresses before fetching.");
+assert.match(jobImportService, /responsibilities[\s\S]*requirements[\s\S]*optionalContext/, "Phase 8A must separate responsibilities from candidate requirements.");
+assert.match(jobImportService, /suspicious_payment_request[\s\S]*suspicious_personal_data_request[\s\S]*suspicious_shortened_link/, "Phase 8A must flag suspicious job-advert signals.");
+assert.doesNotMatch(jobImportService, /getOrCreateCanonicalProfile|analyzeJobAgainstCanonicalProfile/, "Phase 8A job import must not compare against the profile yet.");
+assert.match(jobImportsApi, /createJobImport\(auth\.supabase, auth\.user\.id, body\)/, "Phase 8A API must create imports for the authenticated user.");
+assert.match(jobImportsApi, /updateJobImportReview\(auth\.supabase, auth\.user\.id/, "Phase 8A API must save review corrections against the owning user.");
+assert.match(jobImportsApi, /NextResponse\.json\(\{ jobImport: record \}\)/, "Phase 8A API must return valid JSON success responses.");
+assert.match(jobImportsMigration, /create table if not exists public\.job_imports/, "Phase 8A migration must create job_imports.");
+assert.match(jobImportsMigration, /source_document_id uuid references public\.user_documents\(id\) on delete set null/, "Job imports must link uploaded adverts to existing user_documents.");
+assert.match(jobImportsMigration, /alter table public\.job_imports enable row level security/, "Job imports must enable RLS.");
+assert.match(jobImportsMigration, /auth\.uid\(\) = user_id/g, "Job imports RLS must restrict access to the owner.");
 for (const tableName of ["job_intelligence_analyses", "job_intelligence_requirements", "job_intelligence_evidence"]) {
   assert.match(jobIntelligenceMigration, new RegExp(`create table if not exists public\\.${tableName}`), `Phase 8 migration must create ${tableName}.`);
   assert.match(jobIntelligenceMigration, new RegExp(`alter table public\\.${tableName} enable row level security`), `${tableName} must enable RLS.`);
@@ -1145,10 +1291,163 @@ assert.match(jobIntelligenceMigration, /auth\.uid\(\) = user_id/g, "Job Intellig
 for (const label of ["Job Intelligence", "Analyse de l'offre", "Evidence found", "Preuves trouvees", "Prepare truthful CV", "Preparer un CV honnete"]) {
   assert.match(jobIntelligenceTranslations, new RegExp(label), `Phase 8 translations must include ${label}.`);
 }
+for (const label of ["Inspect a job advert", "Analyser une offre d'emploi", "Paste the job description here"]) {
+  assert.match(jobIntelligenceTranslations, new RegExp(label), `Phase 8A translations must include ${label}.`);
+}
 assert.match(opportunitiesPage, /getOrCreateCanonicalProfile\(supabase, user\.id\)/, "Opportunities must read the canonical profile before job analysis.");
 assert.match(opportunitiesPage, /analyzeJobAgainstCanonicalProfile\(\{ profile: canonicalProfile, job, userId: user\.id \}\)/, "Opportunities must use the shared Job Intelligence matcher.");
 assert.match(opportunitiesHub, /JobIntelligencePanel/, "Opportunities UI must display more than a single match percentage.");
 assert.match(opportunitiesHub, /User reviews before applying/, "Opportunities UI must keep the user in control.");
+assert.match(opportunitiesHub, /Inspect a job advert/, "Opportunities UI must expose the Phase 8A job import flow.");
+assert.match(opportunitiesHub, /Paste text[\s\S]*Manual entry[\s\S]*Upload file[\s\S]*Job link/, "Job import UI must support pasted, manual, uploaded and URL input modes.");
+assert.match(opportunitiesHub, /Review imported job[\s\S]*Save Job Review/, "Job import UI must show a review action after successful import.");
+assert.match(opportunitiesHub, /disabled=\{isBusy\}/, "Job import buttons must avoid duplicate submissions while processing.");
+assert.match(opportunitiesHub, /aria-pressed=\{mode === item\.id\}/, "Job import method controls must expose accessible selected state.");
+assert.match(jobIntelligenceTypes, /export type JobUnderstandingRequirementType =[\s\S]*"skill"[\s\S]*"experience"[\s\S]*"education"[\s\S]*"certification"[\s\S]*"licence"[\s\S]*"language"[\s\S]*"work_authorization"[\s\S]*"technical"[\s\S]*"behavioural"/, "Phase 8B must define a broad semantic requirement type model.");
+assert.match(jobIntelligenceTypes, /export type SemanticJobUnderstanding = \{[\s\S]*jobImportId: string;[\s\S]*responsibilities: StructuredJobResponsibility\[];[\s\S]*requirements: StructuredJobRequirement\[];[\s\S]*applicationDetails: StructuredJobApplicationDetails;[\s\S]*sourceEvidence: JobSourceEvidence\[];/, "Phase 8B must define a structured job-understanding model with evidence.");
+assert.match(jobIntelligenceTypes, /export type JobUnderstandingProvider = \{[\s\S]*understandJob\(input: JobUnderstandingInput\): Promise<JobUnderstandingResult>/, "Phase 8B must expose a provider-neutral job understanding interface.");
+assert.match(jobUnderstandingProvider, /export class DeterministicJobUnderstandingProvider implements JobUnderstandingProvider/, "Phase 8B must provide a provider implementation behind the shared interface.");
+assert.match(jobUnderstandingProvider, /export function normalizeJobConcept/, "Phase 8B must centralize job concept normalization.");
+assert.match(jobUnderstandingProvider, /concept: "Microsoft Excel"/, "Phase 8B must normalize equivalent Excel concepts.");
+assert.match(jobUnderstandingProvider, /canonicalConceptId: alias\.id/, "Phase 8B must preserve canonical concept references without editing the user's profile.");
+assert.match(jobUnderstandingProvider, /inferImportance[\s\S]*mandatory[\s\S]*preferred[\s\S]*optional[\s\S]*unclear/, "Phase 8B must classify requirements by mandatory, preferred, optional and unclear importance.");
+assert.match(jobUnderstandingProvider, /toStructuredResponsibility[\s\S]*normalizedConcepts[\s\S]*evidenceFor/, "Phase 8B must extract responsibilities separately with evidence.");
+assert.match(jobUnderstandingProvider, /extractMinimumYears[\s\S]*inferProficiency[\s\S]*extractRequiredDocuments/, "Phase 8B must extract years, proficiency and application document details where present.");
+assert.match(jobUnderstandingProvider, /Seniority information may be inconsistent/, "Phase 8B must flag conflicting seniority signals.");
+assert.match(jobUnderstandingProvider, /validateSemanticJobUnderstanding/, "Phase 8B must validate low-confidence or malformed structured results.");
+assert.doesNotMatch(jobUnderstandingProvider, /getOrCreateCanonicalProfile|analyzeJobAgainstCanonicalProfile/, "Phase 8B provider must not perform profile matching.");
+assert.match(jobUnderstandingService, /getReviewedJobImport[\s\S]*jobImport\.status !== "ready"/, "Phase 8B must start from a reviewed Phase 8A job import.");
+assert.match(jobUnderstandingService, /userApprovedVersion[\s\S]*confirmedAt/, "Phase 8B must preserve user-approved analysis separately from system extraction.");
+assert.doesNotMatch(jobUnderstandingService, /from\("canonical_professional_profiles"\)|getOrCreateCanonicalProfile/, "Phase 8B service must not mutate or load the Canonical Professional Identity.");
+assert.match(jobUnderstandingApi, /createSemanticJobUnderstanding\(auth\.supabase, auth\.user\.id, body\.jobImportId\)/, "Phase 8B API must create job analysis for the authenticated owner.");
+assert.match(jobUnderstandingApi, /updateSemanticJobUnderstandingReview\(auth\.supabase, auth\.user\.id/, "Phase 8B API must save user review corrections for the owning user.");
+assert.match(jobUnderstandingMigration, /create table if not exists public\.job_understandings/, "Phase 8B migration must create job_understandings.");
+assert.match(jobUnderstandingMigration, /job_import_id uuid not null references public\.job_imports\(id\) on delete cascade/, "Phase 8B records must reference Phase 8A job imports.");
+assert.match(jobUnderstandingMigration, /user_approved_json jsonb not null default '\{\}'::jsonb/, "Phase 8B must preserve user-approved analysis state.");
+assert.match(jobUnderstandingMigration, /alter table public\.job_understandings enable row level security/, "Phase 8B job understandings must enable RLS.");
+assert.match(jobUnderstandingMigration, /auth\.uid\(\) = user_id/g, "Phase 8B RLS must restrict job analysis records to the owning user.");
+for (const label of ["Job Analysis", "Responsibilities", "Mandatory Requirements", "Preferred Requirements", "Optional Requirements", "Application Details", "Review Analysis", "Confirm Job Analysis", "Analyse du poste", "ResponsabilitÃ©s", "Exigences obligatoires", "Exigences souhaitÃ©es", "Exigences facultatives", "Informations de candidature", "VÃ©rifier l'analyse", "Confirmer l'analyse du poste"]) {
+  assert.match(jobIntelligenceTranslations, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `Phase 8B translations must include ${label}.`);
+}
+assert.match(opportunitiesHub, /JobUnderstandingReview/, "Opportunities UI must expose the Phase 8B job analysis review.");
+assert.match(opportunitiesHub, /Review the job analysis[\s\S]*Confirm Job Analysis/, "Phase 8B UI must let the user review and confirm the analysis.");
+assert.match(opportunitiesHub, /No match score is created in Phase 8B/, "Phase 8B UI must not introduce matching or scoring.");
+assert.match(opportunitiesHub, /Add requirement[\s\S]*Importance[\s\S]*Mandatory[\s\S]*Preferred[\s\S]*Optional[\s\S]*Unclear/, "Phase 8B UI must let users add and move requirements between importance categories.");
+assert.match(jobIntelligenceTypes, /export type RequirementMatchStatus = "confirmed_match" \| "partial_match" \| "transferable_match" \| "not_confirmed" \| "confirmed_gap" \| "unclear" \| "not_applicable"/, "Phase 8C must separate direct, partial, transferable, unclear and gap states.");
+assert.match(jobIntelligenceTypes, /export type ProfileJobMatchAnalysis = \{[\s\S]*jobUnderstandingId: string;[\s\S]*canonicalProfileId: string;[\s\S]*canonicalProfileVersion: number;[\s\S]*fitScore\?: number;[\s\S]*analysisConfidence: number;[\s\S]*recommendations: MatchRecommendation\[];/, "Phase 8C must define an explainable profile-job match model.");
+assert.match(profileJobMatchEngine, /export function analyzeConfirmedJobAgainstProfile/, "Phase 8C must compare confirmed job understanding against Canonical Professional Identity.");
+assert.match(profileJobMatchEngine, /collectProfileEvidence\(profile: CanonicalProfessionalIdentity\)/, "Phase 8C must collect profile evidence from the canonical profile.");
+assert.match(profileJobMatchEngine, /calculateProfileExperienceYears[\s\S]*Merged overlapping employment date ranges/, "Phase 8C must calculate duration without double-counting overlapping roles.");
+assert.match(profileJobMatchEngine, /transferableConcepts[\s\S]*transferable_match/, "Phase 8C must support transferable matches without treating them as confirmed matches.");
+assert.match(profileJobMatchEngine, /confirmed_gap[\s\S]*blockerFor/, "Phase 8C must distinguish confirmed gaps and potential blockers.");
+assert.match(profileJobMatchEngine, /fitScore[\s\S]*analysisConfidence[\s\S]*scoreExplanation/, "Phase 8C must keep fit score separate from analysis confidence and explain scoring.");
+assert.match(profileJobMatchEngine, /protectedCharacteristicPattern[\s\S]*age[\s\S]*race[\s\S]*gender[\s\S]*religion/, "Phase 8C must exclude protected characteristics from matching evidence.");
+assert.match(profileJobMatchEngine, /freshnessForProfileJobMatch/, "Phase 8C must detect stale analyses when profile or job versions change.");
+assert.doesNotMatch(profileJobMatchEngine, /from\("canonical_professional_profiles"\)|upsert\(|insert\(|update\(/, "Phase 8C engine must not mutate the canonical profile or database.");
+assert.match(profileJobMatchService, /getOrCreateCanonicalProfile\(supabase, userId\)/, "Phase 8C service must load the Canonical Professional Identity as source of truth.");
+assert.match(profileJobMatchService, /understanding\.status !== "confirmed"/, "Phase 8C must start from a confirmed job understanding.");
+assert.match(profileJobMatchService, /freshnessForProfileJobMatch/, "Phase 8C service must mark stale analyses when versions change.");
+assert.doesNotMatch(profileJobMatchService, /from\("user_documents"\)|last uploaded|latest CV/i, "Phase 8C must not use the last uploaded CV as the source of truth.");
+assert.match(profileJobMatchApi, /createProfileJobMatchAnalysis\(auth\.supabase, auth\.user\.id, body\.jobUnderstandingId\)/, "Phase 8C API must create matches for the authenticated owner.");
+assert.match(profileJobMatchApi, /refreshProfileJobMatchAnalysis\(auth\.supabase, auth\.user\.id, body\.analysisId\)/, "Phase 8C API must support user-triggered refresh.");
+assert.match(profileJobMatchMigration, /create table if not exists public\.job_match_analyses/, "Phase 8C migration must create job_match_analyses.");
+assert.match(profileJobMatchMigration, /job_understanding_id text not null references public\.job_understandings\(id\) on delete cascade/, "Phase 8C match analyses must reference confirmed job understandings.");
+assert.match(profileJobMatchMigration, /canonical_profile_id uuid not null references public\.canonical_professional_profiles\(id\) on delete cascade/, "Phase 8C match analyses must reference canonical professional profiles.");
+assert.match(profileJobMatchMigration, /requirement_matches_json jsonb not null default '\[]'::jsonb/, "Phase 8C must preserve requirement-by-requirement match details.");
+assert.match(profileJobMatchMigration, /alter table public\.job_match_analyses enable row level security/, "Phase 8C match analyses must enable RLS.");
+assert.match(profileJobMatchMigration, /auth\.uid\(\) = user_id/g, "Phase 8C RLS must restrict job matches to the owning user.");
+for (const label of ["Job Match", "Fit Score", "Analysis Confidence", "Strong Matches", "Partial Matches", "Missing Requirements", "Information Needed", "Potential Blockers", "Recommended Next Steps", "Prepare Targeted Application", "Correspondance avec le poste", "Score de compatibilitÃ©", "FiabilitÃ© de l'analyse", "Points forts", "Correspondances partielles", "Exigences manquantes", "Informations nÃ©cessaires", "Obstacles potentiels", "Prochaines Ã©tapes recommandÃ©es", "PrÃ©parer une candidature ciblÃ©e"]) {
+  assert.match(jobIntelligenceTranslations, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `Phase 8C translations must include ${label}.`);
+}
+assert.match(opportunitiesHub, /ProfileJobMatchReview/, "Opportunities UI must expose the Phase 8C profile-job match review.");
+assert.match(opportunitiesHub, /Fit Score[\s\S]*Analysis Confidence[\s\S]*Readiness/, "Phase 8C UI must separate fit score, confidence and readiness.");
+assert.match(opportunitiesHub, /Strong Matches[\s\S]*Partial and Transferable Matches[\s\S]*Missing Requirements[\s\S]*Potential Blockers/, "Phase 8C UI must show match groups separately.");
+assert.match(opportunitiesHub, /Prepare Targeted Application/, "Phase 8C UI must hand off to the targeted application flow.");
+assert.match(opportunitiesHub, /No profile facts were changed/, "Phase 8C UI must reassure users that matching does not mutate profile facts.");
+assert.match(jobIntelligenceTypes, /export type TargetedDocumentStrategy = \{[\s\S]*selectedEmploymentIds: string\[];[\s\S]*gapHandling: Array<\{[\s\S]*exclude_unsupported_claim/, "Phase 8D must define a structured targeting strategy with gap handling.");
+assert.match(jobIntelligenceTypes, /export type TargetedDocumentApprovalState = "draft" \| "review_required" \| "approved" \| "changes_requested" \| "archived"/, "Phase 8D must separate generation from document approval.");
+assert.match(professionalDocumentTypes, /type ProfessionalDocumentType =[\s\S]*"application_email"[\s\S]*"linkedin_message"[\s\S]*"recruiter_message"/, "Phase 8D optional documents must reuse the professional document model.");
+assert.match(professionalDocumentTypes, /targeting\?: \{[\s\S]*jobUnderstandingId\?: string;[\s\S]*jobMatchAnalysisId\?: string;[\s\S]*approvalState\?: TargetedDocumentApprovalState/, "Professional documents must preserve targeting and approval metadata.");
+assert.match(professionalDocumentService, /if \(document\.targeting\)[\s\S]*job_understanding_id[\s\S]*job_match_analysis_id[\s\S]*targeting_strategy_json/, "Targeting metadata must be persisted only for targeted documents.");
+assert.match(targetedDocumentStrategy, /export function buildTargetedProfessionalDocuments/, "Phase 8D must build targeted document packages through a shared strategy layer.");
+assert.match(targetedDocumentStrategy, /buildCvContentFromCanonicalProfile/, "Phase 8D targeted CVs must reuse the Phase 7 CV content builder.");
+assert.match(targetedDocumentStrategy, /purpose: "targeted"/, "Phase 8D must create targeted CV configurations.");
+assert.match(targetedDocumentStrategy, /type: "cv"/, "Phase 8D must create a new CV document instead of overwriting the master CV.");
+assert.match(targetedDocumentStrategy, /sourceType: "targeted_generated"/, "Phase 8D targeted wording must be marked separately from canonical facts.");
+assert.match(targetedDocumentStrategy, /unsupportedClaimsBlocked/, "Phase 8D must surface unsupported claims instead of inserting them into documents.");
+assert.match(targetedDocumentStrategy, /includeApplicationEmail[\s\S]*includeLinkedInMessage[\s\S]*includeRecruiterMessage/, "Phase 8D must prepare optional messages without making outreach mandatory.");
+assert.doesNotMatch(targetedDocumentStrategy, /sendMail|smtp|fetch\(["']https?:\/\/.*apply|submitApplication/i, "Phase 8D must not send applications or outreach automatically.");
+assert.doesNotMatch(targetedDocumentStrategy, /from\("canonical_professional_profiles"\)|upsert\(|insert\(|update\(/, "Phase 8D strategy must not mutate the canonical profile or database.");
+assert.match(targetedDocumentService, /getOrCreateCanonicalProfile\(supabase, userId\)/, "Phase 8D service must use the Canonical Professional Identity as source of truth.");
+assert.match(targetedDocumentService, /persistProfessionalDocument\(supabase, document\)/, "Phase 8D service must save through the existing Professional Document Engine.");
+assert.match(targetedDocumentService, /updateTargetedDocumentApproval/, "Phase 8D must support explicit user approval state updates.");
+assert.doesNotMatch(targetedDocumentService, /from\("user_documents"\)|last uploaded|latest CV/i, "Phase 8D must not target from the last uploaded CV.");
+assert.match(targetedDocumentsApi, /createTargetedProfessionalDocumentPackage\(auth\.supabase, auth\.user\.id/, "Phase 8D API must create targeted documents for the authenticated owner.");
+assert.match(targetedDocumentsApi, /updateTargetedDocumentApproval\(auth\.supabase, auth\.user\.id/, "Phase 8D API must update approval for the authenticated owner.");
+assert.match(targetedDocumentsMigration, /alter table public\.professional_documents[\s\S]*job_understanding_id text[\s\S]*job_match_analysis_id text/, "Phase 8D migration must extend the existing professional_documents table.");
+assert.match(targetedDocumentsMigration, /application_email[\s\S]*linkedin_message[\s\S]*recruiter_message/, "Phase 8D migration must allow optional message document types.");
+assert.match(targetedDocumentsMigration, /professional_documents_approval_state_check[\s\S]*review_required[\s\S]*approved[\s\S]*changes_requested/, "Phase 8D migration must preserve document approval states.");
+assert.match(targetedDocumentsMigration, /professional_documents_target_job_idx[\s\S]*professional_documents_match_analysis_idx/, "Phase 8D migration must index targeted document lookup paths.");
+for (const label of ["Prepare Targeted Documents", "Targeted CV", "Tailored Cover Letter", "Application Email", "LinkedIn Message", "Review Required", "Approved", "Create New Version", "Preparer les documents cibles", "CV cible", "Lettre de motivation personnalisee", "E-mail de candidature", "Message LinkedIn", "Verification necessaire", "Approuve", "Creer une nouvelle version"]) {
+  assert.match(jobIntelligenceTranslations, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `Phase 8D translations must include ${label}.`);
+}
+assert.match(opportunitiesHub, /TargetedDocumentsReview/, "Opportunities UI must expose the Phase 8D targeted document workspace.");
+assert.match(opportunitiesHub, /Create truthful documents for this job[\s\S]*copy\.noAutoSend/, "Phase 8D UI must keep the user in control through the shared copy layer.");
+assert.match(jobIntelligenceTranslations, /Nothing is sent automatically/, "Phase 8D copy must clearly state that nothing is sent automatically.");
+assert.match(opportunitiesHub, /Approve[\s\S]*Request changes/, "Phase 8D UI must expose approval actions.");
+assert.match(opportunitiesHub, /Open editor/, "Phase 8D UI must hand documents to existing editors instead of creating a second preview engine.");
+assert.match(smartApplicationTypes, /export type SmartApplicationStatus =[\s\S]*"planning"[\s\S]*"preparing_documents"[\s\S]*"review_required"[\s\S]*"ready_to_apply"[\s\S]*"applied"[\s\S]*"archived"/, "Phase 9A must define planning through ready-to-apply application statuses.");
+assert.match(smartApplicationTypes, /SmartApplicationChecklistItem[\s\S]*required: boolean;[\s\S]*state: SmartChecklistState/, "Phase 9A must model checklist items with required and completion state.");
+assert.match(smartApplicationTypes, /SmartApplicationApprovals[\s\S]*cv: boolean;[\s\S]*coverLetter: boolean;[\s\S]*applicationMessage: boolean;[\s\S]*supportingDocuments: boolean;[\s\S]*packageApproved: boolean/, "Phase 9A must require explicit package approvals.");
+assert.match(smartApplicationService, /findExistingApplication[\s\S]*job_match_analysis_id[\s\S]*createAnotherVersion/, "Phase 9A prepare action must be idempotent unless another version is requested.");
+assert.match(smartApplicationService, /ensureTargetedDocuments[\s\S]*createTargetedProfessionalDocumentPackage/, "Phase 9A must create or reuse targeted CV and cover letter documents.");
+assert.match(smartApplicationService, /checklistFor[\s\S]*job-details-reviewed[\s\S]*targeted-cv-ready[\s\S]*cover-letter-ready[\s\S]*required-documents-attached[\s\S]*user-approval-completed/, "Phase 9A must build the application package checklist.");
+assert.match(smartApplicationService, /updateSmartApplicationApproval/, "Phase 9A must support user approval updates.");
+assert.match(smartApplicationService, /updateSmartApplicationSupportingDocuments[\s\S]*from\("user_documents"\)[\s\S]*eq\("user_id", userId\)/, "Phase 9A supporting document selection must verify ownership.");
+assert.doesNotMatch(smartApplicationService, /sendMail|smtp|submitApplication|fetch\(["']https?:\/\/.*apply/i, "Phase 9A must not send applications automatically.");
+assert.match(smartApplicationsApi, /prepareSmartApplicationWorkspace\(auth\.supabase, auth\.user\.id/, "Phase 9A API must prepare workspaces for the authenticated owner.");
+assert.match(smartApplicationsApi, /updateSmartApplicationApproval\(auth\.supabase, auth\.user\.id/, "Phase 9A API must update approvals for the authenticated owner.");
+assert.match(smartApplicationsApi, /updateSmartApplicationSupportingDocuments\(auth\.supabase, auth\.user\.id/, "Phase 9A API must update supporting documents for the authenticated owner.");
+assert.match(smartApplicationsMigration, /alter table public\.employment_applications[\s\S]*job_understanding_id text[\s\S]*job_match_analysis_id text[\s\S]*targeted_cv_document_id uuid[\s\S]*cover_letter_document_id uuid/, "Phase 9A migration must extend the existing employment_applications table.");
+assert.match(smartApplicationsMigration, /status_history_json jsonb not null default '\[]'::jsonb/, "Phase 9A migration must add status history foundation.");
+assert.match(smartApplicationsMigration, /employment_applications_job_match_idx[\s\S]*employment_applications_readiness_idx/, "Phase 9A migration must index smart application lookup paths.");
+for (const label of ["Prepare Application", "Application Workspace", "Application Package", "Ready to Apply", "Review Required", "Supporting Documents", "Approve Package", "Preparer la candidature", "Espace de candidature", "Dossier de candidature", "Pret a postuler", "Verification necessaire", "Documents justificatifs", "Approuver le dossier"]) {
+  assert.match(jobIntelligenceTranslations, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `Phase 9A translations must include ${label}.`);
+}
+for (const label of ["Prepare Application", "Open Application Workspace", "Create another application version"]) {
+  assert.match(opportunitiesHub, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `Phase 9A opportunity flow must include ${label}.`);
+}
+assert.match(employmentTrackerPage, /supportingDocuments[\s\S]*user_documents/, "Applications page must load owned supporting document choices without public file URLs.");
+assert.match(employmentTrackerClient, /SmartApplicationWorkspace/, "Applications page must render a Smart Application Workspace.");
+assert.match(employmentTrackerClient, /Overview[\s\S]*Job Match[\s\S]*Documents[\s\S]*Supporting Documents[\s\S]*Checklist[\s\S]*History/, "Phase 9A workspace must include the required review sections.");
+assert.match(employmentTrackerClient, /Approve Package/, "Phase 9A workspace must require explicit package approval.");
+assert.match(employmentTrackerClient, /PATHZY does not submit anything automatically/, "Phase 9A workspace must avoid automatic submission.");
+for (const status of ["planning", "preparing", "ready_to_apply", "applied", "viewed", "screening", "assessment", "interview_scheduled", "interview_completed", "offer_received", "offer_accepted", "offer_declined", "rejected", "withdrawn", "closed", "archived"]) {
+  assert.match(applicationTrackerService, new RegExp(`"${status}"`), `Phase 9B tracker service must support ${status}.`);
+  assert.match(applicationTrackerMigration, new RegExp(`'${status}'`), `Phase 9B migration must allow ${status}.`);
+}
+for (const view of ["all", "preparing", "ready_to_apply", "applied", "interviews", "offers", "follow_up_needed", "closed"]) {
+  assert.match(applicationTrackerService, new RegExp(`"${view}"`), `Phase 9B tracker service must define ${view} view.`);
+}
+for (const eventType of ["application_created", "documents_prepared", "ready_to_apply", "applied", "viewed", "screening", "assessment_received", "interview_invited", "interview_scheduled", "interview_completed", "follow_up", "offer", "rejection", "withdrawal", "note", "document_update", "status_change"]) {
+  assert.match(applicationTrackerMigration, new RegExp(`'${eventType}'`), `Phase 9B timeline migration must support ${eventType}.`);
+}
+assert.match(applicationTrackerMigration, /create table if not exists public\.application_timeline_events[\s\S]*alter table public\.application_timeline_events enable row level security/, "Phase 9B must add an owned immutable application timeline table with RLS.");
+assert.match(applicationTrackerMigration, /Users can view own application timeline events[\s\S]*auth\.uid\(\) = user_id[\s\S]*Users can insert own application timeline events[\s\S]*application\.user_id = auth\.uid\(\)/, "Phase 9B timeline RLS must enforce ownership.");
+assert.match(applicationTrackerMigration, /closing_date date[\s\S]*planned_application_date date[\s\S]*assessment_deadline date[\s\S]*interview_date timestamptz[\s\S]*expected_response_date date[\s\S]*next_action_date date/, "Phase 9B migration must add tracker date fields.");
+assert.match(applicationTrackerMigration, /contacts_json jsonb not null default '\[]'::jsonb/, "Phase 9B migration must store contextual contacts without mutating canonical identity.");
+assert.match(applicationTrackerService, /canTransitionApplicationStatus[\s\S]*options: \{ correction\?: boolean \}/, "Phase 9B must implement safe transitions with explicit correction support.");
+assert.match(applicationTrackerService, /summarizeApplicationTracker[\s\S]*activeApplications[\s\S]*followUpsDue[\s\S]*interviews[\s\S]*latestApplication[\s\S]*nextAction/, "Phase 9B dashboard summaries must come from the shared tracker service.");
+assert.match(applicationTrackerService, /applicationEventsForPathzyTimeline/, "Phase 9B must expose application events for the existing PATHZY Timeline.");
+assert.match(employmentTrackerApi, /canTransitionApplicationStatus[\s\S]*correction: body\.correction/, "Phase 9B API must validate status transitions and allow explicit corrections.");
+assert.match(employmentTrackerApi, /from\("application_timeline_events"\)\.insert/, "Phase 9B API must write immutable timeline events.");
+assert.match(employmentTrackerApi, /status: "archived"[\s\S]*archived_at/, "Phase 9B delete action must safely archive instead of destroying application records.");
+assert.match(employmentTrackerPage, /application_timeline_events[\s\S]*eq\("user_id", user\.id\)/, "Phase 9B page must load owned application timeline events.");
+assert.match(employmentTrackerClient, /APPLICATION_TRACKER_VIEWS/, "Phase 9B UI must render shared tracker views.");
+assert.match(employmentTrackerClient, /Search applications/, "Phase 9B UI must provide application search.");
+assert.match(employmentTrackerClient, /Follow-Up Needed/, "Phase 9B UI must expose the follow-up-needed view.");
+assert.match(employmentTrackerClient, /Next Action[\s\S]*Closing date[\s\S]*Interview date[\s\S]*Contacts[\s\S]*Timeline/, "Phase 9B cards must show next actions, dates, contacts, and timeline.");
+assert.match(jobIntelligenceTranslations, /Applications[\s\S]*Preparing[\s\S]*Ready to Apply[\s\S]*Add Note[\s\S]*Candidatures[\s\S]*En préparation[\s\S]*Prêt à postuler[\s\S]*Ajouter une note/, "Phase 9B must include English and French tracker copy.");
 const jobParserRuntime = loadProductionTsModule("lib/job-intelligence/job-requirement-parser.ts");
 const inspectedJob = jobParserRuntime.inspectJobAdvertisement({
   title: "Junior Data Analyst",
@@ -1165,5 +1464,156 @@ Prepare weekly reports`
 assert.equal(inspectedJob.requirements.some((requirement) => requirement.importance === "mandatory"), true, "Job parser must identify mandatory requirements.");
 assert.equal(inspectedJob.requirements.some((requirement) => requirement.importance === "preferred"), true, "Job parser must identify preferred requirements.");
 assert.equal(inspectedJob.requirements.some((requirement) => ["skill", "technology"].includes(requirement.category)), true, "Job parser must classify skills and technology requirements.");
+const jobUnderstandingRuntime = loadProductionTsModule("lib/job-intelligence/job-understanding-provider.ts");
+const provider = new jobUnderstandingRuntime.DeterministicJobUnderstandingProvider();
+const reviewedJobText = `Job title: Junior Data Analyst
+Organisation: Insight Labs
+Location: Johannesburg
+Requirements
+Must have MS Excel and SQL
+Preferred Power BI experience
+Bachelor degree would be advantageous
+Responsibilities
+Prepare monthly reports
+Analyse operational data
+Apply by sending your CV and cover letter to jobs@example.com
+Closing date: 31 July 2026`;
+const understoodEnglishJob = await provider.understandJob({
+  jobImport: {
+    id: "00000000-0000-0000-0000-000000000001",
+    userId: "user-1",
+    status: "ready",
+    sourceType: "pasted_text",
+    rawText: reviewedJobText,
+    normalizedText: reviewedJobText,
+    language: "en",
+    inspection: {
+      sourceType: "pasted_text",
+      sourceLabel: "Pasted job description",
+      language: "en",
+      layout: { hasResponsibilities: true, hasRequirements: true, hasApplicationInstructions: true, hasClosingDate: true },
+      preliminaryDetails: {
+        jobTitle: "Junior Data Analyst",
+        organisation: "Insight Labs",
+        location: "Johannesburg",
+        closingDate: "31 July 2026",
+        applicationInstructions: "Apply by sending your CV and cover letter to jobs@example.com"
+      },
+      responsibilities: [
+        { id: "responsibility-1", text: "Prepare monthly reports", category: "responsibility", importance: "unclear", sourceLine: "Prepare monthly reports", confidence: 0.8 },
+        { id: "responsibility-2", text: "Analyse operational data", category: "responsibility", importance: "unclear", sourceLine: "Analyse operational data", confidence: 0.8 }
+      ],
+      requirements: [
+        { id: "requirement-1", text: "Must have MS Excel and SQL", category: "technology", importance: "mandatory", sourceLine: "Must have MS Excel and SQL", confidence: 0.86 },
+        { id: "requirement-2", text: "Preferred Power BI experience", category: "technology", importance: "preferred", sourceLine: "Preferred Power BI experience", confidence: 0.82 },
+        { id: "requirement-3", text: "Bachelor degree would be advantageous", category: "education", importance: "preferred", sourceLine: "Bachelor degree would be advantageous", confidence: 0.76 },
+        { id: "requirement-4", text: "Customer success experience would be an advantage", category: "experience", importance: "preferred", sourceLine: "Customer success experience would be an advantage", confidence: 0.76 }
+      ],
+      optionalContext: [],
+      missingFields: [],
+      warnings: [],
+      rawTextHash: "job_import_test",
+      inspectedAt: new Date().toISOString()
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+});
+assert.equal(understoodEnglishJob.understanding.requirements.some((requirement) => requirement.importance === "mandatory"), true, "Phase 8B must keep mandatory requirements.");
+assert.equal(understoodEnglishJob.understanding.requirements.some((requirement) => requirement.importance === "preferred"), true, "Phase 8B must keep preferred requirements.");
+assert.equal(understoodEnglishJob.understanding.requirements.some((requirement) => requirement.canonicalConceptId === "skill:microsoft-excel"), true, "Phase 8B must normalize MS Excel to Microsoft Excel.");
+assert.equal(understoodEnglishJob.understanding.responsibilities.length >= 1, true, "Phase 8B must keep responsibilities separate from requirements.");
+assert.equal(Boolean(understoodEnglishJob.understanding.applicationDetails.contactEmail), true, "Phase 8B must extract application contact details.");
+const profileJobMatchRuntime = loadProductionTsModule("lib/job-intelligence/profile-job-match-engine.ts");
+const now = new Date().toISOString();
+const canonicalValue = (value, status = "confirmed", confidence = 0.95) => ({
+  value,
+  status,
+  confidence,
+  sourceReferences: [{ sourceType: "user_entry", originalValue: value, sourceConfidence: confidence, addedAt: now }],
+  createdAt: now,
+  updatedAt: now
+});
+const profileForMatching = {
+  id: "profile-1",
+  userId: "user-1",
+  version: 3,
+  status: "active",
+  identity: { fullName: canonicalValue("Nicka Candida") },
+  contact: { otherLinks: [] },
+  professionalProfile: { targetRoles: [], industries: [], workPreferences: [], professionalSummary: canonicalValue("Data analyst with reporting and customer service experience.") },
+  employment: [
+    {
+      id: "employment-1",
+      canonicalTitle: canonicalValue("Customer Service Analyst"),
+      titleVariants: [],
+      employer: canonicalValue("Example Co"),
+      employerAliases: [],
+      startDate: { value: { raw: "Jan 2022", year: 2022, month: 1 }, status: "confirmed", confidence: 0.9, sourceReferences: [], createdAt: now, updatedAt: now },
+      endDate: { value: { raw: "Dec 2024", year: 2024, month: 12 }, status: "confirmed", confidence: 0.9, sourceReferences: [], createdAt: now, updatedAt: now },
+      isCurrent: { value: false, status: "confirmed", confidence: 0.9, sourceReferences: [], createdAt: now, updatedAt: now },
+      responsibilities: [{ id: "resp-1", statement: canonicalValue("Prepared monthly reports and resolved customer account issues."), sourceReferences: [] }],
+      achievements: [],
+      skills: [],
+      tools: [],
+      technologies: [],
+      projects: [],
+      status: "confirmed",
+      sourceReferences: [],
+      confidence: 0.9,
+      createdAt: now,
+      updatedAt: now
+    }
+  ],
+  education: [{ id: "education-1", qualification: canonicalValue("Bachelor degree"), institution: canonicalValue("Example University"), institutionAliases: [], status: { value: "completed", status: "confirmed", confidence: 0.9, sourceReferences: [], createdAt: now, updatedAt: now }, supportingDocumentIds: [], sourceReferences: [], confidence: 0.88, reviewStatus: "confirmed", createdAt: now, updatedAt: now }],
+  certifications: [],
+  licences: [],
+  skills: [{ id: "skill-1", canonicalName: canonicalValue("Microsoft Excel"), aliases: [], category: "software", explicitness: "explicit", relatedEmploymentIds: [], relatedEducationIds: [], relatedCertificationIds: [], relatedProjectIds: [], sourceReferences: [], confidence: 0.96, status: "confirmed" }],
+  languages: [],
+  projects: [],
+  achievements: [],
+  awards: [],
+  memberships: [],
+  publications: [],
+  volunteering: [],
+  references: [],
+  careerTimeline: [],
+  completion: { percentage: 70, missingSections: [], reviewNeededCount: 0 },
+  confidence: { overall: 0.82, identity: 0.8, contact: 0.6, employment: 0.9, education: 0.88, skills: 0.96, consistency: 0.9 },
+  unresolvedIssues: [],
+  createdAt: now,
+  updatedAt: now
+};
+const matchAnalysis = profileJobMatchRuntime.analyzeConfirmedJobAgainstProfile({ profile: profileForMatching, jobUnderstanding: understoodEnglishJob.understanding });
+assert.equal(matchAnalysis.requirements.some((match) => match.status === "confirmed_match"), true, "Phase 8C must identify confirmed requirement matches.");
+assert.equal(matchAnalysis.requirements.some((match) => match.status === "partial_match" || match.status === "transferable_match"), true, "Phase 8C must identify partial or transferable evidence separately.");
+assert.equal(typeof matchAnalysis.fitScore === "number", true, "Phase 8C must calculate a transparent fit score.");
+assert.equal(matchAnalysis.analysisConfidence > 0 && matchAnalysis.analysisConfidence <= 1, true, "Phase 8C must calculate analysis confidence separately.");
+assert.equal(matchAnalysis.canonicalProfileVersion, 3, "Phase 8C must store the profile version used for matching.");
+assert.equal(profileJobMatchRuntime.freshnessForProfileJobMatch({ analysis: matchAnalysis, currentProfileVersion: 4, currentJobUnderstandingVersion: matchAnalysis.jobUnderstandingVersion }).stale, true, "Phase 8C must detect stale analyses after profile changes.");
+const targetedDocumentsRuntime = loadProductionTsModule("lib/job-intelligence/targeted-document-strategy.ts");
+const profileVersionBeforeTargeting = profileForMatching.version;
+const targetedPackage = targetedDocumentsRuntime.buildTargetedProfessionalDocuments({
+  userId: "user-1",
+  profile: profileForMatching,
+  jobUnderstanding: understoodEnglishJob.understanding,
+  matchAnalysis,
+  includeApplicationEmail: true,
+  includeLinkedInMessage: true,
+  includeRecruiterMessage: true
+});
+assert.equal(targetedPackage.documents.some((document) => document.type === "cv" && document.configuration.purpose === "targeted"), true, "Phase 8D must create a new targeted CV using the existing CV model.");
+assert.equal(targetedPackage.documents.some((document) => document.type === "cover_letter"), true, "Phase 8D must create a tailored cover-letter document.");
+assert.equal(targetedPackage.documents.some((document) => document.type === "application_email"), true, "Phase 8D must prepare an optional application email draft.");
+assert.equal(targetedPackage.documents.some((document) => document.type === "linkedin_message"), true, "Phase 8D must prepare an optional LinkedIn message draft.");
+assert.equal(targetedPackage.documents.some((document) => document.type === "recruiter_message"), true, "Phase 8D must prepare an optional recruiter message draft.");
+assert.equal(targetedPackage.package.documents.every((document) => document.approvalState === "review_required"), true, "Phase 8D documents must require user review before approval.");
+assert.equal(targetedPackage.package.strategy.selectedSkillIds.includes("skill-1"), true, "Phase 8D must include verified relevant skills in the targeting strategy.");
+assert.equal(targetedPackage.package.unsupportedClaimsBlocked.some((claim) => /Power BI/i.test(claim)), true, "Phase 8D must block unsupported job keywords from being claimed automatically.");
+assert.equal(profileForMatching.version, profileVersionBeforeTargeting, "Phase 8D must not mutate the canonical profile while creating targeted documents.");
+const targetedCv = targetedPackage.documents.find((document) => document.type === "cv");
+assert.equal(targetedCv.name.includes("Targeted CV"), true, "Phase 8D must name the new CV as a targeted version, not overwrite the master CV.");
+assert.equal(targetedCv.targeting.jobMatchAnalysisId, matchAnalysis.id, "Phase 8D must preserve the match-analysis reference on the generated document.");
+assert.equal(targetedCv.targeting.approvalState, "review_required", "Phase 8D must store review-required state on generated documents.");
 
 console.log("PATHZY journey and export standard regression tests passed.");

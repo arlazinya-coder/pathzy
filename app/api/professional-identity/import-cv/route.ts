@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { canCurrentUserUseProfessionalIdentityTools, createImportedCvDraft } from "@/lib/professional-identity/professional-identity-service";
-import { CvImportError, importCvFromUpload, validateCvImportFile } from "@/lib/professional-identity/cv-import";
+import { CvImportError, importCvFromUpload, normalizeCvImportUpload, stageImportedCvFromSemantic, validateCvImportFile } from "@/lib/professional-identity/cv-import";
 import type { ImportedCvResult } from "@/lib/professional-identity/cv-import";
 import { DocumentInspectionError, inspectAndPersistDocument } from "@/lib/documents/inspection";
 import { VisualReadingError, runAndPersistVisualReading } from "@/lib/documents/visual";
@@ -102,14 +102,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ document });
     }
 
-    const upload = {
+    const upload = normalizeCvImportUpload({
       fileName: body.fileName ?? "",
       fileType: body.fileType ?? "",
       fileSize: body.fileSize ?? 0,
       base64: body.base64 ?? ""
-    };
+    });
 
     validateCvImportFile(upload);
+
+    // Extraction is the trust boundary: nothing downstream may see corrupt PDF syntax.
+    const extractedImport = await importCvFromUpload(upload);
+    console.info("[cv-import] stage complete", { stage: "extraction", mimeType: upload.fileType, sizeBytes: upload.fileSize, characters: extractedImport.normalizedText.length });
 
     const uploadDocumentId = await createUploadShell(auth.supabase, auth.user.id, upload);
     const inspection = await inspectAndPersistDocument(auth.supabase, {
@@ -130,9 +134,10 @@ export async function POST(request: Request) {
       documentId: uploadDocumentId,
       userId: auth.user.id,
       inspection,
-      nativeText: "",
+      nativeText: extractedImport.normalizedText,
       base64: upload.base64
     });
+    console.info("[cv-import] stage complete", { stage: "visual-reading", regions: visualReading.pages.reduce((count, page) => count + page.regions.length, 0), sections: visualReading.sections.length });
     const { data: existingProfile } = await auth.supabase
       .from("user_profiles")
       .select("full_name,career_goal,current_status,education,country,city")
@@ -145,6 +150,7 @@ export async function POST(request: Request) {
       visualReading,
       existingProfile: existingProfile ?? null
     });
+    console.info("[cv-import] stage complete", { stage: "semantic-understanding", entities: semanticReading.entities.length, employment: semanticReading.employment.length, education: semanticReading.education.length, skills: semanticReading.skills.length });
     let reasoning = null;
     try {
       reasoning = await runAndPersistCareerReasoning(auth.supabase, {
@@ -157,7 +163,7 @@ export async function POST(request: Request) {
     }
 
     const imported = {
-      ...importCvFromUpload(upload),
+      ...stageImportedCvFromSemantic(extractedImport, semanticReading),
       uploadDocumentId,
       inspection,
       visualReading,

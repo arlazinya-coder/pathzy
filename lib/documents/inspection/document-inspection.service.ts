@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { extractDocxText, extractPdfText } from "@/lib/professional-identity/cv-import";
+import { extractDocxText, extractPdfDocument } from "@/lib/professional-identity/cv-import";
 import { detectDocumentType } from "./document-type-detector";
 import { detectLanguages } from "./language-detector";
 import { detectLayout } from "./layout-detector";
@@ -11,23 +11,16 @@ import { validateInspectionInput, validateInspectionResult } from "./inspection.
 import type { DocumentInspectionInput, DocumentInspectionResult, InspectionWarning } from "./inspection.types";
 import { calculateOverallConfidence, clampConfidence, decodeBase64Document, normalizeInspectionText, safeInspectionId } from "./inspection.utils";
 
-function pageCountFromPdf(raw: string) {
-  const count = (raw.match(/\/Type\s*\/Page\b/g) ?? []).length;
-  return Math.max(1, count);
-}
-
-function sampleNativeText(input: DocumentInspectionInput) {
+async function sampleNativeDocument(input: DocumentInspectionInput) {
   const buffer = decodeBase64Document(input.base64);
-  if (!buffer.length) return normalizeInspectionText(input.textSample ?? "");
-  if (input.mimeType === "application/pdf") return extractPdfText(buffer);
-  if (input.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return extractDocxText(buffer);
-  if (input.mimeType === "text/plain") return normalizeInspectionText(buffer.toString("utf8"));
-  return normalizeInspectionText(input.textSample ?? "");
-}
-
-function pageCountFor(input: DocumentInspectionInput, rawText: string) {
-  if (input.mimeType === "application/pdf") return pageCountFromPdf(rawText);
-  return 1;
+  if (!buffer.length) return { text: normalizeInspectionText(input.textSample ?? ""), pageCount: 1 };
+  if (input.mimeType === "application/pdf") {
+    const parsed = await extractPdfDocument(buffer);
+    return { text: parsed.text, pageCount: parsed.pageCount };
+  }
+  if (input.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return { text: await extractDocxText(buffer), pageCount: 1 };
+  if (input.mimeType === "text/plain") return { text: normalizeInspectionText(buffer.toString("utf8")), pageCount: 1 };
+  return { text: normalizeInspectionText(input.textSample ?? ""), pageCount: 1 };
 }
 
 function warningStatus(warnings: InspectionWarning[]): DocumentInspectionResult["status"] {
@@ -43,9 +36,10 @@ export async function inspectDocument(input: DocumentInspectionInput): Promise<D
 
   try {
     const buffer = decodeBase64Document(input.base64);
-    const rawText = buffer.length ? buffer.toString(input.mimeType === "application/pdf" ? "latin1" : "utf8") : "";
-    const nativeText = sampleNativeText(input);
-    const pageCount = pageCountFor(input, rawText);
+    const rawText = buffer.length && input.mimeType !== "application/pdf" ? buffer.toString("utf8") : "";
+    const nativeDocument = await sampleNativeDocument(input);
+    const nativeText = nativeDocument.text;
+    const pageCount = nativeDocument.pageCount;
     const sourceDetection = detectDocumentSource({ mimeType: input.mimeType, pageCount, nativeText, textByPage: nativeText.split(/\f|(?:\n\s*page\s+\d+\s*\n)/i) });
     const ocrDecision = determineOcrRequirement({
       sourceType: sourceDetection.type,

@@ -8,12 +8,12 @@ import { buildVisualReadingPrompt } from "./visual-prompt";
 import { VisualReadingError, validateVisualDocumentModel } from "./visual-reading.schema";
 import type { VisualDocumentModel, VisualReadingInput } from "./visual-reading.types";
 
-function sampleNativeText(input: Pick<VisualReadingInput, "base64" | "nativeText" | "inspection">) {
+async function sampleNativeText(input: Pick<VisualReadingInput, "base64" | "nativeText" | "inspection">) {
   if (input.nativeText?.trim()) return normalizeInspectionText(input.nativeText);
   const buffer = decodeBase64Document(input.base64);
   if (!buffer.length) return "";
-  if (input.inspection.file.mimeType === "application/pdf") return extractPdfText(buffer);
-  if (input.inspection.file.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return extractDocxText(buffer);
+  if (input.inspection.file.mimeType === "application/pdf") return await extractPdfText(buffer);
+  if (input.inspection.file.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return await extractDocxText(buffer);
   if (input.inspection.file.mimeType === "text/plain") return normalizeInspectionText(buffer.toString("utf8"));
   return "";
 }
@@ -49,7 +49,7 @@ export async function runVisualReading(input: VisualReadingInput): Promise<Visua
   if (input.inspection.status === "failed") {
     throw new VisualReadingError("inspection_failed", "Visual reading requires a completed inspection.", "PATHZY could not read this document layout because inspection failed.");
   }
-  const nativeText = sampleNativeText(input);
+  const nativeText = await sampleNativeText(input);
   const decision = shouldRunVisualReading(input.inspection);
   const renderer = new LocalMetadataDocumentRenderer();
   const reader = new LocalVisualDocumentReader();

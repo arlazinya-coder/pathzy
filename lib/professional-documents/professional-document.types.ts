@@ -1,6 +1,7 @@
 import type { CanonicalProfessionalIdentity, ProfessionalIdentityView, ViewFreshness } from "@/lib/canonical-profile";
+import type { TargetedDocumentApprovalState, TargetedDocumentStaleState, TargetedDocumentStrategy } from "@/lib/job-intelligence/job-intelligence.types";
 
-export type ProfessionalDocumentType = "cv" | "cover_letter" | "professional_bio" | "linkedin_profile" | "application_summary";
+export type ProfessionalDocumentType = "cv" | "cover_letter" | "professional_bio" | "linkedin_profile" | "application_summary" | "application_email" | "linkedin_message" | "recruiter_message";
 export type ProfessionalDocumentStatus = "draft" | "generating" | "ready" | "ready_with_warnings" | "stale" | "archived" | "failed";
 export type ProfessionalDocumentLanguage = "en" | "fr";
 export type CvPurpose = "master" | "general" | "targeted" | "one_page" | "early_career" | "experienced" | "career_change" | "academic" | "custom";
@@ -198,6 +199,22 @@ export type ProfessionalDocument = {
     targetJobId?: string;
     jobDescriptionHash?: string;
   };
+  targeting?: {
+    packageId?: string;
+    jobUnderstandingId?: string;
+    jobUnderstandingVersion?: number;
+    jobMatchAnalysisId?: string;
+    canonicalProfileVersion?: number;
+    selectedEntityIds?: Record<string, string[]>;
+    excludedEntityIds?: Record<string, string[]>;
+    templateVersion?: string;
+    contentVersion?: string;
+    targetingStrategyVersion?: string;
+    strategy?: TargetedDocumentStrategy;
+    approvalState?: TargetedDocumentApprovalState;
+    staleState?: TargetedDocumentStaleState;
+    approvedAt?: string;
+  };
   configuration: ProfessionalDocumentConfiguration;
   selectedEntities: {
     employmentIds: string[];
@@ -314,4 +331,3 @@ export type ProfessionalDocumentReadModel = {
   view: ProfessionalIdentityView;
   document: ProfessionalDocument;
 };
-

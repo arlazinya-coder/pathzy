@@ -226,32 +226,49 @@ async function persistProfessionalDocumentFields(supabase: Supabase, document: P
 }
 
 export async function persistProfessionalDocument(supabase: Supabase, document: ProfessionalDocument) {
+  const row: Record<string, unknown> = {
+    id: document.id,
+    user_id: document.userId,
+    canonical_profile_id: document.canonicalProfileId,
+    profile_version: document.profileVersion,
+    document_type: document.type,
+    name: document.name,
+    status: document.status,
+    language: document.language,
+    purpose: (document.configuration as CvViewConfiguration).purpose ?? null,
+    target_role: document.target?.targetRole ?? null,
+    target_job_id: document.target?.targetJobId ?? null,
+    template_id: document.template.templateId,
+    template_version: document.template.templateVersion,
+    configuration_json: document.configuration,
+    content_json: document.content,
+    selected_entities_json: document.selectedEntities,
+    freshness_status: document.freshness.status,
+    warnings_json: document.warnings,
+    updated_at: new Date().toISOString()
+  };
+
+  if (document.targeting) {
+    Object.assign(row, {
+      job_understanding_id: document.targeting.jobUnderstandingId ?? null,
+      job_understanding_version: document.targeting.jobUnderstandingVersion ?? null,
+      job_match_analysis_id: document.targeting.jobMatchAnalysisId ?? null,
+      target_package_id: document.targeting.packageId ?? null,
+      targeted_canonical_profile_version: document.targeting.canonicalProfileVersion ?? null,
+      selected_target_entity_ids_json: document.targeting.selectedEntityIds ?? {},
+      excluded_target_entity_ids_json: document.targeting.excludedEntityIds ?? {},
+      targeting_strategy_json: document.targeting.strategy ?? {},
+      content_version: document.targeting.contentVersion ?? null,
+      targeting_strategy_version: document.targeting.targetingStrategyVersion ?? null,
+      approval_state: document.targeting.approvalState ?? null,
+      stale_state: document.targeting.staleState ?? null,
+      approved_at: document.targeting.approvedAt ?? null
+    });
+  }
+
   const { data, error } = await supabase
     .from("professional_documents")
-    .upsert(
-      {
-        id: document.id,
-        user_id: document.userId,
-        canonical_profile_id: document.canonicalProfileId,
-        profile_version: document.profileVersion,
-        document_type: document.type,
-        name: document.name,
-        status: document.status,
-        language: document.language,
-        purpose: (document.configuration as CvViewConfiguration).purpose ?? null,
-        target_role: document.target?.targetRole ?? null,
-        target_job_id: document.target?.targetJobId ?? null,
-        template_id: document.template.templateId,
-        template_version: document.template.templateVersion,
-        configuration_json: document.configuration,
-        content_json: document.content,
-        selected_entities_json: document.selectedEntities,
-        freshness_status: document.freshness.status,
-        warnings_json: document.warnings,
-        updated_at: new Date().toISOString()
-      },
-      { onConflict: "id" }
-    )
+    .upsert(row, { onConflict: "id" })
     .select("*")
     .maybeSingle();
   if (error) throw error;
@@ -273,6 +290,23 @@ function documentFromRow(row: any): ProfessionalDocument {
       targetRole: row.target_role ?? undefined,
       targetJobId: row.target_job_id ?? undefined
     },
+    targeting: row.job_understanding_id || row.job_match_analysis_id || row.targeting_strategy_json
+      ? {
+          packageId: row.target_package_id ?? undefined,
+          jobUnderstandingId: row.job_understanding_id ?? undefined,
+          jobUnderstandingVersion: row.job_understanding_version ?? undefined,
+          jobMatchAnalysisId: row.job_match_analysis_id ?? undefined,
+          canonicalProfileVersion: row.targeted_canonical_profile_version ?? undefined,
+          selectedEntityIds: row.selected_target_entity_ids_json ?? undefined,
+          excludedEntityIds: row.excluded_target_entity_ids_json ?? undefined,
+          contentVersion: row.content_version ?? undefined,
+          targetingStrategyVersion: row.targeting_strategy_version ?? undefined,
+          strategy: row.targeting_strategy_json ?? undefined,
+          approvalState: row.approval_state ?? undefined,
+          staleState: row.stale_state ?? undefined,
+          approvedAt: row.approved_at ?? undefined
+        }
+      : undefined,
     configuration: row.configuration_json ?? {},
     selectedEntities: row.selected_entities_json ?? { employmentIds: [], educationIds: [], certificationIds: [], skillIds: [], languageIds: [], projectIds: [], achievementIds: [] },
     content: row.content_json ?? {},

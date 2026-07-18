@@ -1,6 +1,8 @@
-import { inflateRawSync } from "node:zlib";
+import mammoth from "mammoth";
+import { PDFParse } from "pdf-parse";
 import { cvModelFromUnknown, normalizeCvModelForExport } from "@/components/professional-identity/document-downloads";
 import type { CvModel } from "@/components/professional-identity/document-downloads";
+import type { SemanticDocumentModel } from "@/lib/documents/semantic";
 import {
   createCanonicalCvTrace,
   createCvSourceDocument,
@@ -120,6 +122,11 @@ const supportedTypes = new Set([
 ]);
 const maxFileSize = 8 * 1024 * 1024;
 const minReadableCharacters = 160;
+const mimeByExtension: Record<string, CvImportUpload["fileType"]> = {
+  pdf: "application/pdf",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  txt: "text/plain"
+};
 const sensitiveLabelPattern = /\b(identity|id\s*number|passport|date\s*of\s*birth|birth\s*date|age|gender|marital|religion|health|criminal|offence|photo|photograph|residential\s+address|street\s+address)\b/i;
 const valueSeparator = /\s*(?::|\s+-\s+|\t+|\s{3,})\s*/;
 
@@ -141,6 +148,16 @@ const headingAliases: Array<[SectionKey, RegExp]> = [
   ["interests", /^(interests|hobbies|other\s+interests\s+and\s+activities)$/i]
 ];
 
+export function normalizeCvImportUpload<T extends CvImportUpload>(upload: T): T {
+  const extension = upload.fileName.split(".").pop()?.toLowerCase() ?? "";
+  const extensionType = mimeByExtension[extension];
+  const declaredType = upload.fileType === "application/octet-stream" || !upload.fileType ? extensionType : upload.fileType;
+  if (extensionType && declaredType && extensionType !== declaredType) {
+    throw new CvImportError("File extension does not match MIME type.", "The file extension does not match the file type. Please check the file and upload it again.");
+  }
+  return { ...upload, fileType: declaredType ?? upload.fileType };
+}
+
 export function validateCvImportFile(upload: Pick<CvImportUpload, "fileName" | "fileType" | "fileSize">) {
   if (!upload.fileName?.trim()) throw new CvImportError("Missing file.", "Please choose a CV file to import.");
   if (!supportedTypes.has(upload.fileType)) throw new CvImportError("Unsupported file type.", "This file format isn't supported yet. Please upload a PDF, DOCX, or TXT CV.");
@@ -152,17 +169,6 @@ function decodeBase64File(base64: string) {
   const clean = base64.replace(/^data:[^;]+;base64,/, "").trim();
   if (!clean) throw new CvImportError("Missing file data.", "We could not read this CV file. Please try uploading it again.");
   return Buffer.from(clean, "base64");
-}
-
-function decodeXmlEntities(value: string) {
-  return value
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, "\"")
-    .replace(/&apos;/g, "'")
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
-    .replace(/&#x([a-f0-9]+);/gi, (_, code) => String.fromCharCode(Number.parseInt(code, 16)));
 }
 
 function normalizeExtractedText(text: string) {
@@ -185,118 +191,80 @@ function sourceFormatFromType(fileType: string): CvSourceFormat {
   return "txt";
 }
 
-function decodePdfLiteral(value: string) {
-  return value
-    .replace(/\\n/g, "\n")
-    .replace(/\\r/g, "\n")
-    .replace(/\\t/g, " ")
-    .replace(/\\\(/g, "(")
-    .replace(/\\\)/g, ")")
-    .replace(/\\\\/g, "\\")
-    .replace(/\\([0-7]{1,3})/g, (_, octal) => String.fromCharCode(Number.parseInt(octal, 8)));
+const pdfSyntaxMarkerPattern = /%PDF-|\bendobj\b|\bxref\b|\bstream\b|\btrailer\b/i;
+const docxSyntaxMarkerPattern = /<w:(?:document|body|p|t)\b|\[Content_Types\]\.xml|word\/document\.xml/i;
+
+export function containsStructuralPdfSyntax(text: string) {
+  return pdfSyntaxMarkerPattern.test(text);
 }
 
-export function extractPdfText(buffer: Buffer) {
-  const raw = buffer.toString("latin1");
-  const textParts: string[] = [];
-  const literalText = /\((?:\\.|[^\\()]){2,}\)\s*Tj/g;
-  const arrayText = /\[((?:.|\n)*?)\]\s*TJ/g;
-  let literalMatch: RegExpExecArray | null;
-  while ((literalMatch = literalText.exec(raw))) textParts.push(decodePdfLiteral(literalMatch[0].replace(/\)\s*Tj$/, "").slice(1)));
-  let arrayMatch: RegExpExecArray | null;
-  while ((arrayMatch = arrayText.exec(raw))) {
-    const fragments = Array.from(arrayMatch[1].matchAll(/\((?:\\.|[^\\()])*\)/g)).map((fragment) => decodePdfLiteral(fragment[0].slice(1, -1)));
-    if (fragments.length) textParts.push(fragments.join(""));
+export function validateExtractedCvText(text: string, sourceFormat: CvSourceFormat) {
+  const controlCharacters = Array.from(text).filter((character) => {
+    const code = character.charCodeAt(0);
+    return code < 32 && ![9, 10, 13].includes(code);
+  }).length;
+  const binaryLike = text.includes("\uFFFD") || controlCharacters > Math.max(3, text.length * 0.01);
+  const formatSyntax = sourceFormat === "pdf" ? pdfSyntaxMarkerPattern.test(text) : sourceFormat === "docx" ? docxSyntaxMarkerPattern.test(text) : false;
+  if (binaryLike || formatSyntax) {
+    throw new CvImportError("Binary or document-format syntax detected in extracted text.", "We could not safely read the text in this CV. Please export it again and retry.");
   }
-  if (textParts.join("").length < minReadableCharacters) {
-    textParts.push(
-      raw
-        .replace(/[^\x09\x0a\x0d\x20-\x7e]/g, "\n")
-        .split("\n")
-        .map((line) => line.trim())
-        .filter((line) => /[A-Za-z]{3,}/.test(line) && line.length < 180)
-        .join("\n")
-    );
-  }
-  return normalizeExtractedText(textParts.join("\n"));
-}
-
-type ZipEntry = {
-  name: string;
-  compression: number;
-  compressedSize: number;
-  localHeaderOffset: number;
-};
-
-function findEndOfCentralDirectory(buffer: Buffer) {
-  for (let offset = buffer.length - 22; offset >= Math.max(0, buffer.length - 66000); offset -= 1) {
-    if (buffer.readUInt32LE(offset) === 0x06054b50) return offset;
-  }
-  return -1;
-}
-
-function readZipEntries(buffer: Buffer) {
-  const eocd = findEndOfCentralDirectory(buffer);
-  if (eocd < 0) throw new CvImportError("Invalid DOCX zip.", "We could not read this DOCX file. Please try saving it again and re-uploading.");
-  const entries = buffer.readUInt16LE(eocd + 10);
-  let offset = buffer.readUInt32LE(eocd + 16);
-  const result: ZipEntry[] = [];
-  for (let index = 0; index < entries; index += 1) {
-    if (buffer.readUInt32LE(offset) !== 0x02014b50) break;
-    const compression = buffer.readUInt16LE(offset + 10);
-    const compressedSize = buffer.readUInt32LE(offset + 20);
-    const nameLength = buffer.readUInt16LE(offset + 28);
-    const extraLength = buffer.readUInt16LE(offset + 30);
-    const commentLength = buffer.readUInt16LE(offset + 32);
-    const localHeaderOffset = buffer.readUInt32LE(offset + 42);
-    const name = buffer.subarray(offset + 46, offset + 46 + nameLength).toString("utf8");
-    result.push({ name, compression, compressedSize, localHeaderOffset });
-    offset += 46 + nameLength + extraLength + commentLength;
-  }
-  return result;
-}
-
-function readZipEntry(buffer: Buffer, entry: ZipEntry) {
-  const offset = entry.localHeaderOffset;
-  if (buffer.readUInt32LE(offset) !== 0x04034b50) throw new CvImportError("Invalid DOCX entry.", "We could not read this DOCX file.");
-  const nameLength = buffer.readUInt16LE(offset + 26);
-  const extraLength = buffer.readUInt16LE(offset + 28);
-  const start = offset + 30 + nameLength + extraLength;
-  const data = buffer.subarray(start, start + entry.compressedSize);
-  if (entry.compression === 0) return data;
-  if (entry.compression === 8) return inflateRawSync(data);
-  throw new CvImportError("Unsupported DOCX compression.", "We could not read this DOCX file. Please export it again and try once more.");
-}
-
-export function extractDocxText(buffer: Buffer) {
-  const entries = readZipEntries(buffer);
-  const documentEntry = entries.find((entry) => entry.name === "word/document.xml");
-  if (!documentEntry) throw new CvImportError("Missing DOCX document XML.", "We could not read the main text in this DOCX file.");
-  const xml = readZipEntry(buffer, documentEntry).toString("utf8");
-  const text = decodeXmlEntities(
-    xml
-      .replace(/<w:tab\s*\/>/g, " ")
-      .replace(/<w:br\s*\/>/g, "\n")
-      .replace(/<\/w:tc>/g, " : ")
-      .replace(/<\/w:p>/g, "\n")
-      .replace(/<\/w:tr>/g, "\n")
-      .replace(/<[^>]+>/g, "")
-  );
-  return normalizeExtractedText(text);
-}
-
-export function extractTextFromUploadedCv(upload: CvImportUpload) {
-  validateCvImportFile(upload);
-  const buffer = decodeBase64File(upload.base64);
-  if (!buffer.length) throw new CvImportError("Empty decoded file.", "This CV file appears to be empty.");
-  const text = upload.fileType === "application/pdf"
-    ? extractPdfText(buffer)
-    : upload.fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-      ? extractDocxText(buffer)
-      : normalizeExtractedText(buffer.toString("utf8"));
   if (text.replace(/\s/g, "").length < minReadableCharacters) {
-    throw new CvImportError("Insufficient readable text.", "We couldn't read enough text from this CV. If it is scanned, please upload a text-based PDF, DOCX, or TXT version.");
+    const message = sourceFormat === "pdf"
+      ? "This PDF appears to be scanned or image-only. OCR is required before it can be imported."
+      : "We couldn't read enough text from this CV. Please export it again and retry.";
+    throw new CvImportError(sourceFormat === "pdf" ? "OCR required." : "Insufficient readable text.", message);
   }
+}
+
+export async function extractPdfDocument(buffer: Buffer) {
+  const parser = new PDFParse({ data: new Uint8Array(buffer) });
+  try {
+    const result = await parser.getText();
+    const text = normalizeExtractedText(result.text ?? "");
+    validateExtractedCvText(text, "pdf");
+    return { text, pageCount: result.total };
+  } catch (caught) {
+    if (caught instanceof CvImportError) throw caught;
+    throw new CvImportError("PDF parsing failed.", "We could not safely read this PDF. Please export it again and retry.");
+  } finally {
+    await parser.destroy();
+  }
+}
+
+export async function extractPdfText(buffer: Buffer) {
+  return (await extractPdfDocument(buffer)).text;
+}
+
+export async function extractDocxText(buffer: Buffer) {
+  try {
+    const result = await mammoth.extractRawText({ buffer });
+    const text = normalizeExtractedText(result.value);
+    validateExtractedCvText(text, "docx");
+    return text;
+  } catch (caught) {
+    if (caught instanceof CvImportError) throw caught;
+    throw new CvImportError("DOCX parsing failed.", "We could not safely read this DOCX file. Please export it again and retry.");
+  }
+}
+
+export async function extractTextFromUploadedCv(upload: CvImportUpload) {
+  const normalizedUpload = normalizeCvImportUpload(upload);
+  validateCvImportFile(normalizedUpload);
+  const buffer = decodeBase64File(normalizedUpload.base64);
+  if (!buffer.length) throw new CvImportError("Empty decoded file.", "This CV file appears to be empty.");
+  if (normalizedUpload.fileType === "application/pdf" && !buffer.subarray(0, 5).equals(Buffer.from("%PDF-"))) {
+    throw new CvImportError("Invalid PDF signature.", "This file is not a valid PDF. Please export it again and retry.");
+  }
+  if (normalizedUpload.fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" && !buffer.subarray(0, 2).equals(Buffer.from([0x50, 0x4b]))) {
+    throw new CvImportError("Invalid DOCX signature.", "This file is not a valid DOCX. Please export it again and retry.");
+  }
+  const text = normalizedUpload.fileType === "application/pdf"
+    ? await extractPdfText(buffer)
+    : normalizedUpload.fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      ? await extractDocxText(buffer)
+      : normalizeExtractedText(buffer.toString("utf8"));
+  validateExtractedCvText(text, sourceFormatFromType(normalizedUpload.fileType));
+  console.info("[cv-import] extraction complete", { mimeType: normalizedUpload.fileType, sizeBytes: buffer.length, characters: text.length, lines: text.split("\n").length });
   return text;
 }
 
@@ -349,8 +317,8 @@ export function createNormalizedBlocksFromTxtText(text: string) {
   return createNormalizedBlocksFromText(text, "txt");
 }
 
-export function extractBlocksFromUploadedCv(upload: CvImportUpload) {
-  const text = extractTextFromUploadedCv(upload);
+export async function extractBlocksFromUploadedCv(upload: CvImportUpload) {
+  const text = await extractTextFromUploadedCv(upload);
   const sourceFormat = sourceFormatFromType(upload.fileType);
   const blocks = sourceFormat === "pdf"
     ? createNormalizedBlocksFromPdfText(text)
@@ -1032,8 +1000,8 @@ export function buildCvImportResult(upload: Pick<CvImportUpload, "fileName" | "f
   };
 }
 
-export function importCvFromUpload(upload: CvImportUpload) {
-  const { text, blocks } = extractBlocksFromUploadedCv(upload);
+export async function importCvFromUpload(upload: CvImportUpload) {
+  const { text, blocks } = await extractBlocksFromUploadedCv(upload);
   const mapped = mapImportedBlocksToCvModelWithMeta(blocks);
   const counts = importCounts(mapped.cvModel, mapped.excludedSensitiveFields, mapped.unclassifiedItems);
   const reviewItems = reviewItemsFor(mapped.cvModel, mapped.normalizedText.length, mapped.excludedSensitiveFields);
@@ -1051,4 +1019,56 @@ export function importCvFromUpload(upload: CvImportUpload) {
     excludedSensitiveNotice: mapped.excludedSensitiveFields ? "We found personal information that is usually unnecessary in a modern CV. It was not added." : undefined,
     interpretation: mapped.interpretation
   };
+}
+
+export function stageImportedCvFromSemantic(imported: ImportedCvResult, semantic: SemanticDocumentModel): ImportedCvResult {
+  const base = imported.cvModel;
+  const technicalCategories = new Set(["technical", "software", "tool", "platform", "programming_language", "framework", "laboratory"]);
+  const technicalSkills = semantic.skills.filter((skill) => technicalCategories.has(skill.category)).map((skill) => skill.name);
+  const coreSkills = semantic.skills.filter((skill) => !technicalCategories.has(skill.category)).map((skill) => skill.name);
+  const cvModel = normalizeCvModelForExport({
+    ...base,
+    fullName: semantic.identity?.fullName?.value || base.fullName,
+    targetRole: semantic.professionalProfile?.headline?.value || semantic.professionalProfile?.profession?.value || base.targetRole,
+    professionalSummary: semantic.professionalProfile?.summary?.value || base.professionalSummary,
+    email: semantic.contact?.emails[0]?.value || base.email,
+    phone: semantic.contact?.phones[0]?.value || base.phone,
+    linkedIn: semantic.contact?.linkedIn?.value || base.linkedIn,
+    github: semantic.contact?.github?.value || base.github,
+    website: semantic.contact?.websites[0]?.value || base.website,
+    portfolio: semantic.contact?.portfolio?.value || base.portfolio,
+    technicalSkills: technicalSkills.length ? technicalSkills : base.technicalSkills,
+    coreSkills: coreSkills.length ? coreSkills : base.coreSkills,
+    professionalExperience: semantic.employment.length ? semantic.employment.map((entry) => ({
+      role: entry.jobTitle?.value ?? "",
+      company: entry.employer?.value ?? "",
+      location: entry.location?.originalText ?? "",
+      startDate: entry.startDate?.value ?? "",
+      endDate: entry.endDate?.value ?? "",
+      current: entry.isCurrent?.value ?? false,
+      achievements: [...entry.achievements, ...entry.responsibilities].map((item) => item.value)
+    })) : base.professionalExperience,
+    education: semantic.education.length ? semantic.education.map((entry) => ({
+      qualification: entry.qualification?.normalizedValue ?? entry.qualification?.value ?? "",
+      institution: entry.institution?.value ?? "",
+      fieldOfStudy: entry.fieldOfStudy?.value ?? "",
+      year: entry.graduationDate?.value ?? entry.endDate?.value ?? entry.startDate?.value ?? "",
+      status: entry.status?.value ?? ""
+    })) : base.education,
+    certifications: semantic.certifications.length ? semantic.certifications.map((entry) => ({
+      name: entry.name?.value ?? "",
+      provider: entry.issuer?.value ?? "",
+      year: entry.issueDate?.value ?? "",
+      credentialUrl: entry.credentialUrl?.value ?? ""
+    })) : base.certifications,
+    languages: semantic.languages.length ? semantic.languages.map((entry) => ({ language: entry.language, level: entry.proficiency ?? entry.normalizedProficiency ?? "" })) : base.languages
+  });
+  const counts = importCounts(cvModel, imported.counts.excludedSensitiveFields, imported.unclassifiedItems);
+  console.info("[cv-import] semantic handoff complete", {
+    semanticEntities: semantic.entities.length,
+    employment: cvModel.professionalExperience.length,
+    education: cvModel.education.length,
+    skills: cvModel.coreSkills.length + cvModel.technicalSkills.length
+  });
+  return { ...imported, cvModel, counts, semanticReading: semantic as unknown as Record<string, unknown> };
 }
