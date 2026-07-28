@@ -1,8 +1,13 @@
 export * from "./canonical-profile-quality";
+export * from "./canonical-professional-identity.model";
+export * from "./canonical-professional-identity-service";
+export * from "./canonical-professional-identity.validation";
+export * from "./canonical-profile-compatibility-adapter";
+export * from "./canonical-profile-repository";
 export * from "./canonical-profile-service";
 export * from "./canonical-profile-translations";
 export * from "./canonical-profile.types";
 export * from "./canonical-profile-utils";
 export * from "./canonical-profile-validation";
+export * from "./canonical-profile-versioning";
 export * from "./canonical-profile-view";
-

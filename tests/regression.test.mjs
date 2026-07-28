@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -117,6 +117,14 @@ const canonicalProfileView = readFileSync("lib/canonical-profile/canonical-profi
 const canonicalProfileTranslations = readFileSync("lib/canonical-profile/canonical-profile-translations.ts", "utf8");
 const canonicalProfileOverview = readFileSync("components/professional-identity/canonical-profile-overview.tsx", "utf8");
 const canonicalProfileMigration = readFileSync("supabase/migrations/20260716183000_create_canonical_professional_identity.sql", "utf8");
+const canonicalIdentityModel = readFileSync("lib/canonical-profile/canonical-professional-identity.model.ts", "utf8");
+const canonicalIdentityValidation = readFileSync("lib/canonical-profile/canonical-professional-identity.validation.ts", "utf8");
+const canonicalCompatibilityAdapter = readFileSync("lib/canonical-profile/canonical-profile-compatibility-adapter.ts", "utf8");
+const canonicalProfileRepository = readFileSync("lib/canonical-profile/canonical-profile-repository.ts", "utf8");
+const canonicalIdentityService = readFileSync("lib/canonical-profile/canonical-professional-identity-service.ts", "utf8");
+const canonicalProfileVersioning = readFileSync("lib/canonical-profile/canonical-profile-versioning.ts", "utf8");
+const canonicalProfileIndex = readFileSync("lib/canonical-profile/index.ts", "utf8");
+const canonicalPhase2aMigration = readFileSync("supabase/migrations/20260718210000_phase_2a_canonical_profile_foundation_scaffold.sql", "utf8");
 const professionalDocumentTypes = readFileSync("lib/professional-documents/professional-document.types.ts", "utf8");
 const professionalDocumentService = readFileSync("lib/professional-documents/professional-document-service.ts", "utf8");
 const professionalDocumentAdapter = readFileSync("lib/professional-documents/cv-content-adapter.ts", "utf8");
@@ -991,6 +999,40 @@ assert.match(professionalIdentityPage, /getCanonicalProfileSummary\(supabase, us
 assert.match(professionalIdentityPage, /<CanonicalProfileOverview summary=\{canonicalSummary\} \/>/, "My Professional Profile must show the canonical identity overview without replacing existing editors.");
 assert.match(canonicalProfileOverview, /One profile for every career document\./, "Canonical profile UI must explain the single-source-of-truth model in human language.");
 assert.match(canonicalProfileOverview, /Completion[\s\S]*Confidence[\s\S]*Consistency/, "Canonical profile UI must keep completion, confidence and consistency separate.");
+assert.match(canonicalIdentityModel, /export const PROFESSIONAL_IDENTITY_SECTION_IDS = \[[\s\S]*"profile"[\s\S]*"photo"[\s\S]*"personal_information"[\s\S]*"work_authorization"[\s\S]*"career_goal"[\s\S]*"professional_summary"[\s\S]*"employment_preferences"[\s\S]*"salary_expectations"[\s\S]*"availability"/, "Phase 2A must lock the 23 authoritative Professional Identity sections in one model file.");
+assert.equal((canonicalIdentityModel.match(/^\s*"[^"]+",?$/gm) ?? []).filter((line) => canonicalIdentityModel.slice(canonicalIdentityModel.indexOf("PROFESSIONAL_IDENTITY_SECTION_IDS"), canonicalIdentityModel.indexOf("] as const;")).includes(line.trim())).length, 23, "Phase 2A Professional Identity section list must contain exactly 23 sections.");
+assert.match(canonicalIdentityModel, /export type CanonicalSourceSystem = "canonical" \| "legacy_user_profiles" \| "professional_identity" \| "user_documents" \| "professional_documents"/, "Phase 2A model must identify canonical, legacy and transitional source systems.");
+assert.match(canonicalIdentityModel, /createEmptyCanonicalProfessionalIdentity[\s\S]*refreshCanonicalProfileQuality[\s\S]*calculateCanonicalCompletion[\s\S]*calculateCanonicalConfidence/, "Phase 2A model must create a versioned canonical identity with centralized quality calculations.");
+assert.match(canonicalIdentityValidation, /validateCanonicalProfessionalIdentityModel[\s\S]*missingCoreSections/, "Phase 2A validation must validate the complete canonical identity.");
+for (const reusableCanonicalValidator of ["validateCanonicalEmployment", "validateCanonicalEducation", "validateCanonicalContact"]) {
+  assert.match(canonicalIdentityValidation, new RegExp(reusableCanonicalValidator), `Phase 2A validation must reuse ${reusableCanonicalValidator}.`);
+}
+assert.match(canonicalIdentityValidation, /assertCanonicalProfessionalIdentityIsPersistable/, "Phase 2A validation must expose a persistability guard.");
+assert.match(canonicalCompatibilityAdapter, /mapLegacyRowsToCanonicalProfessionalIdentity/, "Phase 2A compatibility adapter must expose a single legacy-to-canonical mapper.");
+assert.match(canonicalCompatibilityAdapter, /sourceType: "existing_profile"/, "Phase 2A compatibility adapter must preserve legacy source references.");
+assert.match(canonicalCompatibilityAdapter, /legacy_user_profiles[\s\S]*professional_identity/, "Phase 2A compatibility adapter must map legacy and transitional rows without creating a competing profile.");
+assert.doesNotMatch(canonicalCompatibilityAdapter, /from\("user_documents"\)|last uploaded|latest CV|cv_documents/i, "Phase 2A compatibility adapter must not use the last uploaded CV or document tables as the identity source of truth.");
+assert.match(canonicalProfileRepository, /class CanonicalProfileRepository[\s\S]*from\("canonical_professional_profiles"\)[\s\S]*from\("canonical_employments"\)[\s\S]*from\("canonical_education"\)[\s\S]*from\("canonical_skills"\)[\s\S]*from\("canonical_profile_versions"\)/, "Phase 2A repository must centralize canonical profile persistence.");
+assert.match(canonicalProfileRepository, /loadLegacyCompatibilityRows[\s\S]*from\("user_profiles"\)[\s\S]*from\("professional_identity"\)/, "Phase 2A repository must read legacy compatibility rows through one boundary.");
+assert.doesNotMatch(canonicalProfileRepository, /from\("user_profiles"\)\.upsert|from\("professional_identity"\)\.upsert/, "Phase 2A repository must not write back to legacy profile tables.");
+for (const versioningContract of ["canonicalVersionIdempotencyKey", "nextCanonicalProfileVersion", "createCanonicalVersionContext", "assertCanonicalVersionAdvance"]) {
+  assert.match(canonicalProfileVersioning, new RegExp(versioningContract), `Phase 2A versioning must provide ${versioningContract}.`);
+}
+assert.match(canonicalIdentityService, /class CanonicalProfessionalIdentityService[\s\S]*CanonicalProfileRepository[\s\S]*mapLegacyRowsToCanonicalProfessionalIdentity[\s\S]*assertCanonicalProfessionalIdentityIsPersistable[\s\S]*createCanonicalProfileVersionRecord/, "Phase 2A service must orchestrate repository, compatibility adapter, validation and versioning.");
+assert.doesNotMatch(canonicalIdentityService, /EmploymentDiagnosis|DocumentGeneration|generateCV|generateCoverLetter|redirect\(/, "Phase 2A service must not implement diagnosis, documents or route changes.");
+for (const phase2aExport of [
+  "canonical-professional-identity.model",
+  "canonical-professional-identity-service",
+  "canonical-professional-identity.validation",
+  "canonical-profile-compatibility-adapter",
+  "canonical-profile-repository",
+  "canonical-profile-versioning"
+]) {
+  assert.match(canonicalProfileIndex, new RegExp(phase2aExport.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `Canonical profile index must export ${phase2aExport}.`);
+}
+assert.match(canonicalPhase2aMigration, /alter table public\.canonical_profile_versions[\s\S]*add column if not exists source_system[\s\S]*add column if not exists source_record_id[\s\S]*add column if not exists idempotency_key[\s\S]*add column if not exists compatibility_snapshot_json[\s\S]*add column if not exists validation_json/, "Phase 2A migration scaffold must add only canonical version metadata.");
+assert.match(canonicalPhase2aMigration, /create unique index if not exists canonical_profile_versions_idempotency_idx[\s\S]*where idempotency_key is not null/, "Phase 2A migration scaffold must make version creation idempotent without blocking old rows.");
+assert.doesNotMatch(canonicalPhase2aMigration, /\bdrop\s+table\b|\btruncate\b|\bdelete\s+from\b|\balter table public\.user_profiles\b|\balter table public\.professional_identity\b/i, "Phase 2A migration scaffold must not destructively modify legacy or transitional tables.");
 const inspectionScanRuntime = loadProductionTsModule("lib/documents/inspection/scan-detector.ts");
 const inspectionTypeRuntime = loadProductionTsModule("lib/documents/inspection/document-type-detector.ts");
 const inspectionLanguageRuntime = loadProductionTsModule("lib/documents/inspection/language-detector.ts");
