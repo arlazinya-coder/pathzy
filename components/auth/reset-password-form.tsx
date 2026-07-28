@@ -17,7 +17,7 @@ export function ResetPasswordForm() {
       const supabase = createSupabaseBrowserClient();
       const email = String(formData.get("email") || "");
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback?next=/auth/update-password`
+        redirectTo: `${window.location.origin}${PATHZY_ROUTES.AUTH_CALLBACK}?next=${encodeURIComponent(PATHZY_ROUTES.RESET_PASSWORD)}`
       });
 
       setMessage(error ? error.message : "Password reset link sent. Check your email.");

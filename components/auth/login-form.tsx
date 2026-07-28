@@ -19,7 +19,7 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackMessage = searchParams?.get("message") || "";
-  const redirectTo = searchParams?.get("redirectTo") || PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY;
+  const redirectTo = searchParams?.get("redirectTo") || PATHZY_ROUTES.HOME;
   const [message, setMessage] = useState(callbackMessage);
   const [loading, setLoading] = useState(false);
 
@@ -50,14 +50,19 @@ export function LoginForm() {
         return;
       }
 
-      const bootstrap = await fetch("/api/auth/bootstrap", { method: "POST" });
+      const bootstrap = await fetch("/api/auth/bootstrap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ redirectTo })
+      });
       if (!bootstrap.ok) {
         const data = await bootstrap.json().catch(() => ({}));
         setMessage(data.error ?? "PATHZY is still setting up your profile. Please refresh or try again.");
         return;
       }
+      const bootstrapData = await bootstrap.json().catch(() => ({}));
 
-      router.replace(redirectTo.startsWith("/") ? redirectTo : PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY);
+      router.replace(typeof bootstrapData.redirectTo === "string" && bootstrapData.redirectTo.startsWith("/") ? bootstrapData.redirectTo : PATHZY_ROUTES.HOME);
       router.refresh();
     } catch (error) {
       setMessage(friendlyLoginError(error instanceof Error ? error.message : "Unable to log in."));
@@ -77,7 +82,7 @@ export function LoginForm() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY)}`
+          redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(PATHZY_ROUTES.HOME)}`
         }
       });
 
@@ -106,7 +111,7 @@ export function LoginForm() {
         Continue with Google
       </button>
       <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-center text-sm text-white/58">
-        <Link className="font-bold text-white" href="/auth/reset-password">Forgot password?</Link>
+        <Link className="font-bold text-white" href={PATHZY_ROUTES.FORGOT_PASSWORD}>Forgot password?</Link>
         <span>New to PATHZY? <Link className="font-bold text-white" href={PATHZY_ROUTES.SIGNUP}>Create an account</Link></span>
       </div>
     </form>

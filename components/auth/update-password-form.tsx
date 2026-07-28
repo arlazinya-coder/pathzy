@@ -24,7 +24,7 @@ export function UpdatePasswordForm() {
         return;
       }
 
-      router.replace(PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY);
+      router.replace(PATHZY_ROUTES.HOME);
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to update password.");

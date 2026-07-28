@@ -50,7 +50,7 @@ export function RegisterForm() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(appRoutes.onboarding)}`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(appRoutes.professionalIdentity)}`,
           data: {
             full_name: fullName,
             country,
@@ -85,7 +85,7 @@ export function RegisterForm() {
       }
 
       if (data.session) {
-        router.replace(appRoutes.onboarding);
+        router.replace(PATHZY_ROUTES.PROFESSIONAL_IDENTITY);
         router.refresh();
       } else {
         setMessage("Check your email to confirm your account.");

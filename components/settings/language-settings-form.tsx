@@ -1,20 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { languageLabels, normalizeLanguageCode, profileLanguagePatchForInterface, type SupportedLanguageCode } from "@/lib/language/language-preferences";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-type Language = "english" | "french";
-
-function normalizeLanguage(value?: string | null): Language {
-  return value === "french" ? "french" : "english";
-}
-
 export function LanguageSettingsForm({ initialLanguage }: { initialLanguage?: string | null }) {
-  const [language, setLanguage] = useState<Language>(() => normalizeLanguage(initialLanguage));
+  const [language, setLanguage] = useState<SupportedLanguageCode>(() => normalizeLanguageCode(initialLanguage));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  async function saveLanguage(nextLanguage: Language) {
+  async function saveLanguage(nextLanguage: SupportedLanguageCode) {
     setLanguage(nextLanguage);
     setSaving(true);
     setMessage("");
@@ -32,12 +27,7 @@ export function LanguageSettingsForm({ initialLanguage }: { initialLanguage?: st
       }
 
       const { error } = await supabase.from("user_profiles").upsert(
-        {
-          user_id: user.id,
-          email: user.email,
-          language: nextLanguage,
-          updated_at: new Date().toISOString()
-        },
+        profileLanguagePatchForInterface(user.id, nextLanguage, user.email),
         { onConflict: "user_id" }
       );
 
@@ -58,14 +48,14 @@ export function LanguageSettingsForm({ initialLanguage }: { initialLanguage?: st
       <p className="text-xs font-bold uppercase tracking-[0.12em] text-white/40">Language</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {[
-          ["english", "English"],
-          ["french", "Français"]
+          ["en", languageLabels.en],
+          ["fr", languageLabels.fr]
         ].map(([value, label]) => (
           <button
             key={value}
             type="button"
             disabled={saving}
-            onClick={() => void saveLanguage(value as Language)}
+            onClick={() => void saveLanguage(value as SupportedLanguageCode)}
             className={`rounded-full border px-4 py-3 text-sm font-extrabold transition disabled:cursor-not-allowed disabled:opacity-60 ${
               language === value ? "border-[#5B8CFF]/70 bg-[#5B8CFF]/18 text-white" : "border-white/10 bg-white/7 text-white/68 hover:bg-white/10"
             }`}

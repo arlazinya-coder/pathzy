@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureUserDefaults } from "@/lib/auth/bootstrap";
-import { PATHZY_ROUTES } from "@/lib/navigation/routes";
+import { getPostAuthDestination } from "@/lib/navigation/auth-routing";
+import { appRoutes, PATHZY_ROUTES, safeRedirectDestination } from "@/lib/navigation/routes";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -8,7 +9,8 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get("code");
   const tokenHash = requestUrl.searchParams.get("token_hash");
   const type = requestUrl.searchParams.get("type");
-  const next = requestUrl.searchParams.get("next") || PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY;
+  const rawNext = requestUrl.searchParams.get("next");
+  const next = rawNext?.startsWith(appRoutes.authUpdatePassword) ? appRoutes.authUpdatePassword : safeRedirectDestination(rawNext, PATHZY_ROUTES.HOME);
   const supabase = await createSupabaseServerClient();
 
   if (code) {
@@ -65,9 +67,14 @@ export async function GET(request: Request) {
   if (!session) {
     const url = new URL(PATHZY_ROUTES.LOGIN, requestUrl.origin);
     url.searchParams.set("message", "Please log in to continue.");
-    url.searchParams.set("redirectTo", next.startsWith("/") ? next : PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY);
+    url.searchParams.set("redirectTo", safeRedirectDestination(next, PATHZY_ROUTES.HOME));
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.redirect(new URL(next.startsWith("/") ? next : PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY, requestUrl.origin));
+  if (next.startsWith(appRoutes.authUpdatePassword)) {
+    return NextResponse.redirect(new URL(appRoutes.authUpdatePassword, requestUrl.origin));
+  }
+
+  const destination = await getPostAuthDestination(supabase!, session.user, next);
+  return NextResponse.redirect(new URL(destination, requestUrl.origin));
 }

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@supabase/ssr";
+import { appRoutes } from "@/lib/navigation/routes";
 import { isSupabaseConfigured, supabaseAnonKey, supabaseUrl } from "@/lib/supabase/config";
 
 export async function createSupabaseServerClient() {
@@ -42,10 +43,10 @@ export async function getCurrentSession() {
   return data.session;
 }
 
-export async function requireAuthenticatedUser(redirectTo = "/roadmap") {
+export async function requireAuthenticatedUser(redirectTo: string = appRoutes.authenticatedHome) {
   const supabase = await createSupabaseServerClient();
   if (!supabase) {
-    redirect(`/login?message=${encodeURIComponent("Please log in to continue.")}&redirectTo=${encodeURIComponent(redirectTo)}`);
+    redirect(`${appRoutes.login}?message=${encodeURIComponent("Please log in to continue.")}&redirectTo=${encodeURIComponent(redirectTo)}`);
   }
 
   const {
@@ -54,7 +55,7 @@ export async function requireAuthenticatedUser(redirectTo = "/roadmap") {
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    redirect(`/login?message=${encodeURIComponent("Please log in to continue.")}&redirectTo=${encodeURIComponent(redirectTo)}`);
+    redirect(`${appRoutes.login}?message=${encodeURIComponent("Please log in to continue.")}&redirectTo=${encodeURIComponent(redirectTo)}`);
   }
 
   return { supabase, user };

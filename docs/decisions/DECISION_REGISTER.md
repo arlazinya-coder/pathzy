@@ -352,3 +352,18 @@ Affected areas: Supabase schema, RLS, storage, AI providers, auth, billing, admi
 Migration implications: Launch checklist must include database and security verification.
 Lock status: Locked.
 Review trigger: Review before any production public launch or major data-model migration.
+
+## DEC-031
+
+Decision ID: DEC-031
+Date: 2026-07-28
+Title: Authentication, language and authorization foundations before UI redesign
+Status: Accepted
+Context: Phase 2C requires production-quality session, language preference and authorization boundaries without redesigning onboarding, Home, Professional Identity, documents, or Coach.
+Final decision: PATHZY uses shared auth session-safety helpers, independent language preference layers, and centralized server-side authorization helpers before Phase 2D introduces premium onboarding/UI changes.
+Rejected alternatives: Page-local auth decisions; one global language field controlling every product output; client-only role checks; premium/founder bypasses inside individual pages.
+Reason: Authentication and authorization are platform foundations and must be stable before visual or onboarding redesign work.
+Affected areas: Auth routes, Supabase session handling, Settings language preference, entitlement checks, API route ownership checks, future admin/support tooling.
+Migration implications: No Phase 2C database migration is added. Current storage is documented through compatibility mappings until a future approved preference table or schema extension exists.
+Lock status: Locked.
+Review trigger: Review before adding admin/support UI, changing Supabase RLS, or introducing a dedicated language preference table.

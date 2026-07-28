@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { appRoutes } from "@/lib/navigation/routes";
 import { createSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export function LogoutButton() {
@@ -10,7 +11,7 @@ export function LogoutButton() {
     if (!isSupabaseConfigured()) return;
     const supabase = createSupabaseBrowserClient();
     await supabase.auth.signOut();
-    router.replace("/login");
+    router.replace(appRoutes.login);
     router.refresh();
   }
 
