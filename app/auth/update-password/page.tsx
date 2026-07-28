@@ -1,17 +1,13 @@
-import { AuthNotice } from "@/components/auth/auth-notice";
-import { UpdatePasswordForm } from "@/components/auth/update-password-form";
-import { Card, PageHeader } from "@/components/ui";
+import { UpdatePasswordContent } from "@/components/auth/update-password-content";
+import { PathzyLanguageProvider } from "@/components/language/language-selector";
+import { getServerInterfaceLanguage } from "@/lib/language/server-language";
 
-export default function UpdatePasswordPage() {
+export default async function UpdatePasswordPage() {
+  const initialLanguage = await getServerInterfaceLanguage();
+
   return (
-    <div className="container page-pad">
-      <PageHeader eyebrow="New Password" title="Choose a secure new password.">
-        After updating your password, PATHZY will take you back to My Journey.
-      </PageHeader>
-      <Card className="mx-auto max-w-xl">
-        <AuthNotice />
-        <UpdatePasswordForm />
-      </Card>
-    </div>
+    <PathzyLanguageProvider initialLanguage={initialLanguage}>
+      <UpdatePasswordContent />
+    </PathzyLanguageProvider>
   );
 }

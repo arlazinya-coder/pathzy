@@ -35,6 +35,7 @@ type ProfileSnapshot = {
   career_goal?: string | null;
   onboarding_completed?: boolean | null;
   onboarding_step?: number | null;
+  language?: string | null;
   interface_language?: string | null;
   language_preference?: string | null;
   preferred_language?: string | null;
@@ -222,6 +223,25 @@ function hasAnyIdentityProgress(profile: ProfileSnapshot | null, discovery?: Dis
   );
 }
 
+function hasGuidedIdentitySetupStarted(profile: ProfileSnapshot | null, discovery?: DiscoverySnapshot | null) {
+  return Boolean(
+    profile?.onboarding_step ||
+      profile?.language ||
+      profile?.interface_language ||
+      profile?.language_preference ||
+      profile?.preferred_language ||
+      hasText(profile?.phone) ||
+      hasText(profile?.city) ||
+      hasText(profile?.country) ||
+      hasText(profile?.current_status) ||
+      hasText(profile?.career_goal) ||
+      hasText(profile?.education) ||
+      hasText(profile?.highest_qualification) ||
+      hasText(profile?.field_of_study) ||
+      Object.values(discovery?.answers ?? {}).some((value) => (Array.isArray(value) ? value.length > 0 : hasText(value)))
+  );
+}
+
 export function firstIncompleteProfessionalIdentitySection(profile: ProfileSnapshot | null, user?: UserEmailSnapshot | null, discovery?: DiscoverySnapshot | null): ProfessionalIdentityResumeSection | null {
   const missing = professionalIdentityRequiredChecks(profile, discovery, user).find((item) => !item.complete);
   if (missing) return missing.section;
@@ -248,11 +268,15 @@ export function resolvePathzyOnboardingState(input: {
 }): PathzyOnboardingState {
   if (!input.authenticated) return "unauthenticated";
 
+  if (!input.profile?.onboarding_completed && !hasGuidedIdentitySetupStarted(input.profile ?? null, input.discovery)) {
+    return "identity_not_started";
+  }
+
   // Compatibility note: PATHZY does not yet have a final interface-language field.
   // Missing storage must not trap existing users, so only an explicit false blocks progression.
   const languageSelected =
     input.interfaceLanguageSelected ??
-    (Boolean(input.profile?.interface_language || input.profile?.language_preference || input.profile?.preferred_language) || true);
+    Boolean(input.profile?.interface_language || input.profile?.language_preference || input.profile?.preferred_language || input.profile?.language);
   if (!languageSelected) return "authenticated_language_pending";
 
   if (!hasAnyIdentityProgress(input.profile ?? null, input.discovery, input.user)) return "identity_not_started";
@@ -260,14 +284,15 @@ export function resolvePathzyOnboardingState(input: {
   const missingSection = firstIncompleteProfessionalIdentitySection(input.profile ?? null, input.user, input.discovery);
   if (missingSection) return "identity_in_progress";
 
-  const setupFinished = input.setupFinished ?? Boolean(input.profile?.setup_finished ?? input.profile?.onboarding_completed);
-  const reviewCompleted = input.reviewCompleted ?? Boolean(input.profile?.identity_review_completed ?? input.profile?.onboarding_completed);
+  const setupFinished = input.setupFinished ?? Boolean(input.profile?.setup_finished ?? input.discovery?.answers?.setup_finished ?? input.profile?.onboarding_completed);
+  const reviewCompleted = input.reviewCompleted ?? Boolean(input.profile?.identity_review_completed ?? input.discovery?.answers?.identity_review_completed ?? input.profile?.onboarding_completed);
   if (!reviewCompleted) return "identity_review_pending";
   if (!setupFinished) return "identity_finish_pending";
 
-  // Compatibility note: the final Employment Diagnosis persistence flag is not yet present everywhere.
-  // Preserve current working behaviour by treating finished legacy setup as diagnosis complete unless explicitly false.
-  const diagnosisComplete = input.diagnosisComplete ?? input.profile?.employment_diagnosis_completed ?? true;
+  const diagnosisComplete =
+    input.diagnosisComplete ??
+    input.profile?.employment_diagnosis_completed ??
+    (input.discovery?.answers?.employment_diagnosis_status === "complete" || input.discovery?.answers?.employment_diagnosis_completed === true);
   if (!diagnosisComplete) return "diagnosis_pending";
   return "home_ready";
 }
@@ -296,7 +321,7 @@ export function resolvePathzyNextRoute(input: {
     return { destination: routeBuilders.professionalIdentitySection("preferences"), reason: "Choose the interface language PATHZY should use before continuing.", currentState, safeFallback, resumeSection: "preferences" };
   }
   if (currentState === "identity_not_started") {
-    return { destination: routeBuilders.professionalIdentitySection("profile"), reason: "Start Professional Identity before PATHZY opens tools or Home.", currentState, safeFallback, resumeSection: "profile" };
+    return { destination: routeBuilders.professionalIdentityWelcome(), reason: "Start with the focused PATHZY welcome before Professional Identity.", currentState, safeFallback, resumeSection: "profile" };
   }
   if (currentState === "identity_in_progress") {
     const resumeSection = missingSection ?? "profile";
@@ -332,7 +357,7 @@ export async function getPostAuthDestination(supabase: SupabaseClient, user: Use
   const [{ data: profile }, { data: discovery }] = await Promise.all([
     supabase
       .from("user_profiles")
-      .select("full_name,email,city,country,education,highest_qualification,field_of_study,current_status,career_goal,onboarding_completed,onboarding_step")
+      .select("full_name,email,city,country,education,highest_qualification,field_of_study,current_status,career_goal,onboarding_completed,onboarding_step,language")
       .or(`user_id.eq.${user.id},id.eq.${user.id}`)
       .maybeSingle(),
     supabase

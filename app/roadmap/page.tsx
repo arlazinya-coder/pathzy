@@ -1,53 +1,12 @@
-import Link from "next/link";
-import { PathzyTimeline } from "@/components/journey/pathzy-timeline";
+import type { ReactNode } from "react";
 import { ButtonLink, Card, ProgressBar } from "@/components/ui";
-import { summarizeApplicationTracker } from "@/lib/applications/application-tracker-service";
 import { buildCareerAnalytics } from "@/lib/analytics/career-analytics-service";
+import { summarizeApplicationTracker } from "@/lib/applications/application-tracker-service";
+import { professionalIdentityRequiredChecks } from "@/lib/navigation/auth-routing";
 import { appRoutes } from "@/lib/navigation/routes";
-import {
-  buildCareerPlanSuggestions,
-  buildDashboardAttentionItems,
-  buildUnifiedTimelineSignals,
-  PATHZY_OPERATING_AREAS
-} from "@/lib/operating-system/employment-operating-system";
-import { getProgressMilestones, getProgressPercent, type ProgressInputs } from "@/lib/progress/progress-engine";
 import { getPathzyNextAction, type PathzyNextAction } from "@/lib/progress/next-action-engine";
+import { getProgressMilestones, getProgressPercent, type ProgressInputs } from "@/lib/progress/progress-engine";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
-
-const dashboardActions = [
-  {
-    eyebrow: "WELCOME TO PATHZY",
-    title: "Your employment journey, guided step by step",
-    question: "",
-    body: "PATHZY is your employment support system.\n\nWe guide you step by step — from building your professional profile and CV to preparing for opportunities and moving toward employment.\n\nYou don't need to figure out everything at once. Start with the next step, and PATHZY will help you move forward from there.",
-    button: "",
-    href: ""
-  },
-  {
-    eyebrow: "TODAY'S RECOMMENDATION",
-    title: "Build your CV",
-    question: "Do you need a new CV?",
-    body: "A professional CV is the foundation of every successful job application. PATHZY can help you build yours step by step.",
-    button: "Build My CV",
-    href: `${appRoutes.professionalIdentityCv}?intent=build`
-  },
-  {
-    eyebrow: "ALREADY HAVE AN OLD CV?",
-    title: "Upload and improve your CV",
-    question: "",
-    body: "Upload your existing PDF or Word CV.\n\nPATHZY will read and organise your information, help you improve it and transform it into a premium PATHZY CV.",
-    button: "Upload My Old CV",
-    href: `${appRoutes.professionalIdentityCv}?intent=upload`
-  },
-  {
-    eyebrow: "IMPROVE YOUR PATHZY CV",
-    title: "Update your information",
-    question: "Already created a CV with PATHZY?",
-    body: "Add new experience, education, skills, certifications, projects or achievements to keep your CV up to date.",
-    button: "Upgrade My CV",
-    href: `${appRoutes.professionalIdentityCv}?intent=upgrade`
-  }
-] as const;
 
 function safeFirstToken(value: unknown) {
   if (typeof value !== "string") return "";
@@ -90,34 +49,92 @@ function fallbackNextAction(): PathzyNextAction {
   };
 }
 
+function greetingFor(date = new Date()) {
+  const hour = date.getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+function initialsFor(name: string) {
+  const clean = name.trim();
+  if (!clean) return "P";
+  return clean.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+}
+
 async function safeQuery<T>(label: string, query: PromiseLike<{ data: T | null; error: { message?: string } | null }>, fallback: T): Promise<T> {
   try {
     const { data, error } = await query;
     if (error) {
-      console.warn(`[pathzy-operating-system] ${label} unavailable`, error.message ?? error);
+      console.warn(`[pathzy-home] ${label} unavailable`, error.message ?? error);
       return fallback;
     }
     return data ?? fallback;
   } catch (error) {
-    console.warn(`[pathzy-operating-system] ${label} failed`, error);
+    console.warn(`[pathzy-home] ${label} failed`, error);
     return fallback;
   }
 }
 
+function HomeCard({
+  eyebrow,
+  title,
+  children,
+  primaryHref,
+  primaryLabel,
+  secondaryHref,
+  secondaryLabel
+}: {
+  eyebrow: string;
+  title: string;
+  children: ReactNode;
+  primaryHref: string;
+  primaryLabel: string;
+  secondaryHref?: string;
+  secondaryLabel?: string;
+}) {
+  return (
+    <Card className="group">
+      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        <div className="max-w-3xl">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#2563EB]">{eyebrow}</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.02em] text-[#111827] md:text-4xl">{title}</h2>
+          <div className="mt-4 text-base leading-7 text-[#6B7280]">{children}</div>
+        </div>
+        <div className="flex shrink-0 flex-col gap-3 sm:flex-row md:flex-col lg:flex-row">
+          <ButtonLink href={primaryHref}>{primaryLabel}</ButtonLink>
+          {secondaryHref && secondaryLabel ? <ButtonLink href={secondaryHref} variant="secondary">{secondaryLabel}</ButtonLink> : null}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export default async function RoadmapPage() {
   const { user, supabase } = await requireAuthenticatedUser(appRoutes.roadmap);
-  const [profile, nextAction, applications, timelineEvents, matchAnalyses, professionalDocuments] = await Promise.all([
-    safeQuery<{ full_name?: string | null } | null>(
+  const [profile, discovery, nextAction, applications, timelineEvents, matchAnalyses, professionalDocuments] = await Promise.all([
+    safeQuery<{ full_name?: string | null; email?: string | null; city?: string | null; country?: string | null; education?: string | null; highest_qualification?: string | null; field_of_study?: string | null; current_status?: string | null; career_goal?: string | null; preferred_path?: string | null; onboarding_completed?: boolean | null } | null>(
       "profile",
       supabase
         .from("user_profiles")
-        .select("full_name")
+        .select("full_name,email,city,country,education,highest_qualification,field_of_study,current_status,career_goal,preferred_path,onboarding_completed")
         .or(`user_id.eq.${user.id},id.eq.${user.id}`)
         .maybeSingle(),
       null
     ),
+    safeQuery<{ answers?: Record<string, unknown> | null } | null>(
+      "profile answers",
+      supabase
+        .from("discovery_responses")
+        .select("answers")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      null
+    ),
     getPathzyNextAction(supabase, user).catch((error) => {
-      console.warn("[pathzy-operating-system] next action fallback", error);
+      console.warn("[pathzy-home] next action fallback", error);
       return fallbackNextAction();
     }),
     safeQuery(
@@ -168,6 +185,11 @@ export default async function RoadmapPage() {
     safeFirstToken(user?.user_metadata?.full_name) ||
     safeFirstToken(user?.user_metadata?.name);
   const firstName = profileFirstName || accountFirstName || "there";
+  const profileName = profile?.full_name?.trim() || user.user_metadata?.full_name || user.email?.split("@")[0] || "PATHZY";
+  const professionalDirection = profile?.career_goal || profile?.preferred_path || "Professional direction in progress";
+  const location = [profile?.city, profile?.country].filter(Boolean).join(", ");
+  const requiredChecks = professionalIdentityRequiredChecks(profile, discovery, user);
+  const professionalIdentityPercent = Math.max(nextAction.progressPercent, Math.round((requiredChecks.filter((item) => item.complete).length / requiredChecks.length) * 72));
   const applicationSummary = summarizeApplicationTracker(applications as never[]);
   const analytics = buildCareerAnalytics({
     applications: applications as never[],
@@ -177,152 +199,99 @@ export default async function RoadmapPage() {
     period: { type: "90d" },
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC"
   });
-  const attentionItems = buildDashboardAttentionItems({ nextAction, applicationSummary, analytics });
-  const careerPlanSuggestions = buildCareerPlanSuggestions(analytics);
-  const timelineSignals = buildUnifiedTimelineSignals(applications as never[]);
+  const topInsight = analytics.recommendedActions[0];
 
   return (
     <main className="container page-pad">
-      <section className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/6 p-5 shadow-[0_24px_80px_rgba(37,70,180,0.18)] sm:p-7 lg:p-8">
-        <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-[#5B8CFF]/25 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 left-8 h-48 w-48 rounded-full bg-[#9D7CFF]/18 blur-3xl" />
-        <div className="relative max-w-3xl">
-          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#9db8ff]">Welcome back to PATHZY</p>
-          <h1 className="mt-4 text-4xl font-black leading-tight text-white sm:text-5xl">
-            Welcome, {firstName}
-          </h1>
-          <p className="mt-4 text-xl font-extrabold text-[#dfe8ff]">Let's take the next step toward your employment goals.</p>
-          <p className="mt-4 text-base leading-7 text-white/68 sm:text-lg">
-            Start with your CV, and PATHZY will guide you through the process.
-          </p>
+      <section className="mb-10">
+        <div className="flex flex-col gap-6 rounded-[34px] border border-[#e5e7eb] bg-white p-6 shadow-[0_18px_55px_rgba(17,24,39,.08)] md:flex-row md:items-center md:justify-between md:p-8">
+          <div className="flex items-center gap-5">
+            <div className="grid h-16 w-16 shrink-0 place-items-center rounded-3xl bg-[#eff6ff] text-xl font-semibold text-[#2563EB]">
+              {initialsFor(profileName)}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[#2563EB]">{greetingFor()}, {firstName}.</p>
+              <h1 className="mt-2 text-4xl font-semibold tracking-[-0.03em] text-[#111827] md:text-5xl">{professionalDirection}</h1>
+              {location ? <p className="mt-2 text-base text-[#6B7280]">{location}</p> : null}
+            </div>
+          </div>
+          <div className="w-full max-w-xs">
+            <div className="mb-2 flex justify-between text-sm font-semibold text-[#6B7280]">
+              <span>Professional Identity</span>
+              <span>{professionalIdentityPercent}% complete</span>
+            </div>
+            <ProgressBar value={professionalIdentityPercent} />
+          </div>
         </div>
       </section>
 
-      <section aria-labelledby="operating-system-heading" className="mt-6 grid gap-5 xl:grid-cols-[.9fr_1.1fr]">
-        <Card className="bg-white/7">
-          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#c7d6ff]">Continue Journey</p>
-          <h2 id="operating-system-heading" className="mt-3 text-3xl font-black leading-tight">One clear next step</h2>
-          <p className="mt-3 text-2xl font-black text-white">{nextAction.label}</p>
-          <p className="mt-3 leading-7 text-white/62">{nextAction.reason}</p>
-          <div className="mt-5">
-            <div className="mb-2 flex justify-between text-sm font-bold text-white/52">
-              <span>Employment journey progress</span>
+      <section aria-label="PATHZY Home" className="grid gap-5">
+        <HomeCard
+          eyebrow="Continue"
+          title="Continue Your Employment Journey"
+          primaryHref={nextAction.destinationRoute}
+          primaryLabel="Continue"
+          secondaryHref={appRoutes.professionalIdentity}
+          secondaryLabel="Review Profile"
+        >
+          <p className="font-medium text-[#111827]">{nextAction.label}</p>
+          <p className="mt-2">{nextAction.reason}</p>
+          <div className="mt-5 max-w-xl">
+            <div className="mb-2 flex justify-between text-sm font-medium text-[#6B7280]">
+              <span>Journey progress</span>
               <span>{nextAction.progressPercent}%</span>
             </div>
             <ProgressBar value={nextAction.progressPercent} />
           </div>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <ButtonLink href={nextAction.destinationRoute}>Continue</ButtonLink>
-            <ButtonLink href={appRoutes.mentor} variant="secondary">Ask Coach</ButtonLink>
-          </div>
-        </Card>
+        </HomeCard>
 
-        <Card className="bg-white/6">
-          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-white/42">What needs attention</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {attentionItems.map((item) => (
-              <Link key={item.label} href={item.href} className="rounded-[18px] border border-white/10 bg-black/14 p-4 transition hover:border-[#5B8CFF]/45 hover:bg-white/8 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8fb0ff]">
-                <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-white/38">{item.label}</p>
-                <strong className="mt-2 block text-xl font-black">{item.value}</strong>
-                <p className="mt-2 text-sm leading-6 text-white/54">{item.detail}</p>
-              </Link>
+        <HomeCard
+          eyebrow="Employment Center"
+          title="Employment Center"
+          primaryHref={appRoutes.employmentCenter}
+          primaryLabel="Open Employment Center"
+          secondaryHref={appRoutes.documents}
+          secondaryLabel="Open Documents"
+        >
+          <p>
+            Build and manage the professional evidence employers see: your profile, CV, cover letter, LinkedIn content, and supporting documents.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {["Professional Identity", "CV", "Cover Letter", "LinkedIn"].map((item) => (
+              <span key={item} className="rounded-full border border-[#e5e7eb] bg-[#f9fafb] px-3 py-1 text-sm font-medium text-[#6B7280]">{item}</span>
             ))}
           </div>
-        </Card>
-      </section>
+        </HomeCard>
 
-      <section className="mt-6">
-        <PathzyTimeline milestones={nextAction.milestones} current={nextAction.milestone} progress={nextAction.progressPercent} />
-      </section>
+        <HomeCard
+          eyebrow="Jobs"
+          title="Opportunities"
+          primaryHref={appRoutes.opportunities}
+          primaryLabel="Find Opportunities"
+        >
+          <p>
+            Compare roles, understand what employers require, prepare applications, and keep every next action visible.
+          </p>
+          <p className="mt-3 text-sm font-medium text-[#111827]">
+            {applicationSummary.activeApplications} active applications · {applicationSummary.followUpsDue} follow-ups due · {applicationSummary.interviews} interviews
+          </p>
+        </HomeCard>
 
-      <section aria-labelledby="career-insights-heading" className="mt-6 grid gap-5 lg:grid-cols-2">
-        <Card className="bg-white/6">
-          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-white/42">Career Insights</p>
-          <h2 id="career-insights-heading" className="mt-3 text-3xl font-black">Private signals from your applications</h2>
-          <p className="mt-3 leading-7 text-white/58">PATHZY uses tracker metadata and job-match gaps only. Unknown outcomes are not counted as rejection.</p>
-          <div className="mt-4 grid gap-3">
-            {analytics.recommendedActions.length ? analytics.recommendedActions.slice(0, 3).map((action) => (
-              <Link key={`${action.label}-${action.reason}`} href={action.route ?? appRoutes.applications} className="rounded-[16px] border border-white/10 bg-black/14 p-4 transition hover:border-[#5B8CFF]/45">
-                <p className="font-black">{action.label}</p>
-                <p className="mt-2 text-sm leading-6 text-white/52">{action.reason}</p>
-              </Link>
-            )) : (
-              <p className="rounded-[16px] border border-dashed border-white/12 bg-black/14 p-4 text-sm leading-6 text-white/52">Not enough analytics yet. Track applications, follow-ups, interviews, and outcomes so PATHZY can show useful patterns.</p>
-            )}
-          </div>
-        </Card>
-
-        <Card className="bg-white/6">
-          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-white/42">Career Plan Suggestions</p>
-          <h2 className="mt-3 text-3xl font-black">Improve the plan without changing it for you</h2>
-          <p className="mt-3 leading-7 text-white/58">PATHZY can suggest evidence-backed improvements from recurring gaps, interviews, and outcomes. You stay in control.</p>
-          <div className="mt-4 grid gap-3">
-            {careerPlanSuggestions.length ? careerPlanSuggestions.map((suggestion) => (
-              <Link key={`${suggestion.label}-${suggestion.reason}`} href={suggestion.href} className="rounded-[16px] border border-white/10 bg-black/14 p-4 transition hover:border-[#5B8CFF]/45">
-                <p className="font-black">{suggestion.label}</p>
-                <p className="mt-2 text-sm leading-6 text-white/52">{suggestion.reason}</p>
-              </Link>
-            )) : (
-              <p className="rounded-[16px] border border-dashed border-white/12 bg-black/14 p-4 text-sm leading-6 text-white/52">No recurring gaps yet. Keep building your profile, documents, and tracked applications.</p>
-            )}
-          </div>
-        </Card>
-      </section>
-
-      <section aria-labelledby="cv-actions-heading" className="mt-6">
-        <h2 id="cv-actions-heading" className="sr-only">Choose how to work on your CV</h2>
-        <div className="grid gap-5 lg:grid-cols-2">
-          {dashboardActions.map((action) => (
-            <Card
-              key={action.eyebrow}
-              className="bg-white/6"
-            >
-              <div className="flex h-full flex-col">
-                <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#c7d6ff]">{action.eyebrow}</p>
-                <h3 className="mt-4 text-3xl font-black leading-tight text-white">{action.title}</h3>
-                {action.question ? <p className="mt-3 text-base font-extrabold text-white/82">{action.question}</p> : null}
-                <div className="mt-3 space-y-3 text-sm leading-6 text-white/66 sm:text-base">
-                  {action.body.split("\n\n").map((paragraph) => (
-                    <p key={paragraph}>{paragraph}</p>
-                  ))}
-                </div>
-                {action.button && action.href ? (
-                  <div className="mt-6 pt-1 sm:mt-auto sm:pt-6">
-                    <ButtonLink href={action.href}>{action.button}</ButtonLink>
-                  </div>
-                ) : null}
-              </div>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      <section aria-labelledby="workspace-heading" className="mt-6">
-        <Card className="bg-white/6">
-          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-white/42">PATHZY Workspace</p>
-          <h2 id="workspace-heading" className="mt-3 text-3xl font-black">One platform from profile to employment</h2>
-          <p className="mt-3 max-w-3xl leading-7 text-white/58">Every area uses the same professional identity, document engine, job intelligence, tracker, timeline, analytics, and Coach context.</p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {PATHZY_OPERATING_AREAS.filter((area) => area.key !== "home").map((area) => (
-              <Link key={area.key} href={area.href} className="rounded-[18px] border border-white/10 bg-black/14 p-4 transition hover:border-[#5B8CFF]/45 hover:bg-white/8 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8fb0ff]">
-                <p className="text-lg font-black">{area.label}</p>
-                <p className="mt-2 text-sm leading-6 text-white/54">{area.description}</p>
-              </Link>
-            ))}
-          </div>
-          {timelineSignals.length ? (
-            <div className="mt-5 rounded-[18px] border border-white/10 bg-black/14 p-4">
-              <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">Recent application timeline signals</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {timelineSignals.slice(0, 5).map((signal) => (
-                  <span key={signal.key} className="rounded-full border border-white/10 bg-white/7 px-3 py-2 text-xs font-bold text-white/58">
-                    {signal.label}: {signal.nextAction}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </Card>
+        <HomeCard
+          eyebrow="Guidance"
+          title="Insights & Coach"
+          primaryHref={appRoutes.mentor}
+          primaryLabel="Ask Coach"
+          secondaryHref={appRoutes.careerAnalytics}
+          secondaryLabel="View Insights"
+        >
+          <p>
+            Get practical guidance based on your profile, documents, job matches, applications, interviews, and follow-ups.
+          </p>
+          <p className="mt-3 text-sm font-medium text-[#111827]">
+            {topInsight?.reason ?? "Keep using PATHZY and your insights will become more specific over time."}
+          </p>
+        </HomeCard>
       </section>
     </main>
   );

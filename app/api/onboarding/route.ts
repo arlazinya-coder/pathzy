@@ -162,5 +162,5 @@ export async function POST(request: Request) {
 
   await updatePathzyBrain(supabase, user.id, "Onboarding completed");
 
-  return NextResponse.json({ ok: true, redirectTo: PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY });
+  return NextResponse.json({ ok: true, redirectTo: PATHZY_ROUTES.PROFESSIONAL_IDENTITY });
 }

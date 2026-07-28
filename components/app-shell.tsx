@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { LanguageSelector, PathzyLanguageProvider } from "@/components/language/language-selector";
 import { FloatingMentorButton } from "@/components/mentor/floating-mentor-button";
 import { getUserEntitlements } from "@/lib/access/entitlements";
+import { pathzyNavigationLabel } from "@/lib/language/pathzy-i18n";
+import { getServerInterfaceLanguage } from "@/lib/language/server-language";
+import { resolvePathzyNextRoute } from "@/lib/navigation/auth-routing";
 import { appRoutes } from "@/lib/navigation/routes";
 import { navigation } from "@/lib/pathzy-data";
 import { createSupabaseServerClient, getCurrentUser } from "@/lib/supabase/server";
@@ -20,21 +24,66 @@ function uniqueByHref<T extends NavigationItem>(items: readonly T[]) {
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   const supabase = user ? await createSupabaseServerClient() : null;
-  const entitlements = user && supabase ? await getUserEntitlements(supabase, user.id) : null;
+  const [entitlements, profileLanguage, profileSnapshot, discoverySnapshot] = user && supabase
+    ? await Promise.all([
+        getUserEntitlements(supabase, user.id),
+        (async () => {
+          const { data, error } = await supabase
+            .from("user_profiles")
+            .select("language")
+            .or(`user_id.eq.${user.id},id.eq.${user.id}`)
+            .maybeSingle();
+          return error ? null : data?.language ?? null;
+        })(),
+        (async () => {
+          const { data, error } = await supabase
+            .from("user_profiles")
+            .select("full_name,email,phone,city,country,education,highest_qualification,field_of_study,current_status,career_goal,onboarding_completed,onboarding_step,language")
+            .or(`user_id.eq.${user.id},id.eq.${user.id}`)
+            .maybeSingle();
+          return error ? null : data;
+        })(),
+        (async () => {
+          const { data, error } = await supabase
+            .from("discovery_responses")
+            .select("answers")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          return error ? null : data;
+        })()
+      ])
+    : [null, null, null, null];
+  const journeyDecision = user
+    ? resolvePathzyNextRoute({
+        authenticated: true,
+        profile: profileSnapshot,
+        discovery: discoverySnapshot,
+        user
+      })
+    : null;
+  const interfaceLanguage = await getServerInterfaceLanguage(profileLanguage);
+  const focusedOnboarding =
+    Boolean(user) &&
+    journeyDecision?.currentState !== "home_ready" &&
+    journeyDecision?.currentState !== "diagnosis_complete";
   const loggedOutNavigation: NavigationItem[] = [
     { label: "Home", href: appRoutes.home },
     { label: "Pricing", href: appRoutes.pricing }
   ];
   const loggedInNavigation: NavigationItem[] = [...navigation];
-  const primaryNavigation = uniqueByHref(user ? loggedInNavigation : loggedOutNavigation);
-  const mobileNavigation = uniqueByHref(user ? loggedInNavigation : loggedOutNavigation);
+  const focusedNavigation: NavigationItem[] = [];
+  const primaryNavigation = uniqueByHref(user ? (focusedOnboarding ? focusedNavigation : loggedInNavigation) : loggedOutNavigation);
+  const mobileNavigation = uniqueByHref(user ? (focusedOnboarding ? focusedNavigation : loggedInNavigation) : loggedOutNavigation);
 
   return (
-    <>
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050816]/78 backdrop-blur-2xl">
+    <PathzyLanguageProvider initialLanguage={interfaceLanguage}>
+    <div className="pathzy-auth-shell">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[var(--pathzy-navy)]/92 backdrop-blur-2xl">
         <nav className="container flex min-h-20 items-center justify-between gap-4">
-          <Link href={user ? appRoutes.roadmap : appRoutes.home} className="flex items-center gap-3 font-extrabold tracking-wide">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl blue-purple shadow-[0_18px_48px_rgba(91,140,255,.35)]">
+          <Link href={user ? appRoutes.roadmap : appRoutes.home} className="flex items-center gap-3 text-lg font-black tracking-tight text-white">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[var(--pathzy-red)] text-white shadow-[0_14px_34px_rgba(217,58,70,.22)]">
               P
             </span>
             <span>PATHZY</span>
@@ -44,56 +93,62 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={`${item.href}-${item.label}`}
                 href={item.href}
-                className="rounded-full px-4 py-2 text-sm font-bold text-white/68 transition hover:bg-white/10 hover:text-white"
+                className="rounded-full px-4 py-2 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white"
               >
-                {item.label}
+                {pathzyNavigationLabel(interfaceLanguage, item.label)}
               </Link>
             ))}
           </div>
           <div className="flex items-center gap-2">
             {user ? (
               <>
+                <LanguageSelector initialLanguage={profileLanguage} />
                 {entitlements?.badge === "FOUNDING TESTER" ? (
-                  <span className="hidden rounded-full border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#9df0c4] md:inline-flex" title={entitlements.message ?? undefined}>
+                  <span className="hidden rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#2563EB] md:inline-flex" title={entitlements.message ?? undefined}>
                     FOUNDING TESTER
                   </span>
                 ) : null}
-                <Link href={appRoutes.roadmap} className="hidden rounded-full border border-white/12 bg-white/8 px-4 py-2 text-sm font-bold text-white/72 transition hover:bg-white/12 hover:text-white sm:inline-flex">
-                  Back to My Employment Journey
-                </Link>
+                {!focusedOnboarding ? (
+                <Link href={appRoutes.roadmap} className="hidden rounded-full border border-white/12 bg-white/8 px-4 py-2 text-sm font-semibold text-white/78 shadow-sm transition hover:bg-white/12 hover:text-white sm:inline-flex">
+                    {pathzyNavigationLabel(interfaceLanguage, "Home")}
+                  </Link>
+                ) : (
+                  <span className="hidden rounded-full border border-white/12 bg-white/8 px-4 py-2 text-sm font-semibold text-white/72 sm:inline-flex">Setup in progress</span>
+                )}
                 <LogoutButton />
               </>
             ) : (
               <>
-                <Link href={appRoutes.login} className="hidden rounded-full px-4 py-2 text-sm font-bold text-white/70 transition hover:text-white sm:inline-flex">
+                <Link href={appRoutes.login} className="hidden rounded-full px-4 py-2 text-sm font-semibold text-white/72 transition hover:text-white sm:inline-flex">
                   Login
                 </Link>
-                <Link href={appRoutes.signup} className="rounded-full blue-purple px-5 py-3 text-sm font-extrabold shadow-[0_14px_34px_rgba(91,140,255,.28)]">
+                <Link href={appRoutes.signup} className="rounded-full bg-[var(--pathzy-red)] px-5 py-3 text-sm font-extrabold text-white shadow-[0_14px_34px_rgba(217,58,70,.22)]">
                   Start Free
                 </Link>
               </>
             )}
           </div>
         </nav>
-        <div className="container flex gap-2 overflow-x-auto pb-3 lg:hidden">
+        {mobileNavigation.length ? <div className="container flex gap-2 overflow-x-auto pb-3 lg:hidden">
           {mobileNavigation.map((item) => (
-            <Link key={`${item.href}-${item.label}`} href={item.href} className="whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-white/72">
-              {item.label}
+            <Link key={`${item.href}-${item.label}`} href={item.href} className="whitespace-nowrap rounded-full border border-white/12 bg-white/8 px-3 py-2 text-xs font-semibold text-white/72 shadow-sm">
+              {pathzyNavigationLabel(interfaceLanguage, item.label)}
             </Link>
           ))}
-        </div>
+        </div> : null}
       </header>
-      {user ? <FloatingMentorButton /> : null}
+      {user && !focusedOnboarding ? <FloatingMentorButton /> : null}
       <main>{children}</main>
-      <footer className="container border-t border-white/10 py-8 text-center text-sm text-white/48">
+      <footer className="container border-t border-white/10 py-8 text-center text-sm text-white/58">
         <p>PATHZY is The Employment Support System. From Potential to Employment.</p>
         <div className="mt-4 flex flex-wrap justify-center gap-4">
-          <Link href="/privacy" className="hover:text-white">Privacy</Link>
-          <Link href="/terms" className="hover:text-white">Terms</Link>
-          <Link href="/contact" className="hover:text-white">Contact</Link>
-          <Link href="/disclaimer" className="hover:text-white">Disclaimer</Link>
+          <Link href="/privacy" className="hover:text-[#111827]">Privacy</Link>
+          <Link href="/terms" className="hover:text-[#111827]">Terms</Link>
+          <Link href="/contact" className="hover:text-[#111827]">Contact</Link>
+          <Link href="/disclaimer" className="hover:text-[#111827]">Disclaimer</Link>
         </div>
       </footer>
-    </>
+    </div>
+    </PathzyLanguageProvider>
   );
 }

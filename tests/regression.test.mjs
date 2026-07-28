@@ -1,4 +1,4 @@
-﻿import assert from "node:assert/strict";
+import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -15,8 +15,12 @@ const legacyProfilePage = readFileSync("app/profile/page.tsx", "utf8");
 const legacyRegisterPage = readFileSync("app/register/page.tsx", "utf8");
 const signupPage = readFileSync("app/signup/page.tsx", "utf8");
 const homepage = readFileSync("app/page.tsx", "utf8");
+const landingContent = readFileSync("components/public/landing-content.tsx", "utf8");
+const signupContent = readFileSync("components/auth/signup-content.tsx", "utf8");
+const loginContent = readFileSync("components/auth/login-content.tsx", "utf8");
 const loginForm = readFileSync("components/auth/login-form.tsx", "utf8");
 const registerForm = readFileSync("components/auth/register-form.tsx", "utf8");
+const logoutButton = readFileSync("components/auth/logout-button.tsx", "utf8");
 const resetPasswordForm = readFileSync("components/auth/reset-password-form.tsx", "utf8");
 const updatePasswordForm = readFileSync("components/auth/update-password-form.tsx", "utf8");
 const authCallback = readFileSync("app/auth/callback/route.ts", "utf8");
@@ -28,6 +32,8 @@ const rootLayout = readFileSync("app/layout.tsx", "utf8");
 const roadmapLayout = readFileSync("app/roadmap/layout.tsx", "utf8");
 const professionalIdentityLayout = readFileSync("app/professional-identity/layout.tsx", "utf8");
 const opportunitiesLayout = readFileSync("app/opportunities/layout.tsx", "utf8");
+const employmentCenterLayout = readFileSync("app/employment-center/layout.tsx", "utf8");
+const employmentCenterPage = readFileSync("app/employment-center/page.tsx", "utf8");
 const applicationsLayout = readFileSync("app/applications/layout.tsx", "utf8");
 const skillsLayout = readFileSync("app/skills/layout.tsx", "utf8");
 const billingLayout = readFileSync("app/billing/layout.tsx", "utf8");
@@ -41,6 +47,17 @@ const journeyRouter = readFileSync("lib/progress/journey-router.ts", "utf8");
 const nextActionEngine = readFileSync("lib/progress/next-action-engine.ts", "utf8");
 const operatingSystem = readFileSync("lib/operating-system/employment-operating-system.ts", "utf8");
 const routes = readFileSync("lib/navigation/routes.ts", "utf8");
+const authRouting = readFileSync("lib/navigation/auth-routing.ts", "utf8");
+const redirects = readFileSync("lib/navigation/redirects.ts", "utf8");
+const authSessionSafety = readFileSync("lib/auth/session-safety.ts", "utf8");
+const authFormErrors = readFileSync("lib/auth/auth-form-errors.ts", "utf8");
+const authorization = readFileSync("lib/access/authorization.ts", "utf8");
+const languagePreferences = readFileSync("lib/language/language-preferences.ts", "utf8");
+const pathzyI18n = readFileSync("lib/language/pathzy-i18n.ts", "utf8");
+const languageSelector = readFileSync("components/language/language-selector.tsx", "utf8");
+const serverLanguage = readFileSync("lib/language/server-language.ts", "utf8");
+const errorNormalization = readFileSync("lib/errors/error-normalization.ts", "utf8");
+const languageSettingsForm = readFileSync("components/settings/language-settings-form.tsx", "utf8");
 const roadmapPage = readFileSync("app/roadmap/page.tsx", "utf8");
 const professionalIdentityPage = readFileSync("app/professional-identity/page.tsx", "utf8");
 const profileActionEditor = readFileSync("components/professional-identity/profile-action-editor.tsx", "utf8");
@@ -227,40 +244,232 @@ function loadProductionTsModule(filePath) {
     TextDecoder,
     TextEncoder,
     URL,
+    URLSearchParams,
+    process,
     setTimeout,
     clearTimeout
   }, { filename: absolutePath });
   return module.exports;
 }
 
-for (const section of ["Navigation", "Hero", "Features", "How PATHZY Works", "Career Journey", "Pricing", "Testimonials", "FAQ", "Footer"]) {
-  assert.match(homepage, new RegExp(`data-home-section="${section}"`), `Homepage must include the ${section} landing section.`);
+const routeRuntime = loadProductionTsModule("lib/navigation/routes.ts");
+const authRoutingRuntime = loadProductionTsModule("lib/navigation/auth-routing.ts");
+const supabaseConfigRuntime = loadProductionTsModule("lib/supabase/config.ts");
+const authFormErrorsRuntime = loadProductionTsModule("lib/auth/auth-form-errors.ts");
+const languagePreferenceRuntime = loadProductionTsModule("lib/language/language-preferences.ts");
+const errorNormalizationRuntime = loadProductionTsModule("lib/errors/error-normalization.ts");
+const authorizationRuntime = loadProductionTsModule("lib/access/authorization.ts");
+const authSessionRuntime = loadProductionTsModule("lib/auth/session-safety.ts");
+
+assert.equal(routeRuntime.routeBuilders.professionalIdentitySection("career_goal"), "/professional-identity?section=career_goal", "Route builder must create canonical Professional Identity section URLs.");
+assert.equal(authRoutingRuntime.normalizeProfessionalIdentitySection("careerGoal"), "career_goal", "Legacy Professional Identity section aliases must normalize to canonical section IDs.");
+assert.equal(authRoutingRuntime.normalizeProfessionalIdentitySection("not-a-real-section"), "profile", "Unknown Professional Identity sections must fall back safely.");
+assert.equal(routeRuntime.routeBuilders.cvWorkspace({ intent: "build", documentId: "doc-1" }), "/professional-identity/cv?intent=build&documentId=doc-1", "CV route builder must own CV query strings.");
+assert.equal(routeRuntime.routeBuilders.coverLetterWorkspace({ applicationId: "app-1", jobId: "job-1" }), "/professional-identity/cover-letter?applicationId=app-1&jobId=job-1", "Cover Letter route builder must own application/job query strings.");
+assert.equal(routeRuntime.routeBuilders.applicationDetail("app-42"), "/applications?applicationId=app-42", "Application detail route builder must keep Applications separate from Employment Center.");
+assert.equal(routeRuntime.safeRedirectDestination("https://evil.example/phish", "/roadmap"), "/roadmap", "Unsafe external return URLs must be rejected.");
+assert.equal(routeRuntime.safeRedirectDestination("/login?redirectTo=/applications", "/roadmap"), "/roadmap", "Auth routes must not be accepted as post-auth return targets.");
+assert.equal(routeRuntime.safeRedirectDestination("/applications?applicationId=app-1", "/roadmap"), "/applications?applicationId=app-1", "Safe internal deep links must preserve useful query strings.");
+assert.equal(authSessionRuntime.authRedirectForStatus("anonymous", "/applications").destination, "/login?redirectTo=%2Fapplications", "Anonymous sessions must preserve safe protected return URLs.");
+assert.equal(authSessionRuntime.authRedirectForStatus("expired", "https://evil.example").destination, "/login?redirectTo=%2Froadmap", "Expired sessions must reject unsafe return URLs.");
+assert.equal(authSessionRuntime.authRedirectForStatus("password_recovery", "/roadmap").destination, "/auth/update-password", "Password recovery must keep the reset destination.");
+assert.equal(supabaseConfigRuntime.getSupabasePublicConfigStatus({ url: undefined, anonKey: "sb_publishable_test" }).url, "missing", "Supabase config checks must detect a missing public URL before auth requests are attempted.");
+assert.equal(supabaseConfigRuntime.getSupabasePublicConfigStatus({ url: "not-a-url", anonKey: "sb_publishable_test" }).url, "malformed", "Supabase config checks must detect malformed public URLs before auth requests are attempted.");
+assert.equal(supabaseConfigRuntime.getSupabasePublicConfigStatus({ url: "https://example.supabase.co", anonKey: undefined }).anonKey, "missing", "Supabase config checks must detect a missing public anon key before auth requests are attempted.");
+assert.equal(supabaseConfigRuntime.getSupabasePublicConfigStatus({ url: "https://example.supabase.co", anonKey: "short" }).anonKey, "malformed", "Supabase config checks must detect malformed public anon keys before auth requests are attempted.");
+assert.equal(supabaseConfigRuntime.getSupabasePublicConfigStatus({ url: "https://example.supabase.co", anonKey: "sb_publishable_validshape" }).configured, true, "Supabase config checks must accept valid public Supabase URL and publishable key shapes.");
+assert.equal(authFormErrorsRuntime.isAuthNetworkFailure(new TypeError("NetworkError when attempting to fetch resource.")), true, "Auth forms must classify browser NetworkError failures as retryable network failures.");
+assert.equal(authFormErrorsRuntime.friendlyAuthError(new TypeError("NetworkError when attempting to fetch resource."), "signup"), authFormErrorsRuntime.AUTH_NETWORK_USER_MESSAGE, "Signup network failures must use a safe user-facing retry message.");
+assert.equal(authFormErrorsRuntime.friendlyAuthError(new TypeError("Failed to fetch"), "login"), authFormErrorsRuntime.AUTH_NETWORK_USER_MESSAGE, "Login network failures must use the same safe retry message.");
+assert.doesNotMatch(authFormErrorsRuntime.friendlyAuthError(new TypeError("NetworkError when attempting to fetch resource."), "signup"), /NetworkError|supabase\.co|eyJ|sb_publishable_/i, "Auth network errors must not render raw browser internals or key-like values.");
+assert.equal(languagePreferenceRuntime.suggestedLanguageFromBrowser("fr-ZA,fr;q=0.9,en;q=0.8"), "fr", "Browser French should suggest French without using flags.");
+const resolvedLanguages = languagePreferenceRuntime.resolveLanguagePreferences({ language: "english", interface_language: "fr", professional_document_language: "en" });
+assert.equal(resolvedLanguages.interface, "fr", "Interface language preference must resolve independently.");
+assert.equal(resolvedLanguages.professional_document, "en", "Professional document language must not be changed by interface language.");
+assert.equal(languagePreferenceRuntime.updateLanguagePreference(resolvedLanguages, "interface", "en").professional_document, "en", "Changing interface language must not mutate document language.");
+const normalizedEventFailure = errorNormalizationRuntime.normalizePathzyError({ type: "error", target: "window" }, "Keep the current screen safe.");
+assert.equal(normalizedEventFailure.originalType, "event", "Browser event-like failures must be normalized before they can reach the Next.js overlay.");
+assert.equal(normalizedEventFailure.userMessage, "Keep the current screen safe.", "Event-like failures must receive a human fallback message.");
+assert.doesNotMatch(errorNormalization, /\[object Event\]|\[object Object\]/, "Error normalization must not stringify raw browser events or objects into user messages.");
+assert.equal(authorizationRuntime.authorizeOwnerAccess({ userId: "user-1", role: "user" }, { ownerUserId: "user-2" }).allowed, false, "Owner authorization must deny cross-user access.");
+assert.equal(authorizationRuntime.authorizeOwnerAccess({ userId: "user-1", role: "user" }, { ownerUserId: "user-1" }).allowed, true, "Owner authorization must allow owned resources.");
+assert.equal(authorizationRuntime.authorizeOwnerAccess({ userId: "admin-1", role: "admin" }, { ownerUserId: "user-1", sensitive: true }).audit.required, true, "Admin access must require audit logging hooks.");
+assert.equal(authorizationRuntime.normalizePathzyRole("service_role"), "background_service", "Background service role must be represented separately from user roles.");
+
+const completeIdentityProfile = {
+  full_name: "Nicka Candida",
+  email: "nicka@example.com",
+  city: "Johannesburg",
+  country: "South Africa",
+  career_goal: "Data Analyst",
+  education: "Diploma",
+  language: "english",
+  onboarding_completed: false
+};
+const completeIdentityDiscovery = {
+  answers: {
+    nationality: "South African",
+    work_authorization: "Authorized to work",
+    skills: ["Excel", "SQL"],
+    employment_type: "Full-time",
+    availability: "Immediately"
+  }
+};
+const routeDecisionCases = [
+  {
+    name: "unauthenticated",
+    input: { authenticated: false, requestedDestination: "/applications" },
+    state: "unauthenticated",
+    destination: "/login?redirectTo=%2Fapplications"
+  },
+  {
+    name: "language pending",
+    input: { authenticated: true, interfaceLanguageSelected: false, profile: completeIdentityProfile, discovery: completeIdentityDiscovery },
+    state: "authenticated_language_pending",
+    destination: "/professional-identity?section=preferences"
+  },
+  {
+    name: "identity not started",
+    input: { authenticated: true, interfaceLanguageSelected: true, profile: null, discovery: null, user: { email: null } },
+    state: "identity_not_started",
+    destination: "/professional-identity?stage=welcome"
+  },
+  {
+    name: "new account row only",
+    input: { authenticated: true, interfaceLanguageSelected: true, profile: { full_name: "Nicka Candida", email: "nicka@example.com" }, discovery: { answers: {} } },
+    state: "identity_not_started",
+    destination: "/professional-identity?stage=welcome"
+  },
+  {
+    name: "identity partially complete",
+    input: { authenticated: true, interfaceLanguageSelected: true, profile: { full_name: "Nicka Candida", email: "nicka@example.com", language: "english", onboarding_step: 2 }, discovery: { answers: {} } },
+    state: "identity_in_progress",
+    destination: "/professional-identity?section=location"
+  },
+  {
+    name: "identity ready for review",
+    input: { authenticated: true, profile: completeIdentityProfile, discovery: completeIdentityDiscovery },
+    state: "identity_review_pending",
+    destination: "/professional-identity?review=1"
+  },
+  {
+    name: "finish pending",
+    input: { authenticated: true, profile: completeIdentityProfile, discovery: completeIdentityDiscovery, reviewCompleted: true, setupFinished: false },
+    state: "identity_finish_pending",
+    destination: "/professional-identity?finish=1"
+  },
+  {
+    name: "diagnosis pending",
+    input: { authenticated: true, profile: { ...completeIdentityProfile, onboarding_completed: true }, discovery: completeIdentityDiscovery, diagnosisComplete: false },
+    state: "diagnosis_pending",
+    destination: "/discovery?reason=setup-complete"
+  },
+  {
+    name: "home ready",
+    input: { authenticated: true, profile: { ...completeIdentityProfile, onboarding_completed: true, employment_diagnosis_completed: true }, discovery: completeIdentityDiscovery, requestedDestination: "/employment-center" },
+    state: "home_ready",
+    destination: "/employment-center"
+  },
+  {
+    name: "unsafe completed return",
+    input: { authenticated: true, profile: { ...completeIdentityProfile, onboarding_completed: true, employment_diagnosis_completed: true }, discovery: completeIdentityDiscovery, requestedDestination: "https://evil.example/app" },
+    state: "home_ready",
+    destination: "/roadmap"
+  }
+];
+for (const routeCase of routeDecisionCases) {
+  const decision = authRoutingRuntime.resolvePathzyNextRoute(routeCase.input);
+  assert.equal(decision.currentState, routeCase.state, `Onboarding resolver must identify ${routeCase.name}.`);
+  assert.equal(decision.destination, routeCase.destination, `Onboarding resolver must route ${routeCase.name} correctly.`);
+  assert.equal(Boolean(decision.reason), true, `Onboarding resolver must explain ${routeCase.name}.`);
+  assert.doesNotMatch(decision.destination, /cover-letter/, `Cover Letter must never appear as onboarding next action for ${routeCase.name}.`);
 }
-assert.match(homepage, /Do not remove landing sections without updating homepage regression test\./, "Homepage must warn maintainers to update the regression test before removing landing sections.");
+assert.equal(
+  authRoutingRuntime.resolvePathzyNextRoute({ authenticated: true, profile: completeIdentityProfile, discovery: { answers: { ...completeIdentityDiscovery.answers, skills: [], professional_summary: "" } } }).currentState,
+  "identity_in_progress",
+  "Missing required fields must block setup."
+);
+assert.equal(
+  authRoutingRuntime.resolvePathzyNextRoute({ authenticated: true, profile: completeIdentityProfile, discovery: completeIdentityDiscovery }).currentState,
+  "identity_review_pending",
+  "Missing optional sections must not permanently block setup."
+);
+
+for (const section of ["Navigation", "Hero", "Features", "How PATHZY Works", "Career Journey", "Pricing", "Testimonials", "FAQ", "Footer"]) {
+  assert.match(landingContent, new RegExp(`data-home-section="${section}"`), `Homepage must include the ${section} landing section.`);
+}
+assert.match(landingContent, /Do not remove landing sections without updating homepage regression test\./, "Homepage must warn maintainers to update the regression test before removing landing sections.");
 assert.match(homepage, /const startHref = user \? PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY : PATHZY_ROUTES\.SIGNUP;/, "Welcome Start Free must send logged-out users to signup and logged-in users to My Employment Journey.");
 assert.match(homepage, /const loginHref = user \? PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY : PATHZY_ROUTES\.LOGIN;/, "Welcome Login must send logged-out users to login and logged-in users to My Employment Journey.");
-assert.match(homepage, /<a href=\{startHref\}[\s\S]*>Start Free<\/a>/, "Welcome navigation must include a Start Free link.");
-assert.match(homepage, /<a href=\{loginHref\}[\s\S]*>Login<\/a>/, "Welcome navigation must include a Login link.");
-assert.doesNotMatch(homepage, /href=\{appRoutes\.pricing\}|href=\{PATHZY_ROUTES\.BILLING\}|href="\/pricing"|href="\/billing"/, "Welcome Start Free/Login actions must not point to Pricing or Billing.");
-assert.match(signupPage, /<RegisterForm \/>/, "Canonical /signup must own the account creation form.");
-assert.match(loginForm, /redirectTo = searchParams\?\.get\("redirectTo"\) \|\| PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY/, "Login must default to My Employment Journey.");
-assert.match(loginForm, /encodeURIComponent\(PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY\)/, "Google login callback must return to My Employment Journey.");
-assert.match(registerForm, /emailRedirectTo: `\$\{window\.location\.origin\}\/auth\/callback\?next=\$\{encodeURIComponent\(appRoutes\.onboarding\)\}`/, "Signup confirmation must preserve new-user onboarding.");
-assert.match(registerForm, /router\.replace\(appRoutes\.onboarding\)/, "Immediate signup sessions must enter onboarding.");
-assert.match(authCallback, /requestUrl\.searchParams\.get\("next"\) \|\| PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY/, "Auth callback must default to My Employment Journey.");
-assert.match(supabaseMiddleware, /url\.pathname = appRoutes\.roadmap;/, "Logged-in users opening auth pages must go to My Employment Journey.");
-assert.match(onboardingPage, /redirect\(PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY\)/, "Completed onboarding visits must go to My Employment Journey.");
-assert.match(onboardingApi, /redirectTo: PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY/, "Onboarding completion API must send users to My Employment Journey.");
-assert.match(onboardingFlow, /router\.replace\(data\.redirectTo \?\? PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY\)/, "Onboarding UI must use the API redirect to My Employment Journey.");
-assert.match(updatePasswordForm, /router\.replace\(PATHZY_ROUTES\.MY_EMPLOYMENT_JOURNEY\)/, "Password update should return to My Employment Journey.");
+assert.match(landingContent, /<a href=\{startHref\}[\s\S]*>\{t\("public\.nav\.start"\)\}<\/a>/, "Welcome navigation must include a translated Start Free link.");
+assert.match(landingContent, /<a href=\{loginHref\}[\s\S]*>\{t\("public\.nav\.login"\)\}<\/a>/, "Welcome navigation must include a translated Login link.");
+assert.match(landingContent, /<LanguageSelector persistAuthenticated=\{false\}/, "Public landing page must expose a pre-auth EN/FR language selector.");
+assert.match(pathzyI18n, /De votre potentiel à l'emploi\./, "Public French landing headline must be translated from the shared dictionary.");
+assert.doesNotMatch(`${homepage}\n${landingContent}`, /href=\{appRoutes\.pricing\}|href=\{PATHZY_ROUTES\.BILLING\}|href="\/pricing"|href="\/billing"/, "Welcome Start Free/Login actions must not point to Pricing or Billing.");
+assert.match(signupPage, /<SignupContent \/>/, "Canonical /signup must render the translated signup content.");
+assert.match(signupContent, /<RegisterForm \/>/, "Translated signup content must own the account creation form.");
+assert.match(signupContent, /<LanguageSelector persistAuthenticated=\{false\}/, "Signup must expose a pre-auth EN/FR language selector.");
+assert.match(loginContent, /<LanguageSelector persistAuthenticated=\{false\}/, "Login must expose a pre-auth EN/FR language selector.");
+assert.match(loginForm, /redirectTo = searchParams\?\.get\("redirectTo"\) \|\| PATHZY_ROUTES\.HOME/, "Login must default to authenticated Home.");
+assert.match(loginForm, /fetch\("\/api\/auth\/bootstrap"[\s\S]*body: JSON\.stringify\(\{ redirectTo \}\)/, "Login must use the shared bootstrap redirect decision.");
+assert.match(loginForm, /encodeURIComponent\(PATHZY_ROUTES\.HOME\)/, "Google login callback must default to authenticated Home.");
+assert.match(registerForm, /const welcomeDestination = routeBuilders\.professionalIdentityWelcome\(\);/, "Signup must resolve the first-time Welcome destination through the route builder.");
+assert.match(registerForm, /emailRedirectTo: `\$\{window\.location\.origin\}\/auth\/callback\?next=\$\{encodeURIComponent\(welcomeDestination\)\}`/, "Signup confirmation must send new users to the Welcome stage.");
+assert.match(registerForm, /window\.location\.replace\(welcomeDestination\)/, "Immediate signup sessions must enter the Welcome stage with a full navigation after auth cookie changes.");
+assert.doesNotMatch(registerForm, /name="country"|name="age"|name="education"|name="current_status"/, "Signup must collect only full name, email, and password before account creation.");
+assert.match(registerForm, /friendlyAuthError\(caught, "signup", language\)/, "Signup must normalize thrown network failures through the shared auth error helper.");
+assert.match(registerForm, /finally \{[\s\S]*setLoading\(false\);[\s\S]*\}/, "Signup loading state must reset after failures so the user can retry.");
+assert.match(registerForm, /disabled=\{loading \|\| !isSupabaseConfigured\(\)\}/, "Signup submit must prevent duplicate requests while loading or misconfigured.");
+assert.match(loginForm, /friendlyAuthError\(caught, "login", language\)/, "Login must normalize thrown network failures through the shared auth error helper.");
+assert.match(loginForm, /friendlyAuthError\(caught, "oauth", language\)/, "OAuth login must normalize thrown network failures through the shared auth error helper.");
+assert.match(loginForm, /window\.location\.replace\(destination\)/, "Login must use full navigation after auth cookie changes instead of a client RSC transition.");
+assert.match(loginForm, /finally \{[\s\S]*setLoading\(false\);[\s\S]*\}/, "Login loading state must reset after failures so the user can retry.");
+assert.match(loginForm, /disabled=\{loading \|\| !isSupabaseConfigured\(\)\}/, "Login submit must prevent duplicate requests while loading or misconfigured.");
+assert.doesNotMatch(loginForm, /console\.info\("\[PATHZY auth\] Starting email\/password login", \{ email \}\)/, "Login diagnostics must not log user email addresses.");
+assert.doesNotMatch(`${registerForm}\n${loginForm}\n${authFormErrors}`, /NEXT_PUBLIC_SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY|sb_publishable_|eyJ[a-zA-Z0-9_-]+/g, "Auth form source must not render or log secret/public key values.");
+assert.match(authCallback, /const rawNext = requestUrl\.searchParams\.get\("next"\);[\s\S]*safeRedirectDestination\(rawNext, PATHZY_ROUTES\.HOME\)/, "Auth callback must default to authenticated Home through a sanitized destination.");
+assert.match(authCallback, /getPostAuthDestination\(supabase!, session\.user, next\)/, "Auth callback must use the shared Professional Identity/Home post-auth decision.");
+assert.match(supabaseMiddleware, /getPostAuthDestination\(supabase, user, appRoutes\.authenticatedHome\)/, "Logged-in users opening auth pages must use the shared Professional Identity/Home decision.");
+assert.match(onboardingPage, /redirect\(profile\?\.onboarding_completed \? appRoutes\.authenticatedHome : appRoutes\.professionalIdentity\)/, "Legacy onboarding route must redirect into the Professional Identity-first flow or Home.");
+assert.match(onboardingApi, /redirectTo: PATHZY_ROUTES\.PROFESSIONAL_IDENTITY/, "Legacy onboarding completion API must return users to Professional Identity instead of a CV-first flow.");
+assert.match(onboardingFlow, /router\.replace\(data\.redirectTo \?\? PATHZY_ROUTES\.PROFESSIONAL_IDENTITY\)/, "Legacy onboarding UI fallback must return to Professional Identity.");
+assert.match(updatePasswordForm, /router\.replace\(PATHZY_ROUTES\.HOME\)/, "Password update should return to authenticated Home.");
 assert.match(resetPasswordForm, /href=\{PATHZY_ROUTES\.LOGIN\}/, "Reset password should link back to canonical Login.");
+assert.match(resetPasswordForm, /PATHZY_ROUTES\.AUTH_CALLBACK[\s\S]*PATHZY_ROUTES\.RESET_PASSWORD/, "Password reset links must use canonical auth callback and reset routes.");
 assert.doesNotMatch(`${homepage}\n${loginForm}\n${registerForm}\n${authCallback}\n${onboardingPage}\n${onboardingApi}\n${onboardingFlow}\n${supabaseMiddleware}\n${updatePasswordForm}`, /\/dashboard/, "Welcome/auth/onboarding entry flow must not use the old dashboard route.");
 assert.doesNotMatch(rootLayout, /AppShell/, "Public root layout must not wrap the landing page in the authenticated app shell.");
-assert.match(supabaseServer, /requireAuthenticatedUser\(redirectTo = "\/roadmap"\)/, "Protected-route login fallback must default to My Employment Journey.");
+assert.match(supabaseServer, /requireAuthenticatedUser\(redirectTo: string = appRoutes\.authenticatedHome\)/, "Protected-route login fallback must default to canonical authenticated Home.");
+assert.match(redirects, /return appRoutes\.authenticatedHome;/, "Unknown authenticated redirect states must not fall back to the legacy dashboard.");
+assert.match(redirects, /safePostAuthDestination\(next, appRoutes\.authenticatedHome\)/, "Post-auth redirect fallback must sanitize intended routes through the shared helper.");
+assert.match(authRouting, /firstIncompleteProfessionalIdentitySection/, "Auth routing must centralize incomplete Professional Identity detection.");
+for (const section of ["personal_information", "location", "nationality", "work_authorization", "career_goal", "education", "skills", "employment_preferences"]) {
+  assert.match(authRouting, new RegExp(`section: "${section}"`), `Post-auth Professional Identity routing must be able to resume ${section}.`);
+}
+assert.match(authRouting, /resolvePathzyNextRoute[\s\S]*routeBuilders\.professionalIdentitySection\(resumeSection\)/, "Incomplete Professional Identity users must resume the correct section.");
+assert.match(authRouting, /currentState === "identity_not_started"[\s\S]*routeBuilders\.professionalIdentityWelcome\(\)/, "Brand-new users must enter the Welcome stage instead of jumping to identity fields.");
+assert.match(authRouting, /resolvePathzyNextRoute[\s\S]*routeBuilders\.professionalIdentityReview\(\)/, "Required-complete users must be routed to Review My Information before Home.");
+assert.match(authRouting, /safePostAuthDestination\(input\.requestedDestination, appRoutes\.authenticatedHome\)/, "Complete users must return to a safe intended route or Home.");
+assert.match(authRouting, /routeMatches\(destinationPathname, appRoutes\.billing\)[\s\S]*appRoutes\.foundingMembers[\s\S]*appRoutes\.pricing[\s\S]*return appRoutes\.authenticatedHome/, "Founder, pricing, and billing routes must not intercept post-auth defaults.");
+assert.match(supabaseMiddleware, /const intendedPath = `\$\{request\.nextUrl\.pathname\}\$\{request\.nextUrl\.search\}`/, "Protected route redirects must preserve the intended path and query string.");
+assert.match(supabaseMiddleware, /isProtected && user && path !== appRoutes\.professionalIdentity[\s\S]*getPostAuthDestination\(supabase, user, intendedPath\)/, "Protected authenticated routes must use centralized Professional Identity completion coverage.");
+assert.match(professionalIdentityPage, /searchParams[\s\S]*initialSection=\{params\.section\}/, "Professional Identity must pass the resume section to the existing editor.");
+assert.match(professionalIdentityPage, /initialIntroStage=\{params\.stage === "welcome" \? "welcome" : undefined\}/, "Professional Identity must support the explicit first-time Welcome stage.");
+assert.match(profileActionEditor, /sectionAliases[\s\S]*requestedStep[\s\S]*requestedIndex/, "Professional Identity editor must open the requested unfinished guided section.");
+assert.match(profileActionEditor, /normalizePathzyError/, "Professional Identity editor must normalize non-Error save failures before showing user-facing messages.");
+assert.match(profileActionEditor, /const persistStep = useCallback[\s\S]*try \{[\s\S]*fetch\("\/api\/professional-profile"[\s\S]*catch \(caught\)[\s\S]*normalizePathzyError\(caught, pathzyT\(nextValues\.interface_language \|\| activeLanguage, "onboarding\.save\.error"\)\)/, "Professional Identity autosave must catch rejected browser events instead of leaking them to the dev overlay.");
+assert.match(profileActionEditor, /async function finishSetup\(\)[\s\S]*try \{[\s\S]*fetch\("\/api\/professional-profile"[\s\S]*catch \(caught\)[\s\S]*normalizePathzyError\(caught, pathzyPhase2T\(language, "identity\.finish\.failure"\)\)/, "Professional Identity finish setup must catch rejected browser events instead of leaking them to the dev overlay.");
+assert.match(profileActionEditor, /const saved = await persistStep\(activeStep, values\);[\s\S]*if \(saved === false\) return;[\s\S]*window\.location\.assign\(reviewHref\)/, "Review navigation must not continue after a failed save.");
 for (const [key, route] of [
+  ["LANDING", "/"],
   ["WELCOME_HOME", "/"],
   ["LOGIN", "/login"],
   ["SIGNUP", "/signup"],
+  ["AUTH_CALLBACK", "/auth/callback"],
+  ["FORGOT_PASSWORD", "/auth/reset-password"],
+  ["RESET_PASSWORD", "/auth/update-password"],
+  ["PROFESSIONAL_IDENTITY", "/professional-identity"],
+  ["HOME", "/roadmap"],
+  ["EMPLOYMENT_CENTER", "/employment-center"],
   ["MY_EMPLOYMENT_JOURNEY", "/roadmap"],
   ["MY_PROFESSIONAL_PROFILE", "/professional-identity"],
   ["CV_BUILDER", "/professional-identity/cv"],
@@ -294,6 +503,7 @@ for (const [routeName, routeLayout] of [
   ["/roadmap", roadmapLayout],
   ["/professional-identity", professionalIdentityLayout],
   ["/opportunities", opportunitiesLayout],
+  ["/employment-center", employmentCenterLayout],
   ["/applications", applicationsLayout],
   ["/skills", skillsLayout],
   ["/billing", billingLayout],
@@ -304,38 +514,28 @@ for (const [routeName, routeLayout] of [
 
 assert.match(nextActionEngine, /export async function getPathzyNextAction/, "PATHZY must expose one shared next action journey engine.");
 assert.match(dashboard, /redirect\(appRoutes\.roadmap\)/, "Legacy /dashboard must redirect to My Employment Journey.");
-assert.match(roadmapPage, /Welcome back to PATHZY/, "Authenticated landing page must show a warm PATHZY welcome.");
-assert.match(roadmapPage, /Welcome, \{firstName\}/, "Authenticated landing page must render the safe first-name value.");
+assert.match(roadmapPage, /\{greetingFor\(\)\}, \{firstName\}\./, "Authenticated Home must render a personalized safe greeting.");
 assert.match(roadmapPage, /safeFirstToken\(user\?\.user_metadata\?\.display_name\)/, "First name fallback must use account display name before generic fallback.");
 assert.match(roadmapPage, /const firstName = profileFirstName \|\| accountFirstName \|\| "there";/, "First name fallback must safely use 'there' instead of undefined, null, or email.");
-assert.match(roadmapPage, /Start with your CV, and PATHZY will guide you through the process\./, "Authenticated landing page must keep the concise welcome guidance.");
-assert.match(roadmapPage, /Your employment journey, guided step by step/, "Authenticated landing page must include the PATHZY journey guidance card.");
-assert.match(roadmapPage, /We guide you step by step — from building your professional profile and CV to preparing for opportunities and moving toward employment\./, "Welcome card must use the approved explanatory copy.");
-assert.match(roadmapPage, /You don't need to figure out everything at once\. Start with the next step, and PATHZY will help you move forward from there\./, "Welcome card must include the supporting guidance copy.");
-assert.match(roadmapPage, /eyebrow: "WELCOME TO PATHZY"[\s\S]*button: ""[\s\S]*href: ""/, "Welcome card must not include a CTA button or link.");
-for (const label of ["Build My CV", "Upload My Old CV", "Upgrade My CV"]) {
-  assert.match(roadmapPage, new RegExp(`button: "${label}"`), `Authenticated landing page must render ${label}.`);
+assert.match(roadmapPage, /const professionalDirection = profile\?\.career_goal \|\| profile\?\.preferred_path \|\| "Professional direction in progress";/, "Authenticated Home must show the user's current or target professional direction.");
+assert.match(roadmapPage, /const location = \[profile\?\.city, profile\?\.country\]\.filter\(Boolean\)\.join\(", "\);/, "Authenticated Home must show location when available.");
+assert.match(roadmapPage, /Professional Identity[\s\S]*\{professionalIdentityPercent\}% complete/, "Authenticated Home must show Professional Identity completion percentage.");
+for (const title of ["Continue Your Employment Journey", "Employment Center", "Opportunities", "Insights & Coach"]) {
+  assert.match(roadmapPage, new RegExp(title.replace("&", "\\&")), `Authenticated Home must include the ${title} card.`);
 }
-assert.equal((roadmapPage.match(/button: "Build My CV"/g) ?? []).length, 1, "Authenticated landing page must render one Build My CV button.");
-assert.doesNotMatch(roadmapPage, /button: "Start My Journey"/, "Authenticated landing page must not render Start My Journey during this product stage.");
-assert.match(roadmapPage, /href: `\$\{appRoutes\.professionalIdentityCv\}\?intent=build`/, "Build My CV must open the existing CV workspace with build intent.");
-assert.match(roadmapPage, /href: `\$\{appRoutes\.professionalIdentityCv\}\?intent=upload`/, "Upload My Old CV must open the existing CV workspace with upload intent.");
-assert.match(roadmapPage, /href: `\$\{appRoutes\.professionalIdentityCv\}\?intent=upgrade`/, "Upgrade My CV must open the existing CV workspace with upgrade intent.");
-assert.equal((roadmapPage.match(/appRoutes\.professionalIdentityCv/g) ?? []).length, 3, "The three authenticated landing CTA buttons must use the single canonical CV workspace route.");
-assert.equal((roadmapPage.match(/key=\{action\.eyebrow\}/g) ?? []).length, 1, "Authenticated landing page must render the dashboard action card collection once.");
-assert.match(roadmapPage, /grid gap-5 lg:grid-cols-2/, "Authenticated landing cards must use a responsive grid.");
+assert.equal((roadmapPage.match(/<HomeCard/g) ?? []).length, 4, "Authenticated Home must render exactly four large action cards.");
+assert.match(roadmapPage, /primaryHref=\{appRoutes\.employmentCenter\}[\s\S]*primaryLabel="Open Employment Center"/, "Employment Center card must open the canonical Employment Center route.");
+assert.doesNotMatch(roadmapPage, /secondaryHref=\{appRoutes\.applications\}[\s\S]*secondaryLabel="Track Applications"/, "Authenticated Home must not shortcut users into Applications before they apply.");
+assert.match(roadmapPage, /primaryHref=\{appRoutes\.opportunities\}[\s\S]*primaryLabel="Find Opportunities"/, "Opportunities card must route to the existing opportunities workspace.");
+assert.match(roadmapPage, /primaryHref=\{appRoutes\.mentor\}[\s\S]*primaryLabel="Ask Coach"/, "Insights & Coach card must route to the existing Coach.");
+assert.doesNotMatch(roadmapPage, /button: "Start My Journey"|dashboardActions|key=\{action\.eyebrow\}/, "Authenticated Home must not render the previous CV-first dashboard action collection.");
 assert.doesNotMatch(roadmapPage, /row-span|featured/, "Authenticated landing page must not keep one oversized recommendation card.");
 assert.doesNotMatch(roadmapPage, /overflow-x-auto|whitespace-nowrap|min-w-\[/, "Authenticated landing page must not require horizontal scrolling on mobile.");
 assert.doesNotMatch(roadmapPage, /Sample Career Plan|Your 90-day control center|Continue My Journey|Interactive 90-day plan|Compare careers/, "Authenticated landing page must not show the previous crowded journey content.");
 assert.match(roadmapPage, /getPathzyNextAction/, "Phase 9F dashboard must use the shared next-action engine.");
-assert.match(roadmapPage, /buildDashboardAttentionItems/, "Phase 9F dashboard must derive attention cards from one shared operating-system helper.");
 assert.match(roadmapPage, /summarizeApplicationTracker/, "Phase 9F dashboard must use shared tracker summary logic.");
 assert.match(roadmapPage, /buildCareerAnalytics/, "Phase 9F dashboard must use the shared analytics service.");
-assert.match(roadmapPage, /PathzyTimeline/, "Phase 9F dashboard must render the existing PATHZY Timeline component.");
-assert.match(roadmapPage, /buildCareerPlanSuggestions/, "Phase 9F dashboard must surface Career Plan suggestions without mutating the plan automatically.");
-assert.match(roadmapPage, /PATHZY_OPERATING_AREAS/, "Phase 9F dashboard must expose the unified workspace map.");
 assert.match(roadmapPage, /safeQuery/, "Phase 9F dashboard must use safe partial-failure query handling.");
-assert.match(roadmapPage, /Unknown outcomes are not counted as rejection|Unknown outcomes are not counted as rejection|Unknown outcomes are not treated as rejection/, "Phase 9F dashboard must preserve honest analytics wording.");
 assert.match(operatingSystem, /applicationEventsForPathzyTimeline/, "Phase 9F must reuse application tracker timeline signals for the PATHZY Timeline.");
 assert.match(operatingSystem, /buildCareerPlanSuggestions[\s\S]*You stay in control|without PATHZY changing your plan automatically|Do not automatically modify/, "Phase 9F must connect Career Plan suggestions without automatic mutation.");
 assert.match(legacyCvBuilderPage, /redirect\(appRoutes\.professionalIdentityCv\)/, "Legacy /cv-builder must redirect to the canonical CV Builder.");
@@ -343,9 +543,10 @@ assert.match(legacyEmploymentTrackerPage, /redirect\(appRoutes\.applications\)/,
 assert.match(legacyProgressPage, /redirect\(appRoutes\.skills\)/, "Legacy /progress must redirect to Skills & Career Growth.");
 assert.match(legacyProfilePage, /redirect\(appRoutes\.settings\)/, "Legacy /profile must redirect to Settings.");
 assert.match(legacyRegisterPage, /redirect\(appRoutes\.signup\)/, "Legacy /register must redirect to Sign Up.");
-assert.match(nextActionEngine, /label: "Complete onboarding"[\s\S]*destinationRoute: appRoutes\.onboarding/, "Brand-new users must receive onboarding guidance.");
+assert.match(nextActionEngine, /label: "Complete Professional Identity"[\s\S]*destinationRoute,/, "Brand-new users must receive Professional Identity guidance.");
+assert.match(nextActionEngine, /profileResumeRoute\(typedProfile, user, typedDiscovery\)/, "Continue must resume the current unfinished Professional Identity section when profile setup is incomplete.");
 assert.match(nextActionEngine, /if \(milestone\.key === "profile"\) return "Complete My Professional Profile";/, "Users with incomplete profile information must be guided to My Professional Profile.");
-assert.match(nextActionEngine, /if \(milestone\.key === "profile"\) return appRoutes\.professionalIdentity;/, "Profile gaps must route to My Professional Profile, not Billing.");
+assert.match(nextActionEngine, /milestone\.key === "profile" \? profileResumeRoute\(typedProfile, user, typedDiscovery\) : routeForMilestone\(milestone\)/, "Profile gaps must resume the unfinished Professional Identity step, not Billing.");
 assert.match(nextActionEngine, /cvComplete: hasCv/, "Users with completed profiles must receive CV guidance when CV is missing.");
 assert.match(nextActionEngine, /coverLetterComplete: hasCoverLetter/, "Users with a CV must receive cover letter guidance when cover letter is missing.");
 assert.match(nextActionEngine, /opportunitiesSaved: applicationActions\.filter\(\(action\) => action\.saved\)\.length/, "Users with documents must receive opportunity guidance.");
@@ -362,14 +563,16 @@ assert.match(timeline, /PATHZY Timeline/, "Timeline must use the PATHZY Timeline
 assert.doesNotMatch(timeline, /Coming soon/, "Timeline must not label normal journey steps as coming soon.");
 assert.match(appShell, /key=\{`\$\{item\.href\}-\$\{item\.label\}`\}/, "Navigation links must use a unique key fallback.");
 assert.match(appShell, /<Link href=\{user \? appRoutes\.roadmap : appRoutes\.home\}/, "PATHZY logo must send logged-out visitors home and logged-in users to My Employment Journey.");
-assert.match(appShell, /<Link href=\{appRoutes\.roadmap\}[\s\S]*Back to My Employment Journey[\s\S]*<\/Link>/, "Authenticated pages must provide a clear universal return action to My Employment Journey.");
+assert.match(appShell, /<Link href=\{appRoutes\.roadmap\}[\s\S]*Home[\s\S]*<\/Link>/, "Authenticated pages must provide a clear universal return action to Home.");
 assert.match(operatingSystem, /export const PATHZY_OPERATING_AREAS/, "Phase 9F must centralize the unified employment operating-system map.");
-for (const label of ["Home", "Professional Identity", "Documents", "Jobs", "Applications", "Interview Preparation", "Career Plan", "Career Analytics", "Coach", "Settings"]) {
+for (const label of ["Home", "Professional Identity", "Employment Center", "Jobs", "Applications", "Interview Preparation", "Career Plan", "Career Analytics", "Coach", "Settings"]) {
   assert.match(operatingSystem, new RegExp(`label: "${label}"`), `Unified navigation must include ${label}.`);
 }
 assert.match(operatingSystem, /getOperatingNavigation/, "Unified navigation must be derived from the operating-system map.");
 assert.match(navigation, /export const navigation = getOperatingNavigation\(\);/, "Authenticated navigation must read from the unified operating-system map.");
-assert.match(operatingSystem, /href: appRoutes\.documents/, "Documents must route to the canonical documents workspace.");
+assert.match(operatingSystem, /href: appRoutes\.employmentCenter/, "Employment Center must route to the canonical hub instead of Applications.");
+assert.match(employmentCenterPage, /requireAuthenticatedUser\(appRoutes\.employmentCenter\)/, "Employment Center must be a protected authenticated hub.");
+assert.match(employmentCenterPage, /href: appRoutes\.documents/, "Employment Center must expose the existing documents workspace without replacing it.");
 assert.match(operatingSystem, /href: appRoutes\.opportunities/, "Jobs must route to the existing opportunities and job intelligence workspace.");
 assert.match(operatingSystem, /href: appRoutes\.applications/, "Applications must route to the existing tracker workspace.");
 assert.match(operatingSystem, /href: appRoutes\.interview/, "Interview Preparation must route to the existing interview workspace.");
@@ -385,11 +588,11 @@ assert.match(skillsPage, /ProgressPageContent/, "The /skills entry point must re
 assert.match(billingPage, /PricingPage/, "The /billing entry point must reuse the existing billing/pricing implementation.");
 assert.doesNotMatch(navigation, /label: "Profile"/, "Main navigation must not include a duplicate Profile label.");
 assert.doesNotMatch(floatingMentorButton, /\/dashboard|\/employment-tracker|\/progress/, "Contextual Mentor routing must not reference legacy app routes.");
-assert.ok(/profile: "\/onboarding"/.test(journeyRouter) || /profile: appRoutes\.onboarding/.test(journeyRouter), "Profile completion must route to the profile setup flow, not membership profile.");
+assert.match(journeyRouter, /profile: appRoutes\.professionalIdentity/, "Profile completion must route to Professional Identity, not old onboarding or membership profile.");
 assert.doesNotMatch(journeyRouter, /founding-members|pricing|settings|\/profile"/, "Journey Router must not send Continue My Journey to Founder, Billing, Settings, or membership profile.");
 
 const expectedOrder = [
-  ["\"/onboarding\"", "appRoutes.onboarding"],
+  ["\"/professional-identity\"", "appRoutes.professionalIdentity"],
   ["\"/discovery\"", "appRoutes.discovery"],
   ["\"/roadmap\"", "appRoutes.roadmap"],
   ["\"/professional-identity/cv\"", "appRoutes.professionalIdentityCv"],
@@ -400,7 +603,7 @@ const expectedOrder = [
   ["\"/applications\"", "appRoutes.applications"],
   ["\"/interview\"", "appRoutes.interview"],
   ["\"/skills\"", "appRoutes.skills"],
-  ["\"/applications\"", "appRoutes.applications"]
+  ["\"/roadmap\"", "appRoutes.roadmap"]
 ];
 
 let previousIndex = -1;
@@ -435,6 +638,17 @@ for (const key of expectedKeys) {
 assert.match(launchService, /export async function getMembershipState/, "Membership reads must go through one shared state helper.");
 assert.match(launchService, /export async function claimFounderMembership/, "Founder claims must go through one explicit claim helper.");
 assert.match(launchService, /export async function getOrCreateLaunchMembership[\s\S]*return getLaunchMembership\(supabase, userId\);/, "Legacy getOrCreate helper must be read-only.");
+assert.match(authSessionSafety, /export type AuthSessionStatus[\s\S]*"expired"[\s\S]*"email_verification_required"[\s\S]*"password_recovery"/, "Phase 2C must model expired sessions, email verification, and password recovery centrally.");
+assert.match(authSessionSafety, /safeRedirectDestination\(requestedDestination, appRoutes\.authenticatedHome\)/, "Auth session redirects must use the central safe redirect guard.");
+assert.match(authCallback, /rawNext\?\.startsWith\(appRoutes\.authUpdatePassword\)[\s\S]*safeRedirectDestination\(rawNext, PATHZY_ROUTES\.HOME\)/, "Auth callback must sanitize ordinary return URLs while preserving password recovery.");
+assert.match(logoutButton, /window\.location\.replace\(appRoutes\.login\)/, "Logout must use the central login route with full navigation after auth cookie changes.");
+assert.match(languagePreferences, /export type LanguagePreferenceLayer[\s\S]*"interface"[\s\S]*"professional_document"[\s\S]*"career_coach"[\s\S]*"interview_practice"[\s\S]*"notification_email"/, "Phase 2C must model independent PATHZY language preference layers.");
+assert.match(languagePreferences, /languagePreferenceStorageMap[\s\S]*user_profiles\.language[\s\S]*professional_identity\.language[\s\S]*pathzy_brain\.language[\s\S]*interview_preps\.language/, "Language architecture must document current compatibility storage without adding a new schema.");
+assert.match(languageSettingsForm, /profileLanguagePatchForInterface/, "Settings must write the interface language through the shared language preference helper.");
+assert.match(authorization, /export const pathzyRoles = \["user", "founder_user", "support", "admin", "super_admin", "background_service"\]/, "Phase 2C must define the supported PATHZY role model.");
+assert.match(authorization, /authorizeOwnerAccess[\s\S]*This resource belongs to another PATHZY user/, "Authorization must centrally deny cross-user resource access.");
+assert.match(authorization, /authorizeFeatureAccess[\s\S]*canAccessFeature/, "Authorization must keep feature access delegated to the shared entitlement service.");
+assert.match(authorization, /audit:[\s\S]*required:[\s\S]*event:/, "Authorization decisions must include audit logging hooks.");
 assert.doesNotMatch(navigation, /label: "My Documents"/, "My Documents must stay inside My Professional Profile, not main navigation.");
 assert.doesNotMatch(navigation, /label: "Founding Members"/, "Founder access must not be in normal navigation.");
 assert.match(permissions, /export function canCreateCV[\s\S]*return normalizePermissionContext\(context\)\.isAuthenticated;/, "Free and premium users must be able to create CVs on the same route.");
@@ -470,7 +684,7 @@ assert.match(professionalCvPage, /requireAuthenticatedUser\("\/professional-iden
 assert.match(professionalCoverLetterPage, /requireAuthenticatedUser\("\/professional-identity\/cover-letter"\)/, "All users must reach the same canonical Cover Letter route.");
 assert.match(professionalCvPage, /locked=\{!unlocked\}[\s\S]*exportLocked=\{!canExport\}/, "CV Builder must allow creation/editing while locking only export actions for free users.");
 assert.match(professionalCoverLetterPage, /locked=\{!unlocked\}[\s\S]*exportLocked=\{!canExport\}/, "Cover Letter Builder must allow creation/editing while locking only export actions for free users.");
-assert.match(professionalIdentityPage, /button: "My CV"/, "Professional Profile must label the existing CV workspace as My CV.");
+assert.doesNotMatch(professionalIdentityPage, /button: "My CV"|tools = \[/, "Professional Identity setup must not render the old document tool grid.");
 assert.match(professionalCvPage, /title="My CV"/, "CV workspace page header must use the My CV label.");
 assert.match(professionalCoverLetterPage, /title="My Cover Letter"/, "Cover Letter workspace page header must use the My Cover Letter label.");
 assert.match(professionalCvPage, /Build your professional CV[\s\S]*PATHZY will prepare the first draft, and you can review, edit and improve it before downloading\./, "My CV page must show the explanatory intro card before the workspace.");
@@ -495,8 +709,12 @@ assert.doesNotMatch(myCoverLetterIntroCard, /ButtonLink|<Link|href=|<button/, "T
 assert.match(settingsPage, />My CV<\/ButtonLink>/, "Settings shortcut must use the My CV label.");
 assert.match(navigation, /"My CV"/, "Shared user-facing product data must use the My CV label.");
 assert.doesNotMatch(`${professionalIdentityPage}\n${professionalCvPage}\n${settingsPage}\n${navigation}\n${readFileSync("app/qa-pathzy-journey/page.tsx", "utf8")}`, /Create My CV/, "Relevant user-facing CV workspace labels must not say Create My CV.");
-assert.match(professionalIdentityPage, /<ProfileActionEditor rows=\{profileRows\} \/>/, "Professional Profile information rows must use the shared inline profile action editor.");
+assert.match(professionalIdentityPage, /<ProfileActionEditor rows=\{profileRows\} initialSection=\{params\.section\} initialIntroStage=\{params\.stage === "welcome" \? "welcome" : undefined\} initialValues=\{professionalIdentityValues\} \/>/, "Professional Profile information rows must hydrate the shared guided profile editor with the Welcome stage when requested.");
 assert.doesNotMatch(professionalIdentityPage, /appRoutes\.settings|href="\/settings"|href=\{appRoutes\.billing\}|href="\/billing"|href="\/profile"|href="\/roadmap"|href="\/onboarding"/, "Professional Profile Edit/Add Missing Info actions must not leave the profile workflow for Settings, Billing, legacy profile, Journey, or onboarding.");
+assert.match(professionalIdentityPage, /showReview[\s\S]*t\("identity\.page\.reviewTitle"\)/, "Professional Identity must render a dedicated translated Review My Information state before Home.");
+assert.match(pathzyI18n, /Review My Information[\s\S]*Vérifier mes informations/, "Review My Information copy must be available in English and French.");
+assert.match(professionalIdentityPage, /ProfessionalIdentityReviewActions/, "Professional Identity review must expose the Finish Setup action.");
+assert.match(professionalIdentityPage, /identity\.review\.required[\s\S]*identity\.review\.recommendedMissing[\s\S]*identity\.review\.optionalMissing/, "Professional Identity review must distinguish required, recommended, and optional information.");
 assert.match(profileActionEditor, /export const profileSectionActions/, "Professional Profile actions must be centralized in profileSectionActions.");
 for (const sectionName of ["name", "email", "phone", "location", "currentStatus", "education", "fieldOfStudy", "careerDirection", "experience", "skills", "languages", "projects", "certificates", "achievements", "references"]) {
   assert.match(profileActionEditor, new RegExp(`${sectionName}: \\{`), `${sectionName} must open its own exact Professional Profile editor.`);
@@ -505,13 +723,47 @@ for (const editorName of ["Name editor", "Email editor", "Phone editor", "Locati
   assert.match(profileActionEditor, new RegExp(editorName), `${editorName} must be available from My Professional Profile.`);
 }
 assert.match(profileActionEditor, /fetch\("\/api\/professional-profile"/, "Professional Profile Save must persist through the dedicated profile save endpoint.");
-assert.match(profileActionEditor, /router\.refresh\(\)/, "Professional Profile Save must refresh the page so updated data appears immediately.");
-assert.match(profileActionEditor, /Save returns to \/professional-identity/, "Professional Profile Save must return users to My Professional Profile.");
-assert.match(profileActionEditor, /Cancel returns to \/professional-identity without saving/, "Professional Profile Cancel must keep users on My Professional Profile without saving.");
-assert.match(profileActionEditor, /Open Documents/, "Uploaded documents must open My Documents rather than Settings.");
+assert.match(pathzyI18n, /Welcome to PATHZY\.[\s\S]*Bienvenue sur PATHZY\./, "Professional Identity must begin with the approved translated welcome experience.");
+assert.match(pathzyI18n, /We'll help you build one trusted Professional Identity[\s\S]*Nous allons vous aider à créer une Identité Professionnelle fiable/, "Professional Identity welcome must explain the foundation journey in English and French.");
+assert.match(profileActionEditor, /Autosave/, "Professional Identity must expose autosave state instead of a manual save workflow.");
+assert.match(profileActionEditor, /introStage === "identity" \? formatPathzyStepCount\(activeLanguage, activeIndex \+ 1, journeySteps\.length\) : formatPathzyStepCount/, "Professional Identity must show translated intro-aware and identity step progress.");
+assert.match(profileActionEditor, /identity\.status\.completed[\s\S]*identity\.status\.current[\s\S]*identity\.status\.available[\s\S]*identity\.status\.locked/, "Professional Identity sidebar must show completed, current, available, and locked states.");
+assert.match(profileActionEditor, /step\.importance/, "Professional Identity sidebar must show required, recommended, and optional states.");
+for (const introAction of ["Personalise my experience", "Personnaliser mon expérience", "Let's begin", "Commençons"]) {
+  assert.match(pathzyI18n, new RegExp(introAction), `Professional Identity intro action must include ${introAction}.`);
+}
+assert.match(profileActionEditor, /onboarding\.review/, "Completed required Professional Identity setup must move users to Review My Information.");
+assert.match(profileActionEditor, /action: "finishSetup"/, "Finish Setup must persist completion through the existing profile endpoint.");
+assert.doesNotMatch(profileActionEditor, />Save</, "Professional Identity journey must not expose a manual Save button.");
+assert.match(profileActionEditor, /href=\{appRoutes\.documents\}/, "Uploaded documents must open My Documents rather than Settings.");
 assert.doesNotMatch(profileActionEditor, /appRoutes\.settings|\/settings|\/billing|membership|\/roadmap|\/onboarding/, "Profile action editor must not route profile fixes to Settings, Billing, membership, Journey, or onboarding.");
+assert.match(profileActionEditor, /type IntroStage = "welcome" \| "interfaceLanguage" \| "documentLanguage" \| "careerCoach" \| "identity"/, "Phase 2D must guide users through welcome, language, document language, coach intro, and identity stages.");
+assert.match(profileActionEditor, /professionalDocumentLanguageLabels/, "Professional document language must be selected independently from interface language.");
+assert.match(profileActionEditor, /career_coach_intro_seen/, "Career Coach orientation completion must be persisted for resume behaviour.");
+assert.match(profileActionEditor, /const journeySteps: JourneyStep\[\] = \[[\s\S]*key: "profile"[\s\S]*key: "photo"[\s\S]*key: "personal_information"[\s\S]*key: "preferences"[\s\S]*key: "availability"/, "Professional Identity editor must expose the locked 23-section journey in canonical order.");
+const phase2dJourneyStepsSource = profileActionEditor.slice(profileActionEditor.indexOf("const journeySteps"), profileActionEditor.indexOf("const sectionAliases"));
+assert.equal((phase2dJourneyStepsSource.match(/\{ key: "/g) ?? []).length, 23, "Phase 2D guided editor must contain exactly 23 Professional Identity sections.");
+assert.match(appShell, /<LanguageSelector initialLanguage=\{profileLanguage\} \/>/, "Authenticated shell must expose the permanent interface language selector.");
+assert.match(languageSelector, /useState<SupportedLanguageCode>\(\(\) => normalizeLanguageCode\(initialLanguage\)\)/, "Client language state must hydrate from the server-provided initial language instead of browser-only storage.");
+assert.doesNotMatch(languageSelector, /localStorage\.getItem\(publicLanguageStorageKey\)/, "Initial language hydration must not prefer localStorage over the server-visible language source.");
+assert.match(serverLanguage, /cookieStore\.get\(interfaceLanguageCookieName\)/, "Server language resolution must read the shared interface language cookie.");
+assert.match(serverLanguage, /suggestedLanguageFromBrowser\(headerStore\.get\("accept-language"\)\)/, "New visitors without a cookie should receive a server-rendered browser-language default.");
+assert.match(rootLayout, /const initialLanguage = await getServerInterfaceLanguage\(\);[\s\S]*<html lang=\{initialLanguage\}>/, "The root document language must use the same server language source as hydrated client content.");
+assert.match(homepage, /<PathzyLanguageProvider initialLanguage=\{initialLanguage\}>[\s\S]*<LandingContent/, "The public landing page must seed client language from the server language source.");
+assert.match(appShell, /<PathzyLanguageProvider initialLanguage=\{interfaceLanguage\}>/, "Authenticated pages must seed client language from the same profile or cookie language used by server navigation.");
+assert.match(appShell, /focusedOnboarding[\s\S]*journeyDecision\?\.currentState !== "home_ready"[\s\S]*journeyDecision\?\.currentState !== "diagnosis_complete"/, "Focused onboarding shell must hide full navigation until setup/diagnosis state is ready.");
+assert.match(appShell, /user && !focusedOnboarding \? <FloatingMentorButton/, "Focused onboarding shell must hide floating mentor during first-time setup.");
+assert.match(languagePreferences, /professionalDocumentLanguageLabels[\s\S]*same_as_interface[\s\S]*normalizeProfessionalDocumentLanguageChoice/, "Language preference architecture must support independent document language choices.");
+assert.match(languageSelector, /publicLanguageStorageKey[\s\S]*document\.cookie[\s\S]*languageChangedEventName/, "Public language selection must persist before authentication and notify current pages.");
+for (const sectionName of ["Profil", "Informations personnelles", "Nationalité", "Autorisation de travail", "Objectif professionnel", "Résumé professionnel", "Compétences", "Préférences d'emploi", "Disponibilité"]) {
+  assert.match(pathzyI18n, new RegExp(sectionName), `French Professional Identity section translation must include ${sectionName}.`);
+}
+assert.match(professionalProfileApi, /section === "profile"[\s\S]*current_status[\s\S]*section === "preferences"[\s\S]*professional_document_language/, "Professional Profile endpoint must persist the new Profile and Preferences sections.");
+assert.match(professionalProfileApi, /redirectTo: `\$\{appRoutes\.discovery\}\?reason=setup-complete`/, "Finish Setup must transition to Employment Diagnosis rather than Home or documents.");
+assert.doesNotMatch(professionalProfileApi, /redirectTo: appRoutes\.authenticatedHome/, "Finish Setup must not route directly to Home.");
 assert.match(professionalProfileApi, /from\("user_profiles"\)\.upsert/, "Professional Profile save endpoint must create or update the user's profile row.");
 assert.match(professionalProfileApi, /from\("discovery_responses"\)/, "Professional Profile save endpoint must update discovery-backed profile sections.");
+assert.match(professionalProfileApi, /profilePhoto[\s\S]*employmentPreferences/, "Professional Profile save endpoint must accept the full guided Professional Identity journey.");
 assert.match(professionalProfileApi, /updatePathzyBrain/, "Professional Profile save endpoint must refresh employment readiness after saving.");
 assert.match(professionalProfileApi, /redirectTo: "\/professional-identity"/, "Professional Profile save endpoint must report the canonical return destination.");
 assert.doesNotMatch(professionalProfileApi, /\/settings|\/billing|\/roadmap|\/onboarding/, "Professional Profile save endpoint must not redirect profile edits to unrelated workflows.");
@@ -944,6 +1196,8 @@ for (const entityType of ["CanonicalEmployment", "CanonicalEducation", "Canonica
 assert.match(canonicalProfileTypes, /type: ProfessionalIdentityViewType[\s\S]*configuration:[\s\S]*selectedEmploymentIds\?: string\[][\s\S]*profileVersion: number;/, "Professional identity views must reference canonical entity IDs and profile versions.");
 assert.match(canonicalProfileTypes, /overrideType: "hide" \| "reorder" \| "presentation_text" \| "shortened_text" \| "targeted_text"/, "CV-specific rewrites must be stored as view overrides, not canonical fact mutations.");
 assert.match(canonicalProfileService, /export async function getOrCreateCanonicalProfile/, "Phase 6 must create or load exactly one canonical profile per user.");
+assert.match(canonicalProfileService, /export async function getCanonicalProfileSummary[\s\S]*try \{[\s\S]*getOrCreateCanonicalProfile[\s\S]*catch \(error\)[\s\S]*summary fallback used[\s\S]*readiness: "not_ready"/, "Professional Identity must not render raw Supabase schema errors when canonical profile tables are unavailable.");
+assert.doesNotMatch(canonicalProfileService, /getCanonicalProfileSummary[\s\S]*catch \(error\)[\s\S]*console\.error/, "Canonical profile summary fallback must not use console.error because Next.js development treats it as a blocking overlay.");
 assert.match(canonicalProfileService, /from\("user_profiles"\)/, "Canonical profile initialization must audit legacy user_profiles fields.");
 assert.match(canonicalProfileService, /sourceType: "existing_profile"/, "Legacy user_profiles fields must be treated as migrated evidence, not a separate profile system.");
 assert.match(canonicalProfileService, /export async function addManualProfileEntity/, "Manual profile entry must go through a canonical command service.");
@@ -995,8 +1249,8 @@ assert.match(canonicalProfileMigration, /auth\.uid\(\) = user_id/g, "Canonical R
 for (const text of ["Professional Identity", "Identite professionnelle", "Review needed", "Verification necessaire", "Profile history", "Historique du profil", "Documents and evidence", "Documents et justificatifs"]) {
   assert.match(canonicalProfileTranslations, new RegExp(text), `Canonical profile translations must include ${text}.`);
 }
-assert.match(professionalIdentityPage, /getCanonicalProfileSummary\(supabase, user\.id\)/, "My Professional Profile must read the shared canonical profile summary.");
-assert.match(professionalIdentityPage, /<CanonicalProfileOverview summary=\{canonicalSummary\} \/>/, "My Professional Profile must show the canonical identity overview without replacing existing editors.");
+assert.match(canonicalProfileService, /export async function getCanonicalProfileSummary/, "The canonical profile summary service must remain available for downstream Professional Identity tools.");
+assert.doesNotMatch(professionalIdentityPage, /CanonicalProfileOverview/, "Professional Identity setup must stay focused and avoid mixing review with separate document/tool overviews.");
 assert.match(canonicalProfileOverview, /One profile for every career document\./, "Canonical profile UI must explain the single-source-of-truth model in human language.");
 assert.match(canonicalProfileOverview, /Completion[\s\S]*Confidence[\s\S]*Consistency/, "Canonical profile UI must keep completion, confidence and consistency separate.");
 assert.match(canonicalIdentityModel, /export const PROFESSIONAL_IDENTITY_SECTION_IDS = \[[\s\S]*"profile"[\s\S]*"photo"[\s\S]*"personal_information"[\s\S]*"work_authorization"[\s\S]*"career_goal"[\s\S]*"professional_summary"[\s\S]*"employment_preferences"[\s\S]*"salary_expectations"[\s\S]*"availability"/, "Phase 2A must lock the 23 authoritative Professional Identity sections in one model file.");

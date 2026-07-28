@@ -3,6 +3,25 @@
 @tailwind utilities;
 
 :root {
+  --pathzy-ink: #080d18;
+  --pathzy-navy: #0c1628;
+  --pathzy-deep-navy: #111e34;
+  --pathzy-red: #d93a46;
+  --pathzy-red-dark: #a92130;
+  --pathzy-ivory: #f7f5f1;
+  --pathzy-mist: #eef1f4;
+  --pathzy-slate: #667085;
+  --pathzy-border: #d9dee7;
+  --pathzy-success: #197a55;
+  --pathzy-warning: #b86a16;
+  --pathzy-error: #b42318;
+  --pathzy-radius-sm: 14px;
+  --pathzy-radius-md: 22px;
+  --pathzy-radius-lg: 32px;
+  --pathzy-shadow-soft: 0 18px 55px rgba(17, 24, 39, 0.08);
+  --pathzy-shadow-deep: 0 28px 90px rgba(8, 13, 24, 0.28);
+  --pathzy-font-display: Sora, Manrope, Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --pathzy-font-body: Manrope, Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --background: #050816;
   --secondary: #0b1020;
   --panel: rgba(11, 16, 32, 0.72);
@@ -18,6 +37,12 @@
   --danger: #ff6b6b;
   --radius: 24px;
   --shadow: 0 24px 90px rgba(0, 0, 0, 0.38);
+  --auth-background: #080d18;
+  --auth-card: #ffffff;
+  --auth-text: #111827;
+  --auth-muted: #6b7280;
+  --auth-line: #e5e7eb;
+  --auth-blue: #2563eb;
 }
 
 * {
@@ -36,7 +61,7 @@ body {
     radial-gradient(circle at 8% -10%, rgba(91, 140, 255, 0.34), transparent 30rem),
     radial-gradient(circle at 88% 8%, rgba(123, 92, 255, 0.28), transparent 28rem),
     linear-gradient(180deg, #050816 0%, #080c1b 44%, #050816 100%);
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--pathzy-font-body);
 }
 
 body::before {
@@ -73,8 +98,17 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid rgba(143, 176, 255, 0.95);
+  outline: 2px solid var(--pathzy-red);
   outline-offset: 4px;
+}
+
+h1,
+h2,
+h3,
+h4,
+.pathzy-display {
+  font-family: var(--pathzy-font-display);
+  letter-spacing: 0;
 }
 
 .container {
@@ -114,6 +148,99 @@ textarea:focus-visible {
 
 .blue-purple {
   background: linear-gradient(135deg, var(--blue), var(--purple));
+}
+
+.pathzy-auth-shell {
+  min-height: 100vh;
+  color: var(--pathzy-ivory);
+  background:
+    radial-gradient(circle at 12% -12%, rgba(217, 58, 70, 0.18), transparent 28rem),
+    radial-gradient(circle at 88% 0%, rgba(247, 245, 241, 0.08), transparent 25rem),
+    linear-gradient(180deg, var(--pathzy-ink) 0%, var(--pathzy-navy) 48%, #07101f 100%);
+}
+
+.pathzy-auth-shell .surface,
+.pathzy-auth-shell .glass {
+  border-color: var(--pathzy-border);
+  border-radius: var(--pathzy-radius-lg);
+  background: var(--auth-card);
+  box-shadow: var(--pathzy-shadow-soft);
+  backdrop-filter: none;
+}
+
+.pathzy-auth-shell .surface:hover {
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+}
+
+.pathzy-auth-shell .gradient-text {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  color: var(--pathzy-ivory);
+}
+
+.pathzy-auth-shell .blue-purple {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, var(--pathzy-red), var(--pathzy-red-dark));
+}
+
+.pathzy-auth-shell .progress-fill {
+  background: linear-gradient(135deg, var(--pathzy-red), var(--pathzy-red-dark));
+}
+
+.pathzy-auth-shell .field {
+  border-color: var(--auth-line);
+  color: var(--auth-text);
+  background: #ffffff;
+}
+
+.pathzy-auth-shell .field::placeholder {
+  color: #9ca3af;
+}
+
+.pathzy-auth-shell select.field option {
+  background: #ffffff;
+  color: var(--auth-text);
+}
+
+.pathzy-auth-shell .field:focus {
+  border-color: rgba(217, 58, 70, 0.72);
+  box-shadow: 0 0 0 4px rgba(217, 58, 70, 0.12);
+}
+
+.pathzy-auth-shell .label {
+  color: #374151;
+}
+
+.pathzy-auth-shell .surface .gradient-text,
+.pathzy-auth-shell .glass .gradient-text {
+  color: var(--auth-text);
+}
+
+.pathzy-auth-shell .text-white {
+  color: var(--pathzy-ivory) !important;
+}
+
+.pathzy-auth-shell [class*="text-white\\/"] {
+  color: rgba(247, 245, 241, 0.72) !important;
+}
+
+.pathzy-auth-shell .blue-purple.text-white,
+.pathzy-auth-shell .blue-purple [class*="text-white"] {
+  color: #ffffff !important;
+}
+
+.pathzy-auth-shell [class*="border-white\\/"] {
+  border-color: rgba(247, 245, 241, 0.16) !important;
+}
+
+.pathzy-auth-shell [class*="bg-white\\/"] {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.pathzy-auth-shell [class*="bg-black\\/"] {
+  background-color: #f9fafb !important;
 }
 
 .progress-fill {

@@ -2,6 +2,8 @@ export const supportedLanguageCodes = ["en", "fr"] as const;
 
 export type SupportedLanguageCode = (typeof supportedLanguageCodes)[number];
 
+export const interfaceLanguageCookieName = "pathzy_interface_language";
+
 export type LanguagePreferenceLayer =
   | "interface"
   | "professional_document"
@@ -23,6 +25,14 @@ export const defaultLanguagePreferences: PathzyLanguagePreferences = {
   interview_practice: "en",
   notification_email: "en"
 };
+
+export const professionalDocumentLanguageLabels = {
+  same_as_interface: "Same as interface language",
+  en: languageLabels.en,
+  fr: languageLabels.fr
+} as const;
+
+export type ProfessionalDocumentLanguageChoice = keyof typeof professionalDocumentLanguageLabels;
 
 export const languagePreferenceStorageMap: Record<LanguagePreferenceLayer, { current: string[]; future: string[] }> = {
   interface: { current: ["user_profiles.language"], future: ["user_profiles.interface_language"] },
@@ -47,12 +57,18 @@ export type LanguagePreferenceSource = Partial<Record<LanguagePreferenceLayer, s
 
 export function normalizeLanguageCode(value?: string | null): SupportedLanguageCode {
   const normalized = value?.trim().toLowerCase();
-  if (normalized === "fr" || normalized === "french" || normalized === "français" || normalized === "francais") return "fr";
+  if (normalized === "fr" || normalized === "french" || normalized === "Français" || normalized === "francais") return "fr";
   return "en";
 }
 
 export function legacyLanguageValue(code: SupportedLanguageCode) {
   return code === "fr" ? "french" : "english";
+}
+
+export function normalizeProfessionalDocumentLanguageChoice(value?: string | null): ProfessionalDocumentLanguageChoice {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "same_as_interface" || normalized === "same" || normalized === "interface") return "same_as_interface";
+  return normalizeLanguageCode(value);
 }
 
 export function suggestedLanguageFromBrowser(browserLanguage?: string | null): SupportedLanguageCode {

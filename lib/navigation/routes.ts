@@ -200,6 +200,12 @@ export const routeBuilders = {
       returnTo: returnTo ? safeRedirectDestination(returnTo, appRoutes.authenticatedHome) : undefined
     });
   },
+  professionalIdentityWelcome(returnTo?: string | null) {
+    return appendQuery(appRoutes.professionalIdentity, {
+      stage: "welcome",
+      returnTo: returnTo ? safeRedirectDestination(returnTo, appRoutes.authenticatedHome) : undefined
+    });
+  },
   professionalIdentityReview(returnTo?: string | null) {
     return appendQuery(appRoutes.professionalIdentity, {
       review: "1",

@@ -72,6 +72,45 @@ const countryOptions = [
   "Other"
 ] as const;
 
+const stepDetails = [
+  {
+    eyebrow: "Language",
+    title: "Choose the language you want PATHZY to use.",
+    body: "We will start here and keep the rest simple. You can change this later in Settings.",
+    helper: "Pick the language that feels most comfortable for building your Professional Identity."
+  },
+  {
+    eyebrow: "Your starting point",
+    title: "Where are you in your employment journey today?",
+    body: "There is no wrong answer. PATHZY uses this to guide you without making assumptions.",
+    helper: "Choose the option closest to your current situation."
+  },
+  {
+    eyebrow: "Location",
+    title: "Where should PATHZY place you professionally?",
+    body: "Your city and country help with documents, job matching, and realistic next steps.",
+    helper: "Use the location you want employers to see."
+  },
+  {
+    eyebrow: "Education",
+    title: "Tell us about your learning background.",
+    body: "Formal education, current studies, short courses, or no formal education are all acceptable starting points.",
+    helper: "Add what is true today. You can strengthen this later inside Professional Identity."
+  },
+  {
+    eyebrow: "Career direction",
+    title: "What kind of work are you moving toward?",
+    body: "A clear direction helps PATHZY recommend the right next action, but you are never locked in.",
+    helper: "Use simple words. For example: Data Analyst, IT Support, Designer, Administrator."
+  },
+  {
+    eyebrow: "Readiness",
+    title: "What do you already have ready?",
+    body: "This helps PATHZY decide what to build first after your Professional Identity is prepared.",
+    helper: "Choose only what is true. Starting from zero is completely okay."
+  }
+] as const;
+
 type InitialProfile = Partial<OnboardingState> & {
   education?: string | null;
   language?: string | null;
@@ -135,6 +174,7 @@ export function OnboardingFlow({ initialProfile }: { initialProfile?: InitialPro
   const lastFailedProgressStep = useRef<number | null>(null);
   const progress = useMemo(() => Math.round(((step + 1) / steps.length) * 100), [step]);
   const isLast = step === steps.length - 1;
+  const activeStep = stepDetails[step];
 
   function setValue<K extends keyof OnboardingState>(key: K, value: OnboardingState[K]) {
     setValues((current) => {
@@ -229,7 +269,7 @@ export function OnboardingFlow({ initialProfile }: { initialProfile?: InitialPro
       }
       if (!response.ok) throw new Error(data.error ?? "We could not save your profile yet. Please try again.");
       window.localStorage.removeItem(storageKey);
-      router.replace(data.redirectTo ?? PATHZY_ROUTES.MY_EMPLOYMENT_JOURNEY);
+      router.replace(data.redirectTo ?? PATHZY_ROUTES.PROFESSIONAL_IDENTITY);
       router.refresh();
     } catch (caught) {
       lastFailedAction.current = "submit";
@@ -291,25 +331,53 @@ export function OnboardingFlow({ initialProfile }: { initialProfile?: InitialPro
   }, [values, step]);
 
   return (
-    <Card className="mx-auto max-w-4xl">
-      <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Step {step + 1} of {steps.length} - 4 to 6 minutes</p>
-          <h2 className="mt-2 text-3xl font-black">{steps[step]}</h2>
-        </div>
-        <span className="w-fit rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/64">{progress}% complete</span>
-      </div>
-      <ProgressBar value={progress} />
+    <Card className="mx-auto max-w-5xl overflow-hidden">
+      <div className="grid gap-8 lg:grid-cols-[0.9fr_1.25fr]">
+        <aside className="rounded-[28px] border border-white/10 bg-[#071126]/70 p-5 md:p-6">
+          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#9df0c4]">Professional Identity</p>
+          <h2 className="mt-4 text-3xl font-black leading-tight md:text-4xl">Let&apos;s build the foundation first.</h2>
+          <p className="mt-4 text-base font-bold leading-7 text-white/60">
+            One focused step at a time. PATHZY saves your progress as you go, then opens the Employment Operating System when this setup is complete.
+          </p>
+          <div className="mt-6 rounded-[22px] border border-white/10 bg-white/7 p-4">
+            <div className="mb-3 flex items-center justify-between text-sm font-extrabold text-white/58">
+              <span>Step {step + 1} of {steps.length}</span>
+              <span>{progress}%</span>
+            </div>
+            <ProgressBar value={progress} />
+          </div>
+          <div className="mt-5 grid gap-2">
+            {steps.map((item, index) => {
+              const isCurrent = index === step;
+              const isDone = index < step;
+              return (
+                <div key={item} className={`rounded-[16px] border px-3 py-3 text-sm font-extrabold ${isCurrent ? "border-[#8fb0ff]/45 bg-[#5B8CFF]/16 text-white" : isDone ? "border-[#9df0c4]/25 bg-[#9df0c4]/10 text-[#d8ffe6]" : "border-white/8 bg-white/5 text-white/38"}`}>
+                  <span className="mr-2">{isDone ? "Done" : isCurrent ? "Now" : "Next"}</span>
+                  {item}
+                </div>
+              );
+            })}
+          </div>
+        </aside>
 
-      <form onSubmit={next} className="mt-8 grid gap-5">
+        <form onSubmit={next} className="grid content-start gap-5">
+          <div className="rounded-[28px] border border-white/10 bg-white/6 p-5 md:p-7">
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-white/42">{activeStep.eyebrow}</p>
+            <h3 className="mt-3 text-3xl font-black leading-tight">{activeStep.title}</h3>
+            <p className="mt-3 text-base font-bold leading-7 text-white/62">{activeStep.body}</p>
+            <p className="mt-5 rounded-[18px] border border-[#8fb0ff]/20 bg-[#5B8CFF]/10 p-4 text-sm font-bold leading-6 text-[#dce6ff]">{activeStep.helper}</p>
+          </div>
+
+          <div className="rounded-[28px] border border-white/10 bg-[#080f22]/80 p-5 md:p-7">
         {step === 0 ? (
           <div className="grid gap-3 sm:grid-cols-2">
             {[
               ["english", "English"],
               ["french", "Français"]
             ].map(([value, label]) => (
-              <button key={value} type="button" onClick={() => setValue("language", value as "english" | "french")} className={`rounded-[20px] border p-4 text-left font-black transition ${values.language === value ? "border-[#5B8CFF]/70 bg-[#5B8CFF]/18 text-white" : "border-white/10 bg-white/7 text-white/68 hover:bg-white/10"}`}>
-                {label}
+              <button key={value} type="button" onClick={() => setValue("language", value as "english" | "french")} className={`rounded-[22px] border p-5 text-left transition ${values.language === value ? "border-[#5B8CFF]/70 bg-[#5B8CFF]/18 text-white shadow-[0_18px_45px_rgba(91,140,255,.18)]" : "border-white/10 bg-white/7 text-white/68 hover:bg-white/10"}`}>
+                <span className="block text-xl font-black">{label}</span>
+                <span className="mt-2 block text-sm font-bold text-white/50">Use {label} for your PATHZY guidance.</span>
               </button>
             ))}
           </div>
@@ -325,7 +393,7 @@ export function OnboardingFlow({ initialProfile }: { initialProfile?: InitialPro
               ["career_changer", "Career changer"],
               ["employed", "Already employed"]
             ].map(([value, label]) => (
-              <button key={value} type="button" onClick={() => setValue("current_status", value)} className={`rounded-[20px] border p-4 text-left font-black transition ${values.current_status === value ? "border-[#5B8CFF]/70 bg-[#5B8CFF]/18 text-white" : "border-white/10 bg-white/7 text-white/68 hover:bg-white/10"}`}>
+              <button key={value} type="button" onClick={() => setValue("current_status", value)} className={`rounded-[20px] border p-4 text-left font-black transition ${values.current_status === value ? "border-[#5B8CFF]/70 bg-[#5B8CFF]/18 text-white shadow-[0_18px_45px_rgba(91,140,255,.14)]" : "border-white/10 bg-white/7 text-white/68 hover:bg-white/10"}`}>
                 {label}
               </button>
             ))}
@@ -410,6 +478,7 @@ export function OnboardingFlow({ initialProfile }: { initialProfile?: InitialPro
             </div>
           </div>
         ) : null}
+          </div>
 
         {message ? (
           <div className={`rounded-[18px] border p-4 text-base font-bold leading-7 ${saveError ? "border-[#ff6b6b]/30 bg-[#ff6b6b]/10 text-[#ffc5c5]" : "border-white/10 bg-white/7 text-white/76"}`}>
@@ -422,19 +491,20 @@ export function OnboardingFlow({ initialProfile }: { initialProfile?: InitialPro
           </div>
         ) : null}
 
-        <p className="rounded-[18px] border border-white/10 bg-white/5 p-3 text-sm font-bold text-white/56">
-          {autosaveState === "saving" ? "Saving your progress..." : autosaveState === "saved" ? "Progress saved." : "Your answers save as you go."}
-        </p>
+        <div className="rounded-[18px] border border-white/10 bg-white/5 p-4 text-sm font-bold text-white/56">
+          {autosaveState === "saving" ? "Saving your progress..." : autosaveState === "saved" ? "Progress saved. You can safely continue." : "Your answers save automatically as you go."}
+        </div>
 
         <div className="flex flex-wrap justify-between gap-3">
           <button type="button" onClick={() => setStep((current) => Math.max(0, current - 1))} disabled={step === 0 || saving} className="rounded-full border border-white/12 bg-white/8 px-6 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-40">
             Back
           </button>
           <button disabled={saving} className="rounded-full blue-purple px-6 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">
-            {saving ? "Building your PATHZY profile..." : isLast ? "Finish onboarding" : "Continue"}
+            {saving ? "Preparing your Employment Operating System..." : isLast ? "Open Employment Operating System" : "Next"}
           </button>
         </div>
       </form>
+      </div>
     </Card>
   );
 }

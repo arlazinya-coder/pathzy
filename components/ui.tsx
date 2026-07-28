@@ -11,11 +11,11 @@ export function Badge({ children }: { children: React.ReactNode }) {
 export function ButtonLink({ href, children, variant = "primary" }: { href: string; children: React.ReactNode; variant?: "primary" | "secondary" }) {
   const classes =
     variant === "primary"
-      ? "blue-purple text-white shadow-[0_16px_42px_rgba(91,140,255,.32)]"
+      ? "blue-purple text-white shadow-[0_16px_42px_rgba(217,58,70,.24)]"
       : "border border-white/12 bg-white/8 text-white/82";
 
   return (
-    <Link href={href} className={`tap-target inline-flex min-h-12 items-center justify-center rounded-full px-6 py-3 text-sm font-extrabold transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8fb0ff] ${classes}`}>
+    <Link href={href} className={`tap-target inline-flex min-h-12 items-center justify-center rounded-full px-6 py-3 text-sm font-extrabold transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--pathzy-red)] ${classes}`}>
       {children}
     </Link>
   );

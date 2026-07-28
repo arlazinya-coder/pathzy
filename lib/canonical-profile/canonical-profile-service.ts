@@ -481,8 +481,40 @@ export async function saveProfessionalIdentityView(supabase: Supabase, view: Pro
   return data;
 }
 
+function canonicalSummaryFallbackLog(error: unknown) {
+  const supabaseError = error as { code?: unknown; message?: unknown };
+  return {
+    level: "warning",
+    code: typeof supabaseError.code === "string" && supabaseError.code ? supabaseError.code : "unknown",
+    message:
+      typeof supabaseError.message === "string" && supabaseError.message
+        ? supabaseError.message
+        : "Unable to load canonical profile summary."
+  };
+}
+
 export async function getCanonicalProfileSummary(supabase: Supabase, userId: string): Promise<CanonicalProfileSummary> {
-  const profile = await getOrCreateCanonicalProfile(supabase, userId);
+  let profile: CanonicalProfessionalIdentity;
+  try {
+    profile = await getOrCreateCanonicalProfile(supabase, userId);
+  } catch (error) {
+    console.info("[canonical-profile] summary fallback used", canonicalSummaryFallbackLog(error));
+    const fallback = emptyIdentity(userId, `fallback-${userId}`, canonicalNow());
+    return {
+      profileId: fallback.id,
+      userId,
+      version: fallback.version,
+      status: fallback.status,
+      completion: 0,
+      confidence: 0,
+      consistency: 100,
+      readiness: "not_ready",
+      reviewNeededCount: 0,
+      topSkills: [],
+      latestTimelineItems: [],
+      updatedAt: fallback.updatedAt
+    };
+  }
   const quality = {
     completion: calculateCanonicalCompletion(profile),
     confidence: calculateCanonicalConfidence(profile)

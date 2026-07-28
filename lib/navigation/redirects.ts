@@ -1,4 +1,5 @@
 import { appRoutes } from "./routes";
+import { safePostAuthDestination } from "./auth-routing";
 import { canUseProfessionalIdentity, hasPremiumAccess, type PermissionContext } from "./permissions";
 
 export type RedirectState = PermissionContext & {
@@ -11,11 +12,11 @@ export type RedirectState = PermissionContext & {
 
 export function getRedirectForState(state: RedirectState | null | undefined) {
   if (!state?.isAuthenticated && state?.pathname && state.pathname !== appRoutes.login) return appRoutes.login;
-  if (state?.isAuthenticated && state.onboardingComplete === false) return appRoutes.onboarding;
+  if (state?.isAuthenticated && state.onboardingComplete === false) return appRoutes.professionalIdentity;
   if (state?.isAuthenticated && state.profileComplete === false) return appRoutes.professionalIdentity;
   if (state?.requestedPremiumFeature && !hasPremiumAccess(state)) return appRoutes.billing;
   if (state?.requestedProfessionalIdentity && !canUseProfessionalIdentity(state)) return appRoutes.billing;
-  return appRoutes.dashboard;
+  return appRoutes.authenticatedHome;
 }
 
 export function redirectToLogin(pathname: string) {
@@ -23,5 +24,5 @@ export function redirectToLogin(pathname: string) {
 }
 
 export function redirectAfterAuth(next?: string | null) {
-  return next?.startsWith("/") ? next : appRoutes.dashboard;
+  return safePostAuthDestination(next, appRoutes.authenticatedHome);
 }
