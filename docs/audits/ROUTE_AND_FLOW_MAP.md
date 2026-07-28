@@ -150,6 +150,75 @@ Recommendation:
 - Add route builder helpers for routes with query strings, especially CV, cover letter, interview, applications, and mentor contexts.
 - Do not delete legacy routes until their redirects and analytics are verified.
 
+## Phase 2B Route Foundation Update
+
+Implementation date: 2026-07-28
+
+Canonical route registry location:
+
+- `lib/navigation/routes.ts`
+
+Route ownership added:
+
+- `routeGroups.public`
+- `routeGroups.authentication`
+- `routeGroups.onboarding`
+- `routeGroups.application`
+- `routeGroups.admin`
+- `routeGroups.legacyAliases`
+
+Typed route builders added:
+
+- `routeBuilders.login(returnTo)`
+- `routeBuilders.professionalIdentitySection(sectionId, returnTo)`
+- `routeBuilders.professionalIdentityReview(returnTo)`
+- `routeBuilders.professionalIdentityFinish(returnTo)`
+- `routeBuilders.employmentDiagnosis(reason)`
+- `routeBuilders.cvWorkspace({ intent, documentId, returnTo })`
+- `routeBuilders.coverLetterWorkspace({ applicationId, jobId, documentId, returnTo })`
+- `routeBuilders.linkedinWorkspace(documentId)`
+- `routeBuilders.jobMatch(jobId, returnTo)`
+- `routeBuilders.applicationDetail(applicationId, returnTo)`
+- `routeBuilders.interviewPreparation(applicationId, type)`
+- `routeBuilders.coachContext(contextType, entityId)`
+- `routeBuilders.withReturnTo(pathname, returnTo)`
+- `safeRedirectDestination(target, fallback)`
+
+Onboarding state source:
+
+- `lib/navigation/auth-routing.ts`
+
+Implemented onboarding states:
+
+- `unauthenticated`
+- `authenticated_language_pending`
+- `identity_not_started`
+- `identity_in_progress`
+- `identity_review_pending`
+- `identity_finish_pending`
+- `diagnosis_pending`
+- `diagnosis_complete`
+- `home_ready`
+
+Compatibility notes:
+
+- Final interface-language persistence is not yet present in the current runtime schema. Phase 2B therefore treats language as selected unless an explicit resolver fact says `interfaceLanguageSelected: false`. This avoids trapping existing users while keeping the state model testable.
+- Final Employment Diagnosis persistence is not yet present everywhere. Phase 2B therefore treats completed legacy setup as diagnosis complete unless an explicit resolver fact says `diagnosisComplete: false`.
+- `/roadmap` remains the technical route for Personalised Home during compatibility. User-facing language should be Home, Personalised Home, or My Employment Journey depending on context, not a permanent product name of "Roadmap".
+- The current Professional Identity UI has fewer renderer steps than the 23 canonical sections. Phase 2B maps canonical section IDs such as `personal_information`, `work_authorization`, `career_goal`, and `employment_preferences` to the existing guided editor renderers instead of creating a second editor.
+
+Known defects addressed:
+
+- `Continue` now resolves setup states through `resolvePathzyNextRoute`.
+- Document milestones such as Cover Letter no longer make Home's `Continue` destination a Cover Letter route; document milestones route through Employment Center.
+- `Open Employment Center` remains `/employment-center`.
+- Applications remain `/applications` and are not used as the Employment Center fallback.
+- Unsafe external return URLs and auth-route return URLs are rejected by the route registry.
+
+Remaining hardcoded route issues:
+
+- Some lower-priority component and public-page links still contain literal routes. They are documented as compatibility debt and should be migrated incrementally after Phase 2B without changing product behaviour.
+
 ## Local Route Structure
 
 Routes observed from the production build include:

@@ -1,5 +1,5 @@
 import { ButtonLink, Card, PageHeader, ProgressBar } from "@/components/ui";
-import { appRoutes } from "@/lib/navigation/routes";
+import { appRoutes, routeBuilders } from "@/lib/navigation/routes";
 import { dashboardMetrics } from "@/lib/pathzy-data";
 import { redirect } from "next/navigation";
 
@@ -24,8 +24,8 @@ export function ProgressPageContent() {
             <p className="mt-2 leading-7 text-white/62">Use today&apos;s mission or build your CV while you keep improving your strongest skill gap.</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <ButtonLink href="/missions">Start Skill Mission</ButtonLink>
-            <ButtonLink href="/professional-identity/cv" variant="secondary">Build CV</ButtonLink>
+            <ButtonLink href={appRoutes.missions}>Start Skill Mission</ButtonLink>
+            <ButtonLink href={routeBuilders.cvWorkspace({ intent: "build" })} variant="secondary">Build CV</ButtonLink>
           </div>
         </div>
       </Card>

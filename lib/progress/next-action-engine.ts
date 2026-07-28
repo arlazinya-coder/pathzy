@@ -1,5 +1,6 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { isApplicationActive, normalizeApplicationStatus, summarizeApplicationTracker } from "@/lib/applications/application-tracker-service";
+import { firstIncompleteProfessionalIdentitySection, professionalIdentityIsSufficient, professionalIdentityReviewHref, professionalIdentitySectionHref, resolvePathzyNextRoute } from "@/lib/navigation/auth-routing";
 import { appRoutes } from "@/lib/navigation/routes";
 import { getProfessionalIdentityContext } from "@/lib/professional-identity/professional-identity-service";
 import { getJourneyActions, getProgressMilestones, getProgressPercent, type JourneyAction, type ProgressInputs, type ProgressMilestone } from "@/lib/progress/progress-engine";
@@ -36,19 +37,9 @@ type DiscoverySnapshot = {
   generated_result?: { career_paths?: Array<{ title?: string | null }> } | null;
 };
 
-function hasText(value: unknown) {
-  return typeof value === "string" && value.trim().length > 0;
-}
-
-function profileIsComplete(profile: ProfileSnapshot | null, user: User) {
+function profileIsComplete(profile: ProfileSnapshot | null, user: User, discovery: DiscoverySnapshot | null) {
   if (!profile?.onboarding_completed) return false;
-  return Boolean(
-    hasText(profile.full_name) &&
-    hasText(profile.email ?? user.email) &&
-    hasText(profile.country) &&
-    hasText(profile.current_status) &&
-    (hasText(profile.education) || hasText(profile.highest_qualification) || hasText(profile.field_of_study))
-  );
+  return professionalIdentityIsSufficient(profile, user, discovery);
 }
 
 function careerGoalFrom(profile: ProfileSnapshot | null, discovery: DiscoverySnapshot | null) {
@@ -59,6 +50,7 @@ function careerGoalFrom(profile: ProfileSnapshot | null, discovery: DiscoverySna
 
 function labelForMilestone(milestone: ProgressMilestone, inputs: ProgressInputs) {
   if (milestone.key === "profile") return "Complete My Professional Profile";
+  if (["cv", "cover_letter", "linkedin", "career_passport"].includes(milestone.key)) return "Open Employment Center";
   if (milestone.key === "applications" && inputs.applicationsSent > 0) return "Track application";
   if (milestone.key === "applications") return "Save or start an application";
   if (milestone.key === "interview_prep") return "Prepare for interview";
@@ -68,12 +60,23 @@ function labelForMilestone(milestone: ProgressMilestone, inputs: ProgressInputs)
 
 function routeForMilestone(milestone: ProgressMilestone) {
   if (milestone.key === "profile") return appRoutes.professionalIdentity;
+  if (["cv", "cover_letter", "linkedin", "career_passport"].includes(milestone.key)) return appRoutes.employmentCenter;
   return milestone.href;
+}
+
+function profileResumeRoute(profile: ProfileSnapshot | null, user: User, discovery: DiscoverySnapshot | null) {
+  const missingSection = firstIncompleteProfessionalIdentitySection(profile, user, discovery);
+  if (missingSection) return professionalIdentitySectionHref(missingSection);
+  if (!profile?.onboarding_completed) return professionalIdentityReviewHref();
+  return appRoutes.professionalIdentity;
 }
 
 function reasonForMilestone(milestone: ProgressMilestone) {
   if (milestone.key === "profile") {
     return "PATHZY needs your profile details before it can create stronger documents and guidance.";
+  }
+  if (["cv", "cover_letter", "linkedin", "career_passport"].includes(milestone.key)) {
+    return "Use Employment Center to manage CVs, cover letters, LinkedIn content, and other professional materials from one place.";
   }
   if (milestone.key === "applications") {
     return "A saved or started application turns your plan into real employment progress.";
@@ -156,7 +159,7 @@ export async function getPathzyNextAction(supabase: Supabase, user: User): Promi
   const onboardingComplete = Boolean(typedProfile?.onboarding_completed);
 
   const progressInputs: ProgressInputs = {
-    profileComplete: profileIsComplete(typedProfile, user),
+    profileComplete: profileIsComplete(typedProfile, user, typedDiscovery),
     discoveryComplete: Boolean(typedDiscovery),
     careerGoalSelected: Boolean(careerGoalFrom(typedProfile, typedDiscovery)),
     cvComplete: hasCv,
@@ -176,11 +179,19 @@ export async function getPathzyNextAction(supabase: Supabase, user: User): Promi
   if (!onboardingComplete) {
     const milestones = getProgressMilestones(progressInputs);
     const milestone = milestones[0];
+    const routeDecision = resolvePathzyNextRoute({
+      authenticated: true,
+      profile: typedProfile,
+      user,
+      discovery: typedDiscovery,
+      requestedDestination: appRoutes.authenticatedHome
+    });
+    const destinationRoute = routeDecision.destination;
 
     return {
-      label: "Complete onboarding",
-      destinationRoute: appRoutes.onboarding,
-      reason: "Answer a few basics so PATHZY can guide you toward employment with the right context.",
+      label: "Complete Professional Identity",
+      destinationRoute,
+      reason: routeDecision.reason,
       completionState: "not_started",
       progressInputs,
       progressPercent: getProgressPercent(progressInputs),
@@ -196,7 +207,7 @@ export async function getPathzyNextAction(supabase: Supabase, user: User): Promi
 
   return {
     label: labelForMilestone(milestone, progressInputs),
-    destinationRoute: routeForMilestone(milestone),
+    destinationRoute: milestone.key === "profile" ? profileResumeRoute(typedProfile, user, typedDiscovery) : routeForMilestone(milestone),
     reason: reasonForMilestone(milestone),
     completionState: progressPercent >= 100 ? "completed" : progressPercent > 0 ? "in_progress" : "not_started",
     progressInputs,
