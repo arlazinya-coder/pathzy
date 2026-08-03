@@ -299,6 +299,24 @@ Required principles:
 
 PATHZY must not analyze or score protected characteristics, appearance, accent, or personality stereotypes.
 
+## 14. Professional Photo and Profile Presentation
+
+Professional Photo is part of canonical Professional Identity, but it is optional unless a future explicit policy changes that rule.
+
+Required principles:
+
+- one canonical professional photo asset per user identity context
+- image binaries live in protected object storage, not profile records
+- profile records store references, metadata, consent, visibility, and usage decisions
+- temporary browser URLs and large base64 images must never be persisted
+- photo, profile visibility, CV usage, and future public sharing are separate user decisions
+- public sharing defaults to off
+- CV templates must not own independent profile-photo uploads
+- photo-disabled CV templates must remain complete and premium
+- PATHZY must not perform face recognition or infer sensitive personal traits from a photo
+
+The Professional Profile preview is a private representation of Professional Identity. It is not a second profile, a social network, a public directory, or a LinkedIn clone.
+
 ## 14. Human Approval
 
 PATHZY may prepare documents, messages, follow-ups, recommendations, application packages, and interview answers.
