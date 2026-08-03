@@ -2,6 +2,7 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { isApplicationActive, normalizeApplicationStatus, summarizeApplicationTracker } from "@/lib/applications/application-tracker-service";
 import { firstIncompleteProfessionalIdentitySection, professionalIdentityIsSufficient, professionalIdentityReviewHref, professionalIdentitySectionHref, resolvePathzyNextRoute } from "@/lib/navigation/auth-routing";
 import { appRoutes } from "@/lib/navigation/routes";
+import { getProfessionalIdentityReadModelSafe } from "@/lib/professional-identity/professional-identity-read-service";
 import { getProfessionalIdentityContext } from "@/lib/professional-identity/professional-identity-service";
 import { getJourneyActions, getProgressMilestones, getProgressPercent, type JourneyAction, type ProgressInputs, type ProgressMilestone } from "@/lib/progress/progress-engine";
 
@@ -115,33 +116,21 @@ function employmentNextMilestone(milestones: ProgressMilestone[], inputs: Progre
 
 export async function getPathzyNextAction(supabase: Supabase, user: User): Promise<PathzyNextAction> {
   const [
-    { data: profile },
-    { data: discovery },
+    identityReadModel,
     professionalIdentity,
     { data: opportunityActions },
     { data: applications },
     { data: interviewPreps }
   ] = await Promise.all([
-    supabase
-      .from("user_profiles")
-      .select("full_name,email,country,city,education,highest_qualification,field_of_study,current_status,career_goal,onboarding_completed")
-      .or(`user_id.eq.${user.id},id.eq.${user.id}`)
-      .maybeSingle(),
-    supabase
-      .from("discovery_responses")
-      .select("answers,generated_result")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+    getProfessionalIdentityReadModelSafe(supabase, user, "next action identity"),
     getProfessionalIdentityContext(supabase, user.id),
     supabase.from("user_opportunity_actions").select("applied,completed,saved").eq("user_id", user.id),
     supabase.from("employment_applications").select("id,status,company_name,role,follow_up_date,next_action_date,next_action,updated_at,created_at").eq("user_id", user.id),
     supabase.from("interview_preps").select("completed").eq("user_id", user.id)
   ]);
 
-  const typedProfile = profile as ProfileSnapshot | null;
-  const typedDiscovery = discovery as DiscoverySnapshot | null;
+  const typedProfile = identityReadModel.profile as ProfileSnapshot | null;
+  const typedDiscovery = identityReadModel.discovery as DiscoverySnapshot | null;
   const trackedApplications = applications ?? [];
   const applicationSummary = summarizeApplicationTracker(trackedApplications as never[]);
   const applicationActions = opportunityActions ?? [];

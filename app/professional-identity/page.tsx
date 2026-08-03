@@ -1,33 +1,17 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Card, PageHeader, ProgressBar } from "@/components/ui";
 import { ProfileActionEditor, ProfessionalIdentityReviewActions, type ProfessionalIdentityValues, type ProfileActionRow } from "@/components/professional-identity/profile-action-editor";
-import { professionalIdentityRequiredChecks, professionalIdentitySectionHref } from "@/lib/navigation/auth-routing";
-import { getProfessionalIdentityContext } from "@/lib/professional-identity/professional-identity-service";
-import { normalizeLanguageCode, normalizeProfessionalDocumentLanguageChoice } from "@/lib/language/language-preferences";
-import { pathzyPhase2T, pathzyT, professionalIdentityImportanceLabel, professionalIdentitySectionTranslations } from "@/lib/language/pathzy-i18n";
+import { professionalIdentityReviewHref, professionalIdentitySectionHref, resolvePathzyNextRoute } from "@/lib/navigation/auth-routing";
+import { getProfessionalIdentityReadModel } from "@/lib/professional-identity/professional-identity-read-service";
+import { normalizeLanguageCode } from "@/lib/language/language-preferences";
+import { pathzyPhase2T, pathzyT, professionalIdentityImportanceLabel, professionalIdentitySectionTranslations, professionalIdentityStepText } from "@/lib/language/pathzy-i18n";
+import { appRoutes, routeBuilders, type ProfessionalIdentityOnboardingStage } from "@/lib/navigation/routes";
+import { professionalPhotoStorageContract } from "@/lib/professional-identity/professional-photo";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
 
 type SummaryStatus = "Required" | "Recommended" | "Optional";
-
-function listFrom(value: unknown): string[] {
-  if (Array.isArray(value)) return value.map((item) => String(item ?? "").trim()).filter(Boolean);
-  if (typeof value === "string") return value.split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean);
-  return [];
-}
-
-function textFrom(value: unknown) {
-  if (typeof value === "string") return value;
-  if (Array.isArray(value)) return value.map((item) => String(item ?? "").trim()).filter(Boolean).join(", ");
-  return "";
-}
-
-function firstAvailableList(...values: unknown[]) {
-  for (const value of values) {
-    const list = listFrom(value);
-    if (list.length) return list;
-  }
-  return [];
-}
+const professionalIdentityIntroStages: ProfessionalIdentityOnboardingStage[] = ["welcome", "interfaceLanguage", "documentLanguage", "careerCoach", "professionalIdentityIntroduction"];
 
 function displayValue(value: string | string[]) {
   const values = Array.isArray(value) ? value.map((item) => item.trim()).filter(Boolean) : [value.trim()].filter(Boolean);
@@ -45,23 +29,11 @@ function statusClasses(status: SummaryStatus, hasValue: boolean) {
   return hasValue ? "bg-[#f3f4f6] text-[#374151]" : "bg-[#f9fafb] text-[#9CA3AF]";
 }
 
-export default async function ProfessionalIdentityPage({ searchParams }: { searchParams?: Promise<{ section?: string; review?: string; stage?: string }> }) {
+export default async function ProfessionalIdentityPage({ searchParams }: { searchParams?: Promise<{ section?: string; review?: string; stage?: string; returnTo?: string; finish?: string }> }) {
   const params = searchParams ? await searchParams : {};
   const { user, supabase } = await requireAuthenticatedUser("/professional-identity");
-  const [context, { data: profile }, { data: discovery }, { data: uploadedDocuments }] = await Promise.all([
-    getProfessionalIdentityContext(supabase, user.id),
-    supabase
-      .from("user_profiles")
-      .select("full_name,email,phone,city,country,education,field_of_study,current_status,career_goal,preferred_path,linkedin_url,portfolio_url,language,has_certificates,onboarding_completed")
-      .or(`user_id.eq.${user.id},id.eq.${user.id}`)
-      .maybeSingle(),
-    supabase
-      .from("discovery_responses")
-      .select("answers")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+  const [identityReadModel, { data: uploadedDocuments }] = await Promise.all([
+    getProfessionalIdentityReadModel(supabase, user),
     supabase
       .from("user_documents")
       .select("document_title,document_type")
@@ -69,9 +41,9 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
       .in("document_type", ["uploaded_document", "old_cv", "supporting_document"])
       .limit(10)
   ]);
-  const score = context?.score;
-  const answers = (discovery?.answers ?? {}) as Record<string, unknown>;
-  const interfaceLanguage = normalizeLanguageCode(profile?.language);
+  const { profile, discovery, values: professionalIdentityValues, completion: identityCompletion, requiredChecks } = identityReadModel;
+  const editorInitialValues = professionalIdentityValues as Partial<ProfessionalIdentityValues>;
+  const interfaceLanguage = normalizeLanguageCode(professionalIdentityValues.interface_language ?? profile?.language);
   const t = (key: Parameters<typeof pathzyT>[1]) => pathzyT(interfaceLanguage, key);
   const phase2T = (key: Parameters<typeof pathzyPhase2T>[1]) => pathzyPhase2T(interfaceLanguage, key);
   const sectionName = (key: string, fallback: string) => professionalIdentitySectionTranslations[interfaceLanguage]?.[key] ?? fallback;
@@ -80,51 +52,18 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
     if (status === "Recommended") return professionalIdentityImportanceLabel(interfaceLanguage, "recommended");
     return professionalIdentityImportanceLabel(interfaceLanguage, "optional");
   };
-  const professionalIdentityValues: Partial<ProfessionalIdentityValues> = {
-    profilePhoto: textFrom(answers.profile_photo),
-    full_name: profile?.full_name ?? "",
-    email: profile?.email ?? user.email ?? "",
-    phone: profile?.phone ?? "",
-    current_status: profile?.current_status ?? "",
-    city: profile?.city ?? "",
-    country: profile?.country ?? "",
-    nationality: textFrom(answers.nationality),
-    work_authorization: textFrom(answers.work_authorization),
-    career_goal: profile?.career_goal ?? profile?.preferred_path ?? "",
-    professional_summary: textFrom(answers.professional_summary),
-    education: firstAvailableList(answers.education_history, profile?.education),
-    field_of_study: profile?.field_of_study ?? "",
-    experience: firstAvailableList(answers.experience_history, answers.personal_background),
-    skills: firstAvailableList(answers.skills),
-    projects: firstAvailableList(answers.projects_history, answers.interests),
-    achievements: firstAvailableList(answers.achievements_list, answers.achievements),
-    certificates: firstAvailableList(answers.certificates_list, answers.certifications, profile?.has_certificates ? "Certificates available" : ""),
-    licences: firstAvailableList(answers.licences),
-    languages: firstAvailableList(answers.languages, profile?.language),
-    references: firstAvailableList(answers.references_list, answers.references),
-    linkedin_url: profile?.linkedin_url ?? "",
-    portfolio_url: profile?.portfolio_url ?? "",
-    github_url: textFrom(answers.github_url),
-    behance_url: textFrom(answers.behance_url),
-    website_url: textFrom(answers.website_url),
-    preferred_roles: firstAvailableList(answers.preferred_roles),
-    industries: firstAvailableList(answers.industries),
-    employment_type: textFrom(answers.employment_type),
-    salary_expectations: textFrom(answers.salary_expectations),
-    availability: textFrom(answers.availability),
-    work_type: textFrom(answers.work_type),
-    relocation: textFrom(answers.relocation),
-    interface_language: profile?.language ? normalizeLanguageCode(profile.language) : "",
-    professional_document_language: textFrom(answers.professional_document_language) ? normalizeProfessionalDocumentLanguageChoice(textFrom(answers.professional_document_language)) : "",
-    career_coach_intro_seen: answers.career_coach_intro_seen === true || textFrom(answers.career_coach_intro_seen) === "true" ? "true" : ""
-  };
   const profileRows: ProfileActionRow[] = [
     { section: "uploadedDocuments", label: sectionName("uploadedDocuments", "Uploaded documents"), value: uploadedDocuments?.map((document) => document.document_title).join(", ") ?? "", helper: phase2T("identity.ui.openDocuments") }
   ];
-  const requiredChecks = professionalIdentityRequiredChecks(profile, discovery, user);
   const requiredComplete = requiredChecks.every((item) => item.complete);
-  const showReview = !params.section && (params.review === "1" || (requiredComplete && !profile?.onboarding_completed));
-  const completionPercent = Math.max(score?.totalScore ?? 0, Math.round((requiredChecks.filter((item) => item.complete).length / requiredChecks.length) * 72));
+  const setupComplete = Boolean(profile?.onboarding_completed);
+  const professionalPhotoAsset = professionalIdentityValues.professional_photo_asset;
+  let professionalPhotoSignedUrl = "";
+  if (professionalPhotoAsset?.storagePath && professionalPhotoAsset.photoStatus === "ready") {
+    const { data } = await supabase.storage.from(professionalPhotoStorageContract.bucketName).createSignedUrl(professionalPhotoAsset.storagePath, 600);
+    professionalPhotoSignedUrl = data?.signedUrl ?? "";
+  }
+  const showReview = !params.section && params.review === "1";
   const reviewSections: Array<{ label: string; status: SummaryStatus; value: string | string[]; editSection: string }> = [
     { label: sectionName("profile", "Profile"), status: "Required", value: professionalIdentityValues.current_status ?? "", editSection: "profile" },
     { label: sectionName("photo", "Photo"), status: "Optional", value: professionalIdentityValues.profilePhoto ?? "", editSection: "photo" },
@@ -150,27 +89,99 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
     { label: sectionName("salary_expectations", "Salary Expectations"), status: "Optional", value: professionalIdentityValues.salary_expectations ?? "", editSection: "salary_expectations" },
     { label: sectionName("availability", "Availability"), status: "Required", value: professionalIdentityValues.availability ?? "", editSection: "availability" }
   ];
+  const rawCompletionPercent = identityCompletion.percentage;
   const recommendedMissing = reviewSections.filter((section) => section.status === "Recommended" && !displayValue(section.value)).length;
   const optionalMissing = reviewSections.filter((section) => section.status === "Optional" && !displayValue(section.value)).length;
   const firstMissingCheck = requiredChecks.find((item) => !item.complete);
   const firstMissingLabel = firstMissingCheck ? sectionName(firstMissingCheck.section, firstMissingCheck.label) : phase2T("identity.review.highlightedSection");
+  const missingRequiredChecks = requiredChecks.filter((item) => !item.complete);
+  const lastUpdated = profile?.updated_at ? new Intl.DateTimeFormat(interfaceLanguage === "fr" ? "fr-FR" : "en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(profile.updated_at)) : phase2T("identity.review.notAvailable");
+  const reviewHref = professionalIdentityReviewHref();
+  const resumeHref = firstMissingCheck ? professionalIdentitySectionHref(firstMissingCheck.section) : reviewHref;
+  const routeDecision = resolvePathzyNextRoute({
+    authenticated: true,
+    profile,
+    discovery,
+    user
+  });
+  const stageForState: Partial<Record<typeof routeDecision.currentState, ProfessionalIdentityOnboardingStage>> = {
+    welcome_pending: "welcome",
+    interface_language_pending: "interfaceLanguage",
+    authenticated_language_pending: "interfaceLanguage",
+    document_language_pending: "documentLanguage",
+    coach_intro_pending: "careerCoach",
+    professional_identity_intro_pending: "professionalIdentityIntroduction"
+  };
+  const identityProgressStarted = Boolean(
+    setupComplete ||
+      routeDecision.currentState === "identity_in_progress" ||
+      routeDecision.currentState === "identity_review_pending" ||
+      routeDecision.currentState === "identity_finish_pending" ||
+      routeDecision.currentState === "diagnosis_pending" ||
+      routeDecision.currentState === "diagnosis_complete" ||
+      routeDecision.currentState === "home_ready"
+  );
+  const completionPercent = identityProgressStarted ? rawCompletionPercent : 0;
+  const sectionStatus = (section: (typeof reviewSections)[number]) => {
+    const value = displayValue(section.value);
+    if (section.status === "Optional" && !value) return t("identity.status.optional");
+    if (section.status === "Required" && !value) return phase2T("identity.review.missingRequiredInformation");
+    if (!value) return t("identity.status.needsAttention");
+    return t("identity.status.completed");
+  };
+  const requestedStage = professionalIdentityIntroStages.includes(params.stage as ProfessionalIdentityOnboardingStage) ? params.stage as ProfessionalIdentityOnboardingStage : null;
+  const resolvedStage = requestedStage ?? stageForState[routeDecision.currentState] ?? null;
+  const resolvedSection = params.section ?? (routeDecision.currentState === "identity_in_progress" ? routeDecision.resumeSection : undefined);
+  const showEditor = Boolean(resolvedSection || resolvedStage);
+  const showFocusedSetup = Boolean(resolvedStage);
+  const requestedStageDestination = requestedStage ? routeBuilders.professionalIdentityOnboardingStage(requestedStage) : "";
+  const requestedFinishDestination = params.finish === "1" ? routeBuilders.professionalIdentityFinish() : "";
+  const setupRouteStates = new Set([
+    "welcome_pending",
+    "interface_language_pending",
+    "document_language_pending",
+    "coach_intro_pending",
+    "professional_identity_intro_pending",
+    "identity_not_started",
+    "identity_in_progress",
+    "identity_review_pending",
+    "identity_finish_pending"
+  ]);
+  if (setupComplete && requestedStage) {
+    redirect(appRoutes.professionalIdentity);
+  }
+  if (!params.section && params.review !== "1" && setupRouteStates.has(routeDecision.currentState)) {
+    const currentDestination = requestedStageDestination || requestedFinishDestination || appRoutes.professionalIdentity;
+    if (routeDecision.destination !== currentDestination) {
+      redirect(routeDecision.destination);
+    }
+  }
 
   return (
     <div className="container page-pad">
-      <PageHeader eyebrow={t("identity.page.eyebrow")} title={showReview ? t("identity.page.reviewTitle") : t("identity.page.title")}>
-        {showReview
-          ? t("identity.page.reviewBody")
-          : t("identity.page.body")}
-      </PageHeader>
+      {!showFocusedSetup ? (
+        <PageHeader eyebrow={t("identity.page.eyebrow")} title={showReview ? t("identity.page.reviewTitle") : showEditor ? t("identity.page.title") : phase2T("identity.overview.title")}>
+          {showReview
+            ? t("identity.page.reviewBody")
+            : showEditor
+              ? t("identity.page.body")
+              : phase2T("identity.overview.body")}
+        </PageHeader>
+      ) : null}
 
       {showReview ? (
         <div className="grid gap-6">
           <Card>
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-4">
-                <div className="grid h-16 w-16 shrink-0 place-items-center rounded-3xl bg-[#eff6ff] text-xl font-semibold text-[#2563EB]">
-                  {initialsFor(profile?.full_name ?? "", user.email)}
-                </div>
+                {professionalPhotoSignedUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={professionalPhotoSignedUrl} alt={sectionName("photo", "Photo")} className="h-16 w-16 shrink-0 rounded-3xl object-cover" />
+                ) : (
+                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-3xl bg-[#eff6ff] text-xl font-semibold text-[#2563EB]">
+                    {initialsFor(profile?.full_name ?? "", user.email)}
+                  </div>
+                )}
                 <div>
                   <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#2563EB]">{requiredComplete ? phase2T("identity.review.requiredComplete") : phase2T("identity.review.requiredNeedsAttention")}</p>
                   <h2 className="mt-2 text-3xl font-semibold tracking-[-0.02em] text-[#111827]">{profile?.full_name || phase2T("identity.review.defaultName")}</h2>
@@ -179,7 +190,7 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
               </div>
               <div className="w-full max-w-xs">
                 <div className="mb-2 flex justify-between text-sm font-semibold text-[#6B7280]">
-                  <span>Professional Identity</span>
+                  <span>{phase2T("home.identityLabel")}</span>
                   <span>{completionPercent}% {phase2T("identity.review.complete")}</span>
                 </div>
                 <ProgressBar value={completionPercent} />
@@ -198,6 +209,10 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
                 <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#9CA3AF]">{phase2T("identity.review.optionalMissing")}</p>
                 <p className="mt-2 text-2xl font-semibold text-[#111827]">{optionalMissing}</p>
               </div>
+              <div className="rounded-[22px] border border-[#e5e7eb] bg-[#f9fafb] p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#9CA3AF]">{phase2T("identity.review.lastUpdated")}</p>
+                <p className="mt-2 text-base font-semibold text-[#111827]">{lastUpdated}</p>
+              </div>
             </div>
           </Card>
 
@@ -206,7 +221,7 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
               {reviewSections.map((section) => {
                 const value = displayValue(section.value);
                 return (
-                  <div key={section.label} className="flex flex-col gap-3 rounded-[22px] border border-[#e5e7eb] bg-white p-4 md:flex-row md:items-start md:justify-between">
+                  <div id={`identity-review-${section.editSection}`} key={section.label} className="scroll-mt-28 flex flex-col gap-3 rounded-[22px] border border-[#e5e7eb] bg-white p-4 md:flex-row md:items-start md:justify-between">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-lg font-semibold text-[#111827]">{section.label}</h3>
@@ -216,8 +231,8 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
                       </div>
                       <p className="mt-2 text-sm leading-6 text-[#6B7280]">{value || (section.status === "Required" ? phase2T("identity.review.addRequired") : phase2T("identity.review.improveLater"))}</p>
                     </div>
-                    <Link href={professionalIdentitySectionHref(section.editSection as never)} className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-[#d1d5db] bg-white px-4 py-2 text-sm font-bold text-[#374151] transition hover:border-[#2563EB] hover:text-[#2563EB]">
-                      {phase2T("identity.review.edit")}
+                    <Link href={professionalIdentitySectionHref(section.editSection as never, "review")} aria-label={`${phase2T("identity.review.editSection")}: ${section.label}`} className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-[#d1d5db] bg-white px-4 py-2 text-sm font-bold text-[#374151] transition hover:border-[#2563EB] hover:text-[#2563EB]">
+                      {phase2T("identity.review.editSection")}
                     </Link>
                   </div>
                 );
@@ -225,32 +240,142 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
             </div>
             {!requiredComplete ? (
               <div className="mt-6 rounded-[22px] border border-[#fecaca] bg-[#fef2f2] p-4 text-sm font-semibold leading-6 text-[#991b1b]">
-                {phase2T("identity.review.notComplete")} {firstMissingLabel}.
+                <p>{phase2T("identity.review.missingRequiredInformation")}: {firstMissingLabel}.</p>
+                <div className="mt-3 grid gap-2">
+                  {missingRequiredChecks.map((item) => (
+                    <Link key={item.section} href={professionalIdentitySectionHref(item.section, "review")} className="inline-flex min-h-11 items-center justify-between gap-3 rounded-full border border-[#fecaca] bg-white px-4 py-2 text-sm font-bold text-[#991b1b]">
+                      <span>{sectionName(item.section, item.label)} - {professionalIdentityStepText(interfaceLanguage, item.section, "guidance", item.guidance)}</span>
+                      <span>{phase2T("identity.review.completeSection")}</span>
+                    </Link>
+                  ))}
+                </div>
               </div>
             ) : null}
-            <ProfessionalIdentityReviewActions editHref={professionalIdentitySectionHref(firstMissingCheck?.section ?? "personal_information")} />
+            <div className="mt-6 rounded-[22px] border border-[#dbeafe] bg-[#eff6ff] p-4 text-sm leading-6 text-[#1e3a8a]">
+              <p className="font-bold">{phase2T("identity.sync.changed")}</p>
+              <p>{phase2T("identity.sync.mayNeedUpdates")}</p>
+              <p className="mt-2 font-semibold">{phase2T("identity.sync.dependents")}</p>
+            </div>
+            <ProfessionalIdentityReviewActions editHref={professionalIdentitySectionHref(firstMissingCheck?.section ?? "personal_information", "review")} requiredComplete={requiredComplete} setupComplete={setupComplete} />
           </Card>
         </div>
-      ) : (
+      ) : showEditor ? (
         <>
-          <div className="mb-6 grid gap-5 lg:grid-cols-[.72fr_1fr]">
+          {!showFocusedSetup ? (
+            <div className="mb-6 grid gap-5 lg:grid-cols-[.72fr_1fr]">
+              <Card>
+                <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#2563EB]">{phase2T("identity.review.progressTitle")}</p>
+                <strong className="mt-3 block text-6xl font-semibold text-[#111827]">{completionPercent}<span className="text-xl text-[#9CA3AF]">%</span></strong>
+                <p className="mt-3 text-lg font-semibold text-[#6B7280]">{requiredComplete ? phase2T("identity.ui.reviewBeforeHome") : phase2T("identity.review.keepGoing")}</p>
+                <div className="mt-5"><ProgressBar value={completionPercent} /></div>
+              </Card>
+              <Card>
+                <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#2563EB]">{phase2T("identity.review.why")}</p>
+                <p className="mt-3 text-2xl font-semibold leading-9 text-[#111827]">{phase2T("identity.review.whyTitle")}</p>
+                <p className="mt-3 leading-7 text-[#6B7280]">{phase2T("identity.review.whyBody")}</p>
+              </Card>
+            </div>
+          ) : null}
+
+          {showFocusedSetup ? (
+            <ProfileActionEditor
+              rows={profileRows}
+              initialSection={resolvedSection}
+              initialIntroStage={resolvedStage ?? undefined}
+              initialValues={editorInitialValues}
+              returnTo={params.returnTo}
+            />
+          ) : (
             <Card>
-              <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#2563EB]">{phase2T("identity.review.progressTitle")}</p>
-              <strong className="mt-3 block text-6xl font-semibold text-[#111827]">{completionPercent}<span className="text-xl text-[#9CA3AF]">%</span></strong>
-              <p className="mt-3 text-lg font-semibold text-[#6B7280]">{requiredComplete ? phase2T("identity.ui.reviewBeforeHome") : phase2T("identity.review.keepGoing")}</p>
-              <div className="mt-5"><ProgressBar value={completionPercent} /></div>
+              <ProfileActionEditor
+                rows={profileRows}
+                initialSection={resolvedSection}
+                initialIntroStage={resolvedStage ?? undefined}
+                initialValues={editorInitialValues}
+                returnTo={params.returnTo}
+              />
             </Card>
-            <Card>
-              <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#2563EB]">{phase2T("identity.review.why")}</p>
-              <p className="mt-3 text-2xl font-semibold leading-9 text-[#111827]">{phase2T("identity.review.whyTitle")}</p>
-              <p className="mt-3 leading-7 text-[#6B7280]">{phase2T("identity.review.whyBody")}</p>
-            </Card>
-          </div>
+          )}
+        </>
+      ) : (
+        <div className="grid gap-6">
+          <Card>
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-4">
+                {professionalPhotoSignedUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={professionalPhotoSignedUrl} alt={sectionName("photo", "Photo")} className="h-16 w-16 shrink-0 rounded-3xl object-cover" />
+                ) : (
+                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-3xl bg-[#eff6ff] text-xl font-semibold text-[#2563EB]">
+                    {initialsFor(profile?.full_name ?? "", user.email)}
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#2563EB]">{setupComplete ? phase2T("identity.overview.setupComplete") : phase2T("identity.overview.setupInProgress")}</p>
+                  <h2 className="mt-2 text-3xl font-semibold tracking-[-0.02em] text-[#111827]">{profile?.full_name || phase2T("identity.review.defaultName")}</h2>
+                  <p className="mt-2 text-[#6B7280]">{[profile?.career_goal ?? profile?.preferred_path, profile?.city, profile?.country].filter(Boolean).join(" - ") || phase2T("identity.review.defaultBody")}</p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Link href={reviewHref} className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#2563EB] px-6 py-3 text-sm font-bold text-white shadow-[0_16px_34px_rgba(37,99,235,.22)] transition hover:bg-[#1D4ED8]">
+                  {t("onboarding.review")}
+                </Link>
+                {!requiredComplete ? (
+                  <Link href={resumeHref} className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#d1d5db] bg-white px-6 py-3 text-sm font-bold text-[#374151] transition hover:border-[#2563EB] hover:text-[#2563EB]">
+                    {phase2T("identity.overview.resumeSetup")}
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+            <div className="mt-6 grid gap-3 md:grid-cols-4">
+              <div className="rounded-[22px] border border-[#e5e7eb] bg-[#f9fafb] p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#9CA3AF]">{phase2T("identity.review.required")}</p>
+                <p className="mt-2 text-2xl font-semibold text-[#111827]">{requiredChecks.filter((item) => item.complete).length}/{requiredChecks.length}</p>
+              </div>
+              <div className="rounded-[22px] border border-[#e5e7eb] bg-[#f9fafb] p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#9CA3AF]">{phase2T("identity.review.lastUpdated")}</p>
+                <p className="mt-2 text-base font-semibold text-[#111827]">{lastUpdated}</p>
+              </div>
+              <div className="rounded-[22px] border border-[#e5e7eb] bg-[#f9fafb] p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#9CA3AF]">{phase2T("identity.review.syncStatus")}</p>
+                <p className="mt-2 text-base font-semibold text-[#111827]">{phase2T("identity.review.upToDate")}</p>
+              </div>
+              <div className="rounded-[22px] border border-[#e5e7eb] bg-[#f9fafb] p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#9CA3AF]">{phase2T("identity.review.complete")}</p>
+                <p className="mt-2 text-2xl font-semibold text-[#111827]">{completionPercent}%</p>
+              </div>
+            </div>
+          </Card>
 
           <Card>
-            <ProfileActionEditor rows={profileRows} initialSection={params.section} initialIntroStage={params.stage === "welcome" ? "welcome" : undefined} initialValues={professionalIdentityValues} />
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#2563EB]">{phase2T("identity.overview.sectionsTitle")}</p>
+                <p className="mt-2 text-sm leading-6 text-[#6B7280]">{phase2T("identity.overview.sectionsBody")}</p>
+              </div>
+              <Link href={reviewHref} className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#d1d5db] bg-white px-5 py-2 text-sm font-bold text-[#374151] transition hover:border-[#2563EB] hover:text-[#2563EB]">
+                {t("onboarding.review")}
+              </Link>
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {reviewSections.map((section, index) => {
+                const value = displayValue(section.value);
+                return (
+                  <div key={section.label} className="rounded-[20px] border border-[#e5e7eb] bg-white p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base font-semibold text-[#111827]">{index + 1}. {section.label}</h3>
+                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClasses(section.status, Boolean(value))}`}>{sectionStatus(section)}</span>
+                    </div>
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#6B7280]">{value || (section.status === "Required" ? phase2T("identity.review.addRequired") : phase2T("identity.review.improveLater"))}</p>
+                    <Link href={professionalIdentitySectionHref(section.editSection as never)} aria-label={`${phase2T("identity.review.editSection")}: ${section.label}`} className="mt-3 inline-flex min-h-10 items-center justify-center rounded-full border border-[#d1d5db] bg-white px-4 py-2 text-sm font-bold text-[#374151] transition hover:border-[#2563EB] hover:text-[#2563EB]">
+                      {phase2T("identity.review.editSection")}
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
           </Card>
-        </>
+        </div>
       )}
     </div>
   );

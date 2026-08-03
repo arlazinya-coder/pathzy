@@ -5,43 +5,44 @@ import { useRouter } from "next/navigation";
 import { AuthNotice } from "@/components/auth/auth-notice";
 import { usePathzyLanguage } from "@/components/language/language-selector";
 import { Card, ProgressBar } from "@/components/ui";
+import { discoveryAnswerValue, emptyDiscoveryAnswers, normalizeDiscoveryAnswers } from "@/lib/discovery/discovery-answer-state";
 import type { DiscoveryAnswers } from "@/lib/discovery/types";
-import { employmentDiagnosisSteps, pathzyPhase2T } from "@/lib/language/pathzy-i18n";
+import { getEmploymentDiagnosisSteps, pathzyPhase2T } from "@/lib/language/pathzy-i18n";
 import { appRoutes } from "@/lib/navigation/routes";
 
-const initialAnswers = employmentDiagnosisSteps.en.reduce(
-  (answers, [key]) => ({ ...answers, [key]: "" }),
-  {} as DiscoveryAnswers
-);
+const initialAnswers = emptyDiscoveryAnswers();
 
 export function DiscoveryFlow() {
   const router = useRouter();
   const { language } = usePathzyLanguage();
-  const steps = employmentDiagnosisSteps[language] as unknown as Array<{ key: keyof DiscoveryAnswers; title: string; prompt: string; placeholder: string }>;
+  const steps = useMemo(() => getEmploymentDiagnosisSteps(language), [language]);
   const [answers, setAnswers] = useState<DiscoveryAnswers>(initialAnswers);
   const [stepIndex, setStepIndex] = useState(0);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
-  const currentStep = steps[stepIndex];
-  const progress = useMemo(() => Math.round(((stepIndex + 1) / steps.length) * 100), [stepIndex, steps.length]);
+  const currentStep = steps[stepIndex] ?? steps[0] ?? null;
+  const progress = useMemo(() => Math.round(((Math.min(stepIndex, steps.length - 1) + 1) / Math.max(steps.length, 1)) * 100), [stepIndex, steps.length]);
   const isLastStep = stepIndex === steps.length - 1;
-  const currentValue = answers[currentStep.key];
+  const currentValue = currentStep ? discoveryAnswerValue(answers, currentStep.key) : "";
+  const currentAnswerIsValid = currentValue.trim().length > 0;
 
   function updateCurrent(value: string) {
+    if (!currentStep) return;
     setAnswers((current) => ({ ...current, [currentStep.key]: value }));
   }
 
   async function saveDiscovery() {
     setSaving(true);
     setMessage("");
+    const safeAnswers = normalizeDiscoveryAnswers(answers);
 
     try {
       const response = await fetch("/api/generate-roadmap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers })
+        body: JSON.stringify({ answers: safeAnswers })
       });
-      const payload = (await response.json()) as { error?: string };
+      const payload = (await response.json()) as { error?: string; redirectTo?: string };
 
       if (response.status === 401) {
         setMessage(payload.error || pathzyPhase2T(language, "discovery.login"));
@@ -54,7 +55,7 @@ export function DiscoveryFlow() {
         return;
       }
 
-      router.replace(appRoutes.roadmap);
+      router.replace(payload.redirectTo ?? appRoutes.authenticatedHome);
       router.refresh();
     } catch {
       setMessage(pathzyPhase2T(language, "discovery.error"));
@@ -64,6 +65,10 @@ export function DiscoveryFlow() {
   }
 
   function goNext() {
+    if (!currentStep) {
+      setMessage(pathzyPhase2T(language, "discovery.error"));
+      return;
+    }
     if (!currentValue.trim()) {
       setMessage(pathzyPhase2T(language, "discovery.required"));
       return;
@@ -75,7 +80,16 @@ export function DiscoveryFlow() {
       return;
     }
 
-    setStepIndex((current) => current + 1);
+    setStepIndex((current) => Math.min(steps.length - 1, current + 1));
+  }
+
+  if (!currentStep) {
+    return (
+      <Card className="mx-auto max-w-4xl">
+        <AuthNotice />
+        <p className="rounded-[18px] border border-white/10 bg-white/7 p-3 text-sm font-bold text-white/70">{pathzyPhase2T(language, "discovery.error")}</p>
+      </Card>
+    );
   }
 
   return (
@@ -99,6 +113,7 @@ export function DiscoveryFlow() {
             value={currentValue}
             onChange={(event) => updateCurrent(event.target.value)}
             placeholder={currentStep.placeholder}
+            aria-invalid={!currentAnswerIsValid && Boolean(message)}
           />
         </label>
 
@@ -119,7 +134,7 @@ export function DiscoveryFlow() {
           <button
             type="button"
             onClick={goNext}
-            disabled={saving}
+            disabled={saving || !currentAnswerIsValid}
             className="rounded-full blue-purple px-6 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? pathzyPhase2T(language, "discovery.saving") : isLastStep ? pathzyPhase2T(language, "discovery.submit") : pathzyPhase2T(language, "discovery.continue")}

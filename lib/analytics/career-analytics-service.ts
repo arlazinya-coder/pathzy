@@ -1,5 +1,6 @@
 import { applicationMatchesTrackerView, normalizeApplicationStatus } from "@/lib/applications/application-tracker-service";
 import type { ApplicationTrackerRow } from "@/lib/applications/application-tracker-service";
+import { appRoutes } from "@/lib/navigation/routes";
 
 export type AnalyticsPeriod = "7d" | "30d" | "90d" | "year" | "custom";
 
@@ -316,22 +317,22 @@ export function buildCareerAnalytics(input: CareerAnalyticsInput): CareerAnalyti
     ...gaps.slice(0, 2).map((gap) => ({
       label: gap.category === "presentation_gap" ? "Improve how your evidence is presented" : "Add verified evidence",
       reason: `${gap.label} appears across ${gap.count} job match ${gap.count === 1 ? "analysis" : "analyses"}.`,
-      route: "/professional-identity"
+      route: appRoutes.professionalIdentity
     })),
     ...(documentSignals(applications, input.professionalDocuments ?? []).length ? [{
       label: "Create or review a role-specific CV",
       reason: "Compare early signals cautiously and keep tailoring documents for each suitable role.",
-      route: "/professional-identity/cv"
+      route: appRoutes.professionalIdentityCv
     }] : []),
     ...(followUpsDue ? [{
       label: "Review follow-ups",
       reason: `${followUpsDue} application${followUpsDue === 1 ? " has" : "s have"} a follow-up or next action due.`,
-      route: "/applications"
+      route: appRoutes.applications
     }] : []),
     ...(interviews.length ? [{
       label: "Practise recurring interview questions",
       reason: "Interview activity is visible in your tracker. Prepare with job-specific evidence.",
-      route: "/interview"
+      route: appRoutes.interview
     }] : [])
   ].slice(0, 6);
 

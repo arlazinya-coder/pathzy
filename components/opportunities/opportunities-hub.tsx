@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Card, ProgressBar } from "@/components/ui";
 import type { SmartApplicationRecord } from "@/lib/applications/smart-application.types";
 import { jobIntelligenceCopy, targetedDocumentsCopy } from "@/lib/job-intelligence/job-intelligence-translations";
+import { appRoutes } from "@/lib/navigation/routes";
 import type {
   JobImportPreliminaryDetails,
   JobImportRecord,
@@ -519,7 +520,9 @@ export function OpportunitiesHub({
                 <button disabled={busyId === opportunity.id} onClick={() => updateAction(opportunity, { saved: true, applied: !opportunity.action.applied })} className={`rounded-full px-4 py-2 text-sm font-extrabold ${opportunity.action.applied ? "bg-[#5B8CFF]/22 text-[#c7d6ff]" : "bg-white/10 text-white/68"}`}>
                   {opportunity.action.applied ? "Applied" : "Mark as Applied"}
                 </button>
-                <Link href={`/applications?company=${encodeURIComponent(opportunity.provider)}&role=${encodeURIComponent(opportunity.title)}&type=${encodeURIComponent(opportunity.category)}`} className="rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/68 transition hover:bg-white/14">Track application</Link>
+                {opportunity.action.applied ? (
+                  <Link href={`${appRoutes.applications}?company=${encodeURIComponent(opportunity.provider)}&role=${encodeURIComponent(opportunity.title)}&type=${encodeURIComponent(opportunity.category)}`} className="rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/68 transition hover:bg-white/14">Track application</Link>
+                ) : null}
                 <Link href={`/interview?role=${encodeURIComponent(opportunity.title)}&company=${encodeURIComponent(opportunity.provider)}`} className="rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/68 transition hover:bg-white/14">Practice Interview</Link>
                 <Link href={`/professional-identity/cover-letter?role=${encodeURIComponent(opportunity.title)}&company=${encodeURIComponent(opportunity.provider)}`} className="rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/68 transition hover:bg-white/14">Cover letter</Link>
                 <Link href={`/professional-identity/recruiter-message?role=${encodeURIComponent(opportunity.title)}&company=${encodeURIComponent(opportunity.provider)}`} className="rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/68 transition hover:bg-white/14">Recruiter message</Link>
@@ -1358,7 +1361,7 @@ function TargetedDocumentsReview({
             <div className="rounded-[18px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-4">
               <p className="text-sm font-extrabold text-[#b9f8d5]">Application Workspace is ready.</p>
               <p className="mt-1 text-sm leading-6 text-white/60">Review the package checklist, approve documents, and mark as applied only after you submit externally.</p>
-              <Link href={`/applications?applicationId=${encodeURIComponent(smartApplication.id)}`} className="mt-3 inline-flex rounded-full bg-[#39d98a] px-4 py-2 text-sm font-extrabold text-[#062615]">
+              <Link href={`${appRoutes.applications}?applicationId=${encodeURIComponent(smartApplication.id)}`} className="mt-3 inline-flex rounded-full bg-[#39d98a] px-4 py-2 text-sm font-extrabold text-[#062615]">
                 Open Application Workspace
               </Link>
             </div>

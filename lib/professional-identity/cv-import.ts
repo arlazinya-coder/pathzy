@@ -1,5 +1,4 @@
 import mammoth from "mammoth";
-import { PDFParse } from "pdf-parse";
 import { cvModelFromUnknown, normalizeCvModelForExport } from "@/components/professional-identity/document-downloads";
 import type { CvModel } from "@/components/professional-identity/document-downloads";
 import type { SemanticDocumentModel } from "@/lib/documents/semantic";
@@ -217,6 +216,7 @@ export function validateExtractedCvText(text: string, sourceFormat: CvSourceForm
 }
 
 export async function extractPdfDocument(buffer: Buffer) {
+  const { PDFParse } = await import("pdf-parse");
   const parser = new PDFParse({ data: new Uint8Array(buffer) });
   try {
     const result = await parser.getText();

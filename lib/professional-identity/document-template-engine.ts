@@ -1,3 +1,5 @@
+import type { ProfessionalPhotoTemplateCapability } from "@/lib/professional-identity/professional-photo";
+
 export const cvTemplateNames = [
   "Executive Black",
   "Modern ATS",
@@ -24,6 +26,7 @@ export type DocumentTemplateMetadata = {
     accent: string;
     layout: "single" | "sidebar" | "consulting" | "creative" | "technical" | "executive" | "enterprise" | "healthcare" | "graduate" | "international";
   };
+  photoCapability: ProfessionalPhotoTemplateCapability;
 };
 
 export const legacyTemplateAliases: Record<string, PremiumDocumentTemplate> = {
@@ -41,7 +44,8 @@ export const documentTemplateGallery: DocumentTemplateMetadata[] = [
     bestFor: "Senior professionals, managers, founders, consultants",
     atsCharacteristic: "Executive Layout",
     recruiterCharacteristic: "Leadership Focused",
-    thumbnail: { background: "#111111", accent: "#c9a35b", layout: "executive" }
+    thumbnail: { background: "#111111", accent: "#c9a35b", layout: "executive" },
+    photoCapability: { photoMode: "optional", supportedAspects: ["portrait", "circle-safe"], fallbackLayout: "balanced-header" }
   },
   {
     name: "Modern ATS",
@@ -49,7 +53,8 @@ export const documentTemplateGallery: DocumentTemplateMetadata[] = [
     bestFor: "Online applications, corporate roles, high-volume hiring",
     atsCharacteristic: "Single-Column ATS",
     recruiterCharacteristic: "Fast Scanner Friendly",
-    thumbnail: { background: "#ffffff", accent: "#1f4f82", layout: "single" }
+    thumbnail: { background: "#ffffff", accent: "#1f4f82", layout: "single" },
+    photoCapability: { photoMode: "none", supportedAspects: [], fallbackLayout: "text-only-header" }
   },
   {
     name: "Google Style",
@@ -57,7 +62,8 @@ export const documentTemplateGallery: DocumentTemplateMetadata[] = [
     bestFor: "Tech, product, operations, data, modern startups",
     atsCharacteristic: "ATS Friendly",
     recruiterCharacteristic: "Product Focused",
-    thumbnail: { background: "#f8fbff", accent: "#4285f4", layout: "sidebar" }
+    thumbnail: { background: "#f8fbff", accent: "#4285f4", layout: "sidebar" },
+    photoCapability: { photoMode: "none", supportedAspects: [], fallbackLayout: "text-only-header" }
   },
   {
     name: "Microsoft Professional",
@@ -65,7 +71,8 @@ export const documentTemplateGallery: DocumentTemplateMetadata[] = [
     bestFor: "Enterprise, administration, finance, IT support",
     atsCharacteristic: "ATS Optimized",
     recruiterCharacteristic: "Enterprise Ready",
-    thumbnail: { background: "#f5f9ff", accent: "#2563eb", layout: "enterprise" }
+    thumbnail: { background: "#f5f9ff", accent: "#2563eb", layout: "enterprise" },
+    photoCapability: { photoMode: "optional", supportedAspects: ["square", "portrait"], fallbackLayout: "balanced-header" }
   },
   {
     name: "Deloitte Consulting",
@@ -73,7 +80,8 @@ export const documentTemplateGallery: DocumentTemplateMetadata[] = [
     bestFor: "Consulting, strategy, business analysis, graduate programs",
     atsCharacteristic: "ATS Friendly",
     recruiterCharacteristic: "Consulting Style",
-    thumbnail: { background: "#f8fff8", accent: "#86bc25", layout: "consulting" }
+    thumbnail: { background: "#f8fff8", accent: "#86bc25", layout: "consulting" },
+    photoCapability: { photoMode: "none", supportedAspects: [], fallbackLayout: "text-only-header" }
   },
   {
     name: "Creative Premium",
@@ -81,7 +89,8 @@ export const documentTemplateGallery: DocumentTemplateMetadata[] = [
     bestFor: "Design, marketing, content, portfolio-led careers",
     atsCharacteristic: "Portfolio Friendly",
     recruiterCharacteristic: "Creative Impact",
-    thumbnail: { background: "#fff7ed", accent: "#f97316", layout: "creative" }
+    thumbnail: { background: "#fff7ed", accent: "#f97316", layout: "creative" },
+    photoCapability: { photoMode: "recommended", supportedAspects: ["portrait", "square", "circle-safe"], fallbackLayout: "balanced-header" }
   },
   {
     name: "Healthcare Professional",
@@ -89,7 +98,8 @@ export const documentTemplateGallery: DocumentTemplateMetadata[] = [
     bestFor: "Healthcare, care work, public service, education support",
     atsCharacteristic: "ATS Friendly",
     recruiterCharacteristic: "Credential Focused",
-    thumbnail: { background: "#f4faf7", accent: "#15803d", layout: "healthcare" }
+    thumbnail: { background: "#f4faf7", accent: "#15803d", layout: "healthcare" },
+    photoCapability: { photoMode: "optional", supportedAspects: ["portrait", "square"], fallbackLayout: "balanced-header" }
   },
   {
     name: "Graduate Elite",
@@ -97,7 +107,8 @@ export const documentTemplateGallery: DocumentTemplateMetadata[] = [
     bestFor: "Students, graduates, internships, first jobs",
     atsCharacteristic: "Graduate Friendly",
     recruiterCharacteristic: "Potential Focused",
-    thumbnail: { background: "#f6f7ff", accent: "#6366f1", layout: "graduate" }
+    thumbnail: { background: "#f6f7ff", accent: "#6366f1", layout: "graduate" },
+    photoCapability: { photoMode: "optional", supportedAspects: ["square", "circle-safe"], fallbackLayout: "balanced-header" }
   },
   {
     name: "Engineering",
@@ -105,7 +116,8 @@ export const documentTemplateGallery: DocumentTemplateMetadata[] = [
     bestFor: "Engineering, software, data, technical support",
     atsCharacteristic: "Technical ATS",
     recruiterCharacteristic: "Project Focused",
-    thumbnail: { background: "#f8fafc", accent: "#0f766e", layout: "technical" }
+    thumbnail: { background: "#f8fafc", accent: "#0f766e", layout: "technical" },
+    photoCapability: { photoMode: "none", supportedAspects: [], fallbackLayout: "text-only-header" }
   },
   {
     name: "International Standard",
@@ -113,7 +125,8 @@ export const documentTemplateGallery: DocumentTemplateMetadata[] = [
     bestFor: "International applications, NGOs, remote roles, relocation",
     atsCharacteristic: "International Format",
     recruiterCharacteristic: "Conservative Layout",
-    thumbnail: { background: "#ffffff", accent: "#334155", layout: "international" }
+    thumbnail: { background: "#ffffff", accent: "#334155", layout: "international" },
+    photoCapability: { photoMode: "optional", supportedAspects: ["portrait"], fallbackLayout: "balanced-header" }
   }
 ];
 

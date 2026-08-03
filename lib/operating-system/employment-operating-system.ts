@@ -28,9 +28,9 @@ export const PATHZY_OPERATING_AREAS = [
   },
   {
     key: "documents",
-    label: "Documents",
-    href: appRoutes.documents,
-    description: "Create, preview, save, and manage employment documents from the same professional identity.",
+    label: "Employment Center",
+    href: appRoutes.employmentCenter,
+    description: "Create, preview, save, and manage employment tools from the same professional identity.",
     includeInNavigation: true
   },
   {

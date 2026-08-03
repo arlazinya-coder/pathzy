@@ -1,3 +1,3 @@
-import PricingPage from "@/app/pricing/page";
+import { PricingContent } from "@/app/pricing/pricing-content";
 
-export default PricingPage;
+export default PricingContent;

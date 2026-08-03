@@ -1,10 +1,20 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { PROFESSIONAL_IDENTITY_SECTION_IDS, type ProfessionalIdentitySectionId } from "@/lib/canonical-profile/canonical-professional-identity.model";
 import { appRoutes, isAuthRoute, routeBuilders, routeMatches } from "@/lib/navigation/routes";
+import { loadProfessionalIdentitySources } from "@/lib/professional-identity/professional-identity-read-service";
+import {
+  professionalIdentityRequiredChecksFromValues,
+  professionalIdentityValuesFromSources
+} from "@/lib/professional-identity/professional-identity-completion";
 
 export type ProfessionalIdentityResumeSection = ProfessionalIdentitySectionId;
 export type PathzyOnboardingState =
   | "unauthenticated"
+  | "welcome_pending"
+  | "interface_language_pending"
+  | "document_language_pending"
+  | "coach_intro_pending"
+  | "professional_identity_intro_pending"
   | "authenticated_language_pending"
   | "identity_not_started"
   | "identity_in_progress"
@@ -39,9 +49,6 @@ type ProfileSnapshot = {
   interface_language?: string | null;
   language_preference?: string | null;
   preferred_language?: string | null;
-  identity_review_completed?: boolean | null;
-  setup_finished?: boolean | null;
-  employment_diagnosis_completed?: boolean | null;
 };
 
 type DiscoverySnapshot = {
@@ -92,11 +99,40 @@ function answerText(discovery: DiscoverySnapshot | null | undefined, key: string
   return typeof value === "string" ? value : "";
 }
 
-function answerListHasText(discovery: DiscoverySnapshot | null | undefined, key: string) {
-  const value = discovery?.answers?.[key];
-  if (Array.isArray(value)) return value.some((item) => hasText(String(item ?? "")));
-  if (typeof value === "string") return value.split(/\r?\n|,/).some((item) => hasText(item));
-  return false;
+const onboardingStateOrder = [
+  "account_created",
+  "welcome_completed",
+  "interface_language_completed",
+  "document_language_completed",
+  "coach_intro_completed",
+  "professional_identity_intro_completed",
+  "identity_started",
+  "identity_reviewed",
+  "setup_completed",
+  "diagnosis_completed"
+] as const;
+
+type StoredOnboardingState = (typeof onboardingStateOrder)[number];
+
+function storedOnboardingState(discovery: DiscoverySnapshot | null | undefined): StoredOnboardingState | "" {
+  const value = discovery?.answers?.pathzy_onboarding_state;
+  return typeof value === "string" && (onboardingStateOrder as readonly string[]).includes(value) ? value as StoredOnboardingState : "";
+}
+
+function onboardingStateAtLeast(discovery: DiscoverySnapshot | null | undefined, expected: StoredOnboardingState) {
+  const current = storedOnboardingState(discovery);
+  if (!current) return false;
+  return onboardingStateOrder.indexOf(current) >= onboardingStateOrder.indexOf(expected);
+}
+
+function onboardingFlag(discovery: DiscoverySnapshot | null | undefined, key: string) {
+  return discovery?.answers?.[key] === true;
+}
+
+function hasIdentityAnswerProgress(value: unknown) {
+  if (Array.isArray(value)) return value.length > 0;
+  if (value && typeof value === "object") return false;
+  return hasText(value);
 }
 
 function normalizeInternalPath(target?: string | null) {
@@ -123,8 +159,9 @@ export function normalizeProfessionalIdentitySection(section?: string | null): P
   return "profile";
 }
 
-export function professionalIdentitySectionHref(section: ProfessionalIdentityResumeSection | string) {
-  return routeBuilders.professionalIdentitySection(normalizeProfessionalIdentitySection(section));
+export function professionalIdentitySectionHref(section: ProfessionalIdentityResumeSection | string, returnTo?: string | null) {
+  const safeReturnTo = returnTo === "review" ? professionalIdentityReviewHref() : returnTo;
+  return routeBuilders.professionalIdentitySection(normalizeProfessionalIdentitySection(section), safeReturnTo);
 }
 
 export function professionalIdentityReviewHref() {
@@ -138,80 +175,18 @@ export function professionalIdentityRequiredChecks(
   discovery?: DiscoverySnapshot | null,
   user?: UserEmailSnapshot | null
 ): ProfessionalIdentityRequiredCheck[] {
-  const hasLocation = hasText(profile?.city) && hasText(profile?.country);
-  const hasEligibility = hasText(answerText(discovery, "nationality")) && hasText(answerText(discovery, "work_authorization"));
-  const hasEducationOrStatus = hasText(profile?.current_status) || hasText(profile?.education) || hasText(profile?.highest_qualification) || hasText(profile?.field_of_study);
-  const hasEmploymentPreference =
-    hasText(answerText(discovery, "employment_type")) ||
-    hasText(answerText(discovery, "work_type")) ||
-    answerListHasText(discovery, "preferred_roles") ||
-    answerListHasText(discovery, "industries");
-
-  return [
-    {
-      section: "personal_information",
-      label: "Personal Information",
-      status: "required",
-      complete: hasText(profile?.full_name) && hasText(profile?.email ?? user?.email),
-      guidance: "Add the name and email PATHZY can use across your employment journey."
-    },
-    {
-      section: "location",
-      label: "Location, Nationality and Work Authorization",
-      status: "required",
-      complete: hasLocation && hasEligibility,
-      guidance: "Add your location, nationality, and truthful work authorization details."
-    },
-    {
-      section: "nationality",
-      label: "Nationality",
-      status: "required",
-      complete: hasText(answerText(discovery, "nationality")),
-      guidance: "Add your nationality where it affects work eligibility or employment documents."
-    },
-    {
-      section: "work_authorization",
-      label: "Work Authorization",
-      status: "required",
-      complete: hasText(answerText(discovery, "work_authorization")),
-      guidance: "Add truthful work authorization details before PATHZY guides applications."
-    },
-    {
-      section: "career_goal",
-      label: "Career Goal",
-      status: "required",
-      complete: hasText(profile?.career_goal),
-      guidance: "Tell PATHZY the professional direction you want support with."
-    },
-    {
-      section: "education",
-      label: "Education or Current Status",
-      status: "required",
-      complete: hasEducationOrStatus,
-      guidance: "Add education, training, current work, current study, or your current employment status."
-    },
-    {
-      section: "skills",
-      label: "Core Skills",
-      status: "required",
-      complete: answerListHasText(discovery, "skills"),
-      guidance: "Add skills you already use so future documents and job matching stay factual."
-    },
-    {
-      section: "employment_preferences",
-      label: "Employment Preferences and Availability",
-      status: "required",
-      complete: hasEmploymentPreference && hasText(answerText(discovery, "availability")),
-      guidance: "Add the work you prefer and when you can realistically start."
-    }
-  ];
+  return professionalIdentityRequiredChecksFromValues(professionalIdentityValuesFromSources(profile, discovery, user)).map((check) => ({
+    section: check.section as ProfessionalIdentityResumeSection,
+    label: check.label,
+    status: check.status,
+    complete: check.complete,
+    guidance: check.guidance
+  }));
 }
 
-function hasAnyIdentityProgress(profile: ProfileSnapshot | null, discovery?: DiscoverySnapshot | null, user?: UserEmailSnapshot | null) {
+function hasAnyIdentityProgress(profile: ProfileSnapshot | null, discovery?: DiscoverySnapshot | null) {
   return Boolean(
-    hasText(profile?.full_name) ||
-      hasText(profile?.email ?? user?.email) ||
-      hasText(profile?.phone) ||
+    hasText(profile?.phone) ||
       hasText(profile?.city) ||
       hasText(profile?.country) ||
       hasText(profile?.current_status) ||
@@ -219,17 +194,14 @@ function hasAnyIdentityProgress(profile: ProfileSnapshot | null, discovery?: Dis
       hasText(profile?.education) ||
       hasText(profile?.highest_qualification) ||
       hasText(profile?.field_of_study) ||
-      Object.values(discovery?.answers ?? {}).some((value) => (Array.isArray(value) ? value.length > 0 : hasText(value)))
+      Object.entries(discovery?.answers ?? {}).some(([key, value]) => !key.startsWith("employment_readiness_check") && !key.startsWith("pathzy_onboarding") && !["welcome_completed", "interface_language", "professional_document_language", "career_coach_intro_seen", "professional_identity_intro_seen"].includes(key) && hasIdentityAnswerProgress(value))
   );
 }
 
 function hasGuidedIdentitySetupStarted(profile: ProfileSnapshot | null, discovery?: DiscoverySnapshot | null) {
   return Boolean(
-    profile?.onboarding_step ||
-      profile?.language ||
-      profile?.interface_language ||
-      profile?.language_preference ||
-      profile?.preferred_language ||
+    onboardingStateAtLeast(discovery, "identity_started") ||
+      (typeof profile?.onboarding_step === "number" && profile.onboarding_step > 1) ||
       hasText(profile?.phone) ||
       hasText(profile?.city) ||
       hasText(profile?.country) ||
@@ -238,7 +210,64 @@ function hasGuidedIdentitySetupStarted(profile: ProfileSnapshot | null, discover
       hasText(profile?.education) ||
       hasText(profile?.highest_qualification) ||
       hasText(profile?.field_of_study) ||
-      Object.values(discovery?.answers ?? {}).some((value) => (Array.isArray(value) ? value.length > 0 : hasText(value)))
+      Object.entries(discovery?.answers ?? {}).some(([key, value]) => !key.startsWith("employment_readiness_check") && !key.startsWith("pathzy_onboarding") && !["welcome_completed", "interface_language", "professional_document_language", "career_coach_intro_seen", "professional_identity_intro_seen"].includes(key) && hasIdentityAnswerProgress(value))
+  );
+}
+
+function welcomeCompleted(profile: ProfileSnapshot | null, discovery?: DiscoverySnapshot | null) {
+  return Boolean(
+    profile?.onboarding_completed ||
+      onboardingFlag(discovery, "welcome_completed") ||
+      onboardingStateAtLeast(discovery, "welcome_completed") ||
+      hasGuidedIdentitySetupStarted(profile, discovery)
+  );
+}
+
+function interfaceLanguageCompleted(profile: ProfileSnapshot | null, discovery?: DiscoverySnapshot | null) {
+  return Boolean(
+    profile?.onboarding_completed ||
+      onboardingStateAtLeast(discovery, "interface_language_completed") ||
+      hasText(answerText(discovery, "interface_language")) ||
+      hasGuidedIdentitySetupStarted(profile, discovery)
+  );
+}
+
+function professionalDocumentLanguageCompleted(profile: ProfileSnapshot | null, discovery?: DiscoverySnapshot | null) {
+  return Boolean(
+    profile?.onboarding_completed ||
+      onboardingStateAtLeast(discovery, "document_language_completed") ||
+      hasText(answerText(discovery, "professional_document_language")) ||
+      hasGuidedIdentitySetupStarted(profile, discovery)
+  );
+}
+
+function coachIntroCompleted(profile: ProfileSnapshot | null, discovery?: DiscoverySnapshot | null) {
+  return Boolean(
+    profile?.onboarding_completed ||
+      onboardingStateAtLeast(discovery, "coach_intro_completed") ||
+      discovery?.answers?.career_coach_intro_seen === true ||
+      answerText(discovery, "career_coach_intro_seen") === "true" ||
+      hasGuidedIdentitySetupStarted(profile, discovery)
+  );
+}
+
+function professionalIdentityIntroductionCompleted(profile: ProfileSnapshot | null, discovery?: DiscoverySnapshot | null) {
+  return Boolean(
+    profile?.onboarding_completed ||
+      onboardingStateAtLeast(discovery, "professional_identity_intro_completed") ||
+      onboardingStateAtLeast(discovery, "identity_started") ||
+      discovery?.answers?.professional_identity_intro_seen === true ||
+      answerText(discovery, "professional_identity_intro_seen") === "true" ||
+      hasGuidedIdentitySetupStarted(profile, discovery)
+  );
+}
+
+function identityStarted(profile: ProfileSnapshot | null, discovery?: DiscoverySnapshot | null) {
+  return Boolean(
+    profile?.onboarding_completed ||
+      onboardingStateAtLeast(discovery, "identity_started") ||
+      onboardingFlag(discovery, "identity_started") ||
+      hasGuidedIdentitySetupStarted(profile, discovery)
   );
 }
 
@@ -268,31 +297,63 @@ export function resolvePathzyOnboardingState(input: {
 }): PathzyOnboardingState {
   if (!input.authenticated) return "unauthenticated";
 
-  if (!input.profile?.onboarding_completed && !hasGuidedIdentitySetupStarted(input.profile ?? null, input.discovery)) {
-    return "identity_not_started";
+  if (!input.profile?.onboarding_completed && !welcomeCompleted(input.profile ?? null, input.discovery)) {
+    return "welcome_pending";
   }
 
   // Compatibility note: PATHZY does not yet have a final interface-language field.
   // Missing storage must not trap existing users, so only an explicit false blocks progression.
   const languageSelected =
     input.interfaceLanguageSelected ??
-    Boolean(input.profile?.interface_language || input.profile?.language_preference || input.profile?.preferred_language || input.profile?.language);
-  if (!languageSelected) return "authenticated_language_pending";
+    interfaceLanguageCompleted(input.profile ?? null, input.discovery);
+  if (!languageSelected) return "interface_language_pending";
 
-  if (!hasAnyIdentityProgress(input.profile ?? null, input.discovery, input.user)) return "identity_not_started";
+  if (!input.profile?.onboarding_completed && !professionalDocumentLanguageCompleted(input.profile ?? null, input.discovery)) {
+    return "document_language_pending";
+  }
+
+  if (!input.profile?.onboarding_completed && !coachIntroCompleted(input.profile ?? null, input.discovery)) {
+    return "coach_intro_pending";
+  }
+
+  if (!input.profile?.onboarding_completed && !professionalIdentityIntroductionCompleted(input.profile ?? null, input.discovery)) {
+    return "professional_identity_intro_pending";
+  }
+
+  if (!identityStarted(input.profile ?? null, input.discovery) && !hasAnyIdentityProgress(input.profile ?? null, input.discovery)) {
+    return "identity_not_started";
+  }
+
+  if (!hasAnyIdentityProgress(input.profile ?? null, input.discovery)) return "identity_not_started";
 
   const missingSection = firstIncompleteProfessionalIdentitySection(input.profile ?? null, input.user, input.discovery);
   if (missingSection) return "identity_in_progress";
 
-  const setupFinished = input.setupFinished ?? Boolean(input.profile?.setup_finished ?? input.discovery?.answers?.setup_finished ?? input.profile?.onboarding_completed);
-  const reviewCompleted = input.reviewCompleted ?? Boolean(input.profile?.identity_review_completed ?? input.discovery?.answers?.identity_review_completed ?? input.profile?.onboarding_completed);
+  const setupFinished =
+    input.setupFinished ??
+    Boolean(
+      input.discovery?.answers?.setup_finished ||
+        input.discovery?.answers?.setup_completed ||
+        onboardingStateAtLeast(input.discovery, "setup_completed") ||
+        input.profile?.onboarding_completed
+    );
+  const reviewCompleted =
+    input.reviewCompleted ??
+    Boolean(
+      input.discovery?.answers?.identity_review_completed ||
+        input.discovery?.answers?.identity_reviewed ||
+        onboardingStateAtLeast(input.discovery, "identity_reviewed") ||
+        input.profile?.onboarding_completed
+    );
   if (!reviewCompleted) return "identity_review_pending";
   if (!setupFinished) return "identity_finish_pending";
 
   const diagnosisComplete =
     input.diagnosisComplete ??
-    input.profile?.employment_diagnosis_completed ??
-    (input.discovery?.answers?.employment_diagnosis_status === "complete" || input.discovery?.answers?.employment_diagnosis_completed === true);
+    (input.discovery?.answers?.employment_diagnosis_status === "complete" ||
+      input.discovery?.answers?.employment_diagnosis_completed === true ||
+      input.discovery?.answers?.diagnosis_completed === true ||
+      onboardingStateAtLeast(input.discovery, "diagnosis_completed"));
   if (!diagnosisComplete) return "diagnosis_pending";
   return "home_ready";
 }
@@ -317,11 +378,23 @@ export function resolvePathzyNextRoute(input: {
     const destination = input.preferSignup ? appRoutes.signup : routeBuilders.login(input.requestedDestination ?? appRoutes.authenticatedHome);
     return { destination, reason: "Authentication is required before PATHZY can resume the employment journey.", currentState, safeFallback };
   }
-  if (currentState === "authenticated_language_pending") {
-    return { destination: routeBuilders.professionalIdentitySection("preferences"), reason: "Choose the interface language PATHZY should use before continuing.", currentState, safeFallback, resumeSection: "preferences" };
+  if (currentState === "welcome_pending") {
+    return { destination: routeBuilders.professionalIdentityWelcome(), reason: "Start with the PATHZY welcome before Professional Identity.", currentState, safeFallback };
+  }
+  if (currentState === "interface_language_pending" || currentState === "authenticated_language_pending") {
+    return { destination: routeBuilders.professionalIdentityOnboardingStage("interfaceLanguage"), reason: "Choose the interface language PATHZY should use before continuing.", currentState, safeFallback, resumeSection: "preferences" };
+  }
+  if (currentState === "document_language_pending") {
+    return { destination: routeBuilders.professionalIdentityOnboardingStage("documentLanguage"), reason: "Choose the language PATHZY should use for professional documents.", currentState, safeFallback };
+  }
+  if (currentState === "coach_intro_pending") {
+    return { destination: routeBuilders.professionalIdentityOnboardingStage("careerCoach"), reason: "Meet the PATHZY Career Coach before building Professional Identity.", currentState, safeFallback };
+  }
+  if (currentState === "professional_identity_intro_pending") {
+    return { destination: routeBuilders.professionalIdentityIntroduction(), reason: "Understand Professional Identity before opening the guided setup.", currentState, safeFallback };
   }
   if (currentState === "identity_not_started") {
-    return { destination: routeBuilders.professionalIdentityWelcome(), reason: "Start with the focused PATHZY welcome before Professional Identity.", currentState, safeFallback, resumeSection: "profile" };
+    return { destination: routeBuilders.professionalIdentitySection("profile"), reason: "Start the guided Professional Identity setup at Profile.", currentState, safeFallback, resumeSection: "profile" };
   }
   if (currentState === "identity_in_progress") {
     const resumeSection = missingSection ?? "profile";
@@ -354,20 +427,7 @@ export function safePostAuthDestination(target?: string | null, fallback = appRo
 }
 
 export async function getPostAuthDestination(supabase: SupabaseClient, user: User, requestedDestination?: string | null) {
-  const [{ data: profile }, { data: discovery }] = await Promise.all([
-    supabase
-      .from("user_profiles")
-      .select("full_name,email,city,country,education,highest_qualification,field_of_study,current_status,career_goal,onboarding_completed,onboarding_step,language")
-      .or(`user_id.eq.${user.id},id.eq.${user.id}`)
-      .maybeSingle(),
-    supabase
-      .from("discovery_responses")
-      .select("answers")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
-  ]);
+  const { profile, discovery } = await loadProfessionalIdentitySources(supabase, user.id);
 
   const decision = resolvePathzyNextRoute({
     authenticated: true,

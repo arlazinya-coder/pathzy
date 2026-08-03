@@ -15,7 +15,7 @@ export type JourneyStepKey =
   | "employment";
 
 export const journeyStepRoutes: Record<JourneyStepKey, string> = {
-  profile: appRoutes.onboarding,
+  profile: appRoutes.professionalIdentity,
   discovery: appRoutes.discovery,
   choose_career: appRoutes.roadmap,
   cv: appRoutes.professionalIdentityCv,
@@ -26,7 +26,7 @@ export const journeyStepRoutes: Record<JourneyStepKey, string> = {
   applications: appRoutes.applications,
   interview_prep: appRoutes.interview,
   skills: appRoutes.skills,
-  employment: appRoutes.applications
+  employment: appRoutes.roadmap
 };
 
 export function getJourneyRoute(step: JourneyStepKey) {

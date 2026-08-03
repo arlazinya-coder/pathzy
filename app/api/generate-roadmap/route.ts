@@ -1,29 +1,29 @@
 import { NextResponse } from "next/server";
 import { generateOpenAIRoadmap } from "@/lib/discovery/openai-generator";
+import { discoveryAnswerKeys, hasCompleteDiscoveryAnswers } from "@/lib/discovery/discovery-answer-state";
 import type { DiscoveryAnswers } from "@/lib/discovery/types";
+import { getEmploymentDiagnosisSteps } from "@/lib/language/pathzy-i18n";
+import { normalizeLanguageCode } from "@/lib/language/language-preferences";
+import { appRoutes } from "@/lib/navigation/routes";
+import { saveCompletedEmploymentDiagnosis } from "@/lib/professional-identity/professional-identity-write-service";
+import { syncProfessionalIdentityAfterWrite } from "@/lib/professional-identity/professional-identity-sync";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-const answerKeys: Array<keyof DiscoveryAnswers> = [
-  "personal_background",
-  "education",
-  "interests",
-  "skills",
-  "personality",
-  "work_style",
-  "dream_lifestyle",
-  "income_goal",
-  "biggest_challenge",
-  "preferred_career_direction"
-];
+const answerKeys: ReadonlyArray<keyof DiscoveryAnswers> = discoveryAnswerKeys;
 
 const roadmapError = "We could not complete this action yet. Your progress is safe. Please try again.";
 
 function isDiscoveryAnswers(value: unknown): value is DiscoveryAnswers {
-  if (!value || typeof value !== "object") return false;
-  const answers = value as Partial<DiscoveryAnswers>;
-  return answerKeys.every((key) => typeof answers[key] === "string" && Boolean(answers[key]?.trim()));
+  return answerKeys.length > 0 && hasCompleteDiscoveryAnswers(value);
+}
+
+export function GET(request: Request) {
+  const url = new URL(request.url);
+  const language = normalizeLanguageCode(url.searchParams.get("language"));
+  const questions = getEmploymentDiagnosisSteps(language);
+  return NextResponse.json({ questions, total: questions.length });
 }
 
 export async function POST(request: Request) {
@@ -49,18 +49,19 @@ export async function POST(request: Request) {
 
   try {
     const generatedRoadmap = await generateOpenAIRoadmap(body.answers);
-    const { error: saveError } = await supabase.from("discovery_responses").insert({
-      user_id: user.id,
-      answers: body.answers,
-      generated_result: generatedRoadmap
-    });
+    const { error: saveError } = await saveCompletedEmploymentDiagnosis(supabase, user.id, body.answers, generatedRoadmap);
 
     if (saveError) {
       console.error("[roadmap] save failed", saveError);
       return NextResponse.json({ error: roadmapError }, { status: 500 });
     }
 
-    return NextResponse.json({ roadmap: generatedRoadmap });
+    await syncProfessionalIdentityAfterWrite(supabase, user.id, {
+      mode: "diagnosis",
+      reason: "Employment Diagnosis completed"
+    });
+
+    return NextResponse.json({ roadmap: generatedRoadmap, redirectTo: appRoutes.authenticatedHome });
   } catch (error) {
     console.error("[roadmap] generation failed", error);
     return NextResponse.json(

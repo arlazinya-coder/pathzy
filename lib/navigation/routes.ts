@@ -9,6 +9,8 @@ export const PATHZY_ROUTES = {
   FORGOT_PASSWORD: "/auth/reset-password",
   RESET_PASSWORD: "/auth/update-password",
   PROFESSIONAL_IDENTITY: "/professional-identity",
+  PROFESSIONAL_IDENTITY_REVIEW: "/professional-identity/review",
+  PROFESSIONAL_IDENTITY_SECTION_ROOT: "/professional-identity/section",
   HOME: "/roadmap",
   EMPLOYMENT_CENTER: "/employment-center",
   MY_EMPLOYMENT_JOURNEY: "/roadmap",
@@ -78,6 +80,8 @@ export const appRoutes = {
   profile: "/profile",
   foundingMembers: "/founding-members",
   professionalIdentity: PATHZY_ROUTES.MY_PROFESSIONAL_PROFILE,
+  professionalIdentityReview: PATHZY_ROUTES.PROFESSIONAL_IDENTITY_REVIEW,
+  professionalIdentitySectionRoot: PATHZY_ROUTES.PROFESSIONAL_IDENTITY_SECTION_ROOT,
   documents: PATHZY_ROUTES.MY_DOCUMENTS,
   professionalIdentityCv: PATHZY_ROUTES.CV_BUILDER,
   professionalIdentityCoverLetter: PATHZY_ROUTES.COVER_LETTER,
@@ -103,6 +107,12 @@ export type AppRouteKey = keyof typeof appRoutes;
 export type AppRoute = (typeof appRoutes)[AppRouteKey];
 export type RoutePath = `/${string}`;
 export type QueryValue = string | number | boolean | null | undefined;
+export type ProfessionalIdentityOnboardingStage =
+  | "welcome"
+  | "interfaceLanguage"
+  | "documentLanguage"
+  | "careerCoach"
+  | "professionalIdentityIntroduction";
 
 export const routeGroups = {
   public: {
@@ -125,7 +135,7 @@ export const routeGroups = {
   onboarding: {
     interfaceLanguage: appRoutes.professionalIdentity,
     professionalIdentityStart: appRoutes.professionalIdentity,
-    reviewMyInformation: appRoutes.professionalIdentity,
+    reviewMyInformation: appRoutes.professionalIdentityReview,
     finishSetup: appRoutes.professionalIdentity,
     employmentDiagnosis: appRoutes.discovery,
     personalisedHome: appRoutes.authenticatedHome
@@ -194,6 +204,9 @@ export const routeBuilders = {
   login(returnTo?: string | null) {
     return appendQuery(appRoutes.login, { redirectTo: returnTo ? safeRedirectDestination(returnTo, appRoutes.authenticatedHome) : undefined });
   },
+  // Canonical public URLs may use /professional-identity/review and
+  // /professional-identity/section/[sectionId]. They redirect into this
+  // query-based renderer so Review remains a single implementation.
   professionalIdentitySection(sectionId: ProfessionalIdentitySectionId, returnTo?: string | null) {
     return appendQuery(appRoutes.professionalIdentity, {
       section: PROFESSIONAL_IDENTITY_SECTION_IDS.includes(sectionId) ? sectionId : "profile",
@@ -203,6 +216,30 @@ export const routeBuilders = {
   professionalIdentityWelcome(returnTo?: string | null) {
     return appendQuery(appRoutes.professionalIdentity, {
       stage: "welcome",
+      returnTo: returnTo ? safeRedirectDestination(returnTo, appRoutes.authenticatedHome) : undefined
+    });
+  },
+  professionalIdentityOnboardingStage(stage: ProfessionalIdentityOnboardingStage, returnTo?: string | null) {
+    return appendQuery(appRoutes.professionalIdentity, {
+      stage,
+      returnTo: returnTo ? safeRedirectDestination(returnTo, appRoutes.authenticatedHome) : undefined
+    });
+  },
+  professionalIdentityIntroduction(returnTo?: string | null) {
+    return appendQuery(appRoutes.professionalIdentity, {
+      stage: "professionalIdentityIntroduction",
+      returnTo: returnTo ? safeRedirectDestination(returnTo, appRoutes.authenticatedHome) : undefined
+    });
+  },
+  professionalIdentityReadinessCheck(returnTo?: string | null) {
+    return appendQuery(appRoutes.professionalIdentity, {
+      stage: "readinessCheck",
+      returnTo: returnTo ? safeRedirectDestination(returnTo, appRoutes.authenticatedHome) : undefined
+    });
+  },
+  professionalIdentityReadinessTransition(returnTo?: string | null) {
+    return appendQuery(appRoutes.professionalIdentity, {
+      stage: "readinessTransition",
       returnTo: returnTo ? safeRedirectDestination(returnTo, appRoutes.authenticatedHome) : undefined
     });
   },

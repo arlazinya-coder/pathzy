@@ -13,10 +13,8 @@ const pageContext: Array<[string, string]> = [
   ["/roadmap", "Career Plan page - explain next step"],
   ["/opportunities", "Opportunities page - compare jobs and programs"],
   ["/applications", "Applications page - follow-up and interview help"],
-  ["/applications", "Applications page - follow-up and interview help"],
   ["/skills", "Skills page - explain skill gaps"],
-  ["/skills", "Skills page - explain skill gaps"],
-  ["/roadmap", "My Employment Journey - suggest the next action"],
+  ["/employment-center", "Employment Center - help choose the right professional tool"],
   ["/roadmap", "My Employment Journey - suggest the next action"]
 ];
 

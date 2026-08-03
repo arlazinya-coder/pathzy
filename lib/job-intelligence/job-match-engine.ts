@@ -1,5 +1,6 @@
 import type { CanonicalProfessionalIdentity, CanonicalReviewStatus } from "@/lib/canonical-profile";
 import { valueText } from "@/lib/canonical-profile";
+import { appRoutes } from "@/lib/navigation/routes";
 import type {
   CanonicalEvidenceReference,
   JobGap,
@@ -216,9 +217,8 @@ export function analyzeJobAgainstCanonicalProfile(input: {
     nextActions: [
       { label: "Review match evidence", route: "/opportunities", reason: "Confirm strengths, gaps, and uncertain requirements before applying." },
       { label: "Prepare truthful targeted CV", route: `/professional-identity/cv?role=${encodeURIComponent(input.job.title ?? "")}&job=${encodeURIComponent(input.job.id)}&intent=targeted`, reason: "Use only verified profile evidence in the targeted CV." },
-      { label: "Track this opportunity", route: `/applications?company=${encodeURIComponent(input.job.company ?? "")}&role=${encodeURIComponent(input.job.title ?? "")}`, reason: "Keep preparation and follow-up under your control." }
+      { label: "Track this opportunity", route: `${appRoutes.applications}?company=${encodeURIComponent(input.job.company ?? "")}&role=${encodeURIComponent(input.job.title ?? "")}`, reason: "Keep preparation and follow-up under your control." }
     ],
     createdAt: now
   };
 }
-

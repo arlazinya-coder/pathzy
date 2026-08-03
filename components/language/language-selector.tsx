@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useTransition } from "react";
 import { pathzyPhase2T } from "@/lib/language/pathzy-i18n";
 import { interfaceLanguageCookieName, languageLabels, normalizeLanguageCode, profileLanguagePatchForInterface, type SupportedLanguageCode } from "@/lib/language/language-preferences";
 import { createSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -24,6 +25,8 @@ function persistPublicLanguage(language: SupportedLanguageCode) {
 }
 
 function useStandalonePathzyLanguage(initialLanguage?: string | null, enabled = true) {
+  const router = useRouter();
+  const [, startLanguageTransition] = useTransition();
   const [language, setLanguageState] = useState<SupportedLanguageCode>(() => normalizeLanguageCode(initialLanguage));
 
   useEffect(() => {
@@ -41,10 +44,13 @@ function useStandalonePathzyLanguage(initialLanguage?: string | null, enabled = 
     return () => window.removeEventListener(languageChangedEventName, onLanguageChanged);
   }, [enabled]);
 
-  function setLanguage(nextLanguage: SupportedLanguageCode) {
-    setLanguageState(nextLanguage);
-    if (enabled) persistPublicLanguage(nextLanguage);
-  }
+  const setLanguage = useCallback((nextLanguage: SupportedLanguageCode) => {
+    const normalizedLanguage = normalizeLanguageCode(nextLanguage);
+    if (normalizedLanguage === language) return;
+    setLanguageState(normalizedLanguage);
+    if (enabled) persistPublicLanguage(normalizedLanguage);
+    startLanguageTransition(() => router.refresh());
+  }, [enabled, language, router, startLanguageTransition]);
 
   return { language, setLanguage };
 }
@@ -56,6 +62,8 @@ export function PathzyLanguageProvider({
   children: React.ReactNode;
   initialLanguage?: string | null;
 }) {
+  const router = useRouter();
+  const [, startLanguageTransition] = useTransition();
   const [language, setLanguageState] = useState<SupportedLanguageCode>(() => normalizeLanguageCode(initialLanguage));
 
   useEffect(() => {
@@ -71,12 +79,15 @@ export function PathzyLanguageProvider({
     return () => window.removeEventListener(languageChangedEventName, onLanguageChanged);
   }, []);
 
-  function setLanguage(nextLanguage: SupportedLanguageCode) {
-    setLanguageState(nextLanguage);
-    persistPublicLanguage(nextLanguage);
-  }
+  const setLanguage = useCallback((nextLanguage: SupportedLanguageCode) => {
+    const normalizedLanguage = normalizeLanguageCode(nextLanguage);
+    if (normalizedLanguage === language) return;
+    setLanguageState(normalizedLanguage);
+    persistPublicLanguage(normalizedLanguage);
+    startLanguageTransition(() => router.refresh());
+  }, [language, router, startLanguageTransition]);
 
-  const value = useMemo(() => ({ language, setLanguage }), [language]);
+  const value = useMemo(() => ({ language, setLanguage }), [language, setLanguage]);
 
   return <PathzyLanguageContext.Provider value={value}>{children}</PathzyLanguageContext.Provider>;
 }
@@ -101,6 +112,7 @@ export function LanguageSelector({
   const accessibleLabel = label === "Interface language" ? pathzyPhase2T(language, "language.selector.label") : label;
 
   async function changeLanguage(nextLanguage: SupportedLanguageCode) {
+    if (nextLanguage === language) return;
     setLanguage(nextLanguage);
     setStatus("saving");
     try {

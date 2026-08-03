@@ -2,8 +2,10 @@ import type { ReactNode } from "react";
 import { ButtonLink, Card, ProgressBar } from "@/components/ui";
 import { buildCareerAnalytics } from "@/lib/analytics/career-analytics-service";
 import { summarizeApplicationTracker } from "@/lib/applications/application-tracker-service";
-import { professionalIdentityRequiredChecks } from "@/lib/navigation/auth-routing";
+import { localizedProfessionalTitle, pathzyPhase2List, pathzyPhase2T } from "@/lib/language/pathzy-i18n";
+import { normalizeLanguageCode, type SupportedLanguageCode } from "@/lib/language/language-preferences";
 import { appRoutes } from "@/lib/navigation/routes";
+import { getProfessionalIdentityReadModelSafe } from "@/lib/professional-identity/professional-identity-read-service";
 import { getPathzyNextAction, type PathzyNextAction } from "@/lib/progress/next-action-engine";
 import { getProgressMilestones, getProgressPercent, type ProgressInputs } from "@/lib/progress/progress-engine";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
@@ -49,11 +51,11 @@ function fallbackNextAction(): PathzyNextAction {
   };
 }
 
-function greetingFor(date = new Date()) {
+function greetingFor(language: SupportedLanguageCode, date = new Date()) {
   const hour = date.getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
+  if (hour < 12) return pathzyPhase2T(language, "home.greeting.morning");
+  if (hour < 18) return pathzyPhase2T(language, "home.greeting.afternoon");
+  return pathzyPhase2T(language, "home.greeting.evening");
 }
 
 function initialsFor(name: string) {
@@ -112,27 +114,8 @@ function HomeCard({
 
 export default async function RoadmapPage() {
   const { user, supabase } = await requireAuthenticatedUser(appRoutes.roadmap);
-  const [profile, discovery, nextAction, applications, timelineEvents, matchAnalyses, professionalDocuments] = await Promise.all([
-    safeQuery<{ full_name?: string | null; email?: string | null; city?: string | null; country?: string | null; education?: string | null; highest_qualification?: string | null; field_of_study?: string | null; current_status?: string | null; career_goal?: string | null; preferred_path?: string | null; onboarding_completed?: boolean | null } | null>(
-      "profile",
-      supabase
-        .from("user_profiles")
-        .select("full_name,email,city,country,education,highest_qualification,field_of_study,current_status,career_goal,preferred_path,onboarding_completed")
-        .or(`user_id.eq.${user.id},id.eq.${user.id}`)
-        .maybeSingle(),
-      null
-    ),
-    safeQuery<{ answers?: Record<string, unknown> | null } | null>(
-      "profile answers",
-      supabase
-        .from("discovery_responses")
-        .select("answers")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      null
-    ),
+  const [identityReadModel, nextAction, applications, timelineEvents, matchAnalyses, professionalDocuments] = await Promise.all([
+    getProfessionalIdentityReadModelSafe(supabase, user, "home identity"),
     getPathzyNextAction(supabase, user).catch((error) => {
       console.warn("[pathzy-home] next action fallback", error);
       return fallbackNextAction();
@@ -179,17 +162,19 @@ export default async function RoadmapPage() {
       []
     )
   ]);
+  const profile = identityReadModel.profile;
+  const interfaceLanguage = normalizeLanguageCode(identityReadModel.values.interface_language ?? profile?.language);
+  const phase2T = (key: Parameters<typeof pathzyPhase2T>[1]) => pathzyPhase2T(interfaceLanguage, key);
   const profileFirstName = safeFirstToken(profile?.full_name);
   const accountFirstName =
     safeFirstToken(user?.user_metadata?.display_name) ||
     safeFirstToken(user?.user_metadata?.full_name) ||
     safeFirstToken(user?.user_metadata?.name);
-  const firstName = profileFirstName || accountFirstName || "there";
+  const firstName = profileFirstName || accountFirstName || phase2T("home.greeting.fallbackName");
   const profileName = profile?.full_name?.trim() || user.user_metadata?.full_name || user.email?.split("@")[0] || "PATHZY";
-  const professionalDirection = profile?.career_goal || profile?.preferred_path || "Professional direction in progress";
+  const professionalDirection = localizedProfessionalTitle(interfaceLanguage, profile?.career_goal || profile?.preferred_path || "");
   const location = [profile?.city, profile?.country].filter(Boolean).join(", ");
-  const requiredChecks = professionalIdentityRequiredChecks(profile, discovery, user);
-  const professionalIdentityPercent = Math.max(nextAction.progressPercent, Math.round((requiredChecks.filter((item) => item.complete).length / requiredChecks.length) * 72));
+  const professionalIdentityPercent = identityReadModel.completion.percentage;
   const applicationSummary = summarizeApplicationTracker(applications as never[]);
   const analytics = buildCareerAnalytics({
     applications: applications as never[],
@@ -200,6 +185,33 @@ export default async function RoadmapPage() {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC"
   });
   const topInsight = analytics.recommendedActions[0];
+  const nextActionLabelKeys: Record<string, Parameters<typeof pathzyPhase2T>[1]> = {
+    "Complete Professional Identity": "home.next.completeProfessionalIdentity",
+    "Complete My Professional Profile": "home.next.completeProfile",
+    "Open Employment Center": "home.next.openEmploymentCenter",
+    "Track application": "home.next.trackApplication",
+    "Save or start an application": "home.next.startApplication",
+    "Prepare for interview": "home.next.prepareInterview",
+    "Improve missing skills": "home.next.improveSkills"
+  };
+  const nextActionReasonKeys: Record<string, Parameters<typeof pathzyPhase2T>[1]> = {
+    "PATHZY needs your confirmed profile before it can guide documents, jobs, applications, and interviews reliably.": "home.next.profileReason",
+    "PATHZY needs your profile details before it can create stronger documents and guidance.": "home.next.profileReason",
+    "Use Employment Center to manage CVs, cover letters, LinkedIn content, and other professional materials from one place.": "home.next.centerReason"
+  };
+  const translatedNextLabel = nextActionLabelKeys[nextAction.label] ? phase2T(nextActionLabelKeys[nextAction.label]) : nextAction.label;
+  const translatedNextReason = nextActionReasonKeys[nextAction.reason]
+    ? phase2T(nextActionReasonKeys[nextAction.reason])
+    : interfaceLanguage === "fr"
+      ? phase2T("home.next.profileReason")
+      : nextAction.reason;
+  const opportunitiesSummary = phase2T("home.opportunities.summary")
+    .replace("{active}", String(applicationSummary.activeApplications))
+    .replace("{followUps}", String(applicationSummary.followUpsDue))
+    .replace("{interviews}", String(applicationSummary.interviews));
+  const topInsightReason = interfaceLanguage === "fr"
+    ? phase2T("home.guidance.fallbackInsight")
+    : topInsight?.reason ?? phase2T("home.guidance.fallbackInsight");
 
   return (
     <main className="container page-pad">
@@ -210,35 +222,35 @@ export default async function RoadmapPage() {
               {initialsFor(profileName)}
             </div>
             <div>
-              <p className="text-sm font-semibold text-[#2563EB]">{greetingFor()}, {firstName}.</p>
+              <p className="text-sm font-semibold text-[#2563EB]">{greetingFor(interfaceLanguage)}, {firstName}.</p>
               <h1 className="mt-2 text-4xl font-semibold tracking-[-0.03em] text-[#111827] md:text-5xl">{professionalDirection}</h1>
               {location ? <p className="mt-2 text-base text-[#6B7280]">{location}</p> : null}
             </div>
           </div>
           <div className="w-full max-w-xs">
             <div className="mb-2 flex justify-between text-sm font-semibold text-[#6B7280]">
-              <span>Professional Identity</span>
-              <span>{professionalIdentityPercent}% complete</span>
+              <span>{phase2T("home.identityLabel")}</span>
+              <span>{professionalIdentityPercent}% {phase2T("home.complete")}</span>
             </div>
             <ProgressBar value={professionalIdentityPercent} />
           </div>
         </div>
       </section>
 
-      <section aria-label="PATHZY Home" className="grid gap-5">
+      <section aria-label={phase2T("home.aria")} className="grid gap-5">
         <HomeCard
-          eyebrow="Continue"
-          title="Continue Your Employment Journey"
+          eyebrow={phase2T("home.continue.eyebrow")}
+          title={phase2T("home.continue.title")}
           primaryHref={nextAction.destinationRoute}
-          primaryLabel="Continue"
+          primaryLabel={phase2T("home.continue.primary")}
           secondaryHref={appRoutes.professionalIdentity}
-          secondaryLabel="Review Profile"
+          secondaryLabel={phase2T("home.continue.secondary")}
         >
-          <p className="font-medium text-[#111827]">{nextAction.label}</p>
-          <p className="mt-2">{nextAction.reason}</p>
+          <p className="font-medium text-[#111827]">{translatedNextLabel}</p>
+          <p className="mt-2">{translatedNextReason}</p>
           <div className="mt-5 max-w-xl">
             <div className="mb-2 flex justify-between text-sm font-medium text-[#6B7280]">
-              <span>Journey progress</span>
+              <span>{phase2T("home.continue.progress")}</span>
               <span>{nextAction.progressPercent}%</span>
             </div>
             <ProgressBar value={nextAction.progressPercent} />
@@ -246,50 +258,50 @@ export default async function RoadmapPage() {
         </HomeCard>
 
         <HomeCard
-          eyebrow="Employment Center"
-          title="Employment Center"
+          eyebrow={phase2T("home.employmentCenter.eyebrow")}
+          title={phase2T("home.employmentCenter.title")}
           primaryHref={appRoutes.employmentCenter}
-          primaryLabel="Open Employment Center"
+          primaryLabel={phase2T("home.employmentCenter.primary")}
           secondaryHref={appRoutes.documents}
-          secondaryLabel="Open Documents"
+          secondaryLabel={phase2T("home.employmentCenter.secondary")}
         >
           <p>
-            Build and manage the professional evidence employers see: your profile, CV, cover letter, LinkedIn content, and supporting documents.
+            {phase2T("home.employmentCenter.body")}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            {["Professional Identity", "CV", "Cover Letter", "LinkedIn"].map((item) => (
+            {pathzyPhase2List(interfaceLanguage, "home.employmentCenter.tags").map((item) => (
               <span key={item} className="rounded-full border border-[#e5e7eb] bg-[#f9fafb] px-3 py-1 text-sm font-medium text-[#6B7280]">{item}</span>
             ))}
           </div>
         </HomeCard>
 
         <HomeCard
-          eyebrow="Jobs"
-          title="Opportunities"
+          eyebrow={phase2T("home.opportunities.eyebrow")}
+          title={phase2T("home.opportunities.title")}
           primaryHref={appRoutes.opportunities}
-          primaryLabel="Find Opportunities"
+          primaryLabel={phase2T("home.opportunities.primary")}
         >
           <p>
-            Compare roles, understand what employers require, prepare applications, and keep every next action visible.
+            {phase2T("home.opportunities.body")}
           </p>
           <p className="mt-3 text-sm font-medium text-[#111827]">
-            {applicationSummary.activeApplications} active applications · {applicationSummary.followUpsDue} follow-ups due · {applicationSummary.interviews} interviews
+            {opportunitiesSummary}
           </p>
         </HomeCard>
 
         <HomeCard
-          eyebrow="Guidance"
-          title="Insights & Coach"
+          eyebrow={phase2T("home.guidance.eyebrow")}
+          title={phase2T("home.guidance.title")}
           primaryHref={appRoutes.mentor}
-          primaryLabel="Ask Coach"
+          primaryLabel={phase2T("home.guidance.primary")}
           secondaryHref={appRoutes.careerAnalytics}
-          secondaryLabel="View Insights"
+          secondaryLabel={phase2T("home.guidance.secondary")}
         >
           <p>
-            Get practical guidance based on your profile, documents, job matches, applications, interviews, and follow-ups.
+            {phase2T("home.guidance.body")}
           </p>
           <p className="mt-3 text-sm font-medium text-[#111827]">
-            {topInsight?.reason ?? "Keep using PATHZY and your insights will become more specific over time."}
+            {topInsightReason}
           </p>
         </HomeCard>
       </section>

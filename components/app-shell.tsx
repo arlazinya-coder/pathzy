@@ -8,6 +8,7 @@ import { getServerInterfaceLanguage } from "@/lib/language/server-language";
 import { resolvePathzyNextRoute } from "@/lib/navigation/auth-routing";
 import { appRoutes } from "@/lib/navigation/routes";
 import { navigation } from "@/lib/pathzy-data";
+import { getProfessionalIdentityReadModelSafe } from "@/lib/professional-identity/professional-identity-read-service";
 import { createSupabaseServerClient, getCurrentUser } from "@/lib/supabase/server";
 
 type NavigationItem = { label: string; href: string };
@@ -24,45 +25,21 @@ function uniqueByHref<T extends NavigationItem>(items: readonly T[]) {
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   const supabase = user ? await createSupabaseServerClient() : null;
-  const [entitlements, profileLanguage, profileSnapshot, discoverySnapshot] = user && supabase
+  const [entitlements, identityReadModel] = user && supabase
     ? await Promise.all([
         getUserEntitlements(supabase, user.id),
-        (async () => {
-          const { data, error } = await supabase
-            .from("user_profiles")
-            .select("language")
-            .or(`user_id.eq.${user.id},id.eq.${user.id}`)
-            .maybeSingle();
-          return error ? null : data?.language ?? null;
-        })(),
-        (async () => {
-          const { data, error } = await supabase
-            .from("user_profiles")
-            .select("full_name,email,phone,city,country,education,highest_qualification,field_of_study,current_status,career_goal,onboarding_completed,onboarding_step,language")
-            .or(`user_id.eq.${user.id},id.eq.${user.id}`)
-            .maybeSingle();
-          return error ? null : data;
-        })(),
-        (async () => {
-          const { data, error } = await supabase
-            .from("discovery_responses")
-            .select("answers")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          return error ? null : data;
-        })()
+        getProfessionalIdentityReadModelSafe(supabase, user, "app shell identity")
       ])
-    : [null, null, null, null];
+    : [null, null];
   const journeyDecision = user
     ? resolvePathzyNextRoute({
         authenticated: true,
-        profile: profileSnapshot,
-        discovery: discoverySnapshot,
+        profile: identityReadModel?.profile,
+        discovery: identityReadModel?.discovery,
         user
       })
     : null;
+  const profileLanguage = identityReadModel?.profile?.language ?? null;
   const interfaceLanguage = await getServerInterfaceLanguage(profileLanguage);
   const focusedOnboarding =
     Boolean(user) &&

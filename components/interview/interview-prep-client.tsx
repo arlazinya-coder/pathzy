@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card } from "@/components/ui";
 import { downloadBlob, pathzyFilename, simplePdfDocument } from "@/components/professional-identity/document-downloads";
+import { appRoutes } from "@/lib/navigation/routes";
 import type { EmployerQuestion, GapResponse, InterviewFeedback, InterviewPrepQuestion, InterviewPrepRecord, InterviewType, StarStory } from "@/lib/interview/interview-prep.types";
 
 type ApplicationOption = {
@@ -277,7 +278,7 @@ export function InterviewPrepClient({ applications }: { applications: Applicatio
             <div className="mt-5 rounded-[18px] border border-dashed border-white/14 bg-white/5 p-5">
               <h3 className="text-lg font-black">Track an application first.</h3>
               <p className="mt-2 text-sm leading-6 text-white/56">Interview preparation is strongest after Job Intelligence has matched a real opportunity to your Professional Identity.</p>
-              <Link href="/applications" className="mt-4 inline-flex rounded-full blue-purple px-5 py-3 text-sm font-extrabold text-white">Go to Applications</Link>
+              <Link href={appRoutes.applications} className="mt-4 inline-flex rounded-full blue-purple px-5 py-3 text-sm font-extrabold text-white">Go to Applications</Link>
             </div>
           )}
         </Card>
