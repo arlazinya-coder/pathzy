@@ -11,5 +11,6 @@ export { selectSupportIntensity } from "./select-support-intensity";
 export { buildEmploymentExplanations } from "./build-explanations";
 export { generateEmploymentIntelligence, generateEmploymentIntelligenceWithTrace } from "./generate-employment-intelligence";
 export { phase3bEmploymentIntelligenceFixtures } from "./fixtures";
+export * from "../country";
 export { EMPLOYMENT_INTELLIGENCE_ENGINE_VERSION_3B, engineVersionChangeRules } from "./engine-version";
 export type * from "./engine-types";

@@ -4,6 +4,7 @@ import type { DetectedBarrier } from "../domain/barriers";
 import type { EmploymentIntelligenceInput } from "../domain/employment-intelligence-input";
 import type { EvidenceAssessmentSummary, JobLevelIndication, MissingInformation, PathwayEvaluation, PathwaySuitability, Strength } from "./engine-types";
 import { createConfidenceAssessment } from "./calculate-confidence";
+import { getSouthAfricaPathwayContext, inputHasText, isSouthAfricaContext } from "./country-context-accessors";
 import { arrayValue, normalizeText } from "./normalize-input";
 import { includesAnyText } from "./assess-evidence";
 
@@ -30,6 +31,12 @@ function suitabilityScore(code: PathwayCode, args: { input: EmploymentIntelligen
   if (args.barriers.some((item) => item.definitionCode === "WORK_AUTHORIZATION_UNCERTAINTY")) score -= ["DIRECT_EMPLOYMENT", "PROFESSIONAL_EMPLOYMENT", "SKILLED_EMPLOYMENT"].includes(code) ? 24 : 8;
   if (args.barriers.some((item) => item.definitionCode === "PRACTICAL_ACCESS_CONSTRAINT")) score -= ["DIRECT_EMPLOYMENT", "PROFESSIONAL_EMPLOYMENT"].includes(code) ? 10 : 2;
   if (args.missing.filter((item) => item.blocksConclusion).length) score -= 12;
+  if (isSouthAfricaContext(args.input.countryContext)) {
+    if (code === "QUALIFICATION_RECOGNITION" && inputHasText(education, ["foreign"])) score += 34;
+    if (code === "LICENCE_OR_CERTIFICATE" && inputHasText([goal, ...licences], ["security", "registration", "licence"])) score += 24;
+    if (["LEARNERSHIP", "INTERNSHIP", "GRADUATE_PROGRAMME"].includes(code) && education.length) score += 10;
+    if (["ENTRY_LEVEL_EMPLOYMENT", "SKILLS_FIRST_TRANSITION", "INFORMAL_OR_COMMUNITY_WORK"].includes(code) && inputHasText(education, ["matric_incomplete"])) score += 18;
+  }
   return Math.max(0, Math.min(100, score));
 }
 
@@ -52,6 +59,9 @@ export function evaluatePathways(args: {
     const score = suitabilityScore(pathwayCode, args);
     const missingInformation = args.missing.filter((item) => item.blocksConclusion || item.importance === "IMPORTANT").map((item) => item.code).slice(0, 4);
     const barriers = args.barriers.map((item) => item.definitionCode).slice(0, 4);
+    const countryPathway = isSouthAfricaContext(args.input.countryContext) ? getSouthAfricaPathwayContext(args.input.countryContext, pathwayCode) : null;
+    const countryDependencies = Array.isArray(countryPathway?.dependencies) ? (countryPathway.dependencies as string[]) : [];
+    const countryUnavailable = typeof countryPathway?.unavailableLiveDataWarning === "string" ? countryPathway.unavailableLiveDataWarning : null;
     const evaluation: PathwayEvaluation = {
       pathwayCode,
       rank: 0,
@@ -64,14 +74,16 @@ export function evaluatePathways(args: {
         countryContext: args.input.countryContext.sourceMetadata.length ? 0.65 : 0.25,
         rationale: [`pathway.${pathwayCode.toLowerCase()}`]
       }),
-      dependencies: ["Professional Identity", "Employment Diagnosis", "Country Context"],
+      dependencies: Array.from(new Set(["Professional Identity", "Employment Diagnosis", "Country Context", ...countryDependencies])),
       barriers,
-      unmetDependencies: missingInformation,
-      missingInformation,
+      unmetDependencies: Array.from(new Set([...missingInformation, ...(countryUnavailable ? ["COUNTRY_LIVE_DATA_UNAVAILABLE"] : [])])),
+      missingInformation: Array.from(new Set([...missingInformation, ...(countryUnavailable ? ["COUNTRY_LIVE_DATA_UNAVAILABLE"] : [])])),
       timeHorizon: score >= 64 ? "near_term" : score >= 35 ? "needs_preparation" : "exploratory",
       urgencySuitability: score >= 55 ? "can_be_considered_for_current_urgency" : "not_primary_for_current_urgency",
       supportingSignals: args.strengths.flatMap((strength) => strength.suitablePathwayConnections.includes(pathwayCode) ? [strength.code] : []),
-      explanation: "Suitability is deterministic and evidence-aware; unsupported or unknown facts reduce confidence rather than inventing conclusions."
+      explanation: countryUnavailable
+        ? `Suitability is deterministic and evidence-aware. ${countryUnavailable}`
+        : "Suitability is deterministic and evidence-aware; unsupported or unknown facts reduce confidence rather than inventing conclusions."
     };
     return { evaluation, score };
   });

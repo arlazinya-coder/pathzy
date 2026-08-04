@@ -2,6 +2,7 @@ import type { EmploymentIntelligenceInput } from "../domain/employment-intellige
 import type { DetectedBarrier } from "../domain/barriers";
 import type { EvidenceAssessmentSummary, EmploymentSignal, MissingInformation } from "./engine-types";
 import { createConfidenceAssessment } from "./calculate-confidence";
+import { hasUnavailableMarker, inputHasText, isSouthAfricaContext } from "./country-context-accessors";
 import { barrierCategoryForCode } from "./engine-types";
 import { normalizeText } from "./normalize-input";
 
@@ -63,6 +64,20 @@ export function detectEmploymentBarriers(input: EmploymentIntelligenceInput, sig
 
   if (input.countryContext.sourceMetadata.length && input.countryContext.dataFreshness === "STALE") {
     barriers.push(barrier("MARKET_OR_STRUCTURAL_BARRIER", "INFORMATIONAL", ["Treat country context as stale and verify current opportunity conditions before decisions."], evidenceSummary, ["Country context data is marked stale."]));
+  }
+  if (isSouthAfricaContext(input.countryContext)) {
+    if (missing.some((item) => item.code === "ZA_FOREIGN_QUALIFICATION_RECOGNITION_UNKNOWN")) {
+      barriers.push(barrier("QUALIFICATION_RECOGNITION_UNCERTAINTY", "MODERATE", ["Clarify recognition status before relying on qualification-dependent pathways."], evidenceSummary));
+    }
+    if (missing.some((item) => item.code === "ZA_SECURITY_REGISTRATION_EVIDENCE_UNKNOWN")) {
+      barriers.push(barrier("LICENCE_OR_REGISTRATION_EVIDENCE_MISSING", "MODERATE", ["Confirm registration, training, validity, and related evidence before relying on the security pathway."], evidenceSummary));
+    }
+    if (hasUnavailableMarker(input.countryContext, "MARKET_DEMAND")) {
+      barriers.push(barrier("MARKET_DATA_UNAVAILABLE", "INFORMATIONAL", ["Do not use market-demand claims until verified source data exists."], evidenceSummary, ["South Africa market-demand data is unavailable in the current adapter."]));
+    }
+    if (inputHasText(input.professionalIdentity.nationality.value, ["south africa", "south african", "za"]) && authorization === "unknown") {
+      barriers.push(barrier("NATIONALITY_NOT_WORK_AUTHORIZATION", "INFORMATIONAL", ["Confirm work authorization directly; nationality is not used as an authorization shortcut."], evidenceSummary));
+    }
   }
 
   return Array.from(new Map(barriers.map((item) => [item.definitionCode, item])).values()).sort((a, b) => a.definitionCode.localeCompare(b.definitionCode));

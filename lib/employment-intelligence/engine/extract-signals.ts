@@ -22,6 +22,12 @@ function signal(code: string, source: ProvenancedValue<unknown>, value: Employme
   };
 }
 
+function workAuthorisationSignalValue(source: ProvenancedValue<unknown>) {
+  const serialized = normalizeText(JSON.stringify(source.value)).toLowerCase();
+  if (!valueKnown(source) || /unknown|user_declined|declined|pending|expired|restricted|no_authorisation/.test(serialized)) return "unknown";
+  return "known";
+}
+
 export function extractEmploymentSignals(input: EmploymentIntelligenceInput): EmploymentSignal[] {
   const pi = input.professionalIdentity;
   const dx = input.employmentDiagnosis;
@@ -40,7 +46,7 @@ export function extractEmploymentSignals(input: EmploymentIntelligenceInput): Em
     signal("CURRENT_SITUATION_KNOWN", pi.currentSituation, normalizeText(pi.currentSituation.value)),
     signal("CAREER_GOAL_PRESENT", pi.careerGoal, normalizeText(pi.careerGoal.value)),
     signal("CAREER_DIRECTION_SPECIFICITY", pi.careerGoal, normalizeText(pi.careerGoal.value).split(/\s+/).filter(Boolean).length >= 2 ? "specific" : "broad"),
-    signal("WORK_AUTHORIZATION_KNOWN", pi.workAuthorisation, pi.workAuthorisation.value ? "known" : "unknown", "HIGH"),
+    signal("WORK_AUTHORIZATION_KNOWN", pi.workAuthorisation, workAuthorisationSignalValue(pi.workAuthorisation), "HIGH"),
     signal("LOCATION_KNOWN", pi.location, pi.location.value ? "known" : "unknown"),
     signal("AVAILABILITY_KNOWN", pi.availability, pi.availability.value ? "known" : "unknown"),
     signal("EMPLOYMENT_PREFERENCES_PRESENT", pi.employmentPreferences, pi.employmentPreferences.value ? "present" : "unknown"),
