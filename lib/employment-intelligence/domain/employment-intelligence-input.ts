@@ -1,0 +1,54 @@
+import type { CountryEmploymentContext } from "./country-context";
+import type { ProvenancedValue } from "./evidence";
+
+export type EmploymentIntelligenceInput = {
+  userId: string;
+  inputSnapshotVersion: string;
+  professionalIdentity: {
+    currentSituation: ProvenancedValue<string>;
+    profileCompletionMetadata: ProvenancedValue<Record<string, unknown>>;
+    location: ProvenancedValue<Record<string, unknown>>;
+    nationality: ProvenancedValue<string>;
+    workAuthorisation: ProvenancedValue<Record<string, unknown>>;
+    careerGoal: ProvenancedValue<string>;
+    summary: ProvenancedValue<string>;
+    education: ProvenancedValue<unknown[]>;
+    experience: ProvenancedValue<unknown[]>;
+    skills: ProvenancedValue<unknown[]>;
+    projects: ProvenancedValue<unknown[]>;
+    achievements: ProvenancedValue<unknown[]>;
+    certificates: ProvenancedValue<unknown[]>;
+    licences: ProvenancedValue<unknown[]>;
+    languages: ProvenancedValue<unknown[]>;
+    references: ProvenancedValue<unknown[]>;
+    portfolio: ProvenancedValue<unknown[]>;
+    socialProfiles: ProvenancedValue<unknown[]>;
+    employmentPreferences: ProvenancedValue<Record<string, unknown>>;
+    salaryExpectations: ProvenancedValue<Record<string, unknown>>;
+    availability: ProvenancedValue<Record<string, unknown>>;
+    evidenceMetadata: ProvenancedValue<Record<string, unknown>>;
+  };
+  employmentDiagnosis: {
+    unemploymentDuration: ProvenancedValue<string>;
+    applicationActivity: ProvenancedValue<Record<string, unknown>>;
+    interviewHistory: ProvenancedValue<Record<string, unknown>>;
+    barriers: ProvenancedValue<string[]>;
+    transportAccess: ProvenancedValue<string>;
+    deviceInternetAccess: ProvenancedValue<string>;
+    incomeUrgency: ProvenancedValue<string>;
+    careResponsibilities: ProvenancedValue<string>;
+    workAuthorisationConstraints: ProvenancedValue<string>;
+    documentationAvailability: ProvenancedValue<string>;
+    digitalConfidence: ProvenancedValue<string>;
+    literacyCommunicationComfort: ProvenancedValue<string>;
+    preferredWorkType: ProvenancedValue<string>;
+    mobility: ProvenancedValue<string>;
+    willingnessToLearn: ProvenancedValue<string>;
+    supportNeeds: ProvenancedValue<string[]>;
+    userConfidence: ProvenancedValue<string>;
+    immediateGoals: ProvenancedValue<string[]>;
+    longTermGoals: ProvenancedValue<string[]>;
+  };
+  countryContext: CountryEmploymentContext;
+  opportunityLabourContext?: Record<string, unknown>;
+};
