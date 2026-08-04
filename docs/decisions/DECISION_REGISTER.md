@@ -547,3 +547,78 @@ Affected areas: Professional Identity, storage, Supabase policies, CV templates,
 Migration implications: A future additive migration and storage-policy setup are required for canonical photo assets and private object storage. Existing text-note photo data must not be destroyed.
 Lock status: Locked.
 Review trigger: Review before implementing photo uploads, storage policies, public profile sharing, or photo-enabled CV rendering.
+
+## DEC-036
+
+Decision ID: DEC-036
+Date: 2026-08-04
+Title: Employment Intelligence Profile as single derived intelligence output
+Status: Accepted
+Context: Phase 3 starts after the Phase 2 Professional Identity foundation. Existing code contains readiness, brain, job-match and recommendation logic that can drift if each consumer recalculates its own intelligence.
+Final decision: PATHZY will use one Employment Intelligence Profile as the canonical derived intelligence output. Home, Career Coach, documents, opportunities, applications and interviews may consume it, but must not independently recalculate it.
+Rejected alternatives: Page-local readiness engines; dashboard-specific scores; separate Coach, document and job intelligence profiles.
+Reason: One derived output prevents drift and keeps conclusions explainable, versioned and auditable.
+Affected areas: Home, Employment Diagnosis results, Career Coach, documents, opportunities, applications, interview preparation, analytics.
+Migration implications: Phase 3A adds contracts only. Future persistence requires an additive migration and stale/recompute workflow.
+Lock status: Locked.
+Review trigger: Review before implementing Phase 3B computation or adding a persistence table.
+
+## DEC-037
+
+Decision ID: DEC-037
+Date: 2026-08-04
+Title: Multidimensional readiness instead of one employability score
+Status: Accepted
+Context: PATHZY must not reduce a user's employment journey to a misleading single number.
+Final decision: Readiness is assessed across multiple dimensions including identity, career direction, qualification, experience, skills, evidence, documents, opportunities, applications, interviews, digital access, work eligibility, practical access and support readiness. Any numeric index is secondary and explainable.
+Rejected alternatives: One employability percentage; labels such as weak, poor, bad or unemployable; simple averages without dependency caps.
+Reason: Employment readiness has practical, structural, evidentiary and support dimensions that require explanation and next action.
+Affected areas: Employment Intelligence, Home, Coach, opportunity matching, documents, analytics.
+Migration implications: Existing `pathzy_brain` scores are transition data and must not become the Phase 3 authority without migration.
+Lock status: Locked.
+Review trigger: Review when a formal scoring methodology is proposed.
+
+## DEC-038
+
+Decision ID: DEC-038
+Date: 2026-08-04
+Title: Evidence provenance is mandatory for intelligence conclusions
+Status: Accepted
+Context: Employment recommendations affect real user decisions and must distinguish confirmed facts, self-reported facts, inferred facts and unknowns.
+Final decision: Phase 3 intelligence conclusions must carry evidence type, source reference, provenance state, confidence, missing evidence and engine version where applicable.
+Rejected alternatives: Treat unsupported claims as verified; copy raw profile text into recommendations; erase informal experience because formal documents are missing.
+Reason: Evidence-aware guidance is more truthful, fair and useful.
+Affected areas: Employment Intelligence, job matching, targeted documents, interview preparation, Career Coach.
+Migration implications: Future tables must preserve source references and input snapshot versions.
+Lock status: Locked.
+Review trigger: Review before adding new AI or external data providers.
+
+## DEC-039
+
+Decision ID: DEC-039
+Date: 2026-08-04
+Title: Country adapters require sourced and versioned facts
+Status: Accepted
+Context: South Africa is the first intended country adapter, but live employment facts can become stale or incorrect.
+Final decision: Phase 3A defines the South Africa adapter specification only. Live country facts must include source, effective date, version, confidence and update policy before use.
+Rejected alternatives: Hard-coded South Africa programmes, salary data or eligibility facts without sources; embedding country rules directly inside UI components.
+Reason: Country context affects high-impact recommendations and must be auditable.
+Affected areas: Employment Intelligence, opportunity pathways, work authorisation, salary context, Career Plan.
+Migration implications: No migration in Phase 3A. Future country context storage must support source metadata and freshness.
+Lock status: Locked.
+Review trigger: Review before adding live South Africa data or another country adapter.
+
+## DEC-040
+
+Decision ID: DEC-040
+Date: 2026-08-04
+Title: Deterministic rules before generative AI in Employment Intelligence
+Status: Accepted
+Context: AI can help explain and summarize, but must not own high-impact decisions.
+Final decision: Deterministic structured rules and validation own identity completion, work eligibility boundaries, evidence verification, canonical readiness bands, route state, ownership and legal boundary handling. AI may later support wording, summaries and transferable-skill suggestions within validated schemas.
+Rejected alternatives: Prompt-only intelligence; AI-determined eligibility; AI route decisions; AI-generated legal conclusions.
+Reason: PATHZY must be explainable, safe and user-controlled.
+Affected areas: Employment Intelligence, Coach, documents, job matching, applications, interviews.
+Migration implications: Future AI outputs must be validated before persistence.
+Lock status: Locked.
+Review trigger: Review before any Phase 3 AI provider integration.

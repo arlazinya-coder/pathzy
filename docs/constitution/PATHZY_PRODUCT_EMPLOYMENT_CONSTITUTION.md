@@ -204,6 +204,25 @@ Every major intelligent recommendation should identify:
 
 Unexplained AI scores, raw profile dumps, copied CV paragraphs, unsupported claims, and hidden high-impact decisions are unacceptable.
 
+### Phase 3 Employment Intelligence Lock
+
+Employment Intelligence is the single derived interpretation layer that reads Professional Identity, Employment Diagnosis and country context. It may produce readiness dimensions, evidence gaps, barriers, pathway recommendations, support intensity, Next-Best-Action, Career Plan, explanations, confidence and missing information.
+
+Employment Intelligence must not:
+
+- replace Professional Identity as the source of truth
+- overwrite Employment Diagnosis
+- become a single employability score
+- make employer hiring decisions
+- declare anyone unemployable
+- blame users for poverty, unemployment duration, low literacy, disability, nationality, lack of formal evidence or other structural barriers
+- infer protected attributes
+- use generative AI to determine identity completion, ownership, route state, work eligibility, evidence verification, hard eligibility or legal conclusions
+
+Consumers such as Home, Career Coach, documents, opportunities, applications and interview preparation may read Employment Intelligence. They must not independently recalculate it.
+
+Canonical intelligence codes are language-independent. English and French are presentation layers and must never change stored readiness, barrier, pathway or support-intensity values.
+
 ## 9. System-Level Fixes Before Page-Level Patches
 
 When a defect appears in one screen, inspect the shared system first.
