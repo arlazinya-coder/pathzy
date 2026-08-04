@@ -68,6 +68,21 @@ Migration implications: Compatibility adapters may bridge legacy tables until a 
 Lock status: Locked.
 Review trigger: Review when canonical profile consolidation is designed.
 
+## DEC-010
+
+Decision ID: DEC-010
+Date: 2026-08-04
+Title: Deterministic Employment Intelligence core before AI enhancement
+Status: Accepted
+Context: Phase 3B requires PATHZY to transform Professional Identity, Employment Diagnosis, and Country Context into an explainable Employment Intelligence Profile without creating a black-box matching system.
+Final decision: The Phase 3B engine is deterministic, pure, versioned, and independent of UI, persistence, production API routes, and AI providers.
+Rejected alternatives: AI-first readiness scoring; page-local readiness calculations; one-off job-matching heuristics; storing unversioned derived conclusions.
+Reason: Employment guidance must be trustworthy, reproducible, explainable, multilingual-ready, and safe for users with incomplete or uncertain information.
+Affected areas: Employment Intelligence, Home, Career Plan, Career Coach, future job matching, future document targeting.
+Migration implications: No database migration in Phase 3B. Future persistence must store engine version, input snapshot version, generated time, stale status, and explanations.
+Lock status: Locked.
+Review trigger: Review only when Phase 3C persistence and presentation are designed.
+
 ## DEC-004
 
 Decision ID: DEC-004

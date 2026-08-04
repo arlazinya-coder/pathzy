@@ -71,6 +71,8 @@ PATHZY explicitly rejects:
 - sending users directly to Application Tracking
 - generic dashboards before the user is understood
 
+Phase 3B adds a locked implementation rule: Employment Intelligence conclusions must be produced by a deterministic, explainable engine before any AI enhancement or presentation layer may act on them. AI may assist later, but must not own readiness, eligibility, ownership, or barrier conclusions.
+
 Returning users with incomplete Professional Identity must resume the correct unfinished section. Returning users with sufficiently complete Professional Identity may proceed to Personalised Home.
 
 ## 6. Authoritative Professional Identity Sections
