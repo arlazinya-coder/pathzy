@@ -218,6 +218,8 @@ Employment Intelligence must not:
 - overwrite Employment Diagnosis
 
 Phase 3E locks Next-Best-Action and Career Plan as derived outputs from Employment Intelligence. Consumers may display the selected action and plan, but must not independently recalculate priorities. The user-facing term is Career Plan; Roadmap may remain only as a technical compatibility route.
+
+Phase 3F locks derived Employment Intelligence persistence as separate from Professional Identity. Persisted intelligence, actions, Career Plans and action history must reference input and engine versions, enforce authenticated ownership, preserve the last valid result on recomputation failure, and never overwrite canonical Professional Identity facts.
 - become a single employability score
 - make employer hiring decisions
 - declare anyone unemployable

@@ -151,6 +151,32 @@ const employmentNextActionSource = [
   "lib/employment-intelligence/engine/generate-employment-intelligence.ts",
   "lib/employment-intelligence/engine/index.ts"
 ].map((filePath) => readFileSync(filePath, "utf8")).join("\n");
+const employmentIntelligencePersistenceSource = [
+  "lib/employment-intelligence/persistence/persistence-models.ts",
+  "lib/employment-intelligence/persistence/versioning.ts",
+  "lib/employment-intelligence/persistence/idempotency.ts",
+  "lib/employment-intelligence/persistence/persistence-errors.ts",
+  "lib/employment-intelligence/persistence/persistence-mappers.ts",
+  "lib/employment-intelligence/repositories/employment-intelligence-repository.ts",
+  "lib/employment-intelligence/repositories/action-recommendation-repository.ts",
+  "lib/employment-intelligence/repositories/career-plan-repository.ts",
+  "lib/employment-intelligence/repositories/action-history-repository.ts",
+  "lib/employment-intelligence/repositories/recompute-attempt-repository.ts",
+  "lib/employment-intelligence/application/employment-intelligence-orchestrator.ts",
+  "lib/employment-intelligence/application/recompute-employment-intelligence.ts",
+  "lib/employment-intelligence/application/get-employment-intelligence.ts",
+  "lib/employment-intelligence/application/mark-intelligence-stale.ts",
+  "lib/employment-intelligence/application/action-recommendation-service.ts",
+  "lib/employment-intelligence/application/career-plan-service.ts",
+  "lib/employment-intelligence/application/employment-intelligence-service.ts",
+  "lib/employment-intelligence/api/schemas.ts",
+  "lib/employment-intelligence/api/responses.ts",
+  "lib/employment-intelligence/api/errors.ts",
+  "lib/employment-intelligence/events/intelligence-events.ts",
+  "lib/employment-intelligence/events/stale-triggers.ts",
+  "app/api/employment-intelligence/route.ts"
+].map((filePath) => readFileSync(filePath, "utf8")).join("\n");
+const employmentIntelligencePersistenceMigration = readFileSync("supabase/migrations/20260804120000_create_employment_intelligence_persistence.sql", "utf8");
 const professionalProfileApi = readFileSync("app/api/professional-profile/route.ts", "utf8");
 const discoveryFlow = readFileSync("components/discovery/discovery-flow.tsx", "utf8");
 const discoveryAnswerState = readFileSync("lib/discovery/discovery-answer-state.ts", "utf8");
@@ -1472,6 +1498,30 @@ assert.match(employmentNextActionSource, /primaryActionCode[\s\S]*dependencyGrap
 assert.match(employmentNextActionSource, /STANDARD[\s\S]*PLAIN_LANGUAGE[\s\S]*HIGH_GUIDANCE[\s\S]*ASSISTED/, "Phase 3E actions must preserve accessibility presentation modes inherited from diagnosis.");
 assert.match(employmentNextActionSource, /determineNextBestActions[\s\S]*generateCareerPlan[\s\S]*nextBestAction: actionSet\.primary[\s\S]*secondaryActions: actionSet\.secondary[\s\S]*careerPlan/, "Employment Intelligence generation must consume the Phase 3E action engine instead of the Phase 3B preliminary action.");
 assert.doesNotMatch(employmentNextActionSource, /generateOpenAIRoadmap|OpenAI|salary estimate|roadmap_90_days|automatic apply|auto-apply/i, "Phase 3E must not introduce generative AI, salary promises, 90-day roadmap copy or automatic applications.");
+for (const phase3fTable of [
+  "employment_intelligence_profiles",
+  "employment_action_recommendations",
+  "employment_career_plans",
+  "employment_action_history",
+  "employment_intelligence_recompute_attempts"
+]) {
+  assert.match(employmentIntelligencePersistenceMigration, new RegExp(`create table if not exists public\\.${phase3fTable}`), `Phase 3F migration must create ${phase3fTable}.`);
+}
+assert.match(employmentIntelligencePersistenceMigration, /employment_intelligence_one_current_idx[\s\S]*where status = 'CURRENT'/, "Phase 3F must enforce one CURRENT intelligence profile per user.");
+assert.match(employmentIntelligencePersistenceMigration, /alter table public\.employment_intelligence_profiles enable row level security[\s\S]*alter table public\.employment_action_history enable row level security/, "Phase 3F migrations must enable RLS on derived intelligence tables.");
+assert.match(employmentIntelligencePersistenceMigration, /auth\.uid\(\) = user_id/, "Phase 3F RLS policies must scope access to auth.uid().");
+assert.match(employmentIntelligencePersistenceMigration, /Users can view own employment intelligence profiles[\s\S]*Users can update own employment action history/, "Phase 3F RLS policies must cover intelligence profiles through action history.");
+assert.match(employmentIntelligencePersistenceMigration, /finalize_employment_intelligence_current[\s\S]*auth\.uid\(\) <> p_user_id[\s\S]*status = 'SUPERSEDED'[\s\S]*status = 'CURRENT'/, "Phase 3F must finalize current intelligence transactionally with authenticated ownership checks.");
+assert.doesNotMatch(employmentIntelligencePersistenceMigration, /\bdrop table\b|\btruncate\b|\bdelete from\b/i, "Phase 3F migration must not destructively remove existing data.");
+assert.match(employmentIntelligencePersistenceSource, /stableCanonicalStringify[\s\S]*deterministicInputHash[\s\S]*interface_language[\s\S]*theme|interface_language[\s\S]*theme[\s\S]*stableCanonicalStringify[\s\S]*deterministicInputHash/, "Phase 3F input hashing must be deterministic and ignore presentation-only fields.");
+assert.match(employmentIntelligencePersistenceSource, /buildEmploymentIntelligenceInputs[\s\S]*getProfessionalIdentityReadModelSafe[\s\S]*selectEmploymentDiagnosisDiscoveryRow[\s\S]*resolveCountryEmploymentContext/, "Phase 3F recompute inputs must come from Professional Identity, Diagnosis and Country Context.");
+assert.match(employmentIntelligencePersistenceSource, /recomputeEmploymentIntelligence[\s\S]*previous_valid_preserved[\s\S]*attemptRepo\.fail/, "Phase 3F recompute must preserve the previous valid result when recomputation fails.");
+assert.match(employmentIntelligencePersistenceSource, /recomputeIdempotencyKey[\s\S]*inputSnapshotHash[\s\S]*engineVersion[\s\S]*countryContextVersion/, "Phase 3F recompute must be idempotent across input and engine versions.");
+assert.match(employmentIntelligencePersistenceSource, /staleReasonForChangedFields[\s\S]*ignoredStaleFields[\s\S]*interfaceLanguage[\s\S]*documentLanguage[\s\S]*theme/, "Phase 3F stale engine must ignore language and presentation changes.");
+assert.match(employmentIntelligencePersistenceSource, /ActionHistoryRepository[\s\S]*validTransitions[\s\S]*Unknown action code[\s\S]*employment_action_history/, "Phase 3F Action History must validate registry action codes and transitions.");
+assert.match(employmentIntelligencePersistenceSource, /refreshCareerPlanProgressFromActionHistory[\s\S]*COMPLETED[\s\S]*progress_json/, "Phase 3F Career Plan progress must derive from Action History.");
+assert.match(employmentIntelligencePersistenceSource, /createSupabaseServerClient[\s\S]*auth\.supabase\.auth\.getUser[\s\S]*authenticatedUser: auth\.user[\s\S]*auth\.user\.id/, "Phase 3F API must derive ownership from authenticated Supabase user.");
+assert.doesNotMatch(employmentIntelligencePersistenceSource, /clientUserId|userId\s*:\s*body\.userId|generateOpenAIRoadmap|OpenAI|salary estimate|live job matching|Phase 3G/i, "Phase 3F must not trust client user IDs or introduce AI, salary, live matching or Phase 3G UI work.");
 for (const saveStatusCopy of [
   "Unsaved changes",
   "Saving...",

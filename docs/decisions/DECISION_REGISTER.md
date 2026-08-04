@@ -718,6 +718,26 @@ Migration implications: None in Phase 3E.
 
 Review trigger: Review before Phase 3F persistence, Home presentation or Career Coach integration.
 
+## Decision: Phase 3F Employment Intelligence Persistence
+
+Context: Phase 3F persists derived Employment Intelligence, Next-Best-Actions, Career Plans and Action History for future Home and Employment Center consumers.
+
+Final decision: Employment Intelligence is persisted separately from Professional Identity. Derived records cannot overwrite canonical facts. There is one current intelligence result per user, with versioned action recommendations and Career Plans tied to that input version. Failed recomputation preserves the last valid result. Recompute is idempotent and version-aware. Client-supplied user IDs are ignored. Action History owns action progress, and Career Plan progress derives from Action History. Language changes do not trigger recomputation. Meaningful Identity, Diagnosis, country-context or action-history changes mark derived intelligence stale. API responses minimise sensitive data.
+
+Rejected alternatives:
+
+- Store intelligence inside Professional Identity, because that would create derived facts as canonical data.
+- Let UI pages write current intelligence directly, because orchestration belongs in one service layer.
+- Delete previous current records during recompute, because failed recompute must preserve the last valid result.
+- Use translated text as canonical persisted output, because language switching must not alter hashes or priorities.
+- Trust a client-supplied user ID, because ownership must come from authentication.
+
+Affected areas: Employment Intelligence API, persistence, recomputation, action history, Career Plan progress, future Home and Employment Center consumers.
+
+Migration implications: Additive Phase 3F derived-data tables and RLS policies only.
+
+Review trigger: Review before Phase 3G Home UI integration or any background recomputation worker.
+
 ## DEC-043
 
 Decision ID: DEC-043
