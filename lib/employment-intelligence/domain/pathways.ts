@@ -48,10 +48,15 @@ export type PathwayDefinition = {
 export type PathwayRecommendation = {
   pathwayCode: PathwayCode;
   rank: number;
+  suitability?: "NOT_ASSESSED" | "LOW" | "POSSIBLE" | "SUITABLE_WITH_SUPPORT" | "SUITABLE" | "HIGHLY_SUITABLE";
   reason: string;
   confidence: ConfidenceAssessment;
   dependencies: string[];
   barriers: string[];
+  unmetDependencies?: string[];
+  missingInformation?: string[];
+  timeHorizon?: string;
+  urgencySuitability?: string;
 };
 
 export const pathwayDefinitions: PathwayDefinition[] = pathwayCodes.map((code) => ({
