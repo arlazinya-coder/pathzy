@@ -79,6 +79,25 @@ const employmentIntelligenceDomainIndex = readFileSync("lib/employment-intellige
 const employmentIntelligenceInputContract = readFileSync("lib/employment-intelligence/domain/employment-intelligence-input.ts", "utf8");
 const employmentIntelligenceProfileContract = readFileSync("lib/employment-intelligence/domain/employment-intelligence-profile.ts", "utf8");
 const employmentIntelligenceCountryContract = readFileSync("lib/employment-intelligence/domain/country-context.ts", "utf8");
+const employmentIntelligenceEngineIndex = readFileSync("lib/employment-intelligence/engine/index.ts", "utf8");
+const employmentIntelligenceEngineSource = [
+  "lib/employment-intelligence/engine/assess-evidence.ts",
+  "lib/employment-intelligence/engine/assess-readiness.ts",
+  "lib/employment-intelligence/engine/build-explanations.ts",
+  "lib/employment-intelligence/engine/calculate-confidence.ts",
+  "lib/employment-intelligence/engine/detect-barriers.ts",
+  "lib/employment-intelligence/engine/detect-missing-information.ts",
+  "lib/employment-intelligence/engine/engine-types.ts",
+  "lib/employment-intelligence/engine/engine-version.ts",
+  "lib/employment-intelligence/engine/evaluate-pathways.ts",
+  "lib/employment-intelligence/engine/extract-signals.ts",
+  "lib/employment-intelligence/engine/fixtures.ts",
+  "lib/employment-intelligence/engine/generate-employment-intelligence.ts",
+  "lib/employment-intelligence/engine/identify-strengths.ts",
+  "lib/employment-intelligence/engine/index.ts",
+  "lib/employment-intelligence/engine/normalize-input.ts",
+  "lib/employment-intelligence/engine/select-support-intensity.ts"
+].map((filePath) => readFileSync(filePath, "utf8")).join("\n");
 const professionalProfileApi = readFileSync("app/api/professional-profile/route.ts", "utf8");
 const discoveryFlow = readFileSync("components/discovery/discovery-flow.tsx", "utf8");
 const discoveryAnswerState = readFileSync("lib/discovery/discovery-answer-state.ts", "utf8");
@@ -288,6 +307,7 @@ const currentSituationRuntime = loadProductionTsModule("lib/professional-identit
 const professionalIdentityCompletionRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-completion.ts");
 const professionalIdentityWriteRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-write-service.ts");
 const employmentIntelligenceDomainRuntime = loadProductionTsModule("lib/employment-intelligence/domain/index.ts");
+const employmentIntelligenceEngineRuntime = loadProductionTsModule("lib/employment-intelligence/engine/index.ts");
 
 function assertUniqueValues(values, message) {
   assert.equal(new Set(values).size, values.length, message);
@@ -409,6 +429,51 @@ assert.match(employmentIntelligenceCountryContract, /SPECIFICATION_ONLY_NO_LIVE_
 assert.match(employmentIntelligenceDomainIndex, /Consumers may read Employment Intelligence\. Consumers must not independently recalculate it\./, "Phase 3A must lock the consumer dependency rule.");
 assert.equal(employmentIntelligenceDomainRuntime.employmentIntelligenceAiBoundary.mustNotDetermine.includes("work_eligibility"), true, "Phase 3A AI boundary must block AI-owned work eligibility decisions.");
 assert.equal(employmentIntelligenceDomainRuntime.employmentIntelligenceAiBoundary.mustNotDetermine.includes("ownership"), true, "Phase 3A AI boundary must block AI-owned ownership decisions.");
+assert.match(employmentIntelligenceEngineIndex, /generateEmploymentIntelligence/, "Phase 3B must expose one deterministic Employment Intelligence orchestrator.");
+assert.doesNotMatch(employmentIntelligenceEngineSource, /from\s+["'](?:@\/)?(?:app|components)\//, "Phase 3B engine must not import UI or route modules.");
+assert.doesNotMatch(employmentIntelligenceEngineSource, /supabase|createClient|fetch\(|openai|anthropic|aiProvider|prisma|drizzle/i, "Phase 3B engine must not use AI providers, network calls, database clients, or persistence.");
+assert.match(employmentIntelligenceEngineSource, /EMPLOYMENT_INTELLIGENCE_ENGINE_VERSION_3B\s*=\s*"3B\.1"/, "Phase 3B engine must carry explicit semantic engine version.");
+assert.match(employmentIntelligenceEngineSource, /rule_changes[\s\S]*taxonomy_changes[\s\S]*score_mapping_changes[\s\S]*bug_fixes_affecting_output[\s\S]*country_context_interpretation_changes/, "Phase 3B must document engine-version change rules.");
+const phase3bContext = { assessedAt: "2026-08-04T00:00:00.000Z" };
+const phase3bFixtures = employmentIntelligenceEngineRuntime.phase3bEmploymentIntelligenceFixtures;
+assert.equal(Object.keys(phase3bFixtures).length >= 18, true, "Phase 3B fixture corpus must cover broad user segments, not one candidate.");
+const phase3bEmptyProfile = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(phase3bFixtures.emptyProfile, phase3bContext);
+assert.equal(phase3bEmptyProfile.readinessDimensions.length, employmentIntelligenceDomainRuntime.readinessDimensions.length, "Phase 3B must assess all 14 readiness dimensions.");
+assert.equal(phase3bEmptyProfile.readinessDimensions.some((dimension) => dimension.band === "NOT_ASSESSED"), true, "Phase 3B must preserve unknown as NOT_ASSESSED instead of inventing a negative score.");
+assert.equal(phase3bEmptyProfile.missingInformation.includes("WORK_AUTHORIZATION_UNCLEAR"), true, "Phase 3B must surface missing work authorization as missing information.");
+assert.equal(phase3bEmptyProfile.barriers.some((barrier) => barrier.definitionCode === "WORK_AUTHORIZATION_UNCERTAINTY"), true, "Phase 3B must separate work eligibility uncertainty from general employability.");
+assert.equal(phase3bEmptyProfile.engineVersion, "3B.1", "Phase 3B profiles must include the deterministic engine version.");
+assert.equal(phase3bEmptyProfile.staleStatus, "CURRENT", "Phase 3B generated profiles must carry stale status.");
+assertCanonicalCodes(phase3bEmptyProfile.readinessDimensions.map((dimension) => dimension.key), "Phase 3B readiness output must use canonical dimension codes.");
+assertCanonicalCodes(phase3bEmptyProfile.pathwayRecommendations.map((pathway) => pathway.pathwayCode), "Phase 3B pathway output must use canonical pathway codes.");
+assertUniqueValues(phase3bEmptyProfile.pathwayRecommendations.map((pathway) => pathway.pathwayCode), "Phase 3B pathway recommendations must not duplicate pathways.");
+assert.equal(phase3bEmptyProfile.readinessDimensions.every((dimension) => Number.isFinite(dimension.optionalScore ?? 0)), true, "Phase 3B readiness dimensions must never emit NaN scores.");
+const phase3bGraduate = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(phase3bFixtures.graduateNoExperience, phase3bContext);
+assert.equal(phase3bGraduate.pathwayRecommendations.some((pathway) => ["GRADUATE_PROGRAMME", "INTERNSHIP", "LEARNERSHIP", "ENTRY_LEVEL_EMPLOYMENT"].includes(pathway.pathwayCode)), true, "Phase 3B must support graduates without treating no formal experience as fatal.");
+assert.equal(phase3bGraduate.suitableJobLevels.includes("GRADUATE"), true, "Phase 3B must indicate graduate job level for education-first profiles.");
+const phase3bTechnical = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(phase3bFixtures.technicalProjects, phase3bContext);
+assert.equal(phase3bTechnical.suitableJobLevels.includes("TECHNICAL"), true, "Phase 3B must recognize technical project evidence.");
+assert.equal(phase3bTechnical.pathwayRecommendations.some((pathway) => ["SKILLS_FIRST_TRANSITION", "FREELANCE_WORK", "PROFESSIONAL_EMPLOYMENT", "SKILLED_EMPLOYMENT"].includes(pathway.pathwayCode)), true, "Phase 3B must connect technical evidence to skills-first or professional pathways.");
+const phase3bCleaner = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(phase3bFixtures.cleanerInformalExperience, phase3bContext);
+assert.equal(phase3bCleaner.suitableRoleFamilies.includes("PRACTICAL_SERVICE_OR_OPERATIONAL_EXPERIENCE"), true, "Phase 3B must count informal practical experience as strength.");
+assert.equal(phase3bCleaner.pathwayRecommendations.some((pathway) => ["ENTRY_LEVEL_EMPLOYMENT", "TEMPORARY_WORK", "PART_TIME_WORK", "INFORMAL_OR_COMMUNITY_WORK"].includes(pathway.pathwayCode)), true, "Phase 3B must support service and informal work pathways.");
+const phase3bLimitedInternet = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(phase3bFixtures.limitedInternet, phase3bContext);
+assert.equal(["STRUCTURED_GUIDANCE", "HIGH_SUPPORT", "HUMAN_SUPPORT_RECOMMENDED"].includes(phase3bLimitedInternet.supportIntensity), true, "Phase 3B limited internet should increase support intensity, not reduce user capability.");
+const phase3bTransport = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(phase3bFixtures.transportConstraint, phase3bContext);
+assert.equal(phase3bTransport.barriers.some((barrier) => barrier.definitionCode === "PRACTICAL_ACCESS_CONSTRAINT"), true, "Phase 3B must detect transport access as a practical constraint.");
+assert.notEqual(phase3bTransport.readinessDimensions.find((dimension) => dimension.key === "SKILLS_READINESS")?.band, "NOT_ASSESSED", "Phase 3B transport constraints must not erase unrelated skills readiness.");
+const phase3bLowLiteracy = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(phase3bFixtures.lowLiteracySupport, phase3bContext);
+assert.equal(["STRUCTURED_GUIDANCE", "HIGH_SUPPORT", "HUMAN_SUPPORT_RECOMMENDED"].includes(phase3bLowLiteracy.supportIntensity), true, "Phase 3B low literacy support should produce accessible guidance intensity.");
+assert.equal(JSON.stringify(phase3bLowLiteracy).includes("unemployable"), false, "Phase 3B must never label a user unemployable.");
+const phase3bBeforeInput = JSON.stringify(phase3bFixtures.technicalProjects);
+const firstDeterministicRun = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(phase3bFixtures.technicalProjects, phase3bContext);
+const secondDeterministicRun = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(phase3bFixtures.technicalProjects, phase3bContext);
+assert.deepEqual(secondDeterministicRun, firstDeterministicRun, "Phase 3B engine output must be deterministic for the same input and context.");
+assert.equal(JSON.stringify(phase3bFixtures.technicalProjects), phase3bBeforeInput, "Phase 3B engine must not mutate Professional Identity or Diagnosis input.");
+const phase3bTrace = employmentIntelligenceEngineRuntime.generateEmploymentIntelligenceWithTrace(phase3bFixtures.emptyProfile, phase3bContext);
+assert.equal(phase3bTrace.intermediate.signals.length > 10, true, "Phase 3B trace must expose deterministic signal extraction for testing.");
+assert.equal(phase3bTrace.intermediate.missingInformation.some((item) => item.blocksConclusion), true, "Phase 3B missing information must mark blockers without pretending to know the answer.");
+assert.equal(phase3bTrace.profile.explanations.every((explanation) => Array.isArray(explanation.reasons) && explanation.confidence), true, "Phase 3B explanations must be structured and confidence-bearing.");
 const normalizedEventFailure = errorNormalizationRuntime.normalizePathzyError({ type: "error", target: "window" }, "Keep the current screen safe.");
 assert.equal(normalizedEventFailure.originalType, "event", "Browser event-like failures must be normalized before they can reach the Next.js overlay.");
 assert.equal(normalizedEventFailure.userMessage, "Keep the current screen safe.", "Event-like failures must receive a human fallback message.");
