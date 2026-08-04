@@ -28,9 +28,25 @@ Adds:
 - Canonical Professional Identity tables remain separate.
 - Service logic reads canonical identity and diagnosis, then persists derived intelligence.
 
+## Connected Development Database Check
+
+Project ref: `tibcegsglqfnnaardxck`
+
+A sanitized Supabase SDK probe using public app configuration returned:
+
+- `PGRST205` for `employment_intelligence_profiles`
+- `PGRST205` for `employment_action_recommendations`
+- `PGRST205` for `employment_career_plans`
+- `PGRST205` for `employment_action_history`
+- `PGRST205` for `employment_intelligence_recompute_attempts`
+- `PGRST202` for `finalize_employment_intelligence_current`
+
+This means the Phase 3 persistence migration is not visible in the connected development project schema cache.
+
 ## Required Live Verification
 
-- Confirm the migration has been applied in the intended Supabase project.
+- Apply the migration in the intended Supabase development project.
+- Refresh the PostgREST schema cache if the SQL succeeds but API checks still return schema-cache errors.
 - Confirm RLS is enabled.
 - Confirm owner-scoped policies exist.
 - Confirm the finalize RPC exists and is executable by authenticated users.
