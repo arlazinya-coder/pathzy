@@ -12,6 +12,8 @@ export const PATHZY_ROUTES = {
   PROFESSIONAL_IDENTITY_REVIEW: "/professional-identity/review",
   PROFESSIONAL_IDENTITY_SECTION_ROOT: "/professional-identity/section",
   HOME: "/roadmap",
+  CAREER_PLAN: "/roadmap/career-plan",
+  DIAGNOSIS_RESULTS: "/discovery/results",
   EMPLOYMENT_CENTER: "/employment-center",
   MY_EMPLOYMENT_JOURNEY: "/roadmap",
   MY_PROFESSIONAL_PROFILE: "/professional-identity",
@@ -58,6 +60,8 @@ export const legacyRoutes = {
 export const appRoutes = {
   home: PATHZY_ROUTES.LANDING,
   authenticatedHome: PATHZY_ROUTES.HOME,
+  careerPlan: PATHZY_ROUTES.CAREER_PLAN,
+  diagnosisResults: PATHZY_ROUTES.DIAGNOSIS_RESULTS,
   employmentCenter: PATHZY_ROUTES.EMPLOYMENT_CENTER,
   dashboard: legacyRoutes.dashboard,
   onboarding: "/onboarding",

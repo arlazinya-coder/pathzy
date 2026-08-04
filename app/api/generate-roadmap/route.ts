@@ -16,6 +16,7 @@ import {
 import type { DiagnosisAnswerState, EmploymentDiagnosisSession } from "@/lib/employment-intelligence/diagnosis";
 import { getProfessionalIdentityReadModelSafe } from "@/lib/professional-identity/professional-identity-read-service";
 import { syncProfessionalIdentityAfterWrite } from "@/lib/professional-identity/professional-identity-sync";
+import { recomputeEmploymentIntelligence } from "@/lib/employment-intelligence/application";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -171,7 +172,15 @@ export async function POST(request: Request) {
     });
     if (saveResult.error) return NextResponse.json({ error: diagnosisError }, { status: 500 });
     await syncProfessionalIdentityAfterWrite(supabase, user.id, { mode: "diagnosis", reason: "Adaptive Employment Diagnosis completed" });
-    return NextResponse.json({ result, intelligence, redirectTo: appRoutes.authenticatedHome });
+    await recomputeEmploymentIntelligence({
+      supabase,
+      authenticatedUser: user,
+      trigger: "diagnosis_completed",
+      force: true
+    }).catch((error) => {
+      console.warn("[employment-diagnosis] persisted intelligence recompute deferred", error instanceof Error ? error.message : "unknown");
+    });
+    return NextResponse.json({ result, intelligence, redirectTo: appRoutes.diagnosisResults });
   }
 
   return NextResponse.json({ error: "Unsupported diagnosis action." }, { status: 400 });

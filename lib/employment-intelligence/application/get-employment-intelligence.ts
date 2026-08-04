@@ -21,6 +21,7 @@ export async function getDetailedEmploymentIntelligence(supabase: SupabaseClient
     intelligence: current.payload_json,
     actions: (actions as { action_set_json?: unknown } | null)?.action_set_json ?? null,
     careerPlan: (plan as { plan_json?: unknown } | null)?.plan_json ?? null,
+    updatedAt: (plan as { updated_at?: string } | null)?.updated_at ?? current.updated_at,
     versions: await intelligenceRepo.listVersions(userId, 10)
   };
 }

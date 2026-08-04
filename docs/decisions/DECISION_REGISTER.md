@@ -767,3 +767,23 @@ Affected areas: Diagnosis taxonomy, result model, future Coach and Career Plan c
 Migration implications: Future persistence must support sensitivity metadata.
 Lock status: Locked.
 Review trigger: Review before any AI prompt consumes sensitive diagnosis content.
+
+## Decision: Phase 3G Employment Intelligence UI Integration
+
+Context: Phase 3G makes persisted Employment Intelligence useful on Home, Diagnosis Results and Career Plan screens.
+
+Final decision: PATHZY uses one shared client/view-model layer for Employment Intelligence presentation. Home displays one primary action, at most three secondary actions, an employment-position summary, and a Career Plan preview. The fourteen readiness dimensions are available as details, not expanded by default. Diagnosis Results use persisted intelligence. Action progress updates through Action History. Language changes presentation only.
+
+Rejected alternatives:
+
+- Recalculate action priority in UI, because it duplicates Phase 3E.
+- Display all readiness dimensions on Home, because it overwhelms users.
+- Continue using Roadmap as the primary planning label, because the locked product concept is Career Plan.
+- Hide previous results during failed recomputation, because users need continuity.
+- Use separate Home, Diagnosis and Career Plan state models, because Phase 3F is authoritative.
+
+Affected areas: `/roadmap`, `/discovery/results`, `/roadmap/career-plan`, Employment Intelligence client layer, action UI, tests and documentation.
+
+Migration implications: None in Phase 3G.
+
+Review trigger: Review before Phase 3H or any Career Coach conversation integration.

@@ -177,6 +177,25 @@ const employmentIntelligencePersistenceSource = [
   "app/api/employment-intelligence/route.ts"
 ].map((filePath) => readFileSync(filePath, "utf8")).join("\n");
 const employmentIntelligencePersistenceMigration = readFileSync("supabase/migrations/20260804120000_create_employment_intelligence_persistence.sql", "utf8");
+const employmentIntelligenceUiSource = [
+  "app/roadmap/page.tsx",
+  "app/roadmap/career-plan/page.tsx",
+  "app/discovery/results/page.tsx",
+  "components/employment-intelligence/employment-action-card.tsx",
+  "components/employment-intelligence/employment-intelligence-home.tsx",
+  "components/employment-intelligence/employment-position-summary.tsx",
+  "components/employment-intelligence/career-plan-preview.tsx",
+  "components/employment-intelligence/intelligence-freshness-panel.tsx",
+  "components/employment-intelligence/readiness-details.tsx",
+  "components/employment-intelligence/empty-intelligence-state.tsx",
+  "lib/employment-intelligence/client/employment-intelligence-client.ts",
+  "lib/employment-intelligence/client/use-employment-intelligence.ts",
+  "lib/employment-intelligence/client/use-next-best-actions.ts",
+  "lib/employment-intelligence/client/use-career-plan.ts",
+  "lib/employment-intelligence/client/employment-intelligence-view-model.ts",
+  "lib/employment-intelligence/client/employment-intelligence-query-keys.ts",
+  "lib/navigation/routes.ts"
+].map((filePath) => readFileSync(filePath, "utf8")).join("\n");
 const professionalProfileApi = readFileSync("app/api/professional-profile/route.ts", "utf8");
 const discoveryFlow = readFileSync("components/discovery/discovery-flow.tsx", "utf8");
 const discoveryAnswerState = readFileSync("lib/discovery/discovery-answer-state.ts", "utf8");
@@ -892,7 +911,7 @@ assert.equal(
   "identity_review_pending",
   "A persisted current situation in the Professional Identity compatibility row must survive refresh/logout-login and keep routing out of step 1."
 );
-assert.match(generateRoadmapApi, /mode === "complete"[\s\S]*buildEmploymentDiagnosisResult\(nextSession\)[\s\S]*redirectTo: appRoutes\.authenticatedHome/, "Adaptive Employment Diagnosis completion must persist a structured result and return the Home route.");
+assert.match(generateRoadmapApi, /mode === "complete"[\s\S]*buildEmploymentDiagnosisResult\(nextSession\)[\s\S]*recomputeEmploymentIntelligence[\s\S]*redirectTo: appRoutes\.diagnosisResults/, "Adaptive Employment Diagnosis completion must persist a structured result and route to persisted Diagnosis Results.");
 assert.match(professionalIdentityWriteService, /diagnosis_completed: true[\s\S]*pathzy_onboarding_state: "diagnosis_completed"/, "The single Professional Identity write service must persist the canonical home-ready diagnosis state.");
 assert.match(professionalIdentityDiscoveryCompatibility, /professionalIdentityCompatibilityScore[\s\S]*employment_diagnosis[\s\S]*-1000[\s\S]*selectProfessionalIdentityDiscoveryRow[\s\S]*professionalIdentityCompatibilityScore\(row\) >= 0/, "Professional Identity reads must not allow a diagnosis row to mask identity data.");
 assert.match(professionalIdentityReadService, /selectProfessionalIdentityDiscoveryRow[\s\S]*selectEmploymentDiagnosisDiscoveryRow[\s\S]*diagnosisWorkflowFlags/, "Professional Identity reads may merge diagnosis workflow flags without using diagnosis answers as identity data.");
@@ -1060,31 +1079,25 @@ for (const [routeName, routeLayout] of [
 
 assert.match(nextActionEngine, /export async function getPathzyNextAction/, "PATHZY must expose one shared next action journey engine.");
 assert.match(dashboard, /redirect\(appRoutes\.roadmap\)/, "Legacy /dashboard must redirect to My Employment Journey.");
-assert.match(roadmapPage, /\{greetingFor\(interfaceLanguage\)\}, \{firstName\}\./, "Authenticated Home must render a personalized localized safe greeting.");
+assert.match(roadmapPage, /greetingFor\(interfaceLanguage\)[\s\S]*firstName|firstName[\s\S]*greetingFor\(interfaceLanguage\)/, "Authenticated Home must render a personalized localized safe greeting.");
 assert.match(roadmapPage, /safeFirstToken\(user\?\.user_metadata\?\.display_name\)/, "First name fallback must use account display name before generic fallback.");
-assert.match(roadmapPage, /const firstName = profileFirstName \|\| accountFirstName \|\| phase2T\("home\.greeting\.fallbackName"\);/, "First name fallback must be localized instead of rendering undefined, null, or email.");
+assert.match(roadmapPage, /pathzyPhase2T\(language, "home\.greeting\.fallbackName"\)/, "First name fallback must be localized instead of rendering undefined, null, or email.");
 assert.match(roadmapPage, /const professionalDirection = localizedProfessionalTitle\(interfaceLanguage, profile\?\.career_goal \|\| profile\?\.preferred_path \|\| ""\);/, "Authenticated Home must show the user's current or target professional direction with localized fallbacks.");
-assert.match(roadmapPage, /const location = \[profile\?\.city, profile\?\.country\]\.filter\(Boolean\)\.join\(", "\);/, "Authenticated Home must show location when available.");
-assert.match(roadmapPage, /phase2T\("home\.identityLabel"\)[\s\S]*\{professionalIdentityPercent\}% \{phase2T\("home\.complete"\)\}/, "Authenticated Home must show localized Professional Identity completion percentage.");
-assert.match(roadmapPage, /getProfessionalIdentityReadModelSafe\(supabase, user, "home identity"\)[\s\S]*professionalIdentityPercent = identityReadModel\.completion\.percentage/, "Authenticated Home must use the shared Professional Identity read model and completion engine.");
+assert.match(roadmapPage, /getProfessionalIdentityReadModelSafe\(supabase, user, "employment intelligence home identity"\)[\s\S]*getDetailedEmploymentIntelligence\(supabase, user\.id\)/, "Authenticated Home must use the shared Professional Identity read model and persisted Employment Intelligence service.");
 assert.match(appShell, /getProfessionalIdentityReadModelSafe\(supabase, user, "app shell identity"\)[\s\S]*profile: identityReadModel\?\.profile[\s\S]*discovery: identityReadModel\?\.discovery/, "Authenticated app shell workflow gating must use the shared Professional Identity read model.");
 assert.match(nextActionEngine, /getProfessionalIdentityReadModelSafe\(supabase, user, "next action identity"\)[\s\S]*identityReadModel\.profile[\s\S]*identityReadModel\.discovery/, "Continue and next-action decisions must use the same Professional Identity read model as Home and setup routing.");
-for (const translationKey of ["home.continue.title", "home.employmentCenter.title", "home.opportunities.title", "home.guidance.title"]) {
-  assert.match(roadmapPage, new RegExp(`phase2T\\("${translationKey.replace(".", "\\.")}"\\)`), `Authenticated Home must include the ${translationKey} card through shared localization.`);
-}
-assert.equal((roadmapPage.match(/<HomeCard/g) ?? []).length, 4, "Authenticated Home must render exactly four large action cards.");
-assert.match(roadmapPage, /primaryHref=\{appRoutes\.employmentCenter\}[\s\S]*primaryLabel=\{phase2T\("home\.employmentCenter\.primary"\)\}/, "Employment Center card must open the canonical Employment Center route with localized copy.");
+assert.match(roadmapPage, /buildEmploymentHomeViewModel\(intelligence, language\)[\s\S]*<EmploymentIntelligenceHome model=\{model\} language=\{language\}/, "Authenticated Home must render the Phase 3G four-area intelligence Home from the shared view model.");
+assert.match(employmentIntelligenceUiSource, /IntelligenceFreshnessPanel[\s\S]*EmploymentActionCard[\s\S]*EmploymentPositionSummary[\s\S]*CareerPlanPreview[\s\S]*secondaryActions/, "Phase 3G Home must keep a focused four-section intelligence hierarchy.");
+assert.match(employmentIntelligenceUiSource, /ButtonLink href=\{appRoutes\.employmentCenter\}/, "Employment Center entry must open the canonical Employment Center route.");
 assert.doesNotMatch(roadmapPage, /secondaryHref=\{appRoutes\.applications\}[\s\S]*secondaryLabel="Track Applications"/, "Authenticated Home must not shortcut users into Applications before they apply.");
-assert.match(roadmapPage, /primaryHref=\{appRoutes\.opportunities\}[\s\S]*primaryLabel=\{phase2T\("home\.opportunities\.primary"\)\}/, "Opportunities card must route to the existing opportunities workspace with localized copy.");
-assert.match(roadmapPage, /primaryHref=\{appRoutes\.mentor\}[\s\S]*primaryLabel=\{phase2T\("home\.guidance\.primary"\)\}/, "Insights & Coach card must route to the existing Coach with localized copy.");
+assert.match(employmentIntelligenceUiSource, /appRoutes\.careerPlan[\s\S]*appRoutes\.employmentCenter/, "Phase 3G Home must route Career Plan and Employment Center through central route constants.");
+assert.match(employmentIntelligenceUiSource, /appRoutes\.coach|appRoutes\.mentor/, "Phase 3G tools and action destinations must preserve the existing Coach route.");
 assert.doesNotMatch(roadmapPage, /button: "Start My Journey"|dashboardActions|key=\{action\.eyebrow\}/, "Authenticated Home must not render the previous CV-first dashboard action collection.");
 assert.doesNotMatch(roadmapPage, /row-span|featured/, "Authenticated landing page must not keep one oversized recommendation card.");
 assert.doesNotMatch(roadmapPage, /overflow-x-auto|whitespace-nowrap|min-w-\[/, "Authenticated landing page must not require horizontal scrolling on mobile.");
 assert.doesNotMatch(roadmapPage, /Sample Career Plan|Your 90-day control center|Continue My Journey|Interactive 90-day plan|Compare careers/, "Authenticated landing page must not show the previous crowded journey content.");
-assert.match(roadmapPage, /getPathzyNextAction/, "Phase 9F dashboard must use the shared next-action engine.");
-assert.match(roadmapPage, /summarizeApplicationTracker/, "Phase 9F dashboard must use shared tracker summary logic.");
-assert.match(roadmapPage, /buildCareerAnalytics/, "Phase 9F dashboard must use the shared analytics service.");
-assert.match(roadmapPage, /safeQuery/, "Phase 9F dashboard must use safe partial-failure query handling.");
+assert.match(roadmapPage, /getDetailedEmploymentIntelligence/, "Phase 3G Home must use the persisted Employment Intelligence service instead of legacy dashboard summary queries.");
+assert.doesNotMatch(roadmapPage, /getPathzyNextAction|summarizeApplicationTracker|buildCareerAnalytics|safeQuery/, "Phase 3G Home must not mix legacy dashboard intelligence sources with persisted Employment Intelligence.");
 assert.match(operatingSystem, /applicationEventsForPathzyTimeline/, "Phase 9F must reuse application tracker timeline signals for the PATHZY Timeline.");
 assert.match(operatingSystem, /buildCareerPlanSuggestions[\s\S]*You stay in control|without PATHZY changing your plan automatically|Do not automatically modify/, "Phase 9F must connect Career Plan suggestions without automatic mutation.");
 assert.match(legacyCvBuilderPage, /redirect\(appRoutes\.professionalIdentityCv\)/, "Legacy /cv-builder must redirect to the canonical CV Builder.");
@@ -1522,6 +1535,20 @@ assert.match(employmentIntelligencePersistenceSource, /ActionHistoryRepository[\
 assert.match(employmentIntelligencePersistenceSource, /refreshCareerPlanProgressFromActionHistory[\s\S]*COMPLETED[\s\S]*progress_json/, "Phase 3F Career Plan progress must derive from Action History.");
 assert.match(employmentIntelligencePersistenceSource, /createSupabaseServerClient[\s\S]*auth\.supabase\.auth\.getUser[\s\S]*authenticatedUser: auth\.user[\s\S]*auth\.user\.id/, "Phase 3F API must derive ownership from authenticated Supabase user.");
 assert.doesNotMatch(employmentIntelligencePersistenceSource, /clientUserId|userId\s*:\s*body\.userId|generateOpenAIRoadmap|OpenAI|salary estimate|live job matching|Phase 3G/i, "Phase 3F must not trust client user IDs or introduce AI, salary, live matching or Phase 3G UI work.");
+assert.match(employmentIntelligenceUiSource, /getDetailedEmploymentIntelligence\(supabase, user\.id\)[\s\S]*buildEmploymentHomeViewModel/, "Phase 3G Home must read persisted Employment Intelligence through the Phase 3F service layer.");
+assert.match(employmentIntelligenceUiSource, /EmploymentIntelligenceHome[\s\S]*primaryAction[\s\S]*secondaryActions\.map/, "Phase 3G Home must render one primary action and secondary actions from the shared view model.");
+assert.match(employmentIntelligenceUiSource, /secondaryActions[\s\S]*\.slice\(0, 3\)/, "Phase 3G must limit secondary actions to three without recalculating priority.");
+assert.match(employmentIntelligenceUiSource, /useNextBestActions[\s\S]*updateEmploymentAction[\s\S]*operation: "action_transition"/, "Phase 3G action UI must update persisted Action History through the authenticated API.");
+assert.match(employmentIntelligenceUiSource, /CareerPlanPreview[\s\S]*(progressLabel[\s\S]*appRoutes\.careerPlan|appRoutes\.careerPlan[\s\S]*progressLabel)/, "Phase 3G must expose persisted Career Plan progress and route to the full Career Plan.");
+assert.match(employmentIntelligenceUiSource, /app\/discovery\/results|DiagnosisResultsPage[\s\S]*getDetailedEmploymentIntelligence[\s\S]*EmploymentActionCard/, "Phase 3G Diagnosis Results must present persisted intelligence rather than raw questionnaire answers.");
+assert.match(employmentIntelligenceUiSource, /IntelligenceFreshnessPanel[\s\S]*previous results are still available|r\u00e9sultats pr\u00e9c\u00e9dents restent disponibles/, "Phase 3G must preserve previous valid intelligence messaging during update failure.");
+assert.match(employmentIntelligenceUiSource, /normalizeLanguageCode[\s\S]*language === "fr"[\s\S]*language === "fr"/, "Phase 3G presentation must support English and French from the same canonical codes.");
+assert.match(employmentIntelligenceUiSource, /aria-live="polite"/, "Phase 3G intelligence UI must announce freshness and update states.");
+assert.match(employmentIntelligenceUiSource, /aria-expanded/, "Phase 3G intelligence UI must expose keyboard-accessible expandable explanations.");
+assert.match(employmentIntelligenceUiSource, /ProgressBar/, "Phase 3G intelligence UI must include accessible progress semantics.");
+assert.match(employmentIntelligenceUiSource, /credentials: "same-origin"[\s\S]*\/api\/employment-intelligence/, "Phase 3G client access must be authenticated and account-scoped through same-origin API calls.");
+assert.doesNotMatch(employmentIntelligenceUiSource, /generateEmploymentIntelligenceWithTrace|generateEmploymentIntelligence\(|selectNextBestAction|rankActions|salary estimate|live job matching|OpenAI|clientUserId|body\.userId/, "Phase 3G UI must not recalculate intelligence, add AI/live facts, or trust client user IDs.");
+assert.match(generateRoadmapApi, /recomputeEmploymentIntelligence[\s\S]*trigger: "diagnosis_completed"[\s\S]*redirectTo: appRoutes\.diagnosisResults/, "Diagnosis completion must persist Employment Intelligence through Phase 3F and route to Diagnosis Results.");
 for (const saveStatusCopy of [
   "Unsaved changes",
   "Saving...",

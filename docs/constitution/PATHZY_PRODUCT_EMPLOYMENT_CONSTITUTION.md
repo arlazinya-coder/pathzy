@@ -467,3 +467,19 @@ Employment Diagnosis must not:
 - produce final Career Plans before the approved Career Plan phase
 
 Diagnosis must be deterministic, adaptive, explainable, multilingual, privacy-aware and resumable.
+
+## 21. Employment Intelligence UI Boundary
+
+PATHZY presentation surfaces must use persisted Employment Intelligence through the shared service/API and view-model layer.
+
+Rules:
+
+- Home shows one primary action and at most three secondary actions.
+- Home remains calm and limited to four major information areas.
+- UI components must not recalculate readiness, barriers, strengths, action priority or Career Plan steps.
+- Career Plan replaces Roadmap as the user-facing planning concept.
+- Action progress comes from Action History.
+- Diagnosis Results explain persisted intelligence before sending the user to Home.
+- Previous valid intelligence remains visible during stale, updating or failed states.
+- Language changes presentation only and must not recompute intelligence or reset progress.
+- Barriers must be supportive and distinguish user-controlled, partly controlled and external factors.

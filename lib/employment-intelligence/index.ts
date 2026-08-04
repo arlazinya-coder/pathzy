@@ -1,6 +1,7 @@
 export * from "./actions";
 export * from "./api";
 export * from "./application";
+export * from "./client";
 export * from "./country";
 export * from "./diagnosis";
 export {
