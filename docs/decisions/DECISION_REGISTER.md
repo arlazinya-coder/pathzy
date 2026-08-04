@@ -667,3 +667,63 @@ Affected areas: Employment Intelligence, Coach, documents, job matching, applica
 Migration implications: Future AI outputs must be validated before persistence.
 Lock status: Locked.
 Review trigger: Review before any Phase 3 AI provider integration.
+
+## DEC-041
+
+Decision ID: DEC-041
+Date: 2026-08-04
+Title: Employment Diagnosis remains separate from Professional Identity
+Status: Accepted
+Context: Phase 3D introduces adaptive diagnosis after the Phase 2 Professional Identity foundation.
+Final decision: Employment Diagnosis may read Professional Identity and create pending suggestions, but must never own or overwrite canonical identity facts automatically.
+Rejected alternatives: Store diagnosis answers as duplicate identity fields; let diagnosis completion mutate profile facts silently; merge identity and diagnosis in one untyped record.
+Reason: Professional Identity remains PATHZY's source of truth, while diagnosis captures barriers, constraints, urgency, support needs and unresolved questions.
+Affected areas: Employment Diagnosis, Professional Identity, Home routing, Employment Intelligence, future Career Plan.
+Migration implications: Phase 3D uses diagnosis-marked compatibility records. Future migrations must preserve the separation.
+Lock status: Locked.
+Review trigger: Review before adding identity-suggestion acceptance UI or diagnosis persistence tables.
+
+## DEC-042
+
+Decision ID: DEC-042
+Date: 2026-08-04
+Title: Adaptive deterministic diagnosis before Career Plan generation
+Status: Accepted
+Context: The previous Discovery flow was a fixed list of long-text questions and could trigger roadmap generation too early.
+Final decision: Diagnosis questions are selected deterministically from a typed taxonomy, deduplicated against known identity facts, prioritised by high-value employment intelligence needs, and saved after each answer.
+Rejected alternatives: Static ten-question flow for all users; prompt-only question selection; final Career Plan generation during diagnosis.
+Reason: PATHZY needs short, relevant, explainable diagnosis paths before planning.
+Affected areas: `/discovery`, diagnosis API, Employment Intelligence input mapper, tests and docs.
+Migration implications: No migration in Phase 3D.
+Lock status: Locked.
+Review trigger: Review before Phase 3E Career Plan or Next-Best-Action work.
+
+## DEC-043
+
+Decision ID: DEC-043
+Date: 2026-08-04
+Title: Diagnosis answers use canonical codes with localized presentation
+Status: Accepted
+Context: PATHZY supports English and French and must avoid language switching corrupting stored answers.
+Final decision: Diagnosis options store canonical language-independent codes. English and French labels are presentation only.
+Rejected alternatives: Store translated labels; branch by visible UI text; restart diagnosis on language switch.
+Reason: Canonical codes keep persistence, branching and intelligence stable across languages.
+Affected areas: Diagnosis question registry, `/discovery` client, persistence, future analytics.
+Migration implications: Future tables should store canonical answer codes and separate localized presentation.
+Lock status: Locked.
+Review trigger: Review before adding another diagnosis language.
+
+## DEC-044
+
+Decision ID: DEC-044
+Date: 2026-08-04
+Title: Sensitive diagnosis questions require purpose and opt-out
+Status: Accepted
+Context: Diagnosis may ask about work authorisation, financial urgency, care responsibilities, reading/writing comfort and confidence.
+Final decision: Sensitive questions must be asked only when relevant, explain why, provide `USER_DECLINED` where appropriate, and avoid downstream exposure of raw sensitive data.
+Rejected alternatives: Mandatory sensitive answers; hidden scoring from sensitive answers; inferring disability or mental health.
+Reason: Diagnosis should increase support and safety without reducing dignity or privacy.
+Affected areas: Diagnosis taxonomy, result model, future Coach and Career Plan consumers.
+Migration implications: Future persistence must support sensitivity metadata.
+Lock status: Locked.
+Review trigger: Review before any AI prompt consumes sensitive diagnosis content.

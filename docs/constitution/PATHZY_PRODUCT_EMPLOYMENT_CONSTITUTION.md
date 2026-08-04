@@ -413,6 +413,10 @@ The following are unacceptable regressions:
 - silent job applications or messages
 - English-only architecture blocking French support
 - build artifacts or secrets included in commits
+- Employment Diagnosis overwriting Professional Identity automatically
+- diagnosis answers being stored as duplicate identity facts
+- static one-size-fits-all diagnosis replacing adaptive, evidence-aware questioning
+- sensitive diagnosis answers being used without purpose, opt-out or privacy boundary
 
 ## 18. Progress Preservation and Git Safety
 
@@ -444,3 +448,18 @@ A locked decision may change only when:
 8. The change passes the Definition of Done.
 
 No locked decision may be bypassed silently inside a page, component, route handler, database migration, or AI prompt.
+
+## 20. Employment Diagnosis Boundary
+
+Employment Diagnosis is a separate diagnostic process. It may read Professional Identity and produce structured findings, barriers, support needs, country-context clarifications and explicit Professional Identity suggestions.
+
+Employment Diagnosis must not:
+
+- own canonical identity facts
+- overwrite Professional Identity automatically
+- store translated labels as answer values
+- force every user through the same long questionnaire
+- use generative AI for hard eligibility or legal conclusions
+- produce final Career Plans before the approved Career Plan phase
+
+Diagnosis must be deterministic, adaptive, explainable, multilingual, privacy-aware and resumable.
