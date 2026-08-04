@@ -83,6 +83,36 @@ Migration implications: No database migration in Phase 3B. Future persistence mu
 Lock status: Locked.
 Review trigger: Review only when Phase 3C persistence and presentation are designed.
 
+## DEC-011
+
+Decision ID: DEC-011
+Date: 2026-08-04
+Title: South Africa as first full country adapter
+Status: Accepted
+Context: Phase 3C introduces the first country-specific employment context while preserving the country-neutral deterministic engine.
+Final decision: South Africa is implemented through one versioned adapter boundary under `lib/employment-intelligence/country/adapters/south-africa`.
+Rejected alternatives: UI-level South Africa rules; country-specific Professional Identity fields; a second employment intelligence engine.
+Reason: Country context must be source-aware, testable, explainable, and isolated from presentation logic.
+Affected areas: Employment Intelligence, pathway evaluation, barriers, qualifications, practical access, future country adapters.
+Migration implications: None in Phase 3C.
+Lock status: Locked.
+Review trigger: Review when live external data ingestion is introduced.
+
+## DEC-012
+
+Decision ID: DEC-012
+Date: 2026-08-04
+Title: No unsupported South Africa facts
+Status: Accepted
+Context: South Africa employment data may be current-sensitive, legal-sensitive, or source-dependent.
+Final decision: Salary values, programme eligibility, programme availability, legal conclusions, and market-demand claims remain unavailable until verified source data exists.
+Rejected alternatives: Hard-coded salaries; remembered programme rules; broad market assumptions; nationality-based authorisation shortcuts.
+Reason: PATHZY must avoid misleading users and must preserve human approval and source traceability.
+Affected areas: Country adapters, source registry, salary contract, programme contracts, work authorisation context, market context.
+Migration implications: Future source ingestion must include source ID, effective date, retrieved date, review date, confidence, and stale handling.
+Lock status: Locked.
+Review trigger: Review when verified external source feeds are added.
+
 ## DEC-004
 
 Decision ID: DEC-004

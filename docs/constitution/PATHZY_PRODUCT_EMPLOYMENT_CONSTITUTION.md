@@ -73,6 +73,8 @@ PATHZY explicitly rejects:
 
 Phase 3B adds a locked implementation rule: Employment Intelligence conclusions must be produced by a deterministic, explainable engine before any AI enhancement or presentation layer may act on them. AI may assist later, but must not own readiness, eligibility, ownership, or barrier conclusions.
 
+Phase 3C adds the country-adapter rule: country context may inform Employment Intelligence, but it must not overwrite Professional Identity, infer work authorisation from nationality, invent salary or market data, make legal conclusions, or hide unavailable data.
+
 Returning users with incomplete Professional Identity must resume the correct unfinished section. Returning users with sufficiently complete Professional Identity may proceed to Personalised Home.
 
 ## 6. Authoritative Professional Identity Sections
