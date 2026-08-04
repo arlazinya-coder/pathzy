@@ -26,7 +26,7 @@ export type CountryEmploymentContext = {
   transportGeographicContext: Record<string, unknown>;
   formalInformalEmploymentContext: Record<string, unknown>;
   lowLiteracySupport: Record<string, unknown>;
-  dataFreshness: "CURRENT" | "STALE" | "UNKNOWN";
+  dataFreshness: "CURRENT" | "REVIEW_DUE" | "STALE" | "UNAVAILABLE" | "UNKNOWN";
   unavailableDataMarkers: string[];
 };
 

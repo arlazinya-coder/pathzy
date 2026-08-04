@@ -1,0 +1,13 @@
+export { buildSouthAfricaEmploymentContext } from "./south-africa-context";
+export { SOUTH_AFRICA_EMPLOYMENT_CONTEXT_VERSION, SOUTH_AFRICA_CONTEXT_EFFECTIVE_DATE, southAfricaUnavailableDataMarkers, southAfricaAdapterLimitations } from "./data-status";
+export { southAfricaSourceRegistry } from "./source-registry";
+export { southAfricaProvinceCodes, southAfricaRegions, findSouthAfricaRegion } from "./regions";
+export { southAfricaQualificationContexts, southAfricaMatricNonMatricContext, southAfricaTvetTradeContext, southAfricaRecognitionStates } from "./qualification-framework";
+export { southAfricaWorkAuthorisationContext, southAfricaWorkAuthorisationStates } from "./work-authorisation-context";
+export { southAfricaPathwayContexts, southAfricaEmploymentProgrammeContracts } from "./pathway-context";
+export { southAfricaJobLevelContexts, southAfricaSecuritySectorContext, southAfricaServiceRoleEvidenceContext } from "./job-level-mapping";
+export { southAfricaLanguageContext } from "./language-context";
+export { southAfricaPracticalAccessContext, southAfricaFormalInformalEmploymentContext } from "./practical-access-context";
+export { southAfricaRecruitmentConventions, southAfricaSalaryDataContract } from "./recruitment-conventions";
+export { southAfricaEvidenceRequirements } from "./evidence-requirements";
+export { phase3cSouthAfricaEmploymentFixtures, defaultSouthAfricaFixtureContext } from "./fixtures";
