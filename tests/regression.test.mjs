@@ -98,6 +98,25 @@ const employmentIntelligenceEngineSource = [
   "lib/employment-intelligence/engine/normalize-input.ts",
   "lib/employment-intelligence/engine/select-support-intensity.ts"
 ].map((filePath) => readFileSync(filePath, "utf8")).join("\n");
+const employmentCountryContextSource = [
+  "lib/employment-intelligence/country/country-employment-context.ts",
+  "lib/employment-intelligence/country/generic-country-context.ts",
+  "lib/employment-intelligence/country/resolve-country-context.ts",
+  "lib/employment-intelligence/country/country-context-registry.ts",
+  "lib/employment-intelligence/country/adapters/south-africa/data-status.ts",
+  "lib/employment-intelligence/country/adapters/south-africa/source-registry.ts",
+  "lib/employment-intelligence/country/adapters/south-africa/regions.ts",
+  "lib/employment-intelligence/country/adapters/south-africa/qualification-framework.ts",
+  "lib/employment-intelligence/country/adapters/south-africa/work-authorisation-context.ts",
+  "lib/employment-intelligence/country/adapters/south-africa/pathway-context.ts",
+  "lib/employment-intelligence/country/adapters/south-africa/job-level-mapping.ts",
+  "lib/employment-intelligence/country/adapters/south-africa/practical-access-context.ts",
+  "lib/employment-intelligence/country/adapters/south-africa/language-context.ts",
+  "lib/employment-intelligence/country/adapters/south-africa/recruitment-conventions.ts",
+  "lib/employment-intelligence/country/adapters/south-africa/evidence-requirements.ts",
+  "lib/employment-intelligence/country/adapters/south-africa/south-africa-context.ts",
+  "lib/employment-intelligence/country/adapters/south-africa/fixtures.ts"
+].map((filePath) => readFileSync(filePath, "utf8")).join("\n");
 const professionalProfileApi = readFileSync("app/api/professional-profile/route.ts", "utf8");
 const discoveryFlow = readFileSync("components/discovery/discovery-flow.tsx", "utf8");
 const discoveryAnswerState = readFileSync("lib/discovery/discovery-answer-state.ts", "utf8");
@@ -474,6 +493,73 @@ const phase3bTrace = employmentIntelligenceEngineRuntime.generateEmploymentIntel
 assert.equal(phase3bTrace.intermediate.signals.length > 10, true, "Phase 3B trace must expose deterministic signal extraction for testing.");
 assert.equal(phase3bTrace.intermediate.missingInformation.some((item) => item.blocksConclusion), true, "Phase 3B missing information must mark blockers without pretending to know the answer.");
 assert.equal(phase3bTrace.profile.explanations.every((explanation) => Array.isArray(explanation.reasons) && explanation.confidence), true, "Phase 3B explanations must be structured and confidence-bearing.");
+assert.doesNotMatch(employmentCountryContextSource, /salary:\s*\d|market demand is high|you qualify|current programme openings/i, "Phase 3C must not invent salary values, market-demand claims, programme openings, or eligibility conclusions.");
+assert.match(employmentCountryContextSource, /SOUTH_AFRICA_EMPLOYMENT_CONTEXT_VERSION\s*=\s*"3C\.1"/, "Phase 3C South Africa adapter must have an explicit adapter version.");
+assert.match(employmentCountryContextSource, /Nationality is never used as work authorization|Do not infer work authorization from nationality/i, "Phase 3C must lock nationality away from work authorization.");
+assert.match(employmentCountryContextSource, /UNAVAILABLE[\s\S]*ZA_CURRENT_SALARY_DATA_UNAVAILABLE[\s\S]*ZA_CURRENT_PROGRAMME_OPENINGS_UNAVAILABLE[\s\S]*ZA_CURRENT_MARKET_DEMAND_UNAVAILABLE/, "Phase 3C must represent unavailable current-sensitive South Africa data explicitly.");
+const zaResolution = employmentIntelligenceEngineRuntime.resolveCountryEmploymentContext({ countryCode: "ZA", regionCode: "GP", asOfDate: "2026-08-04T00:00:00.000Z" });
+assert.equal(zaResolution.context.countryCode, "ZA", "Phase 3C country resolution must resolve ZA to the South Africa adapter.");
+assert.equal(zaResolution.adapterVersion, "3C.1", "Phase 3C ZA resolution must expose adapter version.");
+assert.equal(zaResolution.context.sourceMetadata.length >= 5, true, "Phase 3C ZA context must include source metadata contracts.");
+assertUniqueValues(zaResolution.sourceRegistry.map((source) => source.sourceId), "Phase 3C source IDs must be unique.");
+assert.equal(zaResolution.sourceRegistry.every((source) => source.status && source.confidence && Array.isArray(source.topicsCovered)), true, "Phase 3C sources must include status, confidence, and topics.");
+assert.equal(zaResolution.context.unavailableDataMarkers.includes("ZA_CURRENT_SALARY_DATA_UNAVAILABLE"), true, "Phase 3C salary data must default to unavailable without a source.");
+assert.equal(zaResolution.context.salaryDataContract.currency, "ZAR", "Phase 3C salary boundary must use ZAR.");
+assert.equal(Array.isArray(zaResolution.context.salaryDataContract.values) && zaResolution.context.salaryDataContract.values.length === 0, true, "Phase 3C salary boundary must not include invented salary values.");
+const unsupportedCountryResolution = employmentIntelligenceEngineRuntime.resolveCountryEmploymentContext({ countryCode: "BR", regionCode: "SP" });
+assert.equal(unsupportedCountryResolution.context.countryCode, "BR", "Unsupported countries must keep the requested country code while using the generic adapter.");
+assert.equal(unsupportedCountryResolution.context.unavailableDataMarkers.includes("COUNTRY_ADAPTER_UNAVAILABLE"), true, "Unsupported country resolution must mark country adapter data unavailable.");
+const missingCountryResolution = employmentIntelligenceEngineRuntime.resolveCountryEmploymentContext({});
+assert.equal(missingCountryResolution.context.countryCode, "GENERIC", "Missing country must resolve safely to generic context.");
+const invalidProvinceResolution = employmentIntelligenceEngineRuntime.resolveCountryEmploymentContext({ countryCode: "ZA", regionCode: "BAD" });
+assert.equal(invalidProvinceResolution.context.unavailableDataMarkers.includes("ZA_REGION_CONTEXT_UNAVAILABLE"), true, "Invalid ZA province must be marked unavailable instead of crashing.");
+const zaProvinceCodes = zaResolution.context.regionModel.provinces.map((province) => province.provinceCode);
+assert.equal(zaProvinceCodes.sort().join(","), "EC,FS,GP,KZN,LP,MP,NC,NW,WC", "Phase 3C must include all nine South African province codes.");
+assertUniqueValues(zaProvinceCodes, "Phase 3C province codes must be unique.");
+assert.equal(zaResolution.context.regionModel.provinces.every((province) => province.labels.en && province.labels.fr && province.provinceCode), true, "Phase 3C province labels must support English and French without changing canonical codes.");
+const zaQualificationContexts = zaResolution.context.qualificationFramework.qualificationContexts;
+assert.equal(zaQualificationContexts.every((qualification) => qualification.nqfLevel === null), true, "Phase 3C must not assign NQF levels without reliable mapping evidence.");
+assert.equal(zaQualificationContexts.some((qualification) => qualification.qualificationType === "foreign" && qualification.recognitionStatus === "UNKNOWN"), true, "Phase 3C foreign qualification context must keep recognition evidence-aware.");
+assert.equal(zaQualificationContexts.some((qualification) => qualification.qualificationType === "matric_incomplete" && qualification.pathwayImplications.includes("SKILLS_FIRST_TRANSITION")), true, "Phase 3C non-matric users must retain skills-first pathways.");
+assert.equal(zaResolution.context.qualificationFramework.tvetTradeContext.eligibilityStates.includes("PROGRAMME_DATA_UNAVAILABLE"), true, "Phase 3C TVET/trade context must mark programme data unavailable when not sourced.");
+assert.equal(zaResolution.context.workAuthorisationContext.states.includes("UNKNOWN"), true, "Phase 3C work authorization context must support UNKNOWN.");
+assert.equal(zaResolution.context.workAuthorisationContext.states.includes("USER_DECLINED"), true, "Phase 3C work authorization context must support USER_DECLINED.");
+assert.match(JSON.stringify(zaResolution.context.workAuthorisationContext.rules), /Do not infer work authorization from nationality/, "Phase 3C work authorization rules must reject nationality inference.");
+assert.equal(zaResolution.context.jobTaxonomyMapping.securitySectorContext.dependencyMarkers.includes("registration_or_licence_dependency"), true, "Phase 3C security context must expose registration or licence dependency.");
+assert.equal(zaResolution.context.jobTaxonomyMapping.serviceRoleEvidenceContext.evidenceExamples.includes("informal references"), true, "Phase 3C service context must support informal references.");
+assert.equal(zaResolution.context.languageContext.supportedCurrentPresentationLanguages.includes("fr"), true, "Phase 3C language context must preserve current French presentation support.");
+assert.equal(zaResolution.context.transportGeographicContext.lowLiteracySupport.rule.includes("must not become stigma"), true, "Phase 3C low-literacy support must increase guidance without stigma.");
+assert.equal(zaResolution.context.formalInformalEmploymentContext.supportedModes.includes("informal_employment"), true, "Phase 3C must support informal employment context.");
+const zaFixtures = employmentIntelligenceEngineRuntime.phase3cSouthAfricaEmploymentFixtures;
+assert.equal(Object.keys(zaFixtures).length >= 18, true, "Phase 3C must provide at least 18 fictional South Africa fixtures.");
+const zaGraduate = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(zaFixtures.gautengGraduateIctNoExperience, phase3bContext);
+assert.equal(zaGraduate.countryContext.countryCode, "ZA", "Phase 3C generated profiles must preserve ZA country context.");
+assert.equal(zaGraduate.pathwayRecommendations.some((pathway) => ["GRADUATE_PROGRAMME", "INTERNSHIP", "LEARNERSHIP"].includes(pathway.pathwayCode)), true, "Phase 3C graduate context must support graduate/internship/learnership evaluation.");
+const zaForeign = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(zaFixtures.foreignQualifiedProfessionalRecognitionUnknown, phase3bContext);
+assert.equal(zaForeign.missingInformation.includes("ZA_FOREIGN_QUALIFICATION_RECOGNITION_UNKNOWN"), true, "Phase 3C foreign qualification must create recognition uncertainty.");
+assert.equal(zaForeign.barriers.some((barrier) => barrier.definitionCode === "QUALIFICATION_RECOGNITION_UNCERTAINTY"), true, "Phase 3C recognition uncertainty must map to a qualification barrier.");
+assert.equal(zaForeign.pathwayRecommendations.some((pathway) => pathway.pathwayCode === "QUALIFICATION_RECOGNITION"), true, "Phase 3C recognition uncertainty must keep qualification-recognition pathway available.");
+const zaSecurity = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(zaFixtures.securityRegistrationUnknown, phase3bContext);
+assert.equal(zaSecurity.missingInformation.includes("ZA_SECURITY_REGISTRATION_EVIDENCE_UNKNOWN"), true, "Phase 3C security pathway must expose registration evidence uncertainty.");
+assert.equal(zaSecurity.barriers.some((barrier) => barrier.definitionCode === "LICENCE_OR_REGISTRATION_EVIDENCE_MISSING"), true, "Phase 3C security evidence uncertainty must map to a licence or registration barrier.");
+const zaCleaner = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(zaFixtures.cleanerInformalReference, phase3bContext);
+assert.equal(zaCleaner.suitableRoleFamilies.includes("PRACTICAL_SERVICE_OR_OPERATIONAL_EXPERIENCE"), true, "Phase 3C cleaner/service context must respect informal evidence.");
+const zaNonMatric = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(zaFixtures.nonMatricSkillsFirst, phase3bContext);
+assert.equal(zaNonMatric.pathwayRecommendations.some((pathway) => ["ENTRY_LEVEL_EMPLOYMENT", "SKILLS_FIRST_TRANSITION", "INFORMAL_OR_COMMUNITY_WORK"].includes(pathway.pathwayCode)), true, "Phase 3C non-matric users must retain multiple practical pathways.");
+const zaSmartphone = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(zaFixtures.smartphoneOnlyLimitedData, phase3bContext);
+assert.equal(["STRUCTURED_GUIDANCE", "HIGH_SUPPORT", "HUMAN_SUPPORT_RECOMMENDED"].includes(zaSmartphone.supportIntensity), true, "Phase 3C smartphone-only limited data should increase support intensity.");
+const zaRural = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(zaFixtures.ruralTransportLimitations, phase3bContext);
+assert.equal(zaRural.barriers.some((barrier) => barrier.definitionCode === "PRACTICAL_ACCESS_CONSTRAINT"), true, "Phase 3C rural transport limitations must affect practical access.");
+assert.notEqual(zaRural.overallReadiness.readinessBand, "STRONG", "Phase 3C practical uncertainty should lower confidence without capability stigma.");
+const zaNationalityOnly = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(zaFixtures.unknownWorkAuthorisation, phase3bContext);
+assert.equal(zaNationalityOnly.missingInformation.includes("WORK_AUTHORIZATION_UNCLEAR"), true, "Phase 3C nationality must not satisfy work authorization.");
+assert.equal(zaNationalityOnly.barriers.some((barrier) => barrier.definitionCode === "WORK_AUTHORIZATION_UNCERTAINTY"), true, "Phase 3C unknown authorization must remain an uncertainty barrier.");
+assert.equal(JSON.stringify(zaNationalityOnly).includes("unemployable"), false, "Phase 3C must never label a user unemployable.");
+const zaBeforeInput = JSON.stringify(zaFixtures.gautengGraduateIctNoExperience);
+const zaFirstRun = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(zaFixtures.gautengGraduateIctNoExperience, phase3bContext);
+const zaSecondRun = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(zaFixtures.gautengGraduateIctNoExperience, phase3bContext);
+assert.deepEqual(zaSecondRun, zaFirstRun, "Phase 3C ZA adapter and engine integration must be deterministic.");
+assert.equal(JSON.stringify(zaFixtures.gautengGraduateIctNoExperience), zaBeforeInput, "Phase 3C adapter integration must not mutate Professional Identity or Diagnosis inputs.");
 const normalizedEventFailure = errorNormalizationRuntime.normalizePathzyError({ type: "error", target: "window" }, "Keep the current screen safe.");
 assert.equal(normalizedEventFailure.originalType, "event", "Browser event-like failures must be normalized before they can reach the Next.js overlay.");
 assert.equal(normalizedEventFailure.userMessage, "Keep the current screen safe.", "Event-like failures must receive a human fallback message.");
