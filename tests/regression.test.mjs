@@ -75,6 +75,10 @@ const professionalIdentityWriteService = readFileSync("lib/professional-identity
 const professionalIdentitySync = readFileSync("lib/professional-identity/professional-identity-sync.ts", "utf8");
 const currentSituationContract = readFileSync("lib/professional-identity/current-situation.ts", "utf8");
 const cvConfiguration = readFileSync("lib/professional-documents/cv-configuration.ts", "utf8");
+const employmentIntelligenceDomainIndex = readFileSync("lib/employment-intelligence/domain/index.ts", "utf8");
+const employmentIntelligenceInputContract = readFileSync("lib/employment-intelligence/domain/employment-intelligence-input.ts", "utf8");
+const employmentIntelligenceProfileContract = readFileSync("lib/employment-intelligence/domain/employment-intelligence-profile.ts", "utf8");
+const employmentIntelligenceCountryContract = readFileSync("lib/employment-intelligence/domain/country-context.ts", "utf8");
 const professionalProfileApi = readFileSync("app/api/professional-profile/route.ts", "utf8");
 const discoveryFlow = readFileSync("components/discovery/discovery-flow.tsx", "utf8");
 const discoveryAnswerState = readFileSync("lib/discovery/discovery-answer-state.ts", "utf8");
@@ -283,6 +287,17 @@ const authSessionRuntime = loadProductionTsModule("lib/auth/session-safety.ts");
 const currentSituationRuntime = loadProductionTsModule("lib/professional-identity/current-situation.ts");
 const professionalIdentityCompletionRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-completion.ts");
 const professionalIdentityWriteRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-write-service.ts");
+const employmentIntelligenceDomainRuntime = loadProductionTsModule("lib/employment-intelligence/domain/index.ts");
+
+function assertUniqueValues(values, message) {
+  assert.equal(new Set(values).size, values.length, message);
+}
+
+function assertCanonicalCodes(values, message) {
+  for (const value of values) {
+    assert.match(value, /^[A-Z0-9_]+$/, `${message}: ${value}`);
+  }
+}
 
 assert.equal(routeRuntime.routeBuilders.professionalIdentitySection("career_goal"), "/professional-identity?section=career_goal", "Route builder must create canonical Professional Identity section URLs.");
 assert.equal(authRoutingRuntime.professionalIdentitySectionHref("nationality", "review"), "/professional-identity?section=nationality&returnTo=%2Fprofessional-identity%3Freview%3D1", "Edit from Review must carry a safe typed return-to-review context.");
@@ -359,6 +374,41 @@ const emptyCurrentSituationProfilePatch = professionalIdentityWriteRuntime.profi
 assert.equal("current_status" in emptyCurrentSituationProfilePatch, false, "Empty pre-hydration Profile defaults must not overwrite current_status with null.");
 assert.equal("employment_status" in emptyCurrentSituationProfilePatch, false, "Empty pre-hydration Profile defaults must not overwrite employment_status with null.");
 assert.equal(Boolean(emptyCurrentSituationProfilePatch.updated_at), true, "Empty Profile patches must retain write metadata without clearing data.");
+assertUniqueValues(employmentIntelligenceDomainRuntime.readinessBands, "Phase 3A readiness bands must be unique.");
+assertCanonicalCodes(employmentIntelligenceDomainRuntime.readinessBands, "Phase 3A readiness bands must use language-independent canonical codes.");
+assertUniqueValues(employmentIntelligenceDomainRuntime.readinessDimensions, "Phase 3A readiness dimensions must be unique.");
+assertCanonicalCodes(employmentIntelligenceDomainRuntime.readinessDimensions, "Phase 3A readiness dimensions must use language-independent canonical codes.");
+assertUniqueValues(employmentIntelligenceDomainRuntime.barrierSeverityLevels, "Phase 3A barrier severities must be unique.");
+assertCanonicalCodes(employmentIntelligenceDomainRuntime.barrierSeverityLevels, "Phase 3A barrier severities must use canonical codes.");
+assertUniqueValues(employmentIntelligenceDomainRuntime.pathwayCodes, "Phase 3A pathway codes must be unique.");
+assertCanonicalCodes(employmentIntelligenceDomainRuntime.pathwayCodes, "Phase 3A pathway codes must be language-independent.");
+assertUniqueValues(employmentIntelligenceDomainRuntime.jobLevels, "Phase 3A job levels must be unique.");
+assertCanonicalCodes(employmentIntelligenceDomainRuntime.jobLevels, "Phase 3A job levels must be respectful internal canonical codes.");
+assertUniqueValues(employmentIntelligenceDomainRuntime.careerPlanHorizons, "Phase 3A Career Plan horizons must be unique.");
+assertCanonicalCodes(employmentIntelligenceDomainRuntime.careerPlanHorizons, "Phase 3A Career Plan horizons must be canonical codes.");
+assertUniqueValues(employmentIntelligenceDomainRuntime.evidenceTypes, "Phase 3A evidence types must be unique.");
+assertCanonicalCodes(employmentIntelligenceDomainRuntime.evidenceTypes, "Phase 3A evidence types must be canonical codes.");
+assertUniqueValues(employmentIntelligenceDomainRuntime.confidenceLevels, "Phase 3A confidence levels must be unique.");
+assertCanonicalCodes(employmentIntelligenceDomainRuntime.confidenceLevels, "Phase 3A confidence levels must be canonical codes.");
+assertUniqueValues(employmentIntelligenceDomainRuntime.intelligenceStaleStatuses, "Phase 3A stale statuses must be unique.");
+assertCanonicalCodes(employmentIntelligenceDomainRuntime.intelligenceStaleStatuses, "Phase 3A stale statuses must be canonical codes.");
+assert.equal(employmentIntelligenceDomainRuntime.inputProvenanceStates.includes("UNKNOWN"), true, "Phase 3A must represent unknown explicitly.");
+assert.equal(employmentIntelligenceDomainRuntime.inputProvenanceStates.includes("FALSE"), false, "Phase 3A must not represent unknown as false.");
+assert.equal(employmentIntelligenceDomainRuntime.pathwayCodes.includes("LEARNERSHIP"), true, "Phase 3A must include learnership as a canonical pathway code.");
+assert.equal(employmentIntelligenceDomainRuntime.supportIntensityLevels.includes("HUMAN_SUPPORT_RECOMMENDED"), true, "Phase 3A must define human-support recommendation without treating it as user worth.");
+assert.equal(employmentIntelligenceDomainRuntime.isValidNextBestActionSet({ primary: {}, secondary: [{}, {}, {}] }), true, "Phase 3A must support exactly one primary and up to three secondary actions.");
+assert.equal(employmentIntelligenceDomainRuntime.isValidNextBestActionSet({ primary: {}, secondary: [{}, {}, {}, {}] }), false, "Phase 3A must reject more than three secondary actions.");
+for (const forbidden of employmentIntelligenceDomainRuntime.phase3aForbiddenCanonicalTerms) {
+  assert.equal(employmentIntelligenceDomainRuntime.readinessBands.includes(forbidden), false, `Phase 3A readiness bands must not use stigmatizing term ${forbidden}.`);
+}
+assert.match(employmentIntelligenceProfileContract, /engineVersion: string;/, "Phase 3A Employment Intelligence Profile must require an engine version.");
+assert.match(employmentIntelligenceProfileContract, /staleStatus: EmploymentIntelligenceStaleStatus;/, "Phase 3A Employment Intelligence Profile must carry stale status.");
+assert.doesNotMatch(employmentIntelligenceInputContract, /EmploymentIntelligenceProfile/, "Phase 3A derived profile must not be usable as canonical identity input.");
+assert.match(employmentIntelligenceCountryContract, /sourceMetadata: CountrySourceMetadata\[\];/, "Phase 3A country adapters must require source metadata.");
+assert.match(employmentIntelligenceCountryContract, /SPECIFICATION_ONLY_NO_LIVE_FACTS/, "Phase 3A South Africa adapter must remain a specification without live unstable facts.");
+assert.match(employmentIntelligenceDomainIndex, /Consumers may read Employment Intelligence\. Consumers must not independently recalculate it\./, "Phase 3A must lock the consumer dependency rule.");
+assert.equal(employmentIntelligenceDomainRuntime.employmentIntelligenceAiBoundary.mustNotDetermine.includes("work_eligibility"), true, "Phase 3A AI boundary must block AI-owned work eligibility decisions.");
+assert.equal(employmentIntelligenceDomainRuntime.employmentIntelligenceAiBoundary.mustNotDetermine.includes("ownership"), true, "Phase 3A AI boundary must block AI-owned ownership decisions.");
 const normalizedEventFailure = errorNormalizationRuntime.normalizePathzyError({ type: "error", target: "window" }, "Keep the current screen safe.");
 assert.equal(normalizedEventFailure.originalType, "event", "Browser event-like failures must be normalized before they can reach the Next.js overlay.");
 assert.equal(normalizedEventFailure.userMessage, "Keep the current screen safe.", "Event-like failures must receive a human fallback message.");
