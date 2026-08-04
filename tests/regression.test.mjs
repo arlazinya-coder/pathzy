@@ -117,6 +117,21 @@ const employmentCountryContextSource = [
   "lib/employment-intelligence/country/adapters/south-africa/south-africa-context.ts",
   "lib/employment-intelligence/country/adapters/south-africa/fixtures.ts"
 ].map((filePath) => readFileSync(filePath, "utf8")).join("\n");
+const adaptiveDiagnosisSource = [
+  "lib/employment-intelligence/diagnosis/diagnosis-version.ts",
+  "lib/employment-intelligence/diagnosis/question-types.ts",
+  "lib/employment-intelligence/diagnosis/diagnosis-models.ts",
+  "lib/employment-intelligence/diagnosis/question-registry.ts",
+  "lib/employment-intelligence/diagnosis/branching-rules.ts",
+  "lib/employment-intelligence/diagnosis/adaptive-question-engine.ts",
+  "lib/employment-intelligence/diagnosis/diagnosis-progress.ts",
+  "lib/employment-intelligence/diagnosis/diagnosis-persistence.ts",
+  "lib/employment-intelligence/diagnosis/diagnosis-suggestion-builder.ts",
+  "lib/employment-intelligence/diagnosis/diagnosis-result-builder.ts",
+  "lib/employment-intelligence/diagnosis/diagnosis-input-mapper.ts",
+  "lib/employment-intelligence/diagnosis/fixtures.ts",
+  "lib/employment-intelligence/diagnosis/index.ts"
+].map((filePath) => readFileSync(filePath, "utf8")).join("\n");
 const professionalProfileApi = readFileSync("app/api/professional-profile/route.ts", "utf8");
 const discoveryFlow = readFileSync("components/discovery/discovery-flow.tsx", "utf8");
 const discoveryAnswerState = readFileSync("lib/discovery/discovery-answer-state.ts", "utf8");
@@ -832,13 +847,13 @@ assert.equal(
   "identity_review_pending",
   "A persisted current situation in the Professional Identity compatibility row must survive refresh/logout-login and keep routing out of step 1."
 );
-assert.match(generateRoadmapApi, /saveCompletedEmploymentDiagnosis\(supabase, user\.id, body\.answers, generatedRoadmap\)[\s\S]*redirectTo: appRoutes\.authenticatedHome/, "Employment Diagnosis completion must delegate state persistence and return the Home route.");
+assert.match(generateRoadmapApi, /mode === "complete"[\s\S]*buildEmploymentDiagnosisResult\(nextSession\)[\s\S]*redirectTo: appRoutes\.authenticatedHome/, "Adaptive Employment Diagnosis completion must persist a structured result and return the Home route.");
 assert.match(professionalIdentityWriteService, /diagnosis_completed: true[\s\S]*pathzy_onboarding_state: "diagnosis_completed"/, "The single Professional Identity write service must persist the canonical home-ready diagnosis state.");
 assert.match(professionalIdentityDiscoveryCompatibility, /professionalIdentityCompatibilityScore[\s\S]*employment_diagnosis[\s\S]*-1000[\s\S]*selectProfessionalIdentityDiscoveryRow[\s\S]*professionalIdentityCompatibilityScore\(row\) >= 0/, "Professional Identity reads must not allow a diagnosis row to mask identity data.");
 assert.match(professionalIdentityReadService, /selectProfessionalIdentityDiscoveryRow[\s\S]*selectEmploymentDiagnosisDiscoveryRow[\s\S]*diagnosisWorkflowFlags/, "Professional Identity reads may merge diagnosis workflow flags without using diagnosis answers as identity data.");
 assert.match(professionalIdentityWriteService, /selectProfessionalIdentityDiscoveryRow[\s\S]*withProfessionalIdentityRecordType[\s\S]*update\(payload\)/, "Professional Identity writes must target the selected identity compatibility row instead of the newest arbitrary discovery row.");
-assert.match(professionalIdentityWriteService, /purpose === "employment_diagnosis"[\s\S]*withEmploymentDiagnosisRecordType[\s\S]*insert/, "Employment Diagnosis completion must write a diagnosis-marked record rather than replacing Professional Identity answers.");
-assert.match(discoveryFlow, /payload\.redirectTo \?\? appRoutes\.authenticatedHome/, "Employment Diagnosis must follow the API's canonical post-completion redirect.");
+assert.match(adaptiveDiagnosisSource, /withEmploymentDiagnosisRecordType[\s\S]*employment_diagnosis_session[\s\S]*employment_diagnosis_result/, "Employment Diagnosis persistence must write a diagnosis-marked session/result rather than replacing Professional Identity answers.");
+assert.match(discoveryFlow, /nextPayload\.redirectTo \?\? appRoutes\.authenticatedHome/, "Employment Diagnosis must follow the API's canonical post-completion redirect.");
 assert.doesNotMatch(discoveryFlow, /router\.replace\(appRoutes\.roadmap\)/, "Employment Diagnosis must not hardcode a route that can drift from the canonical Home route.");
 
 for (const section of ["Navigation", "Hero", "Features", "How PATHZY Works", "Career Journey", "Testimonials", "FAQ", "Footer"]) {
@@ -1392,17 +1407,36 @@ const diagnosisStepSource = pathzyI18n.slice(pathzyI18n.indexOf("export const em
 assert.equal((diagnosisStepSource.match(/\["personal_background"/g) ?? []).length, 2, "Employment Diagnosis must define Step 1 for both English and French.");
 assert.equal((diagnosisStepSource.match(/\["preferred_career_direction"/g) ?? []).length, 2, "Employment Diagnosis must define the final career-direction question for both English and French.");
 assert.equal((diagnosisStepSource.match(/\["/g) ?? []).length, 20, "Employment Diagnosis must keep approximately 10 concise sections in each supported language.");
-assert.match(discoveryFlow, /const initialAnswers = emptyDiscoveryAnswers\(\)/, "Employment Diagnosis must create default state for every question before rendering.");
-assert.match(discoveryFlow, /const steps = useMemo\(\(\) => getEmploymentDiagnosisSteps\(language\), \[language\]\)/, "Employment Diagnosis UI must load the normalized question dataset for the current language.");
+assert.match(adaptiveDiagnosisSource, /EmploymentDiagnosisSession[\s\S]*currentQuestionId[\s\S]*answeredQuestionIds[\s\S]*branchHistory[\s\S]*countryContextVersion/, "Phase 3D must define a canonical diagnosis session model with answer, branch, country, and version metadata.");
+assert.match(adaptiveDiagnosisSource, /NOT_STARTED[\s\S]*IN_PROGRESS[\s\S]*PAUSED[\s\S]*COMPLETED[\s\S]*NEEDS_REVIEW[\s\S]*STALE[\s\S]*FAILED/, "Phase 3D must define canonical diagnosis session statuses.");
+assert.match(adaptiveDiagnosisSource, /ANSWERED[\s\S]*SKIPPED[\s\S]*USER_DECLINED[\s\S]*NOT_APPLICABLE[\s\S]*UNKNOWN/, "Phase 3D must keep skipped, declined, not-applicable, and unknown answer states distinct.");
+assert.match(adaptiveDiagnosisSource, /EMPLOYMENT_SITUATION[\s\S]*JOB_SEARCH_ACTIVITY[\s\S]*APPLICATION_QUALITY[\s\S]*INTERVIEW_HISTORY[\s\S]*IMMEDIATE_INCOME_NEED[\s\S]*COUNTRY_CONTEXT_CLARIFICATION/, "Phase 3D must define the authoritative diagnosis question taxonomy.");
+assert.match(adaptiveDiagnosisSource, /SINGLE_SELECT[\s\S]*MULTI_SELECT[\s\S]*YES_NO[\s\S]*DOCUMENT_AVAILABLE[\s\S]*LOCATION_RADIUS[\s\S]*AVAILABILITY_PATTERN/, "Phase 3D must support structured accessible diagnosis question types.");
+assert.match(adaptiveDiagnosisSource, /questionIsKnownFromIdentity[\s\S]*skip_when_work_authorisation_confirmed|SKIP_KNOWN_IDENTITY/, "Adaptive diagnosis must skip questions already answered reliably in Professional Identity.");
+assert.match(adaptiveDiagnosisSource, /\.sort\(\(a, b\) => a\.priority - b\.priority \|\| a\.questionId\.localeCompare\(b\.questionId\)\)[\s\S]*selectNextDiagnosisQuestion/, "Adaptive diagnosis must use deterministic priority ordering for question selection.");
+assert.match(adaptiveDiagnosisSource, /shouldDeferOptional[\s\S]*DEFER_OPTIONAL/, "Adaptive diagnosis must defer optional questions until high-value diagnostic areas are answered.");
+assert.match(adaptiveDiagnosisSource, /STANDARD[\s\S]*PLAIN_LANGUAGE[\s\S]*HIGH_GUIDANCE[\s\S]*ASSISTED/, "Adaptive diagnosis must include lower-literacy and assisted presentation modes.");
+assert.match(adaptiveDiagnosisSource, /sensitivity[\s\S]*USER_DECLINED[\s\S]*Prefer not to say/, "Sensitive diagnosis questions must expose a prefer-not-to-say option.");
+assert.match(adaptiveDiagnosisSource, /buildDiagnosisIdentitySuggestions[\s\S]*status: "PENDING"[\s\S]*source: "EMPLOYMENT_DIAGNOSIS"/, "Diagnosis may create identity suggestions but must not apply them automatically.");
+assert.match(adaptiveDiagnosisSource, /mapDiagnosisToEmploymentIntelligenceInput[\s\S]*professionalIdentity[\s\S]*employmentDiagnosis/, "Diagnosis results must map into the Phase 3B intelligence input while preserving Professional Identity as authoritative.");
+assert.match(generateRoadmapApi, /generateEmploymentIntelligenceWithTrace[\s\S]*mapDiagnosisToEmploymentIntelligenceInput/, "Diagnosis completion must refresh an Employment Intelligence draft through the deterministic engine.");
+assert.match(generateRoadmapApi, /loadOrCreateDiagnosisSession[\s\S]*saveDiagnosisSession/, "Diagnosis must load and save server-backed session state.");
+assert.match(generateRoadmapApi, /rowId[\s\S]*saveDiagnosisSession/, "Diagnosis saves must update the current diagnosis row when possible instead of creating arbitrary duplicate sessions.");
+assert.doesNotMatch(generateRoadmapApi, /generateOpenAIRoadmap|OpenAI|roadmap_90_days/, "Phase 3D diagnosis must not depend on generative AI or create a final Career Plan.");
+assert.match(generateRoadmapApi, /resolveCountryEmploymentContext[\s\S]*countryCodeFromIdentity/, "Adaptive diagnosis must use South Africa or generic country context.");
+assert.match(discoveryFlow, /fetch\(`\/api\/generate-roadmap\?language=\$\{activeLanguage\}`/, "Employment Diagnosis UI must load the server-backed adaptive session for the active language.");
+assert.match(discoveryFlow, /mode: "save_answer"[\s\S]*questionId: currentQuestion\.questionId[\s\S]*value: currentValue/, "Employment Diagnosis UI must save each answer before advancing.");
+assert.match(discoveryFlow, /mode: "complete"[\s\S]*router\.replace\(nextPayload\.redirectTo \?\? appRoutes\.authenticatedHome\)/, "Employment Diagnosis UI must follow the API's canonical post-completion redirect.");
+assert.match(discoveryFlow, /answerIsValid\(currentQuestion, currentValue\)[\s\S]*disabled=\{saving \|\| \(Boolean\(currentQuestion\) && !currentAnswerIsValid\)\}/, "Employment Diagnosis Continue must be enabled only when the current adaptive answer is valid.");
+assert.match(discoveryFlow, /Array\.isArray\(currentValue\)[\s\S]*toggleMulti/, "Employment Diagnosis UI must safely handle structured multi-select answers.");
+assert.doesNotMatch(discoveryFlow, /currentValue\.trim\(\)/, "Employment Diagnosis must not call trim on raw answer values.");
+assert.match(adaptiveDiagnosisSource, /phase3dAdaptiveDiagnosisFixtures[\s\S]*graduateNoExperience[\s\S]*cleanerInformalExperience[\s\S]*securityLicenceUncertainty[\s\S]*genericNonZaUser/, "Phase 3D must include fictional adaptive fixtures across the required scenario matrix.");
+assert.match(adaptiveDiagnosisSource, /NATIONALITY_NOT_WORK_AUTHORIZATION|Nationality alone is not used|Nationality does not determine work authorisation/i, "Phase 3D must preserve the fairness rule that nationality does not determine work authorisation.");
+assert.match(adaptiveDiagnosisSource, /Limited access changes support steps only|does not reduce your capability/, "Limited internet or literacy must change support mode, not capability scoring.");
+assert.match(adaptiveDiagnosisSource, /UNKNOWN[\s\S]*USER_DECLINED[\s\S]*NOT_APPLICABLE/, "Unknown, declined, and not-applicable answers must remain canonical codes.");
+assert.match(adaptiveDiagnosisSource, /label: \{ en,[\s\S]*fr \}/, "Adaptive question options must support English and French labels without storing translated values as answers.");
 assert.doesNotMatch(discoveryFlow, /employmentDiagnosisSteps\[language\] as unknown as DiagnosisStep/, "Employment Diagnosis UI must not cast tuple data to objects and render undefined titles.");
-assert.match(discoveryFlow, /const currentStep = steps\[stepIndex\] \?\? steps\[0\]/, "Employment Diagnosis must protect the first/current question when route or language state resumes unexpectedly.");
-assert.match(discoveryFlow, /const currentValue = currentStep \? discoveryAnswerValue\(answers, currentStep\.key\) : ""/, "Employment Diagnosis textareas must receive safe string values even when an answer is undefined.");
-assert.match(discoveryFlow, /if \(!currentStep\)[\s\S]*discovery\.error/, "Employment Diagnosis Continue must validate a missing question without crashing.");
-assert.match(discoveryFlow, /if \(!currentValue\.trim\(\)\)[\s\S]*discovery\.required/, "Employment Diagnosis required answers must show validation feedback instead of crashing.");
-assert.match(discoveryFlow, /const currentAnswerIsValid = currentValue\.trim\(\)\.length > 0[\s\S]*disabled=\{saving \|\| !currentAnswerIsValid\}/, "Employment Diagnosis Continue must be enabled only when the current answer is valid.");
-assert.match(discoveryFlow, /const safeAnswers = normalizeDiscoveryAnswers\(answers\)[\s\S]*JSON\.stringify\(\{ answers: safeAnswers \}\)/, "Employment Diagnosis successful completion must submit normalized answers only.");
-assert.match(generateRoadmapApi, /export function GET\(request: Request\)[\s\S]*getEmploymentDiagnosisSteps\(language\)[\s\S]*NextResponse\.json\(\{ questions, total: questions\.length \}\)/, "Employment Diagnosis API must expose the current question dataset for QA and clients without invoking roadmap generation.");
-assert.match(generateRoadmapApi, /hasCompleteDiscoveryAnswers\(value\)/, "Employment Diagnosis API must reject undefined, null, and empty answers through the shared validator.");
+assert.match(generateRoadmapApi, /questionPayload[\s\S]*currentQuestion[\s\S]*progress[\s\S]*canComplete/, "Employment Diagnosis API must expose the current adaptive question, progress, and completion state for QA and clients.");
 assert.doesNotMatch(discoveryFlow, /answers\[currentStep\.key\]\.trim\(\)|currentValue\.trim\(\)(?![\s\S]*discovery\.required)/, "Employment Diagnosis must not call trim on raw answer values.");
 for (const saveStatusCopy of [
   "Unsaved changes",
