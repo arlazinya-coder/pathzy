@@ -698,6 +698,26 @@ Migration implications: No migration in Phase 3D.
 Lock status: Locked.
 Review trigger: Review before Phase 3E Career Plan or Next-Best-Action work.
 
+## Decision: Phase 3E Next-Best-Action and Career Plan
+
+Context: Phase 3E introduces the deterministic layer that turns an Employment Intelligence Profile into one primary action, up to three secondary actions, and a practical Career Plan.
+
+Final decision: PATHZY uses one authoritative Next-Best-Action engine and one Career Plan generator. Completed actions are not repeated unless repeatable. Dependencies are mandatory. Immediate-income mode may reorder actions but must preserve long-term dignity and pathway visibility. Lower-literacy users receive simplified presentation metadata, not lowered capability assumptions. Canonical action codes remain language-independent. No live programme names, salary values, automatic applications, generative AI decisions or consumer-side recalculation are allowed in Phase 3E.
+
+Rejected alternatives:
+
+- Show many unrelated recommendations at once, because it overloads users.
+- Let Home, Career Coach or Employment Center calculate their own priorities, because that creates duplicated logic.
+- Treat urgent income as a permanent downgrade, because urgency changes order, not human value.
+- Use Roadmap as the primary user-facing label, because PATHZY uses Career Plan.
+- Persist action history in Phase 3E, because Phase 3F owns persistence boundaries.
+
+Affected areas: Employment Intelligence, Next-Best-Action, Career Plan, Home, Employment Center, Career Coach, future Phase 3F persistence.
+
+Migration implications: None in Phase 3E.
+
+Review trigger: Review before Phase 3F persistence, Home presentation or Career Coach integration.
+
 ## DEC-043
 
 Decision ID: DEC-043

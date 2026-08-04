@@ -1,4 +1,5 @@
 export const EMPLOYMENT_INTELLIGENCE_ENGINE_VERSION_3B = "3B.1";
+export const EMPLOYMENT_INTELLIGENCE_ENGINE_VERSION_3E = "3E.1";
 
 export const engineVersionChangeRules = [
   "rule_changes",

@@ -216,6 +216,8 @@ Employment Intelligence must not:
 
 - replace Professional Identity as the source of truth
 - overwrite Employment Diagnosis
+
+Phase 3E locks Next-Best-Action and Career Plan as derived outputs from Employment Intelligence. Consumers may display the selected action and plan, but must not independently recalculate priorities. The user-facing term is Career Plan; Roadmap may remain only as a technical compatibility route.
 - become a single employability score
 - make employer hiring decisions
 - declare anyone unemployable

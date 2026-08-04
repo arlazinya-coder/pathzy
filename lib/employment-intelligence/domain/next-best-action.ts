@@ -1,5 +1,6 @@
 import type { ConfidenceAssessment } from "./confidence";
 import type { EvidenceRecord } from "./evidence";
+import type { ActionImpactLevel, ActionPresentationMode, ActionState, NextActionCategory } from "../actions/action-models";
 
 export const actionUrgencyLevels = ["WHEN_READY", "LOW", "MEDIUM", "HIGH", "IMMEDIATE"] as const;
 export type ActionUrgency = (typeof actionUrgencyLevels)[number];
@@ -25,6 +26,12 @@ export type NextBestAction = {
   confidence: ConfidenceAssessment;
   completionCriteria: string[];
   sourceEngineVersion: string;
+  category?: NextActionCategory;
+  state?: ActionState;
+  impact?: ActionImpactLevel;
+  reasonCodes?: string[];
+  priorityBreakdown?: Record<string, number>;
+  presentationMode?: ActionPresentationMode;
 };
 
 export type NextBestActionSet = {

@@ -132,6 +132,25 @@ const adaptiveDiagnosisSource = [
   "lib/employment-intelligence/diagnosis/fixtures.ts",
   "lib/employment-intelligence/diagnosis/index.ts"
 ].map((filePath) => readFileSync(filePath, "utf8")).join("\n");
+const employmentNextActionSource = [
+  "lib/employment-intelligence/actions/action-version.ts",
+  "lib/employment-intelligence/actions/action-models.ts",
+  "lib/employment-intelligence/actions/action-registry.ts",
+  "lib/employment-intelligence/actions/action-completion.ts",
+  "lib/employment-intelligence/actions/action-dependencies.ts",
+  "lib/employment-intelligence/actions/action-priority.ts",
+  "lib/employment-intelligence/actions/action-eligibility.ts",
+  "lib/employment-intelligence/actions/action-explainability.ts",
+  "lib/employment-intelligence/actions/secondary-action-selector.ts",
+  "lib/employment-intelligence/actions/next-best-action-engine.ts",
+  "lib/employment-intelligence/actions/career-plan-engine.ts",
+  "lib/employment-intelligence/actions/fixtures.ts",
+  "lib/employment-intelligence/actions/index.ts",
+  "lib/employment-intelligence/domain/next-best-action.ts",
+  "lib/employment-intelligence/domain/career-plan.ts",
+  "lib/employment-intelligence/engine/generate-employment-intelligence.ts",
+  "lib/employment-intelligence/engine/index.ts"
+].map((filePath) => readFileSync(filePath, "utf8")).join("\n");
 const professionalProfileApi = readFileSync("app/api/professional-profile/route.ts", "utf8");
 const discoveryFlow = readFileSync("components/discovery/discovery-flow.tsx", "utf8");
 const discoveryAnswerState = readFileSync("lib/discovery/discovery-answer-state.ts", "utf8");
@@ -476,7 +495,7 @@ assert.equal(phase3bEmptyProfile.readinessDimensions.length, employmentIntellige
 assert.equal(phase3bEmptyProfile.readinessDimensions.some((dimension) => dimension.band === "NOT_ASSESSED"), true, "Phase 3B must preserve unknown as NOT_ASSESSED instead of inventing a negative score.");
 assert.equal(phase3bEmptyProfile.missingInformation.includes("WORK_AUTHORIZATION_UNCLEAR"), true, "Phase 3B must surface missing work authorization as missing information.");
 assert.equal(phase3bEmptyProfile.barriers.some((barrier) => barrier.definitionCode === "WORK_AUTHORIZATION_UNCERTAINTY"), true, "Phase 3B must separate work eligibility uncertainty from general employability.");
-assert.equal(phase3bEmptyProfile.engineVersion, "3B.1", "Phase 3B profiles must include the deterministic engine version.");
+assert.equal(phase3bEmptyProfile.engineVersion, employmentIntelligenceEngineRuntime.EMPLOYMENT_INTELLIGENCE_ENGINE_VERSION_3E, "Generated profiles must include the current deterministic engine version.");
 assert.equal(phase3bEmptyProfile.staleStatus, "CURRENT", "Phase 3B generated profiles must carry stale status.");
 assertCanonicalCodes(phase3bEmptyProfile.readinessDimensions.map((dimension) => dimension.key), "Phase 3B readiness output must use canonical dimension codes.");
 assertCanonicalCodes(phase3bEmptyProfile.pathwayRecommendations.map((pathway) => pathway.pathwayCode), "Phase 3B pathway output must use canonical pathway codes.");
@@ -1438,6 +1457,21 @@ assert.match(adaptiveDiagnosisSource, /label: \{ en,[\s\S]*fr \}/, "Adaptive que
 assert.doesNotMatch(discoveryFlow, /employmentDiagnosisSteps\[language\] as unknown as DiagnosisStep/, "Employment Diagnosis UI must not cast tuple data to objects and render undefined titles.");
 assert.match(generateRoadmapApi, /questionPayload[\s\S]*currentQuestion[\s\S]*progress[\s\S]*canComplete/, "Employment Diagnosis API must expose the current adaptive question, progress, and completion state for QA and clients.");
 assert.doesNotMatch(discoveryFlow, /answers\[currentStep\.key\]\.trim\(\)|currentValue\.trim\(\)(?![\s\S]*discovery\.required)/, "Employment Diagnosis must not call trim on raw answer values.");
+assert.match(employmentNextActionSource, /EMPLOYMENT_ACTION_ENGINE_VERSION_3E[\s\S]*3E\.1/, "Phase 3E must version the Next-Best-Action and Career Plan engine independently.");
+assert.match(employmentNextActionSource, /IDENTITY_COMPLETION[\s\S]*EVIDENCE_STRENGTHENING[\s\S]*EMPLOYMENT_DIAGNOSIS[\s\S]*DOCUMENT_PREPARATION[\s\S]*JOB_SEARCH[\s\S]*APPLICATION_PREPARATION[\s\S]*INTERVIEW_PREPARATION[\s\S]*FOLLOW_UP[\s\S]*SKILL_DEVELOPMENT[\s\S]*PRACTICAL_SUPPORT[\s\S]*PATHWAY_EXPLORATION[\s\S]*HUMAN_SUPPORT/, "Phase 3E must define the required profession-neutral action categories.");
+assert.match(employmentNextActionSource, /ELIGIBLE[\s\S]*BLOCKED[\s\S]*ALREADY_COMPLETED[\s\S]*NOT_RELEVANT[\s\S]*DEFERRED/, "Phase 3E actions must have explicit states instead of hidden UI assumptions.");
+assert.match(employmentNextActionSource, /COMPLETE_PROFESSIONAL_IDENTITY[\s\S]*COMPLETE_EMPLOYMENT_DIAGNOSIS[\s\S]*CREATE_FIRST_CV[\s\S]*FIND_RELEVANT_OPPORTUNITIES[\s\S]*PREPARE_APPLICATION_PACKAGE[\s\S]*PREPARE_FOR_INTERVIEW/, "Phase 3E must include identity, diagnosis, document, opportunity, application and interview actions.");
+assert.match(employmentNextActionSource, /EXPLORE_IMMEDIATE_INCOME_OPTIONS[\s\S]*(?:URGENT_INCOME[\s\S]*longer-term career plan|longer-term career plan[\s\S]*URGENT_INCOME)/i, "Phase 3E must handle immediate income needs without abandoning longer-term planning.");
+assert.match(employmentNextActionSource, /priorityBreakdown[\s\S]*actionPriorityWeights[\s\S]*urgency[\s\S]*impact[\s\S]*effort[\s\S]*supportIntensity/, "Phase 3E prioritisation must be explicit and explainable rather than a hidden score.");
+assert.match(employmentNextActionSource, /findDependencyCycles[\s\S]*dependencyGraph[\s\S]*unmetActionDependencies/, "Phase 3E must model action dependencies and detect dependency cycles.");
+assert.match(employmentNextActionSource, /completedActionCodes[\s\S]*hasCv[\s\S]*hasCoverLetter[\s\S]*hasSubmittedApplication/, "Phase 3E must skip completed actions based on history and existing documents or applications.");
+assert.match(employmentNextActionSource, /selectSecondaryActionCandidates[\s\S]*limit = 3[\s\S]*selected\.length >= limit/, "Phase 3E must return only one primary action and a bounded set of secondary actions.");
+assert.match(employmentNextActionSource, /determineNextBestActions[\s\S]*primary[\s\S]*secondary/, "Phase 3E must expose one authoritative next-best-action selector.");
+assert.match(employmentNextActionSource, /generateCareerPlan[\s\S]*TODAY[\s\S]*THIS_WEEK[\s\S]*THIS_MONTH[\s\S]*NEXT_3_MONTHS[\s\S]*LONGER_TERM/, "Phase 3E must generate a multi-horizon Career Plan.");
+assert.match(employmentNextActionSource, /primaryActionCode[\s\S]*dependencyGraph[\s\S]*actionRegistryVersion/, "Phase 3E Career Plan output must reference action codes, dependencies and engine version metadata.");
+assert.match(employmentNextActionSource, /STANDARD[\s\S]*PLAIN_LANGUAGE[\s\S]*HIGH_GUIDANCE[\s\S]*ASSISTED/, "Phase 3E actions must preserve accessibility presentation modes inherited from diagnosis.");
+assert.match(employmentNextActionSource, /determineNextBestActions[\s\S]*generateCareerPlan[\s\S]*nextBestAction: actionSet\.primary[\s\S]*secondaryActions: actionSet\.secondary[\s\S]*careerPlan/, "Employment Intelligence generation must consume the Phase 3E action engine instead of the Phase 3B preliminary action.");
+assert.doesNotMatch(employmentNextActionSource, /generateOpenAIRoadmap|OpenAI|salary estimate|roadmap_90_days|automatic apply|auto-apply/i, "Phase 3E must not introduce generative AI, salary promises, 90-day roadmap copy or automatic applications.");
 for (const saveStatusCopy of [
   "Unsaved changes",
   "Saving...",

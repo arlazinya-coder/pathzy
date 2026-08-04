@@ -12,6 +12,7 @@ export * from "./pathways";
 export * from "./readiness";
 export * from "./stale-status";
 export * from "./support-intensity";
+export * from "../actions";
 
 export const phase3aForbiddenCanonicalTerms = ["WEAK", "POOR", "BAD", "UNEMPLOYABLE"] as const;
 
