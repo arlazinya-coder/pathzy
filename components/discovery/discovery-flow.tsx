@@ -1,93 +1,176 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthNotice } from "@/components/auth/auth-notice";
 import { usePathzyLanguage } from "@/components/language/language-selector";
 import { Card, ProgressBar } from "@/components/ui";
-import { discoveryAnswerValue, emptyDiscoveryAnswers, normalizeDiscoveryAnswers } from "@/lib/discovery/discovery-answer-state";
-import type { DiscoveryAnswers } from "@/lib/discovery/types";
-import { getEmploymentDiagnosisSteps, pathzyPhase2T } from "@/lib/language/pathzy-i18n";
+import type { DiagnosisOption, DiagnosisProgress, DiagnosisQuestionDefinition, EmploymentDiagnosisAnswer, EmploymentDiagnosisSession } from "@/lib/employment-intelligence/diagnosis";
+import { pathzyPhase2T } from "@/lib/language/pathzy-i18n";
+import { normalizeSupportedLanguage, type SupportedLanguageCode } from "@/lib/language/language-preferences";
 import { appRoutes } from "@/lib/navigation/routes";
 
-const initialAnswers = emptyDiscoveryAnswers();
+type DiagnosisPayload = {
+  session: EmploymentDiagnosisSession;
+  currentQuestion: DiagnosisQuestionDefinition | null;
+  reasonForAsking: string;
+  progress: DiagnosisProgress;
+  canComplete: boolean;
+  estimatedRemainingQuestions: number;
+  answers: Record<string, EmploymentDiagnosisAnswer>;
+  error?: string;
+  redirectTo?: string;
+};
+
+function optionLabel(option: DiagnosisOption, language: SupportedLanguageCode) {
+  return option.plainLabel?.[language] ?? option.label[language] ?? option.label.en ?? option.code;
+}
+
+function questionTitle(question: DiagnosisQuestionDefinition | null, language: SupportedLanguageCode) {
+  return question?.title[language] ?? question?.title.en ?? "";
+}
+
+function questionPrompt(question: DiagnosisQuestionDefinition | null, language: SupportedLanguageCode) {
+  return question?.prompt[language] ?? question?.prompt.en ?? "";
+}
+
+function questionHelp(question: DiagnosisQuestionDefinition | null, language: SupportedLanguageCode) {
+  return question?.helpText[language] ?? question?.helpText.en ?? "";
+}
+
+function answerValueFor(question: DiagnosisQuestionDefinition | null, answers: Record<string, EmploymentDiagnosisAnswer>) {
+  if (!question) return "";
+  const value = answers[question.questionId]?.value;
+  if (Array.isArray(value)) return value;
+  return typeof value === "string" || typeof value === "number" || typeof value === "boolean" ? String(value) : "";
+}
+
+function answerIsValid(question: DiagnosisQuestionDefinition | null, value: string | string[]) {
+  if (!question) return false;
+  if (Array.isArray(value)) return value.length > 0;
+  return value.trim().length > 0;
+}
 
 export function DiscoveryFlow() {
   const router = useRouter();
   const { language } = usePathzyLanguage();
-  const steps = useMemo(() => getEmploymentDiagnosisSteps(language), [language]);
-  const [answers, setAnswers] = useState<DiscoveryAnswers>(initialAnswers);
-  const [stepIndex, setStepIndex] = useState(0);
+  const activeLanguage = normalizeSupportedLanguage(language);
+  const [payload, setPayload] = useState<DiagnosisPayload | null>(null);
+  const [currentValue, setCurrentValue] = useState<string | string[]>("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const currentStep = steps[stepIndex] ?? steps[0] ?? null;
-  const progress = useMemo(() => Math.round(((Math.min(stepIndex, steps.length - 1) + 1) / Math.max(steps.length, 1)) * 100), [stepIndex, steps.length]);
-  const isLastStep = stepIndex === steps.length - 1;
-  const currentValue = currentStep ? discoveryAnswerValue(answers, currentStep.key) : "";
-  const currentAnswerIsValid = currentValue.trim().length > 0;
+  const currentQuestion = payload?.currentQuestion ?? null;
+  const progressValue = useMemo(() => Math.round((payload?.progress.completionConfidence ?? 0.1) * 100), [payload?.progress.completionConfidence]);
+  const currentAnswerIsValid = answerIsValid(currentQuestion, currentValue);
 
-  function updateCurrent(value: string) {
-    if (!currentStep) return;
-    setAnswers((current) => ({ ...current, [currentStep.key]: value }));
+  useEffect(() => {
+    let cancelled = false;
+    async function loadDiagnosis() {
+      setLoading(true);
+      setMessage("");
+      try {
+        const response = await fetch(`/api/generate-roadmap?language=${activeLanguage}`, { method: "GET" });
+        const nextPayload = (await response.json()) as DiagnosisPayload;
+        if (cancelled) return;
+        if (response.status === 401) {
+          router.replace(`${appRoutes.login}?redirectTo=${appRoutes.discovery}`);
+          return;
+        }
+        if (!response.ok) {
+          setMessage(nextPayload.error || pathzyPhase2T(activeLanguage, "discovery.error"));
+          return;
+        }
+        setPayload(nextPayload);
+        setCurrentValue(answerValueFor(nextPayload.currentQuestion, nextPayload.answers ?? {}));
+      } catch {
+        if (!cancelled) setMessage(pathzyPhase2T(activeLanguage, "discovery.error"));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    void loadDiagnosis();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeLanguage, router]);
+
+  function toggleMulti(optionCode: string) {
+    setCurrentValue((current) => {
+      const list = Array.isArray(current) ? current : [];
+      return list.includes(optionCode) ? list.filter((item) => item !== optionCode) : [...list, optionCode];
+    });
   }
 
-  async function saveDiscovery() {
+  async function postDiagnosis(body: Record<string, unknown>) {
     setSaving(true);
     setMessage("");
-    const safeAnswers = normalizeDiscoveryAnswers(answers);
-
     try {
       const response = await fetch("/api/generate-roadmap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers: safeAnswers })
+        body: JSON.stringify({ ...body, language: activeLanguage })
       });
-      const payload = (await response.json()) as { error?: string; redirectTo?: string };
+      const nextPayload = (await response.json()) as DiagnosisPayload;
 
       if (response.status === 401) {
-        setMessage(payload.error || pathzyPhase2T(language, "discovery.login"));
+        setMessage(nextPayload.error || pathzyPhase2T(activeLanguage, "discovery.login"));
         router.replace(`${appRoutes.login}?redirectTo=${appRoutes.discovery}`);
-        return;
+        return null;
       }
 
       if (!response.ok) {
-        setMessage(payload.error || pathzyPhase2T(language, "discovery.error"));
-        return;
+        setMessage(nextPayload.error || pathzyPhase2T(activeLanguage, "discovery.error"));
+        if (nextPayload.currentQuestion) setPayload(nextPayload);
+        return null;
       }
 
-      router.replace(payload.redirectTo ?? appRoutes.authenticatedHome);
-      router.refresh();
+      return nextPayload;
     } catch {
-      setMessage(pathzyPhase2T(language, "discovery.error"));
+      setMessage(pathzyPhase2T(activeLanguage, "discovery.error"));
+      return null;
     } finally {
       setSaving(false);
     }
   }
 
-  function goNext() {
-    if (!currentStep) {
-      setMessage(pathzyPhase2T(language, "discovery.error"));
-      return;
+  async function saveCurrentAnswer() {
+    if (!currentQuestion) return null;
+    if (!currentAnswerIsValid) {
+      setMessage(pathzyPhase2T(activeLanguage, "discovery.required"));
+      return null;
     }
-    if (!currentValue.trim()) {
-      setMessage(pathzyPhase2T(language, "discovery.required"));
-      return;
-    }
-
-    setMessage("");
-    if (isLastStep) {
-      void saveDiscovery();
-      return;
-    }
-
-    setStepIndex((current) => Math.min(steps.length - 1, current + 1));
+    const nextPayload = await postDiagnosis({
+      mode: "save_answer",
+      questionId: currentQuestion.questionId,
+      value: currentValue
+    });
+    if (!nextPayload) return null;
+    setPayload(nextPayload);
+    setCurrentValue(answerValueFor(nextPayload.currentQuestion, nextPayload.answers ?? {}));
+    return nextPayload;
   }
 
-  if (!currentStep) {
+  async function completeDiagnosis() {
+    const nextPayload = await postDiagnosis({ mode: "complete" });
+    if (!nextPayload) return;
+    router.replace(nextPayload.redirectTo ?? appRoutes.authenticatedHome);
+    router.refresh();
+  }
+
+  async function goNext() {
+    const nextPayload = currentQuestion ? await saveCurrentAnswer() : payload;
+    if (!nextPayload) return;
+    if (!nextPayload.currentQuestion && nextPayload.canComplete) {
+      await completeDiagnosis();
+    }
+  }
+
+  if (loading) {
     return (
       <Card className="mx-auto max-w-4xl">
         <AuthNotice />
-        <p className="rounded-[18px] border border-white/10 bg-white/7 p-3 text-sm font-bold text-white/70">{pathzyPhase2T(language, "discovery.error")}</p>
+        <p className="rounded-[18px] border border-white/10 bg-white/7 p-3 text-sm font-bold text-white/70">{pathzyPhase2T(activeLanguage, "discovery.saving")}</p>
       </Card>
     );
   }
@@ -97,47 +180,78 @@ export function DiscoveryFlow() {
       <AuthNotice />
       <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">{pathzyPhase2T(language, "discovery.step")} {stepIndex + 1} {pathzyPhase2T(language, "identity.ui.stepConnector")} {steps.length}</p>
-          <h2 className="mt-2 text-3xl font-black">{currentStep.title}</h2>
+          <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">{pathzyPhase2T(activeLanguage, "discovery.eyebrow")}</p>
+          <h2 className="mt-2 text-3xl font-black">{currentQuestion ? questionTitle(currentQuestion, activeLanguage) : pathzyPhase2T(activeLanguage, "discovery.title")}</h2>
         </div>
-        <span className="w-fit rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/64">{progress}% {pathzyPhase2T(language, "discovery.complete")}</span>
+        <span className="w-fit rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/64">
+          {payload?.progress.explanation ?? `${progressValue}% ${pathzyPhase2T(activeLanguage, "discovery.complete")}`}
+        </span>
       </div>
 
-      <ProgressBar value={progress} />
+      <ProgressBar value={progressValue} />
 
       <div className="mt-8 grid gap-5">
-        <label className="label text-base">
-          {currentStep.prompt}
-          <textarea
-            className="field min-h-[190px]"
-            value={currentValue}
-            onChange={(event) => updateCurrent(event.target.value)}
-            placeholder={currentStep.placeholder}
-            aria-invalid={!currentAnswerIsValid && Boolean(message)}
-          />
-        </label>
+        {currentQuestion ? (
+          <>
+            <div className="rounded-[18px] border border-white/10 bg-white/7 p-4">
+              <p className="text-lg font-black text-white">{questionPrompt(currentQuestion, activeLanguage)}</p>
+              <p className="mt-2 text-sm font-bold leading-6 text-white/64">{questionHelp(currentQuestion, activeLanguage)}</p>
+              <p className="mt-3 text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">{payload?.reasonForAsking}</p>
+            </div>
+
+            {currentQuestion.answerType === "SHORT_TEXT" || currentQuestion.answerType === "OPTIONAL_LONG_TEXT" ? (
+              <label className="label text-base">
+                {questionTitle(currentQuestion, activeLanguage)}
+                <textarea className="field min-h-[150px]" value={Array.isArray(currentValue) ? currentValue.join("\n") : currentValue} onChange={(event) => setCurrentValue(event.target.value)} aria-invalid={!currentAnswerIsValid && Boolean(message)} />
+              </label>
+            ) : currentQuestion.answerType === "MULTI_SELECT" ? (
+              <div className="grid gap-3">
+                {currentQuestion.options.map((option) => {
+                  const selected = Array.isArray(currentValue) && currentValue.includes(option.code);
+                  return (
+                    <button
+                      key={option.code}
+                      type="button"
+                      onClick={() => toggleMulti(option.code)}
+                      className={`rounded-[18px] border px-4 py-3 text-left text-sm font-extrabold transition ${selected ? "border-blue-300 bg-blue-400/18 text-white" : "border-white/10 bg-white/7 text-white/76 hover:bg-white/12"}`}
+                      aria-pressed={selected}
+                    >
+                      {optionLabel(option, activeLanguage)}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {currentQuestion.options.map((option) => {
+                  const selected = currentValue === option.code;
+                  return (
+                    <button
+                      key={option.code}
+                      type="button"
+                      onClick={() => setCurrentValue(option.code)}
+                      className={`rounded-[18px] border px-4 py-3 text-left text-sm font-extrabold transition ${selected ? "border-blue-300 bg-blue-400/18 text-white" : "border-white/10 bg-white/7 text-white/76 hover:bg-white/12"}`}
+                      aria-pressed={selected}
+                    >
+                      {optionLabel(option, activeLanguage)}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="rounded-[18px] border border-white/10 bg-white/7 p-4">
+            <h3 className="text-2xl font-black">{pathzyPhase2T(activeLanguage, "discovery.submit")}</h3>
+            <p className="mt-2 text-sm font-bold leading-6 text-white/64">{payload?.progress.explanation ?? pathzyPhase2T(activeLanguage, "discovery.body")}</p>
+          </div>
+        )}
 
         {message ? <p className="rounded-[18px] border border-white/10 bg-white/7 p-3 text-sm font-bold text-white/70">{message}</p> : null}
 
-        <div className="flex flex-wrap justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              setMessage("");
-              setStepIndex((current) => Math.max(0, current - 1));
-            }}
-            disabled={stepIndex === 0 || saving}
-            className="rounded-full border border-white/12 bg-white/8 px-6 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {pathzyPhase2T(language, "discovery.back")}
-          </button>
-          <button
-            type="button"
-            onClick={goNext}
-            disabled={saving || !currentAnswerIsValid}
-            className="rounded-full blue-purple px-6 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {saving ? pathzyPhase2T(language, "discovery.saving") : isLastStep ? pathzyPhase2T(language, "discovery.submit") : pathzyPhase2T(language, "discovery.continue")}
+        <div className="flex flex-wrap justify-end gap-3">
+          <button type="button" onClick={currentQuestion ? goNext : completeDiagnosis} disabled={saving || (Boolean(currentQuestion) && !currentAnswerIsValid)} className="rounded-full blue-purple px-6 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">
+            {saving ? pathzyPhase2T(activeLanguage, "discovery.saving") : currentQuestion ? pathzyPhase2T(activeLanguage, "discovery.continue") : pathzyPhase2T(activeLanguage, "discovery.submit")}
           </button>
         </div>
       </div>
