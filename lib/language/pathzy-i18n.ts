@@ -1,6 +1,7 @@
 ﻿import { type SupportedLanguageCode } from "@/lib/language/language-preferences";
 
 import type { DiscoveryAnswerKey } from "@/lib/discovery/discovery-answer-state";
+import { normalizeSupportedLanguage } from "@/lib/language/language-preferences";
 
 export type PathzyTranslationKey =
   | "public.nav.home"
@@ -392,12 +393,28 @@ export const pathzyNavigationTranslations: Record<SupportedLanguageCode, Record<
   }
 };
 
-export function pathzyNavigationLabel(language: SupportedLanguageCode, label: string) {
-  return pathzyNavigationTranslations[language]?.[label] ?? label;
+const missingTranslationWarnings = new Set<string>();
+
+function resolvedLanguage(language?: string | null): SupportedLanguageCode {
+  return normalizeSupportedLanguage(language);
 }
 
-export function pathzyT(language: SupportedLanguageCode, key: PathzyTranslationKey) {
-  return translations[language]?.[key] ?? translations.en[key];
+function missingTranslationFallback(language: SupportedLanguageCode, key: string, fallback: string) {
+  if (process.env.NODE_ENV === "development" && !missingTranslationWarnings.has(`${language}:${key}`)) {
+    missingTranslationWarnings.add(`${language}:${key}`);
+    console.warn("[pathzy-i18n] Missing translation", { language, key });
+  }
+  return fallback;
+}
+
+export function pathzyNavigationLabel(language: SupportedLanguageCode | string | null | undefined, label: string) {
+  const normalizedLanguage = resolvedLanguage(language);
+  return pathzyNavigationTranslations[normalizedLanguage]?.[label] ?? label;
+}
+
+export function pathzyT(language: SupportedLanguageCode | string | null | undefined, key: PathzyTranslationKey) {
+  const normalizedLanguage = resolvedLanguage(language);
+  return translations[normalizedLanguage]?.[key] ?? translations.en[key] ?? missingTranslationFallback(normalizedLanguage, key, key);
 }
 
 export const publicLandingContent = {
@@ -948,11 +965,12 @@ const phase2Translations = {
 
 export type Phase2TranslationKey = keyof typeof phase2Translations.en;
 
-export function pathzyPhase2T(language: SupportedLanguageCode, key: Phase2TranslationKey) {
-  return phase2Translations[language]?.[key] ?? phase2Translations.en[key];
+export function pathzyPhase2T(language: SupportedLanguageCode | string | null | undefined, key: Phase2TranslationKey) {
+  const normalizedLanguage = resolvedLanguage(language);
+  return phase2Translations[normalizedLanguage]?.[key] ?? phase2Translations.en[key] ?? missingTranslationFallback(normalizedLanguage, key, key);
 }
 
-export function pathzyPhase2List(language: SupportedLanguageCode, key: Phase2TranslationKey) {
+export function pathzyPhase2List(language: SupportedLanguageCode | string | null | undefined, key: Phase2TranslationKey) {
   return pathzyPhase2T(language, key).split("|").map((item) => item.trim()).filter(Boolean);
 }
 
@@ -970,13 +988,14 @@ const professionalTitleTranslations: Record<SupportedLanguageCode, Record<string
   }
 };
 
-export function localizedProfessionalTitle(language: SupportedLanguageCode, value: string, fallbackKey: Phase2TranslationKey = "home.professionalDirectionFallback") {
-  const clean = value.trim();
-  if (!clean) return pathzyPhase2T(language, fallbackKey);
-  return professionalTitleTranslations[language]?.[clean.toLowerCase()] ?? clean;
+export function localizedProfessionalTitle(language: SupportedLanguageCode | string | null | undefined, value: string | null | undefined, fallbackKey: Phase2TranslationKey = "home.professionalDirectionFallback") {
+  const normalizedLanguage = resolvedLanguage(language);
+  const clean = value?.trim() ?? "";
+  if (!clean) return pathzyPhase2T(normalizedLanguage, fallbackKey);
+  return professionalTitleTranslations[normalizedLanguage]?.[clean.toLowerCase()] ?? clean;
 }
 
-export function formatPathzyStepCount(language: SupportedLanguageCode, current: number, total: number) {
+export function formatPathzyStepCount(language: SupportedLanguageCode | string | null | undefined, current: number, total: number) {
   return `${pathzyT(language, "onboarding.shell.step")} ${current} ${pathzyPhase2T(language, "identity.ui.stepConnector")} ${total}`;
 }
 
@@ -1047,15 +1066,22 @@ export const professionalIdentityStepTranslations: Record<SupportedLanguageCode,
   }
 };
 
-export function professionalIdentityFieldText(language: SupportedLanguageCode, fieldName: string, key: "label" | "placeholder", fallback = "") {
-  return professionalIdentityFieldTranslations[language]?.[fieldName]?.[key] ?? fallback;
+export function professionalIdentitySectionText(language: SupportedLanguageCode | string | null | undefined, sectionKey: string, fallback = "") {
+  const normalizedLanguage = resolvedLanguage(language);
+  return professionalIdentitySectionTranslations[normalizedLanguage]?.[sectionKey] ?? fallback;
 }
 
-export function professionalIdentityStepText(language: SupportedLanguageCode, stepKey: string, key: "title" | "description" | "guidance", fallback = "") {
-  return professionalIdentityStepTranslations[language]?.[stepKey]?.[key] ?? fallback;
+export function professionalIdentityFieldText(language: SupportedLanguageCode | string | null | undefined, fieldName: string, key: "label" | "placeholder", fallback = "") {
+  const normalizedLanguage = resolvedLanguage(language);
+  return professionalIdentityFieldTranslations[normalizedLanguage]?.[fieldName]?.[key] ?? fallback;
 }
 
-export function professionalIdentityImportanceLabel(language: SupportedLanguageCode, importance: "required" | "recommended" | "optional") {
+export function professionalIdentityStepText(language: SupportedLanguageCode | string | null | undefined, stepKey: string, key: "title" | "description" | "guidance", fallback = "") {
+  const normalizedLanguage = resolvedLanguage(language);
+  return professionalIdentityStepTranslations[normalizedLanguage]?.[stepKey]?.[key] ?? fallback;
+}
+
+export function professionalIdentityImportanceLabel(language: SupportedLanguageCode | string | null | undefined, importance: "required" | "recommended" | "optional") {
   return pathzyPhase2T(language, `identity.importance.${importance}` as Phase2TranslationKey);
 }
 
@@ -1095,8 +1121,9 @@ export type EmploymentDiagnosisStep = {
 
 type EmploymentDiagnosisStepTuple = readonly [DiscoveryAnswerKey, string, string, string];
 
-export function getEmploymentDiagnosisSteps(language: SupportedLanguageCode): EmploymentDiagnosisStep[] {
-  const steps = employmentDiagnosisSteps[language] ?? employmentDiagnosisSteps.en;
+export function getEmploymentDiagnosisSteps(language: SupportedLanguageCode | string | null | undefined): EmploymentDiagnosisStep[] {
+  const normalizedLanguage = resolvedLanguage(language);
+  const steps = employmentDiagnosisSteps[normalizedLanguage] ?? employmentDiagnosisSteps.en;
   return steps.map(([key, title, prompt, placeholder]: EmploymentDiagnosisStepTuple) => ({
     key,
     title,

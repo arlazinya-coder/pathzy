@@ -1,4 +1,5 @@
 import type { CvPurpose, CvSectionType, CvViewConfiguration, ProfessionalDocumentLanguage } from "./professional-document.types";
+import { normalizeLanguageCode } from "@/lib/language/language-preferences";
 
 export const CV_ENGINE_VERSION = "phase7.cv-content-engine.v1";
 export const CV_RENDERING_ENGINE_VERSION = "pathzy.a4-renderer.v1";
@@ -92,6 +93,6 @@ export function cvPurposeLabel(purpose: CvPurpose, language: ProfessionalDocumen
       custom: "CV personnalise"
     }
   } as const;
-  return labels[language][purpose];
+  const resolvedLanguage = normalizeLanguageCode(language);
+  return labels[resolvedLanguage]?.[purpose] ?? labels.en[purpose];
 }
-

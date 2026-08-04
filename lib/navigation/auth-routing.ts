@@ -42,6 +42,7 @@ type ProfileSnapshot = {
   highest_qualification?: string | null;
   field_of_study?: string | null;
   current_status?: string | null;
+  employment_status?: string | null;
   career_goal?: string | null;
   onboarding_completed?: boolean | null;
   onboarding_step?: number | null;
@@ -190,6 +191,7 @@ function hasAnyIdentityProgress(profile: ProfileSnapshot | null, discovery?: Dis
       hasText(profile?.city) ||
       hasText(profile?.country) ||
       hasText(profile?.current_status) ||
+      hasText(profile?.employment_status) ||
       hasText(profile?.career_goal) ||
       hasText(profile?.education) ||
       hasText(profile?.highest_qualification) ||
@@ -206,6 +208,7 @@ function hasGuidedIdentitySetupStarted(profile: ProfileSnapshot | null, discover
       hasText(profile?.city) ||
       hasText(profile?.country) ||
       hasText(profile?.current_status) ||
+      hasText(profile?.employment_status) ||
       hasText(profile?.career_goal) ||
       hasText(profile?.education) ||
       hasText(profile?.highest_qualification) ||

@@ -1,4 +1,6 @@
 import { professionalPhotoAssetFromUnknown, type CanonicalProfessionalPhotoAsset } from "@/lib/professional-identity/professional-photo";
+import { normalizeCurrentSituation } from "@/lib/professional-identity/current-situation";
+import { normalizeLanguageCode, normalizeProfessionalDocumentLanguageChoice } from "@/lib/language/language-preferences";
 
 export type ProfessionalIdentityCompletionSectionKey =
   | "profile"
@@ -156,13 +158,14 @@ export function professionalIdentityValuesFromSources(
   user?: { email?: string | null } | null
 ): ProfessionalIdentityCompletionValues {
   const answers = discovery?.answers ?? {};
+  const currentStatus = normalizeCurrentSituation(firstText(profile?.current_status, profile?.employment_status, answers.current_status, answers.employment_status, answers.currentSituation, answers.current_status_label));
   return {
     profilePhoto: answerText(discovery, "profile_photo"),
     professional_photo_asset: professionalPhotoAssetFromUnknown(answers.professional_photo_asset),
     full_name: textValue(profile?.full_name),
     email: firstText(profile?.email, user?.email),
     phone: textValue(profile?.phone),
-    current_status: textValue(profile?.current_status),
+    current_status: currentStatus,
     city: textValue(profile?.city),
     country: textValue(profile?.country),
     nationality: answerText(discovery, "nationality"),
@@ -191,8 +194,8 @@ export function professionalIdentityValuesFromSources(
     availability: answerText(discovery, "availability"),
     work_type: answerText(discovery, "work_type"),
     relocation: answerText(discovery, "relocation"),
-    interface_language: firstText(answers.interface_language, profile?.language),
-    professional_document_language: answerText(discovery, "professional_document_language"),
+    interface_language: normalizeLanguageCode(firstText(answers.interface_language, profile?.language)),
+    professional_document_language: normalizeProfessionalDocumentLanguageChoice(answerText(discovery, "professional_document_language")),
     career_coach_intro_seen: answers.career_coach_intro_seen === true || answerText(discovery, "career_coach_intro_seen") === "true" ? "true" : ""
   };
 }

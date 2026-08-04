@@ -73,6 +73,8 @@ const professionalIdentityDiscoveryCompatibility = readFileSync("lib/professiona
 const professionalIdentityAutosave = readFileSync("lib/professional-identity/use-professional-identity-autosave.ts", "utf8");
 const professionalIdentityWriteService = readFileSync("lib/professional-identity/professional-identity-write-service.ts", "utf8");
 const professionalIdentitySync = readFileSync("lib/professional-identity/professional-identity-sync.ts", "utf8");
+const currentSituationContract = readFileSync("lib/professional-identity/current-situation.ts", "utf8");
+const cvConfiguration = readFileSync("lib/professional-documents/cv-configuration.ts", "utf8");
 const professionalProfileApi = readFileSync("app/api/professional-profile/route.ts", "utf8");
 const discoveryFlow = readFileSync("components/discovery/discovery-flow.tsx", "utf8");
 const discoveryAnswerState = readFileSync("lib/discovery/discovery-answer-state.ts", "utf8");
@@ -274,9 +276,13 @@ const authRoutingRuntime = loadProductionTsModule("lib/navigation/auth-routing.t
 const supabaseConfigRuntime = loadProductionTsModule("lib/supabase/config.ts");
 const authFormErrorsRuntime = loadProductionTsModule("lib/auth/auth-form-errors.ts");
 const languagePreferenceRuntime = loadProductionTsModule("lib/language/language-preferences.ts");
+const pathzyI18nRuntime = loadProductionTsModule("lib/language/pathzy-i18n.ts");
 const errorNormalizationRuntime = loadProductionTsModule("lib/errors/error-normalization.ts");
 const authorizationRuntime = loadProductionTsModule("lib/access/authorization.ts");
 const authSessionRuntime = loadProductionTsModule("lib/auth/session-safety.ts");
+const currentSituationRuntime = loadProductionTsModule("lib/professional-identity/current-situation.ts");
+const professionalIdentityCompletionRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-completion.ts");
+const professionalIdentityWriteRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-write-service.ts");
 
 assert.equal(routeRuntime.routeBuilders.professionalIdentitySection("career_goal"), "/professional-identity?section=career_goal", "Route builder must create canonical Professional Identity section URLs.");
 assert.equal(authRoutingRuntime.professionalIdentitySectionHref("nationality", "review"), "/professional-identity?section=nationality&returnTo=%2Fprofessional-identity%3Freview%3D1", "Edit from Review must carry a safe typed return-to-review context.");
@@ -301,10 +307,58 @@ assert.equal(authFormErrorsRuntime.friendlyAuthError(new TypeError("NetworkError
 assert.equal(authFormErrorsRuntime.friendlyAuthError(new TypeError("Failed to fetch"), "login"), authFormErrorsRuntime.AUTH_NETWORK_USER_MESSAGE, "Login network failures must use the same safe retry message.");
 assert.doesNotMatch(authFormErrorsRuntime.friendlyAuthError(new TypeError("NetworkError when attempting to fetch resource."), "signup"), /NetworkError|supabase\.co|eyJ|sb_publishable_/i, "Auth network errors must not render raw browser internals or key-like values.");
 assert.equal(languagePreferenceRuntime.suggestedLanguageFromBrowser("fr-ZA,fr;q=0.9,en;q=0.8"), "fr", "Browser French should suggest French without using flags.");
+assert.equal(languagePreferenceRuntime.normalizeSupportedLanguage("fr-FR"), "fr", "Regional French locales must normalize to the supported French dictionary key.");
+assert.equal(languagePreferenceRuntime.normalizeSupportedLanguage("fr-CA"), "fr", "Canadian French locales must normalize to the supported French dictionary key.");
+assert.equal(languagePreferenceRuntime.normalizeSupportedLanguage("en-US"), "en", "Regional English locales must normalize to the supported English dictionary key.");
+assert.equal(languagePreferenceRuntime.normalizeSupportedLanguage("English"), "en", "Legacy English labels must normalize to the supported English dictionary key.");
+assert.equal(languagePreferenceRuntime.normalizeSupportedLanguage("Français"), "fr", "French display labels must normalize to the supported French dictionary key.");
+assert.equal(languagePreferenceRuntime.normalizeSupportedLanguage(undefined, "fr-FR"), "fr", "Missing language values must fall back to the saved interface language before English.");
+assert.equal(languagePreferenceRuntime.normalizeSupportedLanguage("zz-ZZ", "fr"), "fr", "Unsupported locales must fall back to the saved interface language.");
+assert.equal(pathzyI18nRuntime.pathzyT("fr-FR", "public.nav.home"), "Accueil", "Shared pathzyT must normalize regional French values before lookup.");
+assert.equal(pathzyI18nRuntime.pathzyT("en-US", "public.nav.home"), "Home", "Shared pathzyT must normalize regional English values before lookup.");
+assert.equal(pathzyI18nRuntime.pathzyT(undefined, "public.nav.home"), "Home", "Shared pathzyT must survive a transient undefined language.");
+assert.equal(pathzyI18nRuntime.pathzyPhase2T("french", "identity.ui.foundationValue"), "Identité Professionnelle", "Phase 2 translations must normalize legacy French values before lookup.");
+assert.equal(pathzyI18nRuntime.professionalIdentitySectionText("fr-FR", "profile", "Profile"), "Profil", "Professional Identity section labels must normalize regional French values.");
+assert.equal(pathzyI18nRuntime.professionalIdentityFieldText("french", "current_status", "label", "Current status"), "Situation actuelle", "Professional Identity field labels must normalize legacy French values.");
+assert.equal(pathzyI18nRuntime.professionalIdentityStepText("fr-FR", "profile", "title", "Profile"), "Profil", "Professional Identity step copy must normalize regional French values.");
+assert.equal(pathzyI18nRuntime.localizedProfessionalTitle("fr-FR", "data analyst"), "Analyste de données", "Known professional titles must localize through the normalized interface language.");
+assert.equal(pathzyI18nRuntime.localizedProfessionalTitle("fr-FR", undefined), "Direction professionnelle en cours", "Professional title fallback must not crash on undefined values.");
+assert.equal(pathzyI18nRuntime.getEmploymentDiagnosisSteps("fr-FR")[0].title, "Situation personnelle", "Employment Diagnosis questions must normalize regional French values.");
 const resolvedLanguages = languagePreferenceRuntime.resolveLanguagePreferences({ language: "english", interface_language: "fr", professional_document_language: "en" });
 assert.equal(resolvedLanguages.interface, "fr", "Interface language preference must resolve independently.");
 assert.equal(resolvedLanguages.professional_document, "en", "Professional document language must not be changed by interface language.");
 assert.equal(languagePreferenceRuntime.updateLanguagePreference(resolvedLanguages, "interface", "en").professional_document, "en", "Changing interface language must not mutate document language.");
+assert.equal(currentSituationRuntime.normalizeCurrentSituation("Diplômé"), "graduate", "French current-situation labels must normalize to stable canonical values.");
+assert.equal(currentSituationRuntime.normalizeCurrentSituation("En reconversion"), "career_transition", "Career-transition labels must not be stored as translated UI text.");
+assert.equal(currentSituationRuntime.currentSituationDisplayLabel("french", "employed"), "Salarié", "Legacy French language values must render current-situation labels without crashing.");
+assert.equal(currentSituationRuntime.currentSituationDisplayLabel("english", "employed"), "Employed", "Legacy English language values must render current-situation labels without crashing.");
+assert.equal(currentSituationRuntime.currentSituationDisplayLabel("fr-FR", "employed"), "Salarié", "Regional French language values must render current-situation labels without crashing.");
+assert.equal(currentSituationRuntime.currentSituationDisplayLabel("en-US", "employed"), "Employed", "Regional English language values must render current-situation labels without crashing.");
+assert.equal(currentSituationRuntime.currentSituationDisplayLabel(undefined, "employed", "fr"), "Salarié", "Missing language values must use the saved language fallback for current-situation labels.");
+assert.equal(currentSituationRuntime.currentSituationDisplayLabel("zz-ZZ", "employed", "fr"), "Salarié", "Unsupported locales must use the saved language fallback for current-situation labels.");
+assert.equal(currentSituationRuntime.currentSituationDisplayLabel("fr", "legacy free text"), "legacy free text", "Legacy situation values must not crash or erase display data when they cannot be canonicalized.");
+assert.equal(currentSituationRuntime.currentSituationDisplayLabel("fr", "career_transition"), "En reconversion", "Canonical current-situation values must display in French without changing stored data.");
+assert.equal(
+  professionalIdentityCompletionRuntime.professionalIdentityValuesFromSources({ language: "french", current_status: "employed" }, { answers: {} }, { email: "n@example.com" }).interface_language,
+  "fr",
+  "Professional Identity hydration must normalize legacy French profile language before the client renders enum labels."
+);
+const frenchCurrentSituationProfilePatch = professionalIdentityWriteRuntime.profilePatchForProfessionalIdentitySection({ id: "user-1", email: "n@example.com" }, "profile", { current_status: "Diplômé" });
+assert.equal(frenchCurrentSituationProfilePatch.current_status, "graduate", "Saving a French current-situation label must store the canonical enum in current_status.");
+assert.equal(frenchCurrentSituationProfilePatch.employment_status, "graduate", "Saving a French current-situation label must store the canonical enum in employment_status.");
+assert.equal(Boolean(frenchCurrentSituationProfilePatch.updated_at), true, "Profile current-situation patches must retain write metadata.");
+const frenchCurrentSituationDiscoveryPatch = professionalIdentityWriteRuntime.discoveryPatchForProfessionalIdentitySection("profile", { current_status: "En reconversion" });
+assert.equal(frenchCurrentSituationDiscoveryPatch.current_status, "career_transition", "Saving Profile Current Situation must dual-write canonical current_status answers.");
+assert.equal(frenchCurrentSituationDiscoveryPatch.employment_status, "career_transition", "Saving Profile Current Situation must dual-write canonical employment_status answers.");
+assert.equal(
+  Object.keys(professionalIdentityWriteRuntime.discoveryPatchForProfessionalIdentitySection("personal_information", { full_name: "Nicka" })).length,
+  0,
+  "Saving an unrelated partial personal-information payload must not erase the persisted current situation."
+);
+const emptyCurrentSituationProfilePatch = professionalIdentityWriteRuntime.profilePatchForProfessionalIdentitySection({ id: "user-1" }, "profile", { current_status: "" });
+assert.equal("current_status" in emptyCurrentSituationProfilePatch, false, "Empty pre-hydration Profile defaults must not overwrite current_status with null.");
+assert.equal("employment_status" in emptyCurrentSituationProfilePatch, false, "Empty pre-hydration Profile defaults must not overwrite employment_status with null.");
+assert.equal(Boolean(emptyCurrentSituationProfilePatch.updated_at), true, "Empty Profile patches must retain write metadata without clearing data.");
 const normalizedEventFailure = errorNormalizationRuntime.normalizePathzyError({ type: "error", target: "window" }, "Keep the current screen safe.");
 assert.equal(normalizedEventFailure.originalType, "event", "Browser event-like failures must be normalized before they can reach the Next.js overlay.");
 assert.equal(normalizedEventFailure.userMessage, "Keep the current screen safe.", "Event-like failures must receive a human fallback message.");
@@ -567,6 +621,15 @@ assert.equal(
   authRoutingRuntime.resolvePathzyNextRoute({ authenticated: true, profile: completeIdentityProfile, discovery: completeReadinessDiscovery }).currentState,
   "identity_review_pending",
   "Missing optional sections must not permanently block setup."
+);
+assert.equal(
+  authRoutingRuntime.resolvePathzyNextRoute({
+    authenticated: true,
+    profile: { ...completeIdentityProfile, current_status: null, employment_status: null },
+    discovery: { answers: { ...completeReadinessDiscovery.answers, current_status: "Diplômé", employment_status: "graduate" } }
+  }).currentState,
+  "identity_review_pending",
+  "A persisted current situation in the Professional Identity compatibility row must survive refresh/logout-login and keep routing out of step 1."
 );
 assert.match(generateRoadmapApi, /saveCompletedEmploymentDiagnosis\(supabase, user\.id, body\.answers, generatedRoadmap\)[\s\S]*redirectTo: appRoutes\.authenticatedHome/, "Employment Diagnosis completion must delegate state persistence and return the Home route.");
 assert.match(professionalIdentityWriteService, /diagnosis_completed: true[\s\S]*pathzy_onboarding_state: "diagnosis_completed"/, "The single Professional Identity write service must persist the canonical home-ready diagnosis state.");
@@ -1046,6 +1109,7 @@ assert.match(profileActionEditor, /photoNavigationBlocked[\s\S]*photoBusy[\s\S]*
 assert.match(profileActionEditor, /goNext\(\{ allowPhotoError: true \}\)/, "Professional Photo optional skip must advance through the same journey flow without treating a failed upload as saved.");
 assert.match(profileActionEditor, /identity\.photo\.continueWithout/, "Professional Photo failure state must expose an explicit optional continue-without-photo action.");
 assert.match(profileActionEditor, /event\.currentTarget[\s\S]*uploadPhotoFile\(file\)\.finally[\s\S]*input\.value = ""/, "Professional Photo input must clear after an attempt so users can retry the same file.");
+assert.match(professionalIdentityPage, /let editorInitialValues = professionalIdentityValues as Partial<ProfessionalIdentityValues>[\s\S]*createSignedUrl\(professionalPhotoAsset\.storagePath, 600\)[\s\S]*professional_photo_asset:\s*\{[\s\S]*\.\.\.professionalPhotoAsset[\s\S]*signedUrl: professionalPhotoSignedUrl[\s\S]*\}/, "Professional Identity must regenerate a private signed photo URL for editor initial values after refresh or login without persisting the URL.");
 assert.match(professionalPhotoApi, /formData\.get\("photo"\)[\s\S]*supabase\.storage[\s\S]*upload\(storagePath[\s\S]*saveMergedDiscoveryAnswers/, "Professional Photo API must upload binary storage first and then persist Professional Identity metadata.");
 assert.match(professionalPhotoApi, /createSignedUrl\(asset\.storagePath/, "Professional Photo API must return owner-scoped signed URLs for private photo previews.");
 assert.match(professionalPhotoApi, /function storageFailureCode[\s\S]*storage_bucket_missing[\s\S]*storage_permission_denied[\s\S]*storage_unavailable/, "Professional Photo API must classify storage failures without exposing credentials.");
@@ -1053,6 +1117,9 @@ assert.match(professionalPhotoApi, /function storageFailureDiagnostic[\s\S]*proc
 assert.match(professionalPhotoApi, /remove\(\[storagePath\]\)/, "Professional Photo API must clean up a newly uploaded object if metadata persistence fails.");
 assert.match(professionalPhotoApi, /export async function DELETE[\s\S]*profile_photo: ""[\s\S]*professional_photo_asset: null/, "Professional Photo API must support removing the canonical photo without deleting the user's Professional Identity.");
 assert.doesNotMatch(professionalPhotoApi, /service_role|data:image|base64/i, "Professional Photo API must not use service-role credentials, persisted base64 images, or data URLs.");
+assert.match(professionalIdentityWriteService, /\.\.\.\(\(target\?\.answers as Record<string, unknown> \| null\) \?\? \{\}\), \.\.\.answersPatch/, "Professional Identity section saves must merge into the existing identity answers so unrelated saves preserve durable photo metadata.");
+const canonicalPhotoNormalizer = professionalPhotoContract.slice(professionalPhotoContract.indexOf("export function professionalPhotoAssetFromUnknown"), professionalPhotoContract.indexOf("export function pngDimensions"));
+assert.doesNotMatch(canonicalPhotoNormalizer, /signedUrl/, "Canonical Professional Photo normalization must not persist private signed URLs.");
 const phase2dJourneyStepsSource = profileActionEditor.slice(profileActionEditor.indexOf("const journeySteps"), profileActionEditor.indexOf("const sectionAliases"));
 assert.equal((phase2dJourneyStepsSource.match(/\{ key: "/g) ?? []).length, 23, "Phase 2D guided editor must contain exactly 23 Professional Identity sections.");
 assert.match(appShell, /<LanguageSelector initialLanguage=\{profileLanguage\} \/>/, "Authenticated shell must expose the permanent interface language selector.");
@@ -1076,10 +1143,33 @@ assert.match(profileActionEditor, /useProfessionalIdentityAutosave<ProfessionalI
 assert.match(professionalIdentityAutosave, /export function useProfessionalIdentityAutosave[\s\S]*debounceMs = 700[\s\S]*latestSave[\s\S]*activeSave[\s\S]*lastPersistedSignature/, "Professional Identity autosave hook must own debounce, request sequencing and duplicate suppression.");
 assert.match(professionalIdentityAutosave, /activeSave\.current\?\.controller\.abort\(\)[\s\S]*saveId === latestSave\.current[\s\S]*lastPersistedSignature\.current\.set/, "Professional Identity autosave hook must abort obsolete requests and ignore stale responses.");
 assert.match(professionalIdentityAutosave, /persistOnboardingProgress[\s\S]*section: "onboarding_progress"[\s\S]*retrySave/, "Professional Identity autosave hook must expose onboarding persistence and Retry.");
+assert.match(currentSituationContract, /currentSituationValues = \[[\s\S]*"employed"[\s\S]*"unemployed"[\s\S]*"student"[\s\S]*"self_employed"[\s\S]*"career_break"[\s\S]*"career_transition"[\s\S]*"graduate"[\s\S]*"first_time_job_seeker"[\s\S]*"other"/, "Current situation must have one stable language-independent enum contract.");
+assert.match(currentSituationContract, /Diplômé[\s\S]*diplômé: "graduate"/, "Current situation compatibility must map the French graduate label to a canonical value.");
+assert.match(currentSituationContract, /En reconversion[\s\S]*"en reconversion": "career_transition"/, "Current situation compatibility must map the French career-transition label to a canonical value.");
+const currentSituationEditorBlock = profileActionEditor.slice(profileActionEditor.indexOf('field.name === "current_status"'), profileActionEditor.indexOf("function renderList"));
+assert.match(currentSituationEditorBlock, /currentSituationValues\.map/, "Profile Current Situation must render from the canonical option list.");
+assert.match(currentSituationEditorBlock, /updateValue\("current_status", situation\)/, "Profile Current Situation must save the stable canonical option value.");
+assert.match(currentSituationEditorBlock, /currentSituationDisplayLabel\(activeLanguage, situation\)/, "Profile Current Situation must display translated labels through the safe shared resolver.");
+assert.doesNotMatch(profileActionEditor, /currentSituationLabels\[activeLanguage\]\[situation\]/, "Professional Identity must not index current-situation labels with an unnormalized runtime language.");
+assert.match(currentSituationContract, /normalizeSupportedLanguage\(language, fallbackLanguage\)/, "Current Situation labels must normalize language before lookup.");
+assert.match(currentSituationContract, /currentSituationLabels\[resolvedLanguage\]\?\.\[normalized\] \?\? currentSituationLabels\.en\[normalized\]/, "Current Situation labels must fall back safely when a translation key is missing.");
+assert.match(profileActionEditor, /const activeLanguage: SupportedLanguageCode = normalizeSupportedLanguage\(values\.interface_language, storedInterfaceLanguage\)/, "Professional Identity active language must normalize legacy, regional, undefined, and unsupported values before rendering.");
+assert.match(pathzyI18n, /function resolvedLanguage\(language\?: string \| null\): SupportedLanguageCode[\s\S]*normalizeSupportedLanguage\(language\)/, "Shared i18n helpers must normalize runtime language values before dictionary lookup.");
+assert.match(pathzyI18n, /export function professionalIdentitySectionText\(language: SupportedLanguageCode \| string \| null \| undefined[\s\S]*professionalIdentitySectionTranslations\[normalizedLanguage\]\?\.\[sectionKey\]/, "Professional Identity section labels must be resolved through the shared safe section helper.");
+assert.doesNotMatch(profileActionEditor, /professionalIdentitySectionTranslations\[activeLanguage\]/, "Profile editor must not index Professional Identity section translations directly.");
+assert.doesNotMatch(professionalIdentityPage, /professionalIdentitySectionTranslations\[interfaceLanguage\]/, "Professional Identity review must not index section translations directly.");
+assert.match(professionalIdentityCompletion, /interface_language: normalizeLanguageCode\(firstText\(answers\.interface_language, profile\?\.language\)\)/, "Professional Identity hydration must normalize interface language before passing values to the client.");
+assert.match(cvConfiguration, /normalizeLanguageCode\(language\)[\s\S]*labels\[resolvedLanguage\]\?\.\[purpose\] \?\? labels\.en\[purpose\]/, "Professional document enum label maps must normalize language before lookup.");
 for (const sectionName of ["Profil", "Informations personnelles", "Nationalité", "Autorisation de travail", "Objectif professionnel", "Résumé professionnel", "Compétences", "Préférences d'emploi", "Disponibilité"]) {
   assert.match(pathzyI18n, new RegExp(sectionName), `French Professional Identity section translation must include ${sectionName}.`);
 }
-assert.match(professionalIdentityWriteService, /section === "profile"[\s\S]*current_status[\s\S]*section === "preferences"[\s\S]*professional_document_language/, "Professional Identity write service must persist the new Profile and Preferences sections.");
+assert.match(professionalIdentityWriteService, /professionalIdentityWriteSections = new Set\(\[[\s\S]*"profile"[\s\S]*"preferences"/, "Professional Identity write service must accept the new Profile and Preferences sections.");
+assert.match(professionalIdentityWriteService, /section === "preferences"[\s\S]*professional_document_language/, "Professional Identity write service must persist the Preferences section document-language field.");
+assert.match(professionalIdentityWriteService, /function currentSituationPatch[\s\S]*return currentStatus \? \{ current_status: currentStatus, employment_status: currentStatus \} : \{\}/, "Profile Current Situation must use one canonical compatibility patch and avoid writing empty aliases.");
+assert.match(professionalIdentityWriteService, /section === "profile"[\s\S]*currentSituationPatch\(values\)[\s\S]*section === "personalInfo"[\s\S]*currentSituationPatch\(values\)[\s\S]*section === "currentStatus"[\s\S]*currentSituationPatch\(values\)/, "Profile, Personal Information, and legacy Current Status saves must share the same current-situation write path.");
+assert.match(professionalIdentityWriteService, /section === "profile" \|\| section === "currentStatus"[\s\S]*return currentSituationPatch\(values\)/, "Profile Current Situation must be dual-written to Professional Identity compatibility answers only when a canonical value exists.");
+assert.match(professionalIdentityReadService, /current_status,employment_status/, "Professional Identity read service must load both current_status and employment_status aliases after login.");
+assert.match(professionalIdentityCompletion, /normalizeCurrentSituation\(firstText\(profile\?\.current_status, profile\?\.employment_status, answers\.current_status, answers\.employment_status, answers\.currentSituation/, "Professional Identity completion must read current situation from profile and compatibility aliases.");
 assert.match(professionalIdentityWriteService, /redirectTo: "\/discovery\?reason=setup-complete"/, "Finish Setup must transition to Employment Diagnosis rather than Home or documents.");
 assert.doesNotMatch(professionalProfileApi, /redirectTo: appRoutes\.authenticatedHome/, "Finish Setup must not route directly to Home.");
 assert.match(professionalIdentityWriteService, /from\("user_profiles"\)\.upsert/, "Professional Identity write service must create or update the user's profile row.");
@@ -1096,7 +1186,7 @@ assert.match(discoveryAnswerState, /emptyDiscoveryAnswers\(\)[\s\S]*Object\.from
 assert.match(discoveryAnswerState, /safeDiscoveryText\(value: unknown\): string[\s\S]*typeof value === "string" \? value : ""/, "Employment Diagnosis must normalize undefined and null answers to safe strings.");
 assert.match(discoveryAnswerState, /normalizeDiscoveryAnswers\(value: unknown\)[\s\S]*safeDiscoveryText\(source\[key\]\)/, "Employment Diagnosis refresh/resume state must rebuild missing answers safely.");
 assert.match(discoveryAnswerState, /missingDiscoveryAnswerKeys\(answers: unknown\)[\s\S]*!normalized\[key\]\.trim\(\)/, "Employment Diagnosis required validation must trim only normalized string answers.");
-assert.match(pathzyI18n, /export function getEmploymentDiagnosisSteps\(language: SupportedLanguageCode\)[\s\S]*steps\.map\(\(\[key, title, prompt, placeholder\]/, "Employment Diagnosis must convert localized tuple data into renderable question objects before the UI reads title, prompt, and placeholder.");
+assert.match(pathzyI18n, /export function getEmploymentDiagnosisSteps\(language: SupportedLanguageCode \| string \| null \| undefined\)[\s\S]*resolvedLanguage\(language\)[\s\S]*steps\.map\(\(\[key, title, prompt, placeholder\]/, "Employment Diagnosis must normalize language and convert localized tuple data into renderable question objects before the UI reads title, prompt, and placeholder.");
 const diagnosisStepSource = pathzyI18n.slice(pathzyI18n.indexOf("export const employmentDiagnosisSteps"), pathzyI18n.indexOf("export type EmploymentDiagnosisStep"));
 assert.equal((diagnosisStepSource.match(/\["personal_background"/g) ?? []).length, 2, "Employment Diagnosis must define Step 1 for both English and French.");
 assert.equal((diagnosisStepSource.match(/\["preferred_career_direction"/g) ?? []).length, 2, "Employment Diagnosis must define the final career-direction question for both English and French.");
@@ -1149,7 +1239,7 @@ assert.match(roadmapPage, /normalizeLanguageCode\(identityReadModel\.values\.int
 assert.match(roadmapPage, /greetingFor\(interfaceLanguage\)/, "Home greeting must be rendered through the localized greeting helper.");
 assert.doesNotMatch(roadmapPage, /Good morning|Good afternoon|Good evening|Journey progress|Professional direction in progress/, "Home must not hardcode English greeting, progress, or title fallback copy.");
 assert.match(roadmapPage, /localizedProfessionalTitle\(interfaceLanguage, profile\?\.career_goal \|\| profile\?\.preferred_path \|\| ""\)/, "Home career title fallback must be localized when a known translation exists.");
-assert.match(profileActionEditor, /const professionalDocumentLanguage:[\s\S]*values\.professional_document_language === "fr"[\s\S]*values\.professional_document_language === "en"[\s\S]*activeLanguage/, "Professional Identity suggestions must resolve the Professional Document Language independently from the interface language.");
+assert.match(profileActionEditor, /const professionalDocumentLanguage:[\s\S]*normalizeProfessionalDocumentLanguageChoice\(values\.professional_document_language\) === "fr"[\s\S]*normalizeProfessionalDocumentLanguageChoice\(values\.professional_document_language\) === "en"[\s\S]*activeLanguage/, "Professional Identity suggestions must resolve the Professional Document Language independently through the shared language normalizer.");
 assert.match(profileActionEditor, /pathzyPhase2List\(professionalDocumentLanguage, "identity\.suggestions\.skills"\)/, "Professional Identity skills suggestions must come from the document-language dictionary.");
 assert.doesNotMatch(profileActionEditor, /suggestions: \["Communication"[\s\S]*"Data analysis"/, "French profiles must not inherit an English hardcoded skills suggestion array.");
 assert.match(pathzyI18n, /"identity\.suggestions\.skills": "Communication\|Microsoft Excel\|Microsoft Word\|Service client\|Résolution de problèmes/, "French skill suggestions must include localized French user-visible text.");

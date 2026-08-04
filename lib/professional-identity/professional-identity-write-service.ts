@@ -5,6 +5,7 @@ import {
   normalizeEmploymentReadinessAnswers
 } from "@/lib/readiness/employment-readiness-check";
 import { legacyLanguageValue, normalizeLanguageCode, normalizeProfessionalDocumentLanguageChoice } from "@/lib/language/language-preferences";
+import { normalizeCurrentSituation } from "@/lib/professional-identity/current-situation";
 import {
   professionalIdentityRequiredChecksFromValues,
   professionalIdentityValuesFromSources,
@@ -110,6 +111,15 @@ function firstListItem(values: CleanProfessionalIdentityValues, key: string) {
   return listValue(values, key)[0] ?? "";
 }
 
+function currentSituationValue(values: CleanProfessionalIdentityValues) {
+  return normalizeCurrentSituation(textValue(values, "current_status"));
+}
+
+function currentSituationPatch(values: CleanProfessionalIdentityValues) {
+  const currentStatus = currentSituationValue(values);
+  return currentStatus ? { current_status: currentStatus, employment_status: currentStatus } : {};
+}
+
 function baseProfilePayload(user: { id: string }) {
   return { id: user.id, user_id: user.id, updated_at: new Date().toISOString() };
 }
@@ -122,27 +132,23 @@ export function profilePatchForProfessionalIdentitySection(user: { id: string; e
   const base = baseProfilePayload(user);
 
   if (section === "profile") {
-    const currentStatus = textValue(values, "current_status");
-    return { ...base, current_status: currentStatus || null, employment_status: currentStatus || null };
+    return { ...base, ...currentSituationPatch(values) };
   }
   if (section === "name") return { ...base, full_name: textValue(values, "full_name") || null };
   if (section === "email") return { ...base, email: textValue(values, "email") || user.email || null };
   if (section === "phone") return { ...base, phone: textValue(values, "phone") || null };
   if (section === "personalInfo" || section === "personal_information") {
-    const currentStatus = textValue(values, "current_status");
     return {
       ...base,
       full_name: textValue(values, "full_name") || null,
       email: textValue(values, "email") || user.email || null,
       phone: textValue(values, "phone") || null,
-      current_status: currentStatus || null,
-      employment_status: currentStatus || null
+      ...currentSituationPatch(values)
     };
   }
   if (section === "location") return { ...base, city: textValue(values, "city") || null, country: textValue(values, "country") || null };
   if (section === "currentStatus") {
-    const currentStatus = textValue(values, "current_status");
-    return { ...base, current_status: currentStatus || null, employment_status: currentStatus || null };
+    return { ...base, ...currentSituationPatch(values) };
   }
   if (section === "education") {
     const education = firstListItem(values, "education") || textValue(values, "education");
@@ -172,6 +178,12 @@ export function profilePatchForProfessionalIdentitySection(user: { id: string; e
 }
 
 export function discoveryPatchForProfessionalIdentitySection(section: string, values: CleanProfessionalIdentityValues) {
+  if (section === "profile" || section === "currentStatus") {
+    return currentSituationPatch(values);
+  }
+  if (section === "personalInfo" || section === "personal_information") {
+    return currentSituationPatch(values);
+  }
   if (section === "photo" || section === "profilePhoto") return { profile_photo: textValue(values, "profilePhoto") };
   if (section === "location") {
     return {
@@ -342,7 +354,7 @@ export async function finishProfessionalIdentitySetupWrite(
   const [{ data: profile, error: profileError }, { data: discovery, error: discoveryError }] = await Promise.all([
     supabase
       .from("user_profiles")
-      .select("full_name,email,city,country,education,highest_qualification,field_of_study,current_status,career_goal,onboarding_completed")
+      .select("full_name,email,city,country,education,highest_qualification,field_of_study,current_status,employment_status,career_goal,onboarding_completed")
       .or(`user_id.eq.${user.id},id.eq.${user.id}`)
       .maybeSingle(),
     supabase

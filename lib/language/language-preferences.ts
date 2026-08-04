@@ -55,10 +55,25 @@ export type LanguagePreferenceSource = Partial<Record<LanguagePreferenceLayer, s
   notification_email_language?: string | null;
 };
 
+function parseSupportedLanguage(value?: string | null): SupportedLanguageCode | null {
+  const normalized = value
+    ?.trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/_/g, "-");
+  if (!normalized) return null;
+  if (normalized === "fr" || normalized === "french" || normalized === "francais" || normalized.startsWith("fr-")) return "fr";
+  if (normalized === "en" || normalized === "english" || normalized === "anglais" || normalized.startsWith("en-")) return "en";
+  return null;
+}
+
+export function normalizeSupportedLanguage(value?: string | null, fallback?: string | null): SupportedLanguageCode {
+  return parseSupportedLanguage(value) ?? parseSupportedLanguage(fallback) ?? "en";
+}
+
 export function normalizeLanguageCode(value?: string | null): SupportedLanguageCode {
-  const normalized = value?.trim().toLowerCase();
-  if (normalized === "fr" || normalized === "french" || normalized === "Français" || normalized === "francais") return "fr";
-  return "en";
+  return normalizeSupportedLanguage(value);
 }
 
 export function legacyLanguageValue(code: SupportedLanguageCode) {

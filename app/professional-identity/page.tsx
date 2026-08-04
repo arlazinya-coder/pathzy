@@ -5,9 +5,10 @@ import { ProfileActionEditor, ProfessionalIdentityReviewActions, type Profession
 import { professionalIdentityReviewHref, professionalIdentitySectionHref, resolvePathzyNextRoute } from "@/lib/navigation/auth-routing";
 import { getProfessionalIdentityReadModel } from "@/lib/professional-identity/professional-identity-read-service";
 import { normalizeLanguageCode } from "@/lib/language/language-preferences";
-import { pathzyPhase2T, pathzyT, professionalIdentityImportanceLabel, professionalIdentitySectionTranslations, professionalIdentityStepText } from "@/lib/language/pathzy-i18n";
+import { pathzyPhase2T, pathzyT, professionalIdentityImportanceLabel, professionalIdentitySectionText, professionalIdentityStepText } from "@/lib/language/pathzy-i18n";
 import { appRoutes, routeBuilders, type ProfessionalIdentityOnboardingStage } from "@/lib/navigation/routes";
 import { professionalPhotoStorageContract } from "@/lib/professional-identity/professional-photo";
+import { currentSituationDisplayLabel } from "@/lib/professional-identity/current-situation";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
 
 type SummaryStatus = "Required" | "Recommended" | "Optional";
@@ -42,11 +43,11 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
       .limit(10)
   ]);
   const { profile, discovery, values: professionalIdentityValues, completion: identityCompletion, requiredChecks } = identityReadModel;
-  const editorInitialValues = professionalIdentityValues as Partial<ProfessionalIdentityValues>;
+  let editorInitialValues = professionalIdentityValues as Partial<ProfessionalIdentityValues>;
   const interfaceLanguage = normalizeLanguageCode(professionalIdentityValues.interface_language ?? profile?.language);
   const t = (key: Parameters<typeof pathzyT>[1]) => pathzyT(interfaceLanguage, key);
   const phase2T = (key: Parameters<typeof pathzyPhase2T>[1]) => pathzyPhase2T(interfaceLanguage, key);
-  const sectionName = (key: string, fallback: string) => professionalIdentitySectionTranslations[interfaceLanguage]?.[key] ?? fallback;
+  const sectionName = (key: string, fallback: string) => professionalIdentitySectionText(interfaceLanguage, key, fallback);
   const statusLabel = (status: SummaryStatus) => {
     if (status === "Required") return professionalIdentityImportanceLabel(interfaceLanguage, "required");
     if (status === "Recommended") return professionalIdentityImportanceLabel(interfaceLanguage, "recommended");
@@ -62,10 +63,19 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
   if (professionalPhotoAsset?.storagePath && professionalPhotoAsset.photoStatus === "ready") {
     const { data } = await supabase.storage.from(professionalPhotoStorageContract.bucketName).createSignedUrl(professionalPhotoAsset.storagePath, 600);
     professionalPhotoSignedUrl = data?.signedUrl ?? "";
+    if (professionalPhotoSignedUrl) {
+      editorInitialValues = {
+        ...editorInitialValues,
+        professional_photo_asset: {
+          ...professionalPhotoAsset,
+          signedUrl: professionalPhotoSignedUrl
+        }
+      };
+    }
   }
   const showReview = !params.section && params.review === "1";
   const reviewSections: Array<{ label: string; status: SummaryStatus; value: string | string[]; editSection: string }> = [
-    { label: sectionName("profile", "Profile"), status: "Required", value: professionalIdentityValues.current_status ?? "", editSection: "profile" },
+    { label: sectionName("profile", "Profile"), status: "Required", value: currentSituationDisplayLabel(interfaceLanguage, professionalIdentityValues.current_status) || professionalIdentityValues.current_status || "", editSection: "profile" },
     { label: sectionName("photo", "Photo"), status: "Optional", value: professionalIdentityValues.profilePhoto ?? "", editSection: "photo" },
     { label: sectionName("personal_information", "Personal Information"), status: "Required", value: [professionalIdentityValues.full_name, professionalIdentityValues.email, professionalIdentityValues.phone, professionalIdentityValues.current_status].filter(Boolean).join(" - "), editSection: "personal_information" },
     { label: sectionName("location", "Location"), status: "Required", value: [professionalIdentityValues.city, professionalIdentityValues.country].filter(Boolean).join(", "), editSection: "location" },

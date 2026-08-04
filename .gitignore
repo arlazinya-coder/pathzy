@@ -7,3 +7,4 @@ tmp/
 work/node_modules_unreadable/ 
 work/ 
 work/node_modules_auth_unreadable_*/ 
+.codex-phase*.log

@@ -22,6 +22,7 @@ export type ProfessionalIdentityProfileSnapshot = Record<string, unknown> & {
   highest_qualification?: string | null;
   field_of_study?: string | null;
   current_status?: string | null;
+  employment_status?: string | null;
   career_goal?: string | null;
   preferred_path?: string | null;
   language?: string | null;
@@ -51,7 +52,7 @@ export async function loadProfessionalIdentitySources(
   const [{ data: profile, error: profileError }, { data: discoveryRows, error: discoveryError }] = await Promise.all([
     supabase
       .from("user_profiles")
-      .select("full_name,email,phone,city,country,education,highest_qualification,field_of_study,current_status,career_goal,preferred_path,linkedin_url,portfolio_url,language,has_certificates,onboarding_completed,onboarding_step,updated_at")
+      .select("full_name,email,phone,city,country,education,highest_qualification,field_of_study,current_status,employment_status,career_goal,preferred_path,linkedin_url,portfolio_url,language,has_certificates,onboarding_completed,onboarding_step,updated_at")
       .or(`user_id.eq.${userId},id.eq.${userId}`)
       .maybeSingle(),
     supabase

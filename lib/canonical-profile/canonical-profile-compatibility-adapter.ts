@@ -2,6 +2,7 @@ import type { CanonicalSourceReference } from "./canonical-profile.types";
 import type { CanonicalCompatibilityStatus, CanonicalProfessionalIdentityEnvelope } from "./canonical-professional-identity.model";
 import { createEmptyCanonicalProfessionalIdentity, refreshCanonicalProfileQuality } from "./canonical-professional-identity.model";
 import { canonicalNow, cleanText, createCanonicalValue, createSourceReference } from "./canonical-profile-utils";
+import { normalizeCurrentSituation } from "@/lib/professional-identity/current-situation";
 
 export type LegacyUserProfileRow = Record<string, unknown>;
 export type LegacyProfessionalIdentityRow = Record<string, unknown>;
@@ -72,7 +73,7 @@ export function mapLegacyRowsToCanonicalProfessionalIdentity(input: CanonicalCom
   const portfolio = readFirstString(compatibilityRows, "portfolio_url", "portfolio", "website");
   const careerGoal = readFirstString(compatibilityRows, "career_goal", "target_role", "desired_role", "professional_headline");
   const professionalSummary = readFirstString(compatibilityRows, "professional_summary", "summary", "bio");
-  const currentStatus = readFirstString(compatibilityRows, "current_status", "employment_status");
+  const currentStatus = normalizeCurrentSituation(readFirstString(compatibilityRows, "current_status", "employment_status", "currentSituation", "current_status_label"));
   const education = readFirstString(compatibilityRows, "education", "highest_qualification");
   const fieldOfStudy = readFirstString(compatibilityRows, "field_of_study");
   const language = readFirstString(compatibilityRows, "language");

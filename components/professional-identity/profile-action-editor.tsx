@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { normalizePathzyError } from "@/lib/errors/error-normalization";
 import { usePathzyLanguage } from "@/components/language/language-selector";
-import { formatPathzyStepCount, pathzyPhase2List, pathzyPhase2T, pathzyT, professionalIdentityFieldText, professionalIdentityImportanceLabel, professionalIdentitySectionTranslations, professionalIdentityStepText } from "@/lib/language/pathzy-i18n";
-import { languageLabels, professionalDocumentLanguageLabels, type ProfessionalDocumentLanguageChoice, type SupportedLanguageCode } from "@/lib/language/language-preferences";
+import { formatPathzyStepCount, pathzyPhase2List, pathzyPhase2T, pathzyT, professionalIdentityFieldText, professionalIdentityImportanceLabel, professionalIdentitySectionText, professionalIdentityStepText } from "@/lib/language/pathzy-i18n";
+import { languageLabels, normalizeProfessionalDocumentLanguageChoice, normalizeSupportedLanguage, professionalDocumentLanguageLabels, type ProfessionalDocumentLanguageChoice, type SupportedLanguageCode } from "@/lib/language/language-preferences";
 import { appRoutes } from "@/lib/navigation/routes";
 import {
   calculateProfessionalIdentityCompletion,
@@ -21,6 +21,7 @@ import {
   validateProfessionalPhotoUploadInput,
   type ProfessionalPhotoAssetView
 } from "@/lib/professional-identity/professional-photo";
+import { currentSituationDisplayLabel, currentSituationValues, normalizeCurrentSituation } from "@/lib/professional-identity/current-situation";
 import { useProfessionalIdentityAutosave } from "@/lib/professional-identity/use-professional-identity-autosave";
 
 export type ProfileSectionKey =
@@ -498,7 +499,7 @@ export function ProfileActionEditor({
   const [showCropControls, setShowCropControls] = useState(false);
   const { language: storedInterfaceLanguage, setLanguage: setPathzyInterfaceLanguage } = usePathzyLanguage(mergedInitialValues.interface_language);
   const activeStep = introStage === "identity" && activeIndex >= 0 ? journeySteps[activeIndex] : null;
-  const activeLanguage: SupportedLanguageCode = values.interface_language || storedInterfaceLanguage || "en";
+  const activeLanguage: SupportedLanguageCode = normalizeSupportedLanguage(values.interface_language, storedInterfaceLanguage);
   const buildStepPayload = useCallback((step: JourneyStep, nextValues: ProfessionalIdentityValues) => stepPayload(step, nextValues), []);
   const {
     autosaveState,
@@ -517,12 +518,12 @@ export function ProfileActionEditor({
   });
   const t = (key: Parameters<typeof pathzyT>[1]) => pathzyT(activeLanguage, key);
   const professionalDocumentLanguage: SupportedLanguageCode =
-    values.professional_document_language === "fr"
+    normalizeProfessionalDocumentLanguageChoice(values.professional_document_language) === "fr"
       ? "fr"
-      : values.professional_document_language === "en"
+      : normalizeProfessionalDocumentLanguageChoice(values.professional_document_language) === "en"
         ? "en"
         : activeLanguage;
-  const sectionTitle = (step: JourneyStep) => professionalIdentitySectionTranslations[activeLanguage]?.[step.key] ?? step.title;
+  const sectionTitle = (step: JourneyStep) => professionalIdentitySectionText(activeLanguage, step.key, step.title);
   const stepDescription = (step: JourneyStep) => professionalIdentityStepText(activeLanguage, step.key, "description", step.description);
   const stepGuidance = (step: JourneyStep) => professionalIdentityStepText(activeLanguage, step.key, "guidance", step.guidance);
   const fieldLabel = (field: FieldConfig) => professionalIdentityFieldText(activeLanguage, field.name, "label", field.label);
@@ -1094,6 +1095,28 @@ export function ProfileActionEditor({
                 className={`rounded-[22px] border p-4 text-left transition ${values.professional_document_language === code ? "border-[var(--pathzy-red)] bg-[#fff1f2] text-[var(--pathzy-red-dark)]" : "border-[#e5e7eb] bg-white text-[#374151] hover:border-[var(--pathzy-red)]"}`}
               >
                 <span className="block text-lg font-semibold">{professionalDocumentLanguageLabel(code)}</span>
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      );
+    }
+    if (field.name === "current_status") {
+      const normalizedValue = normalizeCurrentSituation(value);
+      return (
+        <fieldset key={field.name} className="grid gap-3 md:col-span-2">
+          <legend className="label text-xs uppercase tracking-[0.12em]">{fieldLabel(field)}</legend>
+          <p className="text-sm leading-6 text-[#6B7280]">{fieldPlaceholder(field)}</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {currentSituationValues.map((situation) => (
+              <button
+                key={situation}
+                type="button"
+                onClick={() => updateValue("current_status", situation)}
+                aria-pressed={normalizedValue === situation}
+                className={`rounded-[22px] border p-4 text-left text-sm font-bold transition ${normalizedValue === situation ? "border-[var(--pathzy-red)] bg-[#fff1f2] text-[var(--pathzy-red-dark)]" : "border-[#e5e7eb] bg-white text-[#374151] hover:border-[var(--pathzy-red)]"}`}
+              >
+                {currentSituationDisplayLabel(activeLanguage, situation)}
               </button>
             ))}
           </div>

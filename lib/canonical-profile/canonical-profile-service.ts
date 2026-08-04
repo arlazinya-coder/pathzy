@@ -15,6 +15,7 @@ import type {
 } from "./canonical-profile.types";
 import { calculateCanonicalCompletion, calculateCanonicalConfidence, calculateCanonicalReadiness } from "./canonical-profile-quality";
 import { canonicalNow, cleanText, createCanonicalValue, createSourceReference, uniqueClean, valueText } from "./canonical-profile-utils";
+import { normalizeCurrentSituation } from "@/lib/professional-identity/current-situation";
 
 type Supabase = SupabaseClient;
 type JsonRecord = Record<string, unknown>;
@@ -109,7 +110,7 @@ function profileFromLegacyRow(row: any, userId: string, profileId: string, creat
   const careerGoal = cleanText(row?.career_goal);
   const education = cleanText(row?.education ?? row?.highest_qualification);
   const fieldOfStudy = cleanText(row?.field_of_study);
-  const status = cleanText(row?.current_status ?? row?.employment_status);
+  const status = normalizeCurrentSituation(cleanText(row?.current_status ?? row?.employment_status));
 
   if (fullName) profile.identity.fullName = createCanonicalValue(fullName, { status: "provisionally_accepted", confidence: 0.82, sourceReferences: legacySource(fullName), createdAt, updatedAt: createdAt });
   if (email) profile.contact.primaryEmail = createCanonicalValue(email, { status: "provisionally_accepted", confidence: 0.82, sourceReferences: legacySource(email), createdAt, updatedAt: createdAt, displayValue: email });
