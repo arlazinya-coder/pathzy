@@ -218,6 +218,10 @@ h4,
   color: var(--auth-text);
 }
 
+.pathzy-auth-shell .surface {
+  color: var(--auth-text);
+}
+
 .pathzy-auth-shell .text-white {
   color: var(--pathzy-ivory) !important;
 }
@@ -241,6 +245,82 @@ h4,
 
 .pathzy-auth-shell [class*="bg-black\\/"] {
   background-color: #f9fafb !important;
+}
+
+.pathzy-auth-shell .surface .text-white,
+.pathzy-auth-shell .glass .text-white {
+  color: var(--auth-text) !important;
+}
+
+.pathzy-auth-shell .surface [class*="text-white\\/"],
+.pathzy-auth-shell .glass [class*="text-white\\/"] {
+  color: var(--auth-muted) !important;
+}
+
+.pathzy-auth-shell .surface [class*="text-white/"],
+.pathzy-auth-shell .glass [class*="text-white/"] {
+  color: var(--auth-muted) !important;
+}
+
+.pathzy-auth-shell .surface [class*="border-white\\/"],
+.pathzy-auth-shell .glass [class*="border-white\\/"] {
+  border-color: var(--auth-line) !important;
+}
+
+.pathzy-auth-shell .surface [class*="border-white/"],
+.pathzy-auth-shell .glass [class*="border-white/"] {
+  border-color: var(--auth-line) !important;
+}
+
+.pathzy-auth-shell .surface [class*="bg-white\\/"],
+.pathzy-auth-shell .glass [class*="bg-white\\/"],
+.pathzy-auth-shell .surface [class*="bg-black\\/"],
+.pathzy-auth-shell .glass [class*="bg-black\\/"] {
+  background-color: #f9fafb !important;
+}
+
+.pathzy-auth-shell .surface [class*="bg-white/"],
+.pathzy-auth-shell .glass [class*="bg-white/"],
+.pathzy-auth-shell .surface [class*="bg-black/"],
+.pathzy-auth-shell .glass [class*="bg-black/"] {
+  color: var(--auth-text) !important;
+  background-color: #f9fafb !important;
+}
+
+.pathzy-auth-shell .surface [class*="bg-white/"] [class*="text-white"],
+.pathzy-auth-shell .glass [class*="bg-white/"] [class*="text-white"],
+.pathzy-auth-shell .surface [class*="bg-black/"] [class*="text-white"],
+.pathzy-auth-shell .glass [class*="bg-black/"] [class*="text-white"] {
+  color: var(--auth-text) !important;
+}
+
+.pathzy-auth-shell .surface [class*="bg-white/"] [class*="text-white/"],
+.pathzy-auth-shell .glass [class*="bg-white/"] [class*="text-white/"],
+.pathzy-auth-shell .surface [class*="bg-black/"] [class*="text-white/"],
+.pathzy-auth-shell .glass [class*="bg-black/"] [class*="text-white/"] {
+  color: var(--auth-muted) !important;
+}
+
+.pathzy-auth-shell .surface [class*="text-[#f87171]"],
+.pathzy-auth-shell .glass [class*="text-[#f87171]"] {
+  color: var(--pathzy-red-dark) !important;
+}
+
+.pathzy-auth-shell .surface [class*="text-[#93c5fd]"],
+.pathzy-auth-shell .glass [class*="text-[#93c5fd]"] {
+  color: var(--auth-blue) !important;
+}
+
+.pathzy-auth-shell .surface .blue-purple,
+.pathzy-auth-shell .glass .blue-purple {
+  color: #ffffff !important;
+}
+
+.pathzy-auth-shell .surface .blue-purple.text-white,
+.pathzy-auth-shell .surface .blue-purple [class*="text-white"],
+.pathzy-auth-shell .glass .blue-purple.text-white,
+.pathzy-auth-shell .glass .blue-purple [class*="text-white"] {
+  color: #ffffff !important;
 }
 
 .progress-fill {

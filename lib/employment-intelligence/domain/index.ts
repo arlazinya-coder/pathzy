@@ -1,5 +1,6 @@
 export * from "./barriers";
 export * from "./career-plan";
+export * from "./collection-invariants";
 export * from "./confidence";
 export * from "./country-context";
 export * from "./employment-intelligence-input";

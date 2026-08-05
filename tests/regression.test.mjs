@@ -29,6 +29,7 @@ const onboardingApi = readFileSync("app/api/onboarding/route.ts", "utf8");
 const onboardingFlow = readFileSync("components/onboarding/onboarding-flow.tsx", "utf8");
 const supabaseMiddleware = readFileSync("lib/supabase/middleware.ts", "utf8");
 const rootLayout = readFileSync("app/layout.tsx", "utf8");
+const appGlobals = readFileSync("app/globals.css", "utf8");
 const roadmapLayout = readFileSync("app/roadmap/layout.tsx", "utf8");
 const professionalIdentityLayout = readFileSync("app/professional-identity/layout.tsx", "utf8");
 const opportunitiesLayout = readFileSync("app/opportunities/layout.tsx", "utf8");
@@ -78,6 +79,7 @@ const cvConfiguration = readFileSync("lib/professional-documents/cv-configuratio
 const employmentIntelligenceDomainIndex = readFileSync("lib/employment-intelligence/domain/index.ts", "utf8");
 const employmentIntelligenceInputContract = readFileSync("lib/employment-intelligence/domain/employment-intelligence-input.ts", "utf8");
 const employmentIntelligenceProfileContract = readFileSync("lib/employment-intelligence/domain/employment-intelligence-profile.ts", "utf8");
+const employmentIntelligenceCollectionInvariants = readFileSync("lib/employment-intelligence/domain/collection-invariants.ts", "utf8");
 const employmentIntelligenceCountryContract = readFileSync("lib/employment-intelligence/domain/country-context.ts", "utf8");
 const employmentIntelligenceEngineIndex = readFileSync("lib/employment-intelligence/engine/index.ts", "utf8");
 const employmentIntelligenceEngineSource = [
@@ -406,6 +408,7 @@ const professionalIdentityCompletionRuntime = loadProductionTsModule("lib/profes
 const professionalIdentityWriteRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-write-service.ts");
 const employmentIntelligenceDomainRuntime = loadProductionTsModule("lib/employment-intelligence/domain/index.ts");
 const employmentIntelligenceEngineRuntime = loadProductionTsModule("lib/employment-intelligence/engine/index.ts");
+const employmentIntelligenceViewModelRuntime = loadProductionTsModule("lib/employment-intelligence/client/employment-intelligence-view-model.ts");
 
 function assertUniqueValues(values, message) {
   assert.equal(new Set(values).size, values.length, message);
@@ -521,6 +524,7 @@ for (const forbidden of employmentIntelligenceDomainRuntime.phase3aForbiddenCano
 }
 assert.match(employmentIntelligenceProfileContract, /engineVersion: string;/, "Phase 3A Employment Intelligence Profile must require an engine version.");
 assert.match(employmentIntelligenceProfileContract, /staleStatus: EmploymentIntelligenceStaleStatus;/, "Phase 3A Employment Intelligence Profile must carry stale status.");
+assert.match(employmentIntelligenceCollectionInvariants, /mergeDuplicateEvidenceRecords[\s\S]*employmentEvidenceDisplayCode[\s\S]*canonicalizeEmploymentIntelligenceProfile/, "Phase 3A must centralize Employment Intelligence collection de-duplication at the domain boundary.");
 assert.doesNotMatch(employmentIntelligenceInputContract, /EmploymentIntelligenceProfile/, "Phase 3A derived profile must not be usable as canonical identity input.");
 assert.match(employmentIntelligenceCountryContract, /sourceMetadata: CountrySourceMetadata\[\];/, "Phase 3A country adapters must require source metadata.");
 assert.match(employmentIntelligenceCountryContract, /SPECIFICATION_ONLY_NO_LIVE_FACTS/, "Phase 3A South Africa adapter must remain a specification without live unstable facts.");
@@ -545,7 +549,159 @@ assert.equal(phase3bEmptyProfile.staleStatus, "CURRENT", "Phase 3B generated pro
 assertCanonicalCodes(phase3bEmptyProfile.readinessDimensions.map((dimension) => dimension.key), "Phase 3B readiness output must use canonical dimension codes.");
 assertCanonicalCodes(phase3bEmptyProfile.pathwayRecommendations.map((pathway) => pathway.pathwayCode), "Phase 3B pathway output must use canonical pathway codes.");
 assertUniqueValues(phase3bEmptyProfile.pathwayRecommendations.map((pathway) => pathway.pathwayCode), "Phase 3B pathway recommendations must not duplicate pathways.");
+assertUniqueValues(phase3bEmptyProfile.strengths.map((strength) => employmentIntelligenceDomainRuntime.employmentEvidenceDisplayCode(strength)), "Phase 3B displayed strength codes must not duplicate.");
+assertUniqueValues(phase3bEmptyProfile.barriers.map((barrier) => barrier.definitionCode), "Phase 3B barrier codes must not duplicate.");
+assertUniqueValues(phase3bEmptyProfile.secondaryActions.map((action) => action.actionCode), "Phase 3B secondary action codes must not duplicate.");
+assertUniqueValues(phase3bEmptyProfile.careerPlan.steps.map((step) => step.stepId ?? step.id), "Phase 3B Career Plan step keys must be stable and unique.");
+assert.deepEqual(
+  Object.values(employmentIntelligenceDomainRuntime.employmentIntelligenceCollectionInvariantReport(phase3bEmptyProfile)),
+  [true, true, true, true, true, true],
+  "Phase 3B generated profiles must satisfy Employment Intelligence collection invariants."
+);
 assert.equal(phase3bEmptyProfile.readinessDimensions.every((dimension) => Number.isFinite(dimension.optionalScore ?? 0)), true, "Phase 3B readiness dimensions must never emit NaN scores.");
+const duplicateDiagnosisEvidence = [
+  {
+    id: "diagnosis-experience",
+    subject: "employment_diagnosis",
+    evidenceType: "SELF_REPORTED",
+    sourceReference: "employment_diagnosis:experience",
+    supportingField: "experience",
+    confidence: phase3bEmptyProfile.confidence,
+    verifiedStatus: "KNOWN",
+    timestamp: "2026-08-04T00:00:00.000Z",
+    engineVersion: "test"
+  },
+  {
+    id: "diagnosis-skills",
+    subject: "employment_diagnosis",
+    evidenceType: "SELF_REPORTED",
+    sourceReference: "employment_diagnosis:skills",
+    supportingField: "skills",
+    confidence: phase3bEmptyProfile.confidence,
+    verifiedStatus: "KNOWN",
+    timestamp: "2026-08-04T00:00:00.000Z",
+    engineVersion: "test"
+  }
+];
+const mergedDiagnosisEvidence = employmentIntelligenceDomainRuntime.mergeDuplicateEvidenceRecords(duplicateDiagnosisEvidence);
+assert.equal(mergedDiagnosisEvidence.length, 1, "Duplicate employment_diagnosis evidence must merge into one displayed strength.");
+assert.match(mergedDiagnosisEvidence[0].internalNotes.join(" "), /experience[\s\S]*skills|skills[\s\S]*experience/, "Merged duplicate evidence must preserve distinct supporting fields.");
+const duplicateViewModel = employmentIntelligenceViewModelRuntime.buildEmploymentHomeViewModel({
+  status: "current",
+  intelligence: {
+    overallReadiness: phase3bEmptyProfile.overallReadiness,
+    supportIntensity: phase3bEmptyProfile.supportIntensity,
+    strengths: duplicateDiagnosisEvidence,
+    barriers: [phase3bEmptyProfile.barriers[0], phase3bEmptyProfile.barriers[0]].filter(Boolean),
+    readinessDimensions: [phase3bEmptyProfile.readinessDimensions[0], phase3bEmptyProfile.readinessDimensions[0]].filter(Boolean),
+    nextBestAction: phase3bEmptyProfile.nextBestAction,
+    secondaryActions: [phase3bEmptyProfile.secondaryActions[0], phase3bEmptyProfile.secondaryActions[0]].filter(Boolean)
+  },
+  actions: { primary: phase3bEmptyProfile.nextBestAction, secondary: [phase3bEmptyProfile.secondaryActions[0], phase3bEmptyProfile.secondaryActions[0]].filter(Boolean) },
+  careerPlan: { ...phase3bEmptyProfile.careerPlan, steps: [phase3bEmptyProfile.careerPlan.steps[0], phase3bEmptyProfile.careerPlan.steps[0]].filter(Boolean) }
+}, "en");
+assert.equal(JSON.stringify(duplicateViewModel.position.strongestAssets), JSON.stringify(["Employment diagnosis"]), "Phase 3G view model must display one readable merged strongest asset for duplicate evidence subjects.");
+assertUniqueValues(duplicateViewModel.position.barriers.map((barrier) => barrier.code), "Phase 3G view model barrier keys must be unique.");
+assertUniqueValues(duplicateViewModel.dimensions.map((dimension) => dimension.key), "Phase 3G view model readiness dimension keys must be unique.");
+assertUniqueValues(duplicateViewModel.secondaryActions.map((action) => action.code), "Phase 3G view model secondary action keys must be unique.");
+assertUniqueValues((duplicateViewModel.careerPlan?.nextSteps ?? []).map((step) => step.id), "Phase 3G Career Plan preview keys must be unique.");
+const malformedCareerPlanViewModel = employmentIntelligenceViewModelRuntime.buildEmploymentHomeViewModel({
+  status: "current",
+  intelligence: {
+    overallReadiness: phase3bEmptyProfile.overallReadiness,
+    supportIntensity: phase3bEmptyProfile.supportIntensity,
+    nextBestAction: phase3bEmptyProfile.nextBestAction
+  },
+  actions: {
+    primary: {
+      ...phase3bEmptyProfile.nextBestAction,
+      blockedBy: undefined,
+      supportingEvidence: undefined,
+      reasonCodes: undefined
+    },
+    secondary: []
+  },
+  careerPlan: {
+    ...phase3bEmptyProfile.careerPlan,
+    progress: undefined,
+    steps: [
+      {
+        id: "legacy-step",
+        actionCode: "UNKNOWN_LEGACY_ACTION",
+        title: "Legacy saved step",
+        reason: "Old saved Career Plan payload",
+        horizon: "UNKNOWN_HORIZON",
+        state: "UNKNOWN_STATE",
+        evidence: undefined,
+        dependencies: undefined,
+        completionCriteria: undefined
+      },
+      {
+        id: "legacy-step",
+        actionCode: "UNKNOWN_LEGACY_ACTION",
+        title: "Duplicate legacy saved step",
+        reason: "Duplicate old saved Career Plan payload",
+        horizon: "UNKNOWN_HORIZON",
+        state: "UNKNOWN_STATE"
+      }
+    ]
+  }
+}, "fr");
+assert.equal(malformedCareerPlanViewModel.primaryAction?.state, "ready", "Phase 3 release blocker: missing action arrays must not crash action rendering.");
+assert.equal(malformedCareerPlanViewModel.primaryAction?.stateLabel, "Prêt à commencer", "Phase 3 release blocker: action states must render as user-facing translated labels.");
+assert.equal(malformedCareerPlanViewModel.primaryAction?.why.length, 0, "Phase 3 release blocker: missing action reasons and evidence must normalize to an empty why list.");
+assert.equal(Boolean(malformedCareerPlanViewModel.primaryAction?.whySentence.trim()), true, "Phase 3 action cards must expose one user-facing why sentence instead of raw reason codes.");
+assert.doesNotMatch(JSON.stringify({
+  title: malformedCareerPlanViewModel.primaryAction?.title,
+  explanation: malformedCareerPlanViewModel.primaryAction?.explanation,
+  whySentence: malformedCareerPlanViewModel.primaryAction?.whySentence
+}), /identity\.incomplete|source_of_truth\.required|urgency=|impact=|effort=|state=|ELIGIBLE|URGENT_SUPPORT|LOW/, "Phase 3 action-card presentation must not expose raw action reason keys or debug metadata.");
+assert.equal(malformedCareerPlanViewModel.careerPlan?.totalSteps, 1, "Phase 3 release blocker: duplicate or legacy Career Plan steps must normalize before rendering.");
+assert.equal(malformedCareerPlanViewModel.careerPlan?.nextSteps[0]?.href, "/employment-center", "Phase 3 release blocker: missing action references must fall back to the Employment Center.");
+assert.equal(malformedCareerPlanViewModel.careerPlan?.nextSteps[0]?.horizon, "Cette semaine", "Phase 3 release blocker: unknown horizons must use a safe translated fallback horizon.");
+assert.equal(malformedCareerPlanViewModel.careerPlan?.nextSteps[0]?.state, "Prêt à commencer", "Phase 3 release blocker: missing translations must fall back to a safe display label.");
+assert.doesNotMatch(JSON.stringify(malformedCareerPlanViewModel), /UNKNOWN_HORIZON|UNKNOWN_STATE|employment_diagnosis|STRUCTURED_GUIDANCE|SKILLED_EMPLOYMENT/, "Phase 3 release blocker: Career Plan view models must not expose raw canonical codes to users.");
+const practicalAccessActionCard = employmentIntelligenceViewModelRuntime.buildEmploymentActionViewModel({
+  actionCode: "PLAN_PRACTICAL_ACCESS",
+  title: "Raw title should be replaced",
+  plainLanguageTitle: "Raw title should be replaced",
+  explanation: "raw explanation",
+  plainLanguageExplanation: "raw explanation",
+  reason: "practical_constraints.support_not_judgement",
+  reasonCodes: ["practical_constraints.support_not_judgement", "access_shapes_workflow"],
+  expectedOutcome: "impact=URGENT_SUPPORT",
+  urgency: "HIGH",
+  impact: "URGENT_SUPPORT",
+  effort: "LOW",
+  state: "ELIGIBLE",
+  blockedBy: [],
+  supportingEvidence: [],
+  confidence: phase3bEmptyProfile.confidence,
+  presentationMode: "PLAIN_LANGUAGE",
+  supportDestination: "employment_center",
+  route: "/employment-center"
+}, "en");
+assert.equal(practicalAccessActionCard?.title, "Plan around practical constraints", "Practical access action must use a plain user-facing title.");
+assert.equal(practicalAccessActionCard?.explanation, "Choose steps that fit your transport, internet, device or schedule.", "Practical access action must use a short supportive explanation.");
+assert.equal(practicalAccessActionCard?.whySentence, "PATHZY recommends this because practical access may affect which opportunities are realistic right now.", "Practical access action must use the approved plain-language why sentence.");
+assert.doesNotMatch(JSON.stringify({
+  title: practicalAccessActionCard?.title,
+  explanation: practicalAccessActionCard?.explanation,
+  whySentence: practicalAccessActionCard?.whySentence
+}), /practical_constraints|access_shapes_workflow|urgency=|impact=|effort=|state=|ELIGIBLE|URGENT_SUPPORT|LOW/, "Practical access action presentation must hide raw reason keys and debug metadata.");
+const emptyCareerPlanViewModel = employmentIntelligenceViewModelRuntime.buildEmploymentHomeViewModel({
+  status: "current",
+  intelligence: { overallReadiness: phase3bEmptyProfile.overallReadiness, supportIntensity: phase3bEmptyProfile.supportIntensity },
+  careerPlan: { ...phase3bEmptyProfile.careerPlan, steps: undefined, progress: undefined }
+}, "en");
+assert.equal(emptyCareerPlanViewModel.careerPlan?.totalSteps, 0, "Phase 3 release blocker: missing Career Plan steps array must render as an empty recoverable plan.");
+assert.equal(emptyCareerPlanViewModel.careerPlan?.nextSteps.length, 0, "Phase 3 release blocker: empty Career Plan horizon must render without crashing.");
+assert.match(employmentIntelligenceUiSource, /normalizeCareerPlanForRendering\(\(detail as \{ careerPlan\?: unknown \}\)\.careerPlan\)/, "Full Career Plan page must normalize persisted plan JSON before rendering steps.");
+assert.match(employmentIntelligenceUiSource, /key=\{step\.id\}/, "Career Plan step rendering must use stable persisted step keys instead of array indexes.");
+assert.equal(employmentIntelligenceUiSource.includes("grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]"), true, "Secondary action cards must use a responsive auto-fit grid instead of forced narrow columns.");
+assert.equal(employmentIntelligenceUiSource.includes("grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))]"), true, "Employment Position and Readiness cards must use content-driven responsive grids.");
+assert.match(employmentIntelligenceUiSource, /flex h-full min-w-0 flex-col[\s\S]*action\.whySentence[\s\S]*grid gap-2 sm:grid-cols-\[1fr_auto_auto\]/, "Action cards must render one visible why sentence and keep controls in a normal-flow footer.");
+assert.match(employmentIntelligenceUiSource, /\[overflow-wrap:anywhere\][\s\S]*\[overflow-wrap:anywhere\][\s\S]*\[overflow-wrap:anywhere\]/, "Career Plan presentation must wrap long English and French content safely.");
 const phase3bGraduate = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(phase3bFixtures.graduateNoExperience, phase3bContext);
 assert.equal(phase3bGraduate.pathwayRecommendations.some((pathway) => ["GRADUATE_PROGRAMME", "INTERNSHIP", "LEARNERSHIP", "ENTRY_LEVEL_EMPLOYMENT"].includes(pathway.pathwayCode)), true, "Phase 3B must support graduates without treating no formal experience as fatal.");
 assert.equal(phase3bGraduate.suitableJobLevels.includes("GRADUATE"), true, "Phase 3B must indicate graduate job level for education-first profiles.");
@@ -1534,6 +1690,9 @@ assert.match(employmentIntelligencePersistenceSource, /staleReasonForChangedFiel
 assert.match(employmentIntelligencePersistenceSource, /ActionHistoryRepository[\s\S]*validTransitions[\s\S]*Unknown action code[\s\S]*employment_action_history/, "Phase 3F Action History must validate registry action codes and transitions.");
 assert.match(employmentIntelligencePersistenceSource, /refreshCareerPlanProgressFromActionHistory[\s\S]*COMPLETED[\s\S]*progress_json/, "Phase 3F Career Plan progress must derive from Action History.");
 assert.match(employmentIntelligencePersistenceSource, /createSupabaseServerClient[\s\S]*auth\.supabase\.auth\.getUser[\s\S]*authenticatedUser: auth\.user[\s\S]*auth\.user\.id/, "Phase 3F API must derive ownership from authenticated Supabase user.");
+assert.match(employmentIntelligencePersistenceSource, /isEmploymentIntelligenceSchemaUnavailable[\s\S]*PGRST205[\s\S]*PGRST202[\s\S]*schema cache/, "Phase 3F must classify missing Employment Intelligence migration/schema-cache errors safely.");
+assert.match(employmentIntelligencePersistenceSource, /getDetailedEmploymentIntelligence[\s\S]*catch \(error\)[\s\S]*safePersistenceError[\s\S]*status: "unavailable"/, "Phase 3F detailed service must return a safe unavailable state instead of throwing raw Supabase errors.");
+assert.match(employmentIntelligencePersistenceSource, /safeEmploymentIntelligenceDiagnostic[\s\S]*console\.warn\("\[employment-intelligence\] detailed read fallback used"/, "Phase 3F detailed service must keep sanitized server diagnostics for migration/RLS failures.");
 assert.doesNotMatch(employmentIntelligencePersistenceSource, /clientUserId|userId\s*:\s*body\.userId|generateOpenAIRoadmap|OpenAI|salary estimate|live job matching|Phase 3G/i, "Phase 3F must not trust client user IDs or introduce AI, salary, live matching or Phase 3G UI work.");
 assert.match(employmentIntelligenceUiSource, /getDetailedEmploymentIntelligence\(supabase, user\.id\)[\s\S]*buildEmploymentHomeViewModel/, "Phase 3G Home must read persisted Employment Intelligence through the Phase 3F service layer.");
 assert.match(employmentIntelligenceUiSource, /EmploymentIntelligenceHome[\s\S]*primaryAction[\s\S]*secondaryActions\.map/, "Phase 3G Home must render one primary action and secondary actions from the shared view model.");
@@ -1541,13 +1700,24 @@ assert.match(employmentIntelligenceUiSource, /secondaryActions[\s\S]*\.slice\(0,
 assert.match(employmentIntelligenceUiSource, /useNextBestActions[\s\S]*updateEmploymentAction[\s\S]*operation: "action_transition"/, "Phase 3G action UI must update persisted Action History through the authenticated API.");
 assert.match(employmentIntelligenceUiSource, /CareerPlanPreview[\s\S]*(progressLabel[\s\S]*appRoutes\.careerPlan|appRoutes\.careerPlan[\s\S]*progressLabel)/, "Phase 3G must expose persisted Career Plan progress and route to the full Career Plan.");
 assert.match(employmentIntelligenceUiSource, /app\/discovery\/results|DiagnosisResultsPage[\s\S]*getDetailedEmploymentIntelligence[\s\S]*EmploymentActionCard/, "Phase 3G Diagnosis Results must present persisted intelligence rather than raw questionnaire answers.");
+assert.match(employmentIntelligenceUiSource, /Employment insights need setup[\s\S]*Phase 3 persistence setup[\s\S]*status === "unavailable"|status === "unavailable"[\s\S]*Employment insights need setup[\s\S]*Phase 3 persistence setup/, "Diagnosis Results must render a safe setup-required state when the Phase 3 persistence migration is missing.");
+assert.match(employmentIntelligenceUiSource, /Preparing your employment insights[\s\S]*status === "not_generated"[\s\S]*IntelligenceFreshnessPanel|status === "not_generated"[\s\S]*IntelligenceFreshnessPanel[\s\S]*Preparing your employment insights/, "Diagnosis Results must render a recoverable preparing state when no current intelligence exists.");
+assert.doesNotMatch(employmentIntelligenceUiSource, /\{ code, details: null, hint: null, message \}|JSON\.stringify\(.*error|throw error/, "Diagnosis Results UI must never render raw Supabase error objects.");
 assert.match(employmentIntelligenceUiSource, /IntelligenceFreshnessPanel[\s\S]*previous results are still available|r\u00e9sultats pr\u00e9c\u00e9dents restent disponibles/, "Phase 3G must preserve previous valid intelligence messaging during update failure.");
 assert.match(employmentIntelligenceUiSource, /normalizeLanguageCode[\s\S]*language === "fr"[\s\S]*language === "fr"/, "Phase 3G presentation must support English and French from the same canonical codes.");
 assert.match(employmentIntelligenceUiSource, /aria-live="polite"/, "Phase 3G intelligence UI must announce freshness and update states.");
-assert.match(employmentIntelligenceUiSource, /aria-expanded/, "Phase 3G intelligence UI must expose keyboard-accessible expandable explanations.");
+assert.match(employmentIntelligenceUiSource, /action\.whySentence[\s\S]*\{pending \? t\.pending : t\.start\}/, "Phase 3G action cards must show one plain-language why sentence before the primary action.");
+assert.doesNotMatch(employmentIntelligenceUiSource, /action\.expectedOutcome|action\.confidenceLabel|action\.effort|action\.stateLabel|action\.why\.map|\{action\.reason\}/, "Phase 3G action cards must not render debug metadata, raw reasons, or reason-code lists.");
 assert.match(employmentIntelligenceUiSource, /ProgressBar/, "Phase 3G intelligence UI must include accessible progress semantics.");
 assert.match(employmentIntelligenceUiSource, /credentials: "same-origin"[\s\S]*\/api\/employment-intelligence/, "Phase 3G client access must be authenticated and account-scoped through same-origin API calls.");
 assert.doesNotMatch(employmentIntelligenceUiSource, /generateEmploymentIntelligenceWithTrace|generateEmploymentIntelligence\(|selectNextBestAction|rankActions|salary estimate|live job matching|OpenAI|clientUserId|body\.userId/, "Phase 3G UI must not recalculate intelligence, add AI/live facts, or trust client user IDs.");
+assert.match(appGlobals, /\.pathzy-auth-shell \.surface \{[\s\S]*color: var\(--auth-text\)/, "Authenticated light cards must establish dark readable text at the card boundary.");
+assert.match(appGlobals, /\.pathzy-auth-shell \.surface \.text-white,[\s\S]*\.pathzy-auth-shell \.glass \.text-white[\s\S]*color: var\(--auth-text\) !important/, "Authenticated light cards must prevent white text from remaining on warm-white surfaces.");
+assert.match(appGlobals, /\.pathzy-auth-shell \.surface \[class\*="text-white\\\\\/"\],[\s\S]*color: var\(--auth-muted\) !important/, "Muted text on authenticated light cards must resolve to accessible muted charcoal instead of pale white.");
+assert.match(appGlobals, /\.pathzy-auth-shell \.surface \[class\*="text-\[#f87171\]"\][\s\S]*color: var\(--pathzy-red-dark\) !important/, "Phase 3 accent text must use readable PATHZY red on authenticated light cards.");
+assert.match(appGlobals, /\.pathzy-auth-shell \.surface \[class\*="text-\[#93c5fd\]"\][\s\S]*color: var\(--auth-blue\) !important/, "Phase 3 link accent text must use readable blue on authenticated light cards.");
+assert.match(appGlobals, /\.pathzy-auth-shell \.surface \.blue-purple[\s\S]*color: #ffffff !important/, "Primary buttons on authenticated light cards must keep visible white labels.");
+assert.match(employmentIntelligenceUiSource, /mergeDuplicateEvidenceRecords[\s\S]*uniqueByCode[\s\S]*secondaryActions/, "Phase 3G view models must de-duplicate persisted strength, barrier, dimension and action collections before rendering.");
 assert.match(generateRoadmapApi, /recomputeEmploymentIntelligence[\s\S]*trigger: "diagnosis_completed"[\s\S]*redirectTo: appRoutes\.diagnosisResults/, "Diagnosis completion must persist Employment Intelligence through Phase 3F and route to Diagnosis Results.");
 for (const saveStatusCopy of [
   "Unsaved changes",

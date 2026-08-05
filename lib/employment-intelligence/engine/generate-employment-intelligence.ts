@@ -1,4 +1,5 @@
 import type { EmploymentDiagnosisResult } from "../diagnosis/diagnosis-models";
+import { canonicalizeEmploymentIntelligenceProfile } from "../domain/collection-invariants";
 import type { EmploymentIntelligenceInput } from "../domain/employment-intelligence-input";
 import type { EmploymentIntelligenceProfile } from "../domain/employment-intelligence-profile";
 import { determineNextBestActions, generateCareerPlan } from "../actions";
@@ -143,7 +144,7 @@ export function generateEmploymentIntelligenceWithTrace(input: EmploymentIntelli
       sensitiveInternalOnly: ["workAuthorisation", "careResponsibilities", "incomeUrgency", "barrierEvidence"]
     }
   };
-  return { profile, intermediate };
+  return { profile: canonicalizeEmploymentIntelligenceProfile(profile), intermediate };
 }
 
 export function generateEmploymentIntelligence(input: EmploymentIntelligenceInput, context: EngineContext): EmploymentIntelligenceProfile {

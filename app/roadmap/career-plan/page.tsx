@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { EmploymentActionCard } from "@/components/employment-intelligence";
 import { ButtonLink, Card, PageHeader, ProgressBar } from "@/components/ui";
-import { buildEmploymentActionViewModel, buildEmploymentHomeViewModel, type EmploymentIntelligenceLanguage } from "@/lib/employment-intelligence/client";
+import { buildEmploymentActionViewModel, buildEmploymentHomeViewModel, normalizeCareerPlanForRendering, type EmploymentIntelligenceLanguage } from "@/lib/employment-intelligence/client";
 import { getDetailedEmploymentIntelligence } from "@/lib/employment-intelligence/application";
-import type { CareerPlan } from "@/lib/employment-intelligence/domain";
 import { normalizeLanguageCode } from "@/lib/language/language-preferences";
 import { appRoutes } from "@/lib/navigation/routes";
 import { getProfessionalIdentityReadModelSafe } from "@/lib/professional-identity/professional-identity-read-service";
@@ -47,7 +46,7 @@ export default async function CareerPlanPage() {
   const language = normalizeLanguageCode(identityReadModel.values.interface_language ?? identityReadModel.profile?.language) as EmploymentIntelligenceLanguage;
   const t = copy[language];
   const model = buildEmploymentHomeViewModel(detail, language);
-  const plan = (detail as { careerPlan?: CareerPlan | null }).careerPlan;
+  const plan = normalizeCareerPlanForRendering((detail as { careerPlan?: unknown }).careerPlan);
   const progress = model.careerPlan?.totalSteps ? Math.round((model.careerPlan.completedSteps / model.careerPlan.totalSteps) * 100) : 0;
 
   return (
@@ -68,12 +67,12 @@ export default async function CareerPlanPage() {
       ) : (
         <section className="grid gap-5">
           <Card>
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-3xl font-black text-white">{model.careerPlan?.immediateGoal}</h2>
-                <p className="mt-3 text-sm font-bold leading-6 text-white/64">{model.careerPlan?.longTermGoal}</p>
+            <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="min-w-0">
+                <h2 className="text-2xl font-black leading-tight text-white md:text-3xl [overflow-wrap:anywhere]">{model.careerPlan?.immediateGoal}</h2>
+                <p className="mt-3 text-sm font-bold leading-6 text-white/64 [overflow-wrap:anywhere]">{model.careerPlan?.longTermGoal}</p>
               </div>
-              <p className="rounded-full border border-white/10 bg-white/8 px-4 py-2 text-sm font-black text-white/70">{model.careerPlan?.progressLabel}</p>
+              <p className="w-fit shrink-0 rounded-full border border-white/10 bg-white/8 px-4 py-2 text-sm font-black text-white/70">{model.careerPlan?.progressLabel}</p>
             </div>
             <div className="mt-5">
               <ProgressBar value={progress} />
@@ -84,7 +83,7 @@ export default async function CareerPlanPage() {
             if (!steps.length) return null;
             return (
               <Card key={horizon}>
-                <h2 className="text-2xl font-black text-white">{horizonLabel(horizon, language)}</h2>
+                <h2 className="text-xl font-black leading-tight text-white md:text-2xl">{horizonLabel(horizon, language)}</h2>
                 <div className="mt-5 grid gap-4">
                   {steps.map((step) => {
                     const action = buildEmploymentActionViewModel(
@@ -109,7 +108,7 @@ export default async function CareerPlanPage() {
                       language
                     );
                     return action ? <EmploymentActionCard key={step.id} action={action} language={language} priority="secondary" /> : (
-                      <Link key={step.id} href={step.supportRoute ?? appRoutes.employmentCenter} className="rounded-3xl border border-white/10 bg-white/7 p-4 text-white">{step.title ?? step.action}</Link>
+                      <Link key={step.id} href={step.supportRoute ?? appRoutes.employmentCenter} className="block min-w-0 rounded-3xl border border-white/10 bg-white/7 p-4 text-white [overflow-wrap:anywhere]">{step.title ?? step.action}</Link>
                     );
                   })}
                 </div>
