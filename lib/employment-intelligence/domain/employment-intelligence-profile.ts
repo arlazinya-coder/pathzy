@@ -6,6 +6,7 @@ import type { EvidenceRecord } from "./evidence";
 import type { Explanation } from "./explainability";
 import type { JobLevel } from "./job-levels";
 import type { NextBestAction } from "./next-best-action";
+import type { CandidateContextAssessment, CareerDirection, OpportunityMatcherContract, SkillIntelligenceSummary } from "./opportunity-matching";
 import type { PathwayRecommendation } from "./pathways";
 import type { OverallReadinessSummary, ReadinessDimensionAssessment } from "./readiness";
 import type { EmploymentIntelligenceStaleStatus } from "./stale-status";
@@ -21,6 +22,10 @@ export type EmploymentIntelligenceProfile = {
   generatedAt: string;
   inputSnapshotVersion: string;
   countryContext: Pick<CountryEmploymentContext, "countryCode" | "version" | "effectiveDate" | "dataFreshness">;
+  candidateContext: CandidateContextAssessment;
+  careerDirection: CareerDirection;
+  skillIntelligence: SkillIntelligenceSummary;
+  opportunityMatcherContract: OpportunityMatcherContract;
   readinessDimensions: ReadinessDimensionAssessment[];
   overallReadiness: OverallReadinessSummary;
   strengths: EvidenceRecord[];

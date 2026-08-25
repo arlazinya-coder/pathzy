@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui";
-import { PremiumUpgradeCard } from "@/components/upgrade/premium-upgrade-card";
 import { cvModelFromUnknown, downloadBlob, normalizeCvModelForExport, pathzyFilename, renderCvHtmlFromModel, simplePdfDocument, simplePdfDocumentFromModel } from "@/components/professional-identity/document-downloads";
 import { documentTemplateGallery, normalizeDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
+import { currentCoreDocumentDownloadAccess } from "@/lib/access/core-document-download-access";
 
 type DocumentTool = "cv" | "cover-letter" | "linkedin" | "recruiter-message" | "follow-up" | "career-passport" | "uploaded-document" | "supporting-document";
 
@@ -65,13 +65,15 @@ export function MyDocumentsClient({ initialDocuments, canExport = false }: { ini
   const [selectedId, setSelectedId] = useState(initialDocuments[0]?.id ?? "");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [upgradeRequired, setUpgradeRequired] = useState(false);
+  const [downloadState, setDownloadState] = useState<"idle" | "preparing" | "downloading" | "error">("idle");
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const selected = useMemo(() => documents.find((document) => document.id === selectedId) ?? documents[0] ?? null, [documents, selectedId]);
   const selectedCvModel = useMemo(() => selected?.tool === "cv" ? cvModelFromUnknown(selected.contentJson?.cvModel, selected.content) : null, [selected]);
   const selectedCvVersion = useMemo(() => selected?.tool === "cv" ? cvVersionFromDocument(selected) : null, [selected]);
+  const coreDownloadsAllowed = currentCoreDocumentDownloadAccess === "allowed";
+  const downloadBusy = downloadState === "preparing" || downloadState === "downloading";
 
   const grouped = useMemo(() => {
     const categories = ["cv", "cover-letter", "linkedin", "recruiter-message", "follow-up", "career-passport", "uploaded-document", "supporting-document"] as const;
@@ -238,36 +240,31 @@ export function MyDocumentsClient({ initialDocuments, canExport = false }: { ini
   }
 
   async function downloadPdf() {
+    if (downloadBusy) return;
     if (!selected) return;
     if (dirty || saving) {
       setError("Please wait for your document to save before downloading.");
       return;
     }
-    if (!canExport) {
-      setUpgradeRequired(true);
+    if (!canExport && !coreDownloadsAllowed) {
+      setError("PATHZY could not confirm your download access. Please refresh and try again.");
       return;
     }
+    setDownloadState("preparing");
+    setNotice("");
+    setError("");
     try {
+      setDownloadState("downloading");
       const designSystem = selected.tool === "cv" ? cvVersionFromDocument(selected).designSystem : selected.template_name ?? undefined;
       const pdf = selected.tool === "cv" && selectedCvModel ? simplePdfDocumentFromModel(selected.title, selectedCvModel, designSystem) : simplePdfDocument(selected.title, selected.content, selected.template_name ?? undefined);
       downloadBlob(pathzyFilename(selected.tool === "cv" ? "CV" : "Document", selected.title, "pdf"), "application/pdf", pdf);
       await markDownloaded();
       setNotice("Your file has downloaded to your browser's Downloads folder.");
+      setDownloadState("idle");
     } catch {
+      setDownloadState("error");
       setError("Download failed. Your document is still saved. Please try again.");
     }
-  }
-
-  if (upgradeRequired) {
-    return (
-      <PremiumUpgradeCard
-        title="Your document is ready."
-        subtitle="Upgrade to download and export your documents. You can still preview, edit, and copy your work for free."
-        primaryLabel="Upgrade to Starter - $9.99/month"
-        secondaryLabel="Keep previewing"
-        onSecondary={() => setUpgradeRequired(false)}
-      />
-    );
   }
 
   return (
@@ -350,7 +347,7 @@ export function MyDocumentsClient({ initialDocuments, canExport = false }: { ini
             )}
             <div className="mt-4 flex flex-wrap gap-3">
               <button onClick={copyText} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82">Copy</button>
-              <button onClick={downloadPdf} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82">Download PDF</button>
+              <button onClick={downloadPdf} disabled={downloadBusy} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">{downloadBusy ? "Preparing..." : "Download PDF"}</button>
               <button onClick={duplicateDocument} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82">Duplicate</button>
               <button onClick={deleteDocument} className="rounded-full border border-[#ff6b6b]/25 bg-[#ff6b6b]/10 px-5 py-3 text-sm font-extrabold text-[#ffc5c5]">Delete</button>
             </div>

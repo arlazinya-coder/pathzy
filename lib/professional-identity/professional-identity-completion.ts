@@ -1,6 +1,7 @@
 import { professionalPhotoAssetFromUnknown, type CanonicalProfessionalPhotoAsset } from "@/lib/professional-identity/professional-photo";
 import { normalizeCurrentSituation } from "@/lib/professional-identity/current-situation";
 import { normalizeLanguageCode, normalizeProfessionalDocumentLanguageChoice } from "@/lib/language/language-preferences";
+import { experienceEntryToText, normalizeProfessionalIdentityExperienceEntries, type ProfessionalIdentityExperienceEntry } from "@/lib/professional-identity/professional-identity-experience";
 
 export type ProfessionalIdentityCompletionSectionKey =
   | "profile"
@@ -44,7 +45,7 @@ export type ProfessionalIdentityCompletionValues = Partial<{
   professional_summary: string;
   education: string[];
   field_of_study: string;
-  experience: string[];
+  experience: Array<string | ProfessionalIdentityExperienceEntry>;
   skills: string[];
   projects: string[];
   achievements: string[];
@@ -115,9 +116,19 @@ function textValue(value: unknown) {
 }
 
 function listValue(value: unknown) {
-  if (Array.isArray(value)) return value.map((item) => String(item ?? "").trim()).filter(Boolean);
+  if (Array.isArray(value)) return value.map((item) => typeof item === "string" ? item.trim() : experienceEntryToText(item as ProfessionalIdentityExperienceEntry)).filter(Boolean);
   if (typeof value === "string") return value.split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean);
   return [];
+}
+
+function canonicalListValue(value: unknown) {
+  const seen = new Set<string>();
+  return listValue(value).filter((item) => {
+    const key = item.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function hasText(value: unknown) {
@@ -144,12 +155,65 @@ function firstList(...values: unknown[]) {
   return [];
 }
 
+function firstExperienceList(...values: unknown[]) {
+  for (const value of values) {
+    const list = normalizeProfessionalIdentityExperienceEntries(value);
+    if (list.length) return list;
+  }
+  return [];
+}
+
 function answerText(discovery: { answers?: Record<string, unknown> | null } | null | undefined, key: string) {
   return textValue(discovery?.answers?.[key]);
 }
 
 function answerList(discovery: { answers?: Record<string, unknown> | null } | null | undefined, key: string) {
   return listValue(discovery?.answers?.[key]);
+}
+
+export function normalizeProfessionalIdentityCompletionValues(values: ProfessionalIdentityCompletionValues): ProfessionalIdentityCompletionValues {
+  const interfaceLanguage = textValue(values.interface_language);
+  const professionalDocumentLanguage = textValue(values.professional_document_language);
+  return {
+    ...values,
+    profilePhoto: textValue(values.profilePhoto),
+    professional_photo_asset: professionalPhotoAssetFromUnknown(values.professional_photo_asset),
+    full_name: textValue(values.full_name),
+    email: textValue(values.email),
+    phone: textValue(values.phone),
+    current_status: normalizeCurrentSituation(values.current_status),
+    city: textValue(values.city),
+    country: textValue(values.country),
+    nationality: textValue(values.nationality),
+    work_authorization: textValue(values.work_authorization),
+    career_goal: textValue(values.career_goal),
+    professional_summary: textValue(values.professional_summary),
+    education: canonicalListValue(values.education),
+    field_of_study: textValue(values.field_of_study),
+    experience: normalizeProfessionalIdentityExperienceEntries(values.experience),
+    skills: canonicalListValue(values.skills),
+    projects: canonicalListValue(values.projects),
+    achievements: canonicalListValue(values.achievements),
+    certificates: canonicalListValue(values.certificates),
+    licences: canonicalListValue(values.licences),
+    languages: canonicalListValue(values.languages),
+    references: canonicalListValue(values.references),
+    linkedin_url: textValue(values.linkedin_url),
+    portfolio_url: textValue(values.portfolio_url),
+    github_url: textValue(values.github_url),
+    behance_url: textValue(values.behance_url),
+    website_url: textValue(values.website_url),
+    preferred_roles: canonicalListValue(values.preferred_roles),
+    industries: canonicalListValue(values.industries),
+    employment_type: textValue(values.employment_type),
+    salary_expectations: textValue(values.salary_expectations),
+    availability: textValue(values.availability),
+    work_type: textValue(values.work_type),
+    relocation: textValue(values.relocation),
+    interface_language: interfaceLanguage ? normalizeLanguageCode(interfaceLanguage) : "",
+    professional_document_language: professionalDocumentLanguage ? normalizeProfessionalDocumentLanguageChoice(professionalDocumentLanguage) : "",
+    career_coach_intro_seen: textValue(values.career_coach_intro_seen) === "true" ? "true" : ""
+  };
 }
 
 export function professionalIdentityValuesFromSources(
@@ -174,13 +238,13 @@ export function professionalIdentityValuesFromSources(
     professional_summary: answerText(discovery, "professional_summary"),
     education: firstList(answers.education_history, profile?.education, profile?.highest_qualification),
     field_of_study: textValue(profile?.field_of_study),
-    experience: firstList(answers.experience_history, answers.personal_background),
+    experience: firstExperienceList(answers.experience_entries, answers.experience_history, answers.personal_background),
     skills: answerList(discovery, "skills"),
     projects: firstList(answers.projects_history, answers.interests),
     achievements: firstList(answers.achievements_list, answers.achievements),
     certificates: firstList(answers.certificates_list, answers.certifications, profile?.has_certificates ? "Certificates available" : ""),
     licences: answerList(discovery, "licences"),
-    languages: firstList(answers.languages, profile?.language),
+    languages: answerList(discovery, "languages"),
     references: firstList(answers.references_list, answers.references),
     linkedin_url: textValue(profile?.linkedin_url),
     portfolio_url: textValue(profile?.portfolio_url),
@@ -201,6 +265,8 @@ export function professionalIdentityValuesFromSources(
 }
 
 export function professionalIdentitySectionHasMeaningfulData(section: ProfessionalIdentityCompletionSectionKey, values: ProfessionalIdentityCompletionValues) {
+  const canonicalValues = normalizeProfessionalIdentityCompletionValues(values);
+  values = canonicalValues;
   if (section === "profile") return hasText(values.current_status);
   if (section === "photo") {
     const asset = values.professional_photo_asset;
@@ -233,6 +299,8 @@ export function professionalIdentitySectionHasMeaningfulData(section: Profession
 }
 
 export function professionalIdentityMissingFields(section: ProfessionalIdentityCompletionSectionKey, values: ProfessionalIdentityCompletionValues) {
+  const canonicalValues = normalizeProfessionalIdentityCompletionValues(values);
+  values = canonicalValues;
   if (section === "profile") return hasText(values.current_status) ? [] : ["Current situation"];
   if (section === "personal_information") return [hasText(values.full_name) ? "" : "Full name", hasText(values.email) ? "" : "Email"].filter(Boolean);
   if (section === "location") return [hasText(values.city) ? "" : "City", hasText(values.country) ? "" : "Country"].filter(Boolean);
@@ -252,20 +320,22 @@ export function professionalIdentityMissingFields(section: ProfessionalIdentityC
 }
 
 export function professionalIdentitySectionIsComplete(section: ProfessionalIdentityCompletionSectionKey, values: ProfessionalIdentityCompletionValues) {
+  const canonicalValues = normalizeProfessionalIdentityCompletionValues(values);
   const model = professionalIdentityCompletionSections.find((item) => item.key === section);
-  if (model?.importance === "required") return professionalIdentityMissingFields(section, values).length === 0;
-  return professionalIdentitySectionHasMeaningfulData(section, values);
+  if (model?.importance === "required") return professionalIdentityMissingFields(section, canonicalValues).length === 0;
+  return professionalIdentitySectionHasMeaningfulData(section, canonicalValues);
 }
 
 export function professionalIdentityRequiredChecksFromValues(values: ProfessionalIdentityCompletionValues): ProfessionalIdentityRequiredCheck[] {
+  const canonicalValues = normalizeProfessionalIdentityCompletionValues(values);
   return professionalIdentityCompletionSections
     .filter((section) => section.importance === "required")
     .map((section) => ({
       section: section.key,
       label: section.label,
       status: "required" as const,
-      complete: professionalIdentitySectionIsComplete(section.key, values),
-      missingFields: professionalIdentityMissingFields(section.key, values),
+      complete: professionalIdentitySectionIsComplete(section.key, canonicalValues),
+      missingFields: professionalIdentityMissingFields(section.key, canonicalValues),
       guidance: guidanceForRequiredSection(section.key)
     }));
 }
@@ -285,11 +355,12 @@ function guidanceForRequiredSection(section: ProfessionalIdentityCompletionSecti
 }
 
 export function calculateProfessionalIdentityCompletion(values: ProfessionalIdentityCompletionValues) {
+  const canonicalValues = normalizeProfessionalIdentityCompletionValues(values);
   const sections = professionalIdentityCompletionSections.map((section) => ({
     ...section,
-    complete: professionalIdentitySectionIsComplete(section.key, values),
-    hasMeaningfulData: professionalIdentitySectionHasMeaningfulData(section.key, values),
-    missingFields: professionalIdentityMissingFields(section.key, values)
+    complete: professionalIdentitySectionIsComplete(section.key, canonicalValues),
+    hasMeaningfulData: professionalIdentitySectionHasMeaningfulData(section.key, canonicalValues),
+    missingFields: professionalIdentityMissingFields(section.key, canonicalValues)
   }));
   const completedSections = sections.filter((section) => section.complete).length;
   return {
@@ -297,6 +368,6 @@ export function calculateProfessionalIdentityCompletion(values: ProfessionalIden
     totalSections: sections.length,
     percentage: sections.length ? Math.round((completedSections / sections.length) * 100) : 0,
     sections,
-    requiredChecks: professionalIdentityRequiredChecksFromValues(values)
+    requiredChecks: professionalIdentityRequiredChecksFromValues(canonicalValues)
   };
 }

@@ -446,6 +446,7 @@ export type CreateJobImportInput =
       sourceType: "existing_opportunity";
       opportunityId: string;
       rawText: string;
+      sourceUrl?: string;
       details?: JobImportPreliminaryDetails;
     };
 

@@ -9,6 +9,7 @@ export * from "./evidence";
 export * from "./explainability";
 export * from "./job-levels";
 export * from "./next-best-action";
+export * from "./opportunity-matching";
 export * from "./pathways";
 export * from "./readiness";
 export * from "./stale-status";

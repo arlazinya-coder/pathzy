@@ -1,4 +1,4 @@
-import { normalizeDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
+import { normalizeDocumentTemplate, templateMetadata } from "@/lib/professional-identity/document-template-engine";
 import type { PremiumDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
 
 export type CvTemplateName = PremiumDocumentTemplate;
@@ -100,7 +100,10 @@ export type CoverLetterData = {
   designSystem: CoverLetterTemplateName;
 };
 
+export type CoverLetterModel = CoverLetterData;
+
 export const coverLetterTemplateNames = [
+  "PATHZY Signature Letter",
   "Executive Black",
   "Modern ATS",
   "Google Style",
@@ -126,6 +129,14 @@ export type CoverLetterTemplateMetadata = {
 
 export const coverLetterTemplateGallery: CoverLetterTemplateMetadata[] = [
   {
+    name: "PATHZY Signature Letter",
+    bestFor: "Formal applications, recruiter review, international business letters",
+    description: "Benchmark PATHZY letter with warm paper, disciplined typography, and a formal recruiter-ready hierarchy.",
+    accent: "#7f1d1d",
+    background: "#fffdfa",
+    architecture: "signature"
+  },
+  {
     name: "Executive Black",
     bestFor: "Senior professionals, management, directors, leadership, founders",
     description: "High-contrast executive letter with a premium boardroom identity and restrained black accent.",
@@ -137,24 +148,24 @@ export const coverLetterTemplateGallery: CoverLetterTemplateMetadata[] = [
     name: "Modern ATS",
     bestFor: "General applications, operations, administration, finance, recruiter screening",
     description: "Extremely clean single-column structure with strong spacing and ATS-conscious hierarchy.",
-    accent: "#2563eb",
-    background: "#ffffff",
+    accent: "#243044",
+    background: "#fffdfa",
     architecture: "ats"
   },
   {
     name: "Google Style",
     bestFor: "Technology, product, data, digital roles, modern companies",
-    description: "Minimal product-minded document with bright whitespace and subtle blue accent rhythm.",
-    accent: "#4285f4",
-    background: "#f8fbff",
+    description: "Minimal product-minded document with bright whitespace and restrained ink accent rhythm.",
+    accent: "#2f3a4f",
+    background: "#fffdfa",
     architecture: "product"
   },
   {
     name: "Microsoft Professional",
     bestFor: "Enterprise, IT support, administration, finance, corporate roles",
     description: "Polished enterprise letter with structured header hierarchy and disciplined spacing.",
-    accent: "#2563eb",
-    background: "#f5f9ff",
+    accent: "#182234",
+    background: "#fffdfa",
     architecture: "enterprise"
   },
   {
@@ -291,7 +302,7 @@ const continuedPageTop = 116;
 
 type CvDesignSystem = {
   name: CvTemplateName;
-  identity: "ats" | "modern" | "professional" | "graduate" | "executive" | "consulting" | "creative" | "healthcare" | "engineering" | "international";
+  identity: "signature" | "ats" | "modern" | "professional" | "graduate" | "executive" | "consulting" | "creative" | "healthcare" | "engineering" | "international";
   ink: string;
   muted: string;
   navy: string;
@@ -328,6 +339,43 @@ type CvDesignSystem = {
 };
 
 const pathzyEliteDesignSystem: Record<CvTemplateName, CvDesignSystem> = {
+  "PATHZY Signature Professional": {
+    name: "PATHZY Signature Professional",
+    identity: "signature",
+    ink: "#171717",
+    muted: "#5f6368",
+    navy: "#182234",
+    navyAlt: "#243044",
+    blue: "#2f3a4f",
+    sky: "#f4f1ea",
+    line: "#d8d0c2",
+    paper: "#fffdfa",
+    sidebar: "#f5f1e8",
+    sidebarInk: "#2f2a23",
+    card: "#fffdfa",
+    cardBorder: "#e3dbcc",
+    cream: "#faf6ee",
+    success: "#166534",
+    amber: "#9b7a3c",
+    heroText: "#fffdfa",
+    heroMuted: "#e9dfce",
+    headerHeight: 154,
+    sidebarWidth: 206,
+    columnGap: 34,
+    nameSize: 33,
+    roleSize: 13,
+    summarySize: 10.1,
+    sectionTitleSize: 9.8,
+    bodySize: 9.8,
+    bodyLineHeight: 14.2,
+    sideBodySize: 8.7,
+    sideLineHeight: 11.2,
+    cardRadius: 4,
+    chipRadius: 4,
+    titleLetterSpacing: 1.3,
+    dividerWeight: 1,
+    showHeroOrnaments: false
+  },
   "Modern ATS": {
     name: "Modern ATS",
     identity: "ats",
@@ -700,10 +748,85 @@ const pathzyEliteDesignSystem: Record<CvTemplateName, CvDesignSystem> = {
   }
 };
 
-let premiumTemplate = pathzyEliteDesignSystem["Google Style"];
+let premiumTemplate = pathzyEliteDesignSystem["PATHZY Signature Professional"];
+
+function lightSurface(hex: string) {
+  const clean = hex.replace("#", "");
+  const red = Number.parseInt(clean.slice(0, 2), 16);
+  const green = Number.parseInt(clean.slice(2, 4), 16);
+  const blue = Number.parseInt(clean.slice(4, 6), 16);
+  return red * 0.299 + green * 0.587 + blue * 0.114 > 210;
+}
+
+function baseTemplateForLayout(layout: ReturnType<typeof templateMetadata>["thumbnail"]["layout"]): CvTemplateName {
+  if (layout === "signature") return "PATHZY Signature Professional";
+  if (layout === "single") return "Modern ATS";
+  if (layout === "international") return "International Standard";
+  if (layout === "executive") return "Executive Black";
+  if (layout === "consulting") return "Deloitte Consulting";
+  if (layout === "creative") return "Creative Premium";
+  if (layout === "healthcare") return "Healthcare Professional";
+  if (layout === "graduate") return "Graduate Elite";
+  if (layout === "technical") return "Engineering";
+  if (layout === "enterprise") return "Microsoft Professional";
+  return "Google Style";
+}
+
+function identityForLayout(layout: ReturnType<typeof templateMetadata>["thumbnail"]["layout"]): CvDesignSystem["identity"] {
+  if (layout === "signature") return "signature";
+  if (layout === "single") return "ats";
+  if (layout === "international") return "international";
+  if (layout === "executive") return "executive";
+  if (layout === "consulting") return "consulting";
+  if (layout === "creative") return "creative";
+  if (layout === "healthcare") return "healthcare";
+  if (layout === "graduate") return "graduate";
+  if (layout === "technical") return "engineering";
+  if (layout === "enterprise") return "professional";
+  return "modern";
+}
+
+function resolveTemplateDensity(name: string, atsClassification: string) {
+  if (/compact|dense|longform|technical|systems|analyst|banking|clinical|c-suite/i.test(name)) return "compact";
+  if (/editorial|elegant|ivory|warm|founder|scholar|emerging|portfolio/i.test(name)) return "airy";
+  if (atsClassification === "ATS HIGH") return "compact";
+  return "balanced";
+}
 
 function resolveCvTemplateDesign(templateName?: string): CvDesignSystem {
-  return pathzyEliteDesignSystem[normalizeDocumentTemplate(templateName)] ?? pathzyEliteDesignSystem["Modern ATS"];
+  const metadata = templateMetadata(templateName);
+  const base = pathzyEliteDesignSystem[baseTemplateForLayout(metadata.thumbnail.layout)] ?? pathzyEliteDesignSystem["Modern ATS"];
+  const density = resolveTemplateDensity(metadata.name, metadata.atsClassification);
+  const compact = density === "compact";
+  const airy = density === "airy";
+  const accent = metadata.thumbnail.accent;
+  const surface = lightSurface(metadata.thumbnail.background) ? metadata.thumbnail.background : base.paper;
+
+  return {
+    ...base,
+    name: normalizeDocumentTemplate(metadata.name),
+    identity: identityForLayout(metadata.thumbnail.layout),
+    blue: accent,
+    sky: surface === "#ffffff" ? base.sky : surface,
+    line: accent === base.blue ? base.line : compact ? "#d7dde6" : base.line,
+    paper: surface,
+    sidebar: lightSurface(metadata.thumbnail.background) ? metadata.thumbnail.background : base.sidebar,
+    cardBorder: compact ? "#d7dde6" : base.cardBorder,
+    headerHeight: Math.max(160, Math.min(218, base.headerHeight + (airy ? 12 : compact ? -14 : 0))),
+    sidebarWidth: Math.max(176, Math.min(242, base.sidebarWidth + (airy ? 10 : compact ? -12 : 0))),
+    columnGap: Math.max(28, Math.min(48, base.columnGap + (airy ? 4 : compact ? -4 : 0))),
+    nameSize: Math.max(31, Math.min(41, base.nameSize + (airy ? 1.5 : compact ? -1.8 : 0))),
+    roleSize: Math.max(12.8, Math.min(15.8, base.roleSize + (airy ? 0.3 : compact ? -0.4 : 0))),
+    sectionTitleSize: Math.max(9.4, Math.min(11, base.sectionTitleSize + (airy ? 0.2 : compact ? -0.4 : 0))),
+    bodySize: Math.max(9.7, Math.min(10.8, base.bodySize + (airy ? 0.15 : compact ? -0.35 : 0))),
+    bodyLineHeight: Math.max(14.2, Math.min(16.4, base.bodyLineHeight + (airy ? 0.45 : compact ? -0.75 : 0))),
+    sideBodySize: Math.max(8.4, Math.min(9.3, base.sideBodySize + (airy ? 0.1 : compact ? -0.2 : 0))),
+    sideLineHeight: Math.max(10.8, Math.min(12.4, base.sideLineHeight + (airy ? 0.25 : compact ? -0.45 : 0))),
+    cardRadius: metadata.thumbnail.layout === "executive" || compact ? Math.min(base.cardRadius, 8) : base.cardRadius,
+    chipRadius: metadata.atsClassification === "ATS HIGH" ? Math.min(base.chipRadius, 8) : base.chipRadius,
+    titleLetterSpacing: metadata.atsClassification === "ATS HIGH" ? Math.min(base.titleLetterSpacing, 1.2) : base.titleLetterSpacing,
+    showHeroOrnaments: metadata.atsClassification === "VISUAL / RECRUITER-FIRST" ? base.showHeroOrnaments : false
+  };
 }
 
 type CoverLetterDesign = {
@@ -738,11 +861,11 @@ const coverLetterLegacyTemplateAliases: Record<string, CoverLetterTemplateName> 
 };
 
 export function normalizeCoverLetterTemplate(value: unknown): CoverLetterTemplateName {
-  if (typeof value !== "string") return "Modern ATS";
+  if (typeof value !== "string") return "PATHZY Signature Letter";
   if (coverLetterTemplateNames.includes(value as CoverLetterTemplateName)) return value as CoverLetterTemplateName;
   const normalizedCvTemplate = normalizeDocumentTemplate(value);
   if (coverLetterTemplateNames.includes(normalizedCvTemplate as CoverLetterTemplateName)) return normalizedCvTemplate as CoverLetterTemplateName;
-  return coverLetterLegacyTemplateAliases[value] ?? coverLetterLegacyTemplateAliases[normalizedCvTemplate] ?? "Modern ATS";
+  return coverLetterLegacyTemplateAliases[value] ?? coverLetterLegacyTemplateAliases[normalizedCvTemplate] ?? "PATHZY Signature Letter";
 }
 
 export function coverLetterTemplateMetadata(name: unknown) {
@@ -1059,7 +1182,7 @@ const headings = new Map([
 ]);
 
 const forbiddenOutputPatterns = [
-  /pathzy/i,
+  /pathzy\s+(score|workspace|dashboard|application|guidance|navigation|editor|builder|support system)/i,
   /\bAI\b.*(generated|builder|support)/i,
   /generated by/i,
   /^trust note/i,
@@ -1180,7 +1303,7 @@ function emptyCoverLetterData(): CoverLetterData {
     closingPhrase: "Kind regards,",
     signature: "",
     tone: "professional",
-    designSystem: "Modern ATS"
+    designSystem: "PATHZY Signature Letter"
   };
 }
 
@@ -1465,6 +1588,127 @@ function compactLine(parts: string[]) {
   return parts.filter((part) => part.trim()).join(" | ");
 }
 
+function normalizedCompareText(value: string) {
+  return value.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, " ").replace(/\b(degree|diploma|certificate|certification|in|of|and|the)\b/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function splitCompositeCvValue(value: string) {
+  return value.split(/\s+\|\s+|\s+·\s+|\s+:\s+/).map((part) => part.trim()).filter(Boolean);
+}
+
+function isDuplicateCvField(primary: string, candidate: string) {
+  const left = normalizedCompareText(primary);
+  const right = normalizedCompareText(candidate);
+  if (!left || !right) return false;
+  if (left.includes(right) || right.includes(left)) return true;
+  if (/\bict\b/i.test(primary) && /information communication technology/i.test(right)) return true;
+  return false;
+}
+
+function compactUniqueLine(parts: string[]) {
+  const unique: string[] = [];
+  for (const part of cleanItems(parts)) {
+    if (!unique.some((existing) => isDuplicateCvField(existing, part))) unique.push(part);
+  }
+  return unique.join(" | ");
+}
+
+function uniqueCvItems(items: string[]) {
+  const unique: string[] = [];
+  for (const item of cleanItems(items)) {
+    if (!unique.some((existing) => normalizedCompareText(existing) === normalizedCompareText(item))) unique.push(item);
+  }
+  return unique;
+}
+
+function titleCaseBoundaryIndex(text: string) {
+  const tokens = text.split(/\s+/).filter(Boolean);
+  const roleEndings = /^(lead|manager|engineer|analyst|coordinator|technician|assistant|officer|specialist|consultant|director|developer|designer|administrator|teacher|nurse|accountant|intern|clerk|supervisor|representative|marketer|operator)$/i;
+  for (let index = tokens.length - 2; index >= 0; index--) {
+    if (roleEndings.test(tokens[index])) return index + 1;
+  }
+  return tokens.length >= 5 ? Math.max(2, tokens.length - 2) : tokens.length;
+}
+
+function normalizeDash(value: string) {
+  return value
+    .replace(/\b((?:19|20)\d{2})\s+(present|current)\b/gi, "$1 - Present")
+    .replace(/\s+-\s+|\s+to\s+/gi, " - ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseUnseparatedExperienceText(value: string) {
+  const text = value.replace(/\s+/g, " ").trim();
+  const dateMatch = text.match(/\b(?:19|20)\d{2}\b(?:\s*(?:(?:-|–|to)\s*)?(?:present|current|(?:19|20)\d{2}))?|\b(?:present|current)\b/i);
+  if (!dateMatch || dateMatch.index === undefined) return null;
+  const beforeDate = text.slice(0, dateMatch.index).trim();
+  const dateText = normalizeDash(dateMatch[0].replace(/\bcurrent\b/i, "Present"));
+  const description = text.slice(dateMatch.index + dateMatch[0].length).trim();
+  if (!beforeDate || !description) return null;
+  const boundary = titleCaseBoundaryIndex(beforeDate);
+  const tokens = beforeDate.split(/\s+/).filter(Boolean);
+  return {
+    role: tokens.slice(0, boundary).join(" ").trim() || beforeDate,
+    company: tokens.slice(boundary).join(" ").trim(),
+    dateText,
+    description
+  };
+}
+
+function signatureExperienceEntries(cv: CvModel) {
+  return normalizeCvModel(cv).professionalExperience.map((item) => {
+    const parts = splitCompositeCvValue(item.role);
+    const inferred = !item.company && parts.length < 2 ? parseUnseparatedExperienceText(item.role) : null;
+    const role = item.company || parts.length < 2 ? inferred?.role ?? item.role : parts[0] ?? item.role;
+    const company = item.company || inferred?.company || parts[1] || "";
+    const location = item.location || parts[2] || "";
+    const dateText = compactLine([item.startDate, item.current ? "Present" : item.endDate]) || inferred?.dateText || parts[3] || "";
+    const overflowFacts = item.company ? [] : inferred?.description ? [inferred.description] : parts.slice(4);
+    const details = uniqueCvItems([...overflowFacts, ...item.achievements]).filter((detail) => ![role, company, location, dateText].some((field) => isDuplicateCvField(field, detail)));
+    return { role, company, location, dateText, details };
+  }).filter((item) => item.role || item.company || item.details.length);
+}
+
+function normalizeEducationField(value: string) {
+  return value
+    .replace(/\bICT\b/gi, "Information & Communication Technology")
+    .replace(/Information\s+and\s+Communication\s+Technology/gi, "Information & Communication Technology")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function educationTitle(qualification: string, field: string) {
+  const normalizedField = normalizeEducationField(field);
+  const normalizedQualification = qualification.replace(/,\s*Information\s+and\s+Communication\s+Technology/gi, "").replace(/,\s*Information\s+Technology/gi, "").trim();
+  const inMatch = normalizedQualification.match(/^(.+?)\s+(?:degree\s+)?in\s+(.+)$/i);
+  if (inMatch) {
+    const base = inMatch[1].replace(/\s+degree$/i, "").trim();
+    const embeddedField = normalizeEducationField(inMatch[2]);
+    const finalField = normalizedField && !isDuplicateCvField(embeddedField, normalizedField) ? normalizedField : embeddedField;
+    return finalField ? `${base} - ${finalField}` : base;
+  }
+  if (normalizedField && !isDuplicateCvField(normalizedQualification, normalizedField)) return `${normalizedQualification} - ${normalizedField}`;
+  return normalizedQualification;
+}
+
+function signatureEducationEntries(cv: CvModel) {
+  return normalizeCvModel(cv).education.map((item) => {
+    const qualificationParts = item.qualification.split(/\s+\|\s+|\s+·\s+|\s+:\s+|,\s+/).map((part) => part.trim()).filter(Boolean);
+    const qualification = qualificationParts[0] || item.qualification;
+    const field = qualificationParts.find((part) => /information|technology|science|business|administration|network|engineering|marketing|finance|education|health/i.test(part)) || item.fieldOfStudy || "";
+    const institution = item.institution || qualificationParts.find((part) => !isDuplicateCvField(qualification, part) && !isDuplicateCvField(field, part)) || "";
+    const year = item.year || "";
+    const status = item.status && !isDuplicateCvField(item.status, qualification) ? item.status : "";
+    const title = educationTitle(qualification, field);
+    return { title, institution, meta: compactUniqueLine([year, status]) };
+  }).filter((item) => item.title || item.institution || item.meta);
+}
+
+function signatureCertificationItems(cv: CvModel) {
+  return normalizeCvModel(cv).certifications.map((item) => compactUniqueLine([item.name, item.provider, item.year])).filter(Boolean);
+}
+
 function cvModelToRenderModel(input: CvModel): CvRenderModel {
   const cv = normalizeCvModel(input);
   const sections: CvSection[] = [];
@@ -1524,12 +1768,12 @@ function mainSections(cv: CvRenderModel) {
 
 function sideSections(cv: CvRenderModel) {
   const orders: Partial<Record<CvDesignSystem["identity"], string[]>> = {
-    executive: ["Core Competencies / Skills", "Professional Skills", "Technical Skills", "Education", "Certifications", "Languages", "Portfolio Links"],
-    consulting: ["Technical Skills", "Core Competencies / Skills", "Professional Skills", "Education", "Certifications", "Languages"],
+    executive: ["Core Competencies / Skills", "Professional Skills", "Technical Skills", "Languages", "Portfolio Links"],
+    consulting: ["Technical Skills", "Core Competencies / Skills", "Professional Skills", "Languages"],
     healthcare: ["Core Competencies / Skills", "Professional Skills", "Technical Skills", "Languages", "Portfolio Links"],
-    graduate: ["Core Competencies / Skills", "Technical Skills", "Professional Skills", "Certifications", "Languages", "Portfolio Links"],
+    graduate: ["Core Competencies / Skills", "Technical Skills", "Professional Skills", "Languages", "Portfolio Links"],
     engineering: ["Technical Skills", "Core Competencies / Skills", "Portfolio Links", "Professional Skills", "Languages"],
-    creative: ["Core Competencies / Skills", "Technical Skills", "Professional Skills", "Languages", "Certifications"],
+    creative: ["Core Competencies / Skills", "Technical Skills", "Professional Skills", "Languages"],
     professional: ["Core Competencies / Skills", "Technical Skills", "Professional Skills", "Languages", "Portfolio Links"],
     modern: ["Core Competencies / Skills", "Technical Skills", "Professional Skills", "Languages", "Portfolio Links"]
   };
@@ -1883,6 +2127,141 @@ function drawSideSection(elements: LayoutElement[], sectionData: CvSection, x: n
   return cursor + 8;
 }
 
+function drawSignatureSectionTitle(elements: LayoutElement[], title: string, x: number, y: number, width: number, activeSection?: string) {
+  if (isActiveCvSection(activeSection, title)) elements.push({ kind: "rounded", x: x - 8, y: y - 13, width: width + 16, height: 34, radius: 6, color: premiumTemplate.cream, borderColor: premiumTemplate.amber, className: "cv-active-section", sectionId: "cv-section-active" });
+  elements.push({ kind: "text", x, y, width, text: title, size: premiumTemplate.sectionTitleSize, color: premiumTemplate.navy, weight: "bold", uppercase: true, letterSpacing: premiumTemplate.titleLetterSpacing });
+  elements.push({ kind: "line", x, y: y + 18, width, color: premiumTemplate.line, thickness: 1 });
+  return y + 34;
+}
+
+function buildSignatureCvLayout(cvInput: CvModel, activeSection?: string): CvLayout {
+  const cv = normalizeCvModel(cvInput);
+  const layout: CvLayout = { width: page.width, height: page.height, pages: [] };
+  const marginX = 54;
+  const mainX = 54;
+  const sideX = 574;
+  const mainW = 486;
+  const sideW = 166;
+  const bottom = page.height - 66;
+  let currentPage = addPage(layout);
+  let y = 48;
+
+  const ensure = (needed = 80) => {
+    if (y + needed <= bottom) return;
+    currentPage = addPage(layout, cv.fullName || "CV");
+    y = continuedPageTop;
+  };
+
+  const addLines = (lines: string[], x: number, width: number, size: number, lineHeight: number, color = premiumTemplate.ink, weight: TextElement["weight"] = "regular") => {
+    for (const line of lines) {
+      const wrapped = wrapText(line, width, size);
+      ensure(wrapped.length * lineHeight + 10);
+      wrapped.forEach((text, index) => currentPage.elements.push({ kind: "text", x, y: y + index * lineHeight, width, text, size, color, weight }));
+      y += wrapped.length * lineHeight + 5;
+    }
+  };
+
+  const addSection = (title: string, needed = 58) => {
+    ensure(needed);
+    y = drawSignatureSectionTitle(currentPage.elements, title, mainX, y, mainW, activeSection);
+  };
+
+  currentPage.elements.push({ kind: "rect", x: 0, y: 0, width: page.width, height: 150, color: premiumTemplate.navy });
+  currentPage.elements.push({ kind: "rect", x: 0, y: 148, width: page.width, height: 3, color: premiumTemplate.amber });
+  if (isActiveCvSection(activeSection, "Professional Header")) currentPage.elements.push({ kind: "rounded", x: marginX - 12, y: 32, width: page.width - marginX * 2 + 24, height: 104, radius: 8, color: premiumTemplate.navyAlt, borderColor: premiumTemplate.amber, className: "cv-active-section", sectionId: "cv-section-active" });
+  currentPage.elements.push({ kind: "text", x: marginX, y, width: 468, text: cv.fullName, size: premiumTemplate.nameSize, color: premiumTemplate.heroText, weight: "bold" });
+  y += 40;
+  if (cv.targetRole) {
+    currentPage.elements.push({ kind: "text", x: marginX, y, width: 420, text: cv.targetRole, size: premiumTemplate.roleSize, color: premiumTemplate.heroMuted, weight: "bold" });
+    y += 22;
+  }
+  const headerContact = contactLines(cv).join("  |  ");
+  if (headerContact) pushWrappedText(currentPage.elements, headerContact, marginX, y, 676, 8.6, premiumTemplate.heroMuted, 12);
+
+  const coreSkillItems = uniqueCvItems([...cv.coreSkills, ...cv.professionalSkills]).slice(0, 12);
+  const technicalSkillItems = uniqueCvItems(cv.technicalSkills).filter((skill) => !coreSkillItems.some((core) => normalizedCompareText(core) === normalizedCompareText(skill))).slice(0, 12);
+  const sideSectionsForSignature: CvSection[] = [
+    { title: "Core Skills", items: coreSkillItems },
+    { title: "Technical Skills", items: technicalSkillItems },
+    { title: "Certifications", items: signatureCertificationItems(cv).slice(0, 8) },
+    { title: "Languages", items: cv.languages.map((item) => compactUniqueLine([item.language, item.level])).filter(Boolean) },
+    { title: "Professional Links", items: cleanItems([cv.portfolio ? `Portfolio: ${cv.portfolio}` : "", cv.github ? `GitHub: ${cv.github}` : "", cv.website ? `Website: ${cv.website}` : ""]) }
+  ].filter((sectionData) => sectionData.items.length);
+
+  currentPage.elements.push({ kind: "rounded", x: sideX - 18, y: 182, width: sideW + 36, height: page.height - 245, radius: 8, color: premiumTemplate.sidebar, borderColor: premiumTemplate.cardBorder });
+  let sideY = 218;
+  for (const side of sideSectionsForSignature) {
+    const split = splitSideSectionToFit(side, sideW, bottom - sideY);
+    if (split.fit) sideY = drawSideSection(currentPage.elements, split.fit, sideX, sideY, sideW, activeSection);
+  }
+
+  y = 198;
+  if (cv.professionalSummary) {
+    addSection("Professional Summary");
+    addLines([cv.professionalSummary], mainX, mainW, premiumTemplate.summarySize, premiumTemplate.bodyLineHeight, premiumTemplate.ink);
+    y += 10;
+  }
+
+  const experiences = signatureExperienceEntries(cv);
+  if (experiences.length) {
+    addSection("Professional Experience");
+    for (const item of experiences) {
+      const roleLines = wrapText(item.role || "Professional role", mainW, premiumTemplate.bodySize + 1);
+      const meta = compactUniqueLine([item.company, item.location, item.dateText]);
+      const detailLines = item.details.flatMap((detail) => wrapText(detail, mainW - 18, premiumTemplate.bodySize));
+      const needed = roleLines.length * 15 + (meta ? 16 : 0) + detailLines.length * premiumTemplate.bodyLineHeight + 22;
+      ensure(Math.min(needed, bottom - continuedPageTop));
+      roleLines.forEach((line, index) => currentPage.elements.push({ kind: "text", x: mainX, y: y + index * 15, width: mainW, text: line, size: premiumTemplate.bodySize + 1, color: premiumTemplate.ink, weight: "bold" }));
+      y += roleLines.length * 15;
+      if (meta) {
+        currentPage.elements.push({ kind: "text", x: mainX, y, width: mainW, text: meta, size: 8.7, color: premiumTemplate.muted, weight: "bold" });
+        y += 17;
+      }
+      for (const detail of item.details) {
+        const lines = wrapText(detail, mainW - 18, premiumTemplate.bodySize);
+        ensure(lines.length * premiumTemplate.bodyLineHeight + 12);
+        currentPage.elements.push({ kind: "circle", x: mainX + 3, y: y + 6, radius: 2.2, color: premiumTemplate.amber });
+        lines.forEach((line, index) => currentPage.elements.push({ kind: "text", x: mainX + 16, y: y + index * premiumTemplate.bodyLineHeight, width: mainW - 18, text: line, size: premiumTemplate.bodySize, color: premiumTemplate.ink }));
+        y += lines.length * premiumTemplate.bodyLineHeight + 4;
+      }
+      y += 12;
+    }
+  }
+
+  const education = signatureEducationEntries(cv);
+  if (education.length) {
+    addSection("Education");
+    for (const item of education) {
+      ensure(52);
+      addLines([item.title], mainX, mainW, premiumTemplate.bodySize + 0.5, 14.5, premiumTemplate.ink, "bold");
+      const meta = compactUniqueLine([item.institution, item.meta]);
+      if (meta) addLines([meta], mainX, mainW, 8.8, 12.5, premiumTemplate.muted);
+      y += 6;
+    }
+  }
+
+  const projectItems = cv.projects.map((item) => compactUniqueLine([item.projectName, item.role, item.tools.join(", "), item.description, item.impact])).filter(Boolean);
+  if (projectItems.length) {
+    addSection("Projects");
+    addLines(projectItems, mainX, mainW, premiumTemplate.bodySize, premiumTemplate.bodyLineHeight);
+  }
+
+  if (cv.achievements.length) {
+    addSection("Achievements");
+    addLines(cv.achievements, mainX, mainW, premiumTemplate.bodySize, premiumTemplate.bodyLineHeight);
+  }
+
+  if (cv.references.availableUponRequest) {
+    addSection("References", 44);
+    addLines(["References available on request"], mainX, mainW, premiumTemplate.bodySize, premiumTemplate.bodyLineHeight, premiumTemplate.muted);
+  }
+
+  layout.pages.forEach((pageEntry, index) => {
+    pageEntry.elements.push({ kind: "text", x: 700, y: 1084, width: 40, text: String(index + 1), size: 8, color: "#8f8576" });
+  });
+  return layout;
+}
+
 function buildCvLayoutFromModel(cvInput: CvModel, templateName?: string, activeSection?: string): CvLayout {
   const previousTemplate = premiumTemplate;
   premiumTemplate = resolveCvTemplateDesign(templateName);
@@ -1894,6 +2273,7 @@ function buildCvLayoutFromModel(cvInput: CvModel, templateName?: string, activeS
 }
 
 function buildCvLayoutFromModelWithDesign(cvInput: CvModel, activeSection?: string): CvLayout {
+  if (premiumTemplate.identity === "signature") return buildSignatureCvLayout(cvInput, activeSection);
   if (premiumTemplate.identity === "ats" || premiumTemplate.identity === "international") return buildSingleColumnCvLayout(cvInput, activeSection);
   const cv = cvModelToRenderModel(cvInput);
   const layout: CvLayout = { width: page.width, height: page.height, pages: [] };
@@ -1998,7 +2378,7 @@ export function renderAtsCvHtmlFromModel(cvInput: CvModel) {
 
 function renderCvLayoutHtml(layout: CvLayout) {
   return `
-    <div class="cv-render-shell" data-a4-preview="true">
+    <div class="cv-render-shell" data-a4-preview="true" data-pathzy-cv-document-root="candidate-cv-only">
       ${layout.pages.map((layoutPage) => `<div class="cv-render-page-frame"><article class="cv-render-page">${layoutPage.elements.map(elementHtml).join("")}</article></div>`).join("")}
     </div>
     <style>
@@ -2276,7 +2656,7 @@ function buildCoverLetterLayoutFromData(input: CoverLetterData): CvLayout {
 }
 
 export function renderCoverLetterHtmlFromData(data: CoverLetterData) {
-  return renderCvLayoutHtml(buildCoverLetterLayoutFromData(data));
+  return renderCvLayoutHtml(buildCoverLetterLayoutFromData(data)).replace('data-pathzy-cv-document-root="candidate-cv-only"', 'data-pathzy-cover-letter-document-root="candidate-cover-letter-only" data-pathzy-document-root="candidate-document-only"');
 }
 
 export function htmlDocument(title: string, content: string, templateName?: string) {

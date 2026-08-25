@@ -6,6 +6,7 @@ import {
 } from "@/lib/readiness/employment-readiness-check";
 import { legacyLanguageValue, normalizeLanguageCode, normalizeProfessionalDocumentLanguageChoice } from "@/lib/language/language-preferences";
 import { normalizeCurrentSituation } from "@/lib/professional-identity/current-situation";
+import { experienceEntryToText, normalizeProfessionalIdentityExperienceEntries } from "@/lib/professional-identity/professional-identity-experience";
 import {
   professionalIdentityRequiredChecksFromValues,
   professionalIdentityValuesFromSources,
@@ -57,7 +58,7 @@ export const professionalIdentityWriteSections = new Set([
   "availability"
 ]);
 
-export type CleanProfessionalIdentityValue = string | string[];
+export type CleanProfessionalIdentityValue = string | unknown[];
 export type CleanProfessionalIdentityValues = Record<string, CleanProfessionalIdentityValue>;
 
 export type ProfessionalIdentityWriteResult = {
@@ -89,7 +90,13 @@ export function cleanProfessionalIdentityValues(values: unknown): CleanProfessio
   if (!values || typeof values !== "object") return {};
   return Object.fromEntries(
     Object.entries(values as Record<string, unknown>).map(([key, value]) => {
-      if (Array.isArray(value)) return [key, value.map((item) => String(item ?? "").trim()).filter(Boolean)];
+      if (Array.isArray(value)) {
+        return [key, value.map((item) => {
+          if (typeof item === "string") return item.trim();
+          if (item && typeof item === "object") return item;
+          return String(item ?? "").trim();
+        }).filter((item) => typeof item === "string" ? Boolean(item) : Boolean(item))];
+      }
       return [key, typeof value === "string" ? value.trim() : String(value ?? "").trim()];
     })
   );
@@ -103,8 +110,12 @@ function textValue(values: CleanProfessionalIdentityValues, key: string) {
 
 function listValue(values: CleanProfessionalIdentityValues, key: string) {
   const value = values[key];
-  if (Array.isArray(value)) return value;
+  if (Array.isArray(value)) return value.map((item) => typeof item === "string" ? item.trim() : experienceEntryToText(item as never)).filter(Boolean);
   return value ? value.split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean) : [];
+}
+
+function experienceListValue(values: CleanProfessionalIdentityValues, key: string) {
+  return normalizeProfessionalIdentityExperienceEntries(values[key]);
 }
 
 function firstListItem(values: CleanProfessionalIdentityValues, key: string) {
@@ -195,7 +206,14 @@ export function discoveryPatchForProfessionalIdentitySection(section: string, va
   if (section === "work_authorization") return { work_authorization: textValue(values, "work_authorization") };
   if (section === "professionalSummary" || section === "professional_summary") return { professional_summary: textValue(values, "professional_summary") };
   if (section === "education") return { education_history: listValue(values, "education") };
-  if (section === "experience") return { experience_history: listValue(values, "experience"), personal_background: listValue(values, "experience").join("\n") };
+  if (section === "experience") {
+    const experienceEntries = experienceListValue(values, "experience");
+    return {
+      experience_history: experienceEntries,
+      experience_entries: experienceEntries,
+      personal_background: ""
+    };
+  }
   if (section === "skills") return { skills: listValue(values, "skills") };
   if (section === "projects") return { projects_history: listValue(values, "projects"), interests: listValue(values, "projects").join("\n") };
   if (section === "achievements") return { achievements_list: listValue(values, "achievements"), achievements: listValue(values, "achievements").join("\n") };
@@ -259,7 +277,8 @@ export async function saveMergedDiscoveryAnswers(
 
   const target = selectProfessionalIdentityDiscoveryRow((rows ?? []) as DiscoveryCompatibilityRow[]);
   const answers = withProfessionalIdentityRecordType({ ...((target?.answers as Record<string, unknown> | null) ?? {}), ...answersPatch });
-  const payload = generatedResult === undefined ? { answers } : { answers, generated_result: generatedResult };
+  const refreshedAt = new Date().toISOString();
+  const payload = generatedResult === undefined ? { answers, created_at: refreshedAt } : { answers, generated_result: generatedResult, created_at: refreshedAt };
 
   if (target?.id) {
     return supabase.from("discovery_responses").update(payload).eq("id", target.id).eq("user_id", userId);
@@ -268,7 +287,8 @@ export async function saveMergedDiscoveryAnswers(
   return supabase.from("discovery_responses").insert({
     user_id: userId,
     answers,
-    generated_result: generatedResult ?? target?.generated_result ?? {}
+    generated_result: generatedResult ?? target?.generated_result ?? {},
+    created_at: refreshedAt
   });
 }
 

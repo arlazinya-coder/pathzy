@@ -1,61 +1,60 @@
 import { OpportunitiesHub } from "@/components/opportunities/opportunities-hub";
 import { PageHeader } from "@/components/ui";
-import { getOrCreateCanonicalProfile } from "@/lib/canonical-profile";
-import type { DiscoveryAnswers, GeneratedRoadmap } from "@/lib/discovery/types";
+import { getOrCreateCanonicalProfile, valueText, type CanonicalProfessionalIdentity } from "@/lib/canonical-profile";
 import { analyzeJobAgainstCanonicalProfile, inspectJobAdvertisement, type JobMatchAnalysis } from "@/lib/job-intelligence";
-import { personalizeOpportunities } from "@/lib/opportunities/data";
-import type { OpportunityAction, PersonalizedOpportunity } from "@/lib/opportunities/types";
+import { opportunityToJobImportText, personalizeRealOpportunities } from "@/lib/opportunities/matching";
+import type { OpportunityAction } from "@/lib/opportunities/types";
+import { fetchProductionOpportunities } from "@/lib/opportunities/providers";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
 
-function opportunityJobText(opportunity: PersonalizedOpportunity) {
-  return [
-    `Job title: ${opportunity.title}`,
-    `Company: ${opportunity.provider}`,
-    `Location: ${opportunity.country}`,
-    `Mode: ${opportunity.mode}`,
-    `Level: ${opportunity.level}`,
-    opportunity.description,
-    `Required or useful skills: ${opportunity.skillTags.join(", ")}`,
-    `Career direction: ${opportunity.careerTags.join(", ")}`,
-    `Outcome: ${opportunity.outcome}`
-  ].join("\n");
+function firstText(values: Array<string | undefined>) {
+  return values.map((value) => value?.trim()).find(Boolean) ?? "";
+}
+
+function opportunitySearchFromProfile(canonicalProfile: CanonicalProfessionalIdentity) {
+  return {
+    query: firstText([
+      valueText(canonicalProfile.professionalProfile.headline),
+      ...canonicalProfile.professionalProfile.targetRoles.map(valueText),
+      ...(canonicalProfile.careerPreferences?.targetRoles.map(valueText) ?? []),
+      valueText(canonicalProfile.identity.professionalHeadline)
+    ]) || "entry level",
+    location: firstText([
+      valueText(canonicalProfile.contact.city),
+      ...(canonicalProfile.careerPreferences?.preferredLocations.map(valueText) ?? [])
+    ]),
+    country: firstText([valueText(canonicalProfile.contact.country)]) || "South Africa"
+  };
 }
 
 export default async function OpportunitiesPage() {
   const { user, supabase } = await requireAuthenticatedUser("/opportunities");
 
-  const [{ data: profile }, { data: discovery }, { data: actions }] = await Promise.all([
-    supabase.from("user_profiles").select("country").or(`user_id.eq.${user.id},id.eq.${user.id}`).maybeSingle(),
-    supabase
-      .from("discovery_responses")
-      .select("answers,generated_result")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase.from("user_opportunity_actions").select("opportunity_id,saved,applied,completed,hidden").eq("user_id", user.id)
+  const canonicalProfile = await getOrCreateCanonicalProfile(supabase, user.id);
+  const search = opportunitySearchFromProfile(canonicalProfile);
+  const [{ data: actions }, providerResult] = await Promise.all([
+    supabase.from("user_opportunity_actions").select("opportunity_id,saved,applied,completed,hidden").eq("user_id", user.id),
+    fetchProductionOpportunities({ ...search, resultsPerPage: 20 })
   ]);
 
-  const personalizedOpportunities = personalizeOpportunities({
-    answers: (discovery?.answers as Partial<DiscoveryAnswers> | null) ?? null,
-    roadmap: (discovery?.generated_result as GeneratedRoadmap | null) ?? null,
-    country: profile?.country ?? null,
+  const personalizedOpportunities = personalizeRealOpportunities({
+    opportunities: providerResult.opportunities,
+    profile: canonicalProfile,
     actions: (actions ?? []) as OpportunityAction[]
   });
   let jobIntelligence: Record<string, JobMatchAnalysis> = {};
 
   try {
-    const canonicalProfile = await getOrCreateCanonicalProfile(supabase, user.id);
     jobIntelligence = Object.fromEntries(
       personalizedOpportunities.slice(0, 12).map((opportunity) => {
         const job = inspectJobAdvertisement({
-          sourceType: "opportunity_catalog",
+          sourceType: "external_link",
           sourceOpportunityId: opportunity.id,
           title: opportunity.title,
-          company: opportunity.provider,
-          location: opportunity.country,
-          employmentType: opportunity.mode,
-          rawText: opportunityJobText(opportunity)
+          company: opportunity.employer,
+          location: opportunity.location,
+          employmentType: opportunity.employmentType,
+          rawText: opportunityToJobImportText(opportunity)
         });
         return [opportunity.id, analyzeJobAgainstCanonicalProfile({ profile: canonicalProfile, job, userId: user.id })];
       })
@@ -67,9 +66,9 @@ export default async function OpportunitiesPage() {
   return (
     <div className="container page-pad">
       <PageHeader eyebrow="Find Opportunities" title="Find chances that match your career plan.">
-        PATHZY ranks jobs, internships, learnerships, apprenticeships, scholarships, free courses, and certifications by fit, readiness, location, and the skills you are building.
+        PATHZY brings in real vacancies, then compares them with your confirmed Professional Identity before you decide what to do next.
       </PageHeader>
-      <OpportunitiesHub initialOpportunities={personalizedOpportunities} initialJobIntelligence={jobIntelligence} />
+      <OpportunitiesHub initialOpportunities={personalizedOpportunities} initialJobIntelligence={jobIntelligence} providerStatus={providerResult.status} />
     </div>
   );
 }

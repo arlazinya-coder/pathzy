@@ -7,7 +7,7 @@ import { normalizePathzyError } from "@/lib/errors/error-normalization";
 import { usePathzyLanguage } from "@/components/language/language-selector";
 import { formatPathzyStepCount, pathzyPhase2List, pathzyPhase2T, pathzyT, professionalIdentityFieldText, professionalIdentityImportanceLabel, professionalIdentitySectionText, professionalIdentityStepText } from "@/lib/language/pathzy-i18n";
 import { languageLabels, normalizeProfessionalDocumentLanguageChoice, normalizeSupportedLanguage, professionalDocumentLanguageLabels, type ProfessionalDocumentLanguageChoice, type SupportedLanguageCode } from "@/lib/language/language-preferences";
-import { appRoutes } from "@/lib/navigation/routes";
+import { appRoutes, safeRedirectDestination } from "@/lib/navigation/routes";
 import {
   calculateProfessionalIdentityCompletion,
   professionalIdentityMissingFields,
@@ -22,6 +22,7 @@ import {
   type ProfessionalPhotoAssetView
 } from "@/lib/professional-identity/professional-photo";
 import { currentSituationDisplayLabel, currentSituationValues, normalizeCurrentSituation } from "@/lib/professional-identity/current-situation";
+import { experienceEntryToText, type ProfessionalIdentityExperienceEntry } from "@/lib/professional-identity/professional-identity-experience";
 import { useProfessionalIdentityAutosave } from "@/lib/professional-identity/use-professional-identity-autosave";
 
 export type ProfileSectionKey =
@@ -83,7 +84,7 @@ export type ProfessionalIdentityValues = {
   professional_summary: string;
   education: string[];
   field_of_study: string;
-  experience: string[];
+  experience: Array<string | ProfessionalIdentityExperienceEntry>;
   skills: string[];
   projects: string[];
   achievements: string[];
@@ -406,7 +407,7 @@ function cleanList(value: unknown): string[] {
 }
 
 function editableList(value: unknown): string[] {
-  if (Array.isArray(value)) return value.map((item) => String(item ?? ""));
+  if (Array.isArray(value)) return value.map((item) => typeof item === "string" ? item : experienceEntryToText(item as ProfessionalIdentityExperienceEntry));
   if (typeof value === "string" && value.length) return value.split(/\r?\n|,/);
   return [];
 }
@@ -499,7 +500,7 @@ export function ProfileActionEditor({
   const [showCropControls, setShowCropControls] = useState(false);
   const { language: storedInterfaceLanguage, setLanguage: setPathzyInterfaceLanguage } = usePathzyLanguage(mergedInitialValues.interface_language);
   const activeStep = introStage === "identity" && activeIndex >= 0 ? journeySteps[activeIndex] : null;
-  const activeLanguage: SupportedLanguageCode = normalizeSupportedLanguage(values.interface_language, storedInterfaceLanguage);
+  const activeLanguage: SupportedLanguageCode = normalizeSupportedLanguage(storedInterfaceLanguage, values.interface_language);
   const buildStepPayload = useCallback((step: JourneyStep, nextValues: ProfessionalIdentityValues) => stepPayload(step, nextValues), []);
   const {
     autosaveState,
@@ -549,7 +550,13 @@ export function ProfileActionEditor({
   const introShellTotal = premiumOnboardingOrder.length;
   const shellProgress = introStage === "identity" ? progress : Math.round((introShellStep / introShellTotal) * 100);
   const reviewHref = `${appRoutes.professionalIdentity}?review=1`;
-  const shouldReturnToReview = returnTo === "review" || returnTo === reviewHref;
+  const returnDestination = returnTo === "review"
+    ? reviewHref
+    : returnTo
+      ? safeRedirectDestination(returnTo, appRoutes.professionalIdentity)
+      : "";
+  const shouldReturnAfterSave = Boolean(returnDestination);
+  const shouldReturnToReview = returnDestination === reviewHref;
   const photoInputId = "pathzy-professional-photo-input";
   const currentPhoto = values.professional_photo_asset;
   const photoPreviewUrl = localPhotoPreview || currentPhoto?.signedUrl || "";
@@ -594,7 +601,7 @@ export function ProfileActionEditor({
   }, [hasHydrated, mergedInitialValues]);
 
   useEffect(() => {
-    setValues((current) => (current.interface_language === storedInterfaceLanguage ? current : { ...current, interface_language: storedInterfaceLanguage }));
+    setValues((current) => (current.interface_language || !storedInterfaceLanguage ? current : { ...current, interface_language: storedInterfaceLanguage }));
   }, [storedInterfaceLanguage]);
 
   useEffect(() => {
@@ -645,6 +652,12 @@ export function ProfileActionEditor({
     const preferencesStep = journeySteps.find((step) => step.key === "preferences");
     if (!preferencesStep) return true;
     return persistStep(preferencesStep, nextValues);
+  }
+
+  function returnToSavedDestination(sectionKey?: string) {
+    const destination = shouldReturnToReview && sectionKey ? `${reviewHref}#identity-review-${sectionKey}` : returnDestination || reviewHref;
+    router.push(destination);
+    window.setTimeout(() => router.refresh(), 0);
   }
 
   function updateValue<K extends keyof ProfessionalIdentityValues>(key: K, value: ProfessionalIdentityValues[K]) {
@@ -746,8 +759,8 @@ export function ProfileActionEditor({
     if (activeStep) {
       const saved = await persistStep(activeStep, values);
       if (saved === false) return;
-      if (shouldReturnToReview && stepIsComplete(activeStep, values)) {
-        router.push(`${reviewHref}#identity-review-${activeStep.key}`);
+      if (shouldReturnAfterSave && (!shouldReturnToReview || stepIsComplete(activeStep, values))) {
+        returnToSavedDestination(activeStep.key);
         return;
       }
     }
@@ -777,7 +790,7 @@ export function ProfileActionEditor({
       const saved = await persistStep(activeStep, values);
       if (saved === false) return;
     }
-    router.push(activeStep ? `${reviewHref}#identity-review-${activeStep.key}` : reviewHref);
+    returnToSavedDestination(activeStep?.key);
   }
 
   function retrySave() {
@@ -1499,8 +1512,8 @@ export function ProfileActionEditor({
         <div>
           {renderCurrentStep()}
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-            {shouldReturnToReview ? (
-              <Link href={reviewHref} className="rounded-full border border-[#d1d5db] bg-white px-6 py-3 text-sm font-bold text-[#374151]">
+            {shouldReturnAfterSave ? (
+              <Link href={returnDestination || reviewHref} className="rounded-full border border-[#d1d5db] bg-white px-6 py-3 text-sm font-bold text-[#374151]">
                 {pathzyPhase2T(activeLanguage, "identity.review.cancelReturn")}
               </Link>
             ) : (
@@ -1509,7 +1522,7 @@ export function ProfileActionEditor({
             {introStage === "identity" && activeIndex === journeySteps.length - 1 && requiredComplete ? (
               <button type="button" onClick={openReview} className="rounded-full bg-[var(--pathzy-red)] px-6 py-3 text-sm font-bold text-white shadow-[0_16px_34px_rgba(217,58,70,.22)] transition hover:bg-[var(--pathzy-red-dark)]">{t("onboarding.review")}</button>
             ) : (
-              <button type="button" onClick={() => goNext()} disabled={photoNavigationBlocked || (introStage === "identity" && activeIndex === journeySteps.length - 1 && !shouldReturnToReview)} className="rounded-full bg-[var(--pathzy-red)] px-6 py-3 text-sm font-bold text-white shadow-[0_16px_34px_rgba(217,58,70,.22)] transition hover:bg-[var(--pathzy-red-dark)] disabled:cursor-not-allowed disabled:opacity-45">{shouldReturnToReview ? pathzyPhase2T(activeLanguage, "identity.review.saveReturn") : t("onboarding.continue")}</button>
+              <button type="button" onClick={() => goNext()} disabled={photoNavigationBlocked || (introStage === "identity" && activeIndex === journeySteps.length - 1 && !shouldReturnAfterSave)} className="rounded-full bg-[var(--pathzy-red)] px-6 py-3 text-sm font-bold text-white shadow-[0_16px_34px_rgba(217,58,70,.22)] transition hover:bg-[var(--pathzy-red-dark)] disabled:cursor-not-allowed disabled:opacity-45">{shouldReturnAfterSave ? pathzyPhase2T(activeLanguage, "identity.review.saveReturn") : t("onboarding.continue")}</button>
             )}
           </div>
         </div>
@@ -1557,7 +1570,8 @@ export function ProfessionalIdentityReviewActions({
         return;
       }
 
-      router.push(typeof data.redirectTo === "string" ? data.redirectTo : appRoutes.authenticatedHome);
+      router.push(typeof data.redirectTo === "string" ? data.redirectTo : `${appRoutes.discovery}?reason=setup-complete`);
+      window.setTimeout(() => router.refresh(), 0);
     } catch (caught) {
       const normalized = normalizePathzyError(caught, pathzyPhase2T(language, "identity.finish.failure"));
       console.warn("[professional-identity] Finish setup failed", {

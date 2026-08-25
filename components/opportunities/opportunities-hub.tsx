@@ -19,37 +19,62 @@ import type {
   StructuredJobResponsibility
 } from "@/lib/job-intelligence/job-intelligence.types";
 import { getOpportunityStats } from "@/lib/opportunities/data";
-import type { OpportunityAction, OpportunityCategory, PersonalizedOpportunity } from "@/lib/opportunities/types";
+import type { JobProviderStatus, OpportunityAction, OpportunityEligibilityStatus, OpportunitySuitabilityLabel, PersonalizedOpportunity } from "@/lib/opportunities/types";
 
-const categories: Array<OpportunityCategory | "All"> = [
-  "All",
-  "Recommended jobs",
-  "Internships",
-  "Learnerships",
-  "Apprenticeships",
-  "Scholarships",
-  "Free online courses",
-  "Certifications"
+type OpportunityTab = "recommended" | "near" | "saved" | "all";
+
+const opportunityTabs: Array<{ id: OpportunityTab; label: string }> = [
+  { id: "recommended", label: "Recommended" },
+  { id: "near", label: "Near Reach" },
+  { id: "saved", label: "Saved" },
+  { id: "all", label: "All Jobs" }
 ];
 
-function sectionTitle(category: OpportunityCategory | "All") {
-  if (category === "Internships") return "Internships for You";
-  if (category === "Learnerships") return "Learnerships for You";
-  if (category === "Scholarships") return "Scholarships for You";
-  if (category === "Recommended jobs") return "Jobs for You";
-  return "Jobs for You";
+function matchLabel(label: OpportunitySuitabilityLabel) {
+  return {
+    STRONG_MATCH: "Strong match",
+    GOOD_MATCH: "Good match",
+    POSSIBLE_MATCH: "Possible match",
+    STRETCH_OPPORTUNITY: "Stretch opportunity"
+  }[label];
+}
+
+function eligibilityLabel(status: OpportunityEligibilityStatus) {
+  return {
+    COMPATIBLE: "Compatible",
+    CHECK_NEEDED: "Check needed",
+    BLOCKED: "Blocked",
+    UNKNOWN: "Unknown"
+  }[status];
+}
+
+function opportunityTabMatches(opportunity: PersonalizedOpportunity, tab: OpportunityTab) {
+  if (tab === "all") return true;
+  if (tab === "saved") return opportunity.action.saved;
+  if (tab === "near") return opportunity.match.recommendation === "PREPARE_FIRST" || opportunity.match.recommendation === "APPLY_AFTER_CHECKING";
+  return opportunity.match.recommendation === "WORTH_APPLYING";
+}
+
+function displayDate(value?: string) {
+  if (!value) return "Unknown";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "Unknown" : date.toLocaleDateString();
 }
 
 export function OpportunitiesHub({
   initialOpportunities,
-  initialJobIntelligence = {}
+  initialJobIntelligence = {},
+  providerStatus
 }: {
   initialOpportunities: PersonalizedOpportunity[];
   initialJobIntelligence?: Record<string, JobMatchAnalysis>;
+  providerStatus?: JobProviderStatus;
 }) {
   const [opportunities, setOpportunities] = useState(initialOpportunities);
-  const [activeCategory, setActiveCategory] = useState<OpportunityCategory | "All">("All");
+  const [activeTab, setActiveTab] = useState<OpportunityTab>("recommended");
+  const [expandedId, setExpandedId] = useState("");
   const [busyId, setBusyId] = useState("");
+  const [preparingId, setPreparingId] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [jobImportMode, setJobImportMode] = useState<JobImportSourceType>("pasted_text");
@@ -76,7 +101,10 @@ export function OpportunitiesHub({
   const [smartApplicationStatus, setSmartApplicationStatus] = useState<"idle" | "processing" | "ready" | "failed">("idle");
   const [smartApplicationMessage, setSmartApplicationMessage] = useState("");
   const stats = useMemo(() => getOpportunityStats(opportunities), [opportunities]);
-  const visibleOpportunities = activeCategory === "All" ? opportunities : opportunities.filter((item) => item.category === activeCategory);
+  const visibleOpportunities = useMemo(
+    () => opportunities.filter((item) => opportunityTabMatches(item, activeTab)),
+    [activeTab, opportunities]
+  );
 
   async function updateAction(opportunity: PersonalizedOpportunity, patch: Partial<OpportunityAction>) {
     const nextAction = { ...opportunity.action, ...patch };
@@ -104,7 +132,7 @@ export function OpportunitiesHub({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            company_name: opportunity.provider,
+            company_name: opportunity.employer,
             role: opportunity.title,
             opportunity_type: opportunity.category,
             status: patch.applied ? "applied" : "saved",
@@ -119,6 +147,28 @@ export function OpportunitiesHub({
       setOpportunities(initialOpportunities);
     } finally {
       setBusyId("");
+    }
+  }
+
+  async function prepareApplication(opportunity: PersonalizedOpportunity) {
+    setPreparingId(opportunity.id);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await fetch("/api/opportunities/prepare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ opportunity })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not prepare this opportunity.");
+      await updateAction(opportunity, { saved: true });
+      window.location.href = data.coverLetterUrl;
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not prepare this opportunity.");
+    } finally {
+      setPreparingId("");
     }
   }
 
@@ -386,32 +436,167 @@ export function OpportunitiesHub({
   }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[.34fr_1fr]">
-      <Card className="h-fit">
-        <h2 className="text-2xl font-black">Opportunity tracker</h2>
-        <p className="mt-3 text-sm leading-6 text-white/58">Save matches, track applications, and complete preparation steps. These are sample opportunities for testing.</p>
-        <div className="mt-5 grid grid-cols-3 gap-3">
+    <div className="grid gap-5">
+      <Card>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#FFD166]">Jobs</p>
+            <h2 className="mt-2 text-3xl font-black">Real opportunities that fit your Professional Identity.</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-white/58">
+              PATHZY shows real provider listings only, then explains suitability and eligibility separately before you decide what to do next. PATHZY never substitutes fake vacancies.
+            </p>
+          </div>
+          {providerStatus ? (
+            <div className={`rounded-[18px] border px-4 py-3 text-sm leading-6 ${
+              providerStatus.status === "available"
+                ? "border-[#39d98a]/25 bg-[#39d98a]/10 text-[#b9f8d5]"
+                : "border-[#FFD166]/25 bg-[#FFD166]/10 text-[#ffe2a3]"
+            }`}>
+              <strong className="block text-xs uppercase tracking-[0.14em]">
+                {providerStatus.status === "available" ? "Provider connected" : providerStatus.status.replaceAll("_", " ")}
+              </strong>
+              <span>{providerStatus.message ?? `Live listings from ${providerStatus.provider}.`}</span>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-6 flex flex-wrap gap-2">
+          {opportunityTabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`rounded-full border px-4 py-2 text-sm font-extrabold transition ${
+                activeTab === tab.id
+                  ? "border-[#FFD166]/50 bg-[#FFD166] text-[#241707]"
+                  : "border-white/10 bg-white/7 text-white/66 hover:bg-white/10"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-5 grid grid-cols-3 gap-3 md:max-w-md">
           <div className="rounded-[18px] border border-white/10 bg-white/7 p-3"><p className="text-xs font-bold text-white/45">Saved</p><strong className="mt-1 block text-2xl font-black">{stats.saved}</strong></div>
           <div className="rounded-[18px] border border-white/10 bg-white/7 p-3"><p className="text-xs font-bold text-white/45">Applied</p><strong className="mt-1 block text-2xl font-black">{stats.applied}</strong></div>
           <div className="rounded-[18px] border border-white/10 bg-white/7 p-3"><p className="text-xs font-bold text-white/45">Done</p><strong className="mt-1 block text-2xl font-black">{stats.completed}</strong></div>
         </div>
-        <div className="mt-5">
+        <div className="mt-4 md:max-w-md">
           <div className="mb-2 flex items-center justify-between text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">
-            <span>Completion</span>
+            <span>Application progress</span>
             <span>{stats.progress}%</span>
           </div>
           <ProgressBar value={stats.progress} />
         </div>
-        <div className="mt-6 grid gap-2">
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setActiveCategory(category)}
-              className={`rounded-[18px] border px-4 py-3 text-left text-sm font-extrabold transition ${activeCategory === category ? "border-[#5B8CFF]/60 bg-[#5B8CFF]/16 text-white" : "border-white/10 bg-white/7 text-white/66 hover:bg-white/10"}`}
-            >
-              {category}
-            </button>
-          ))}
+
+        {error ? <p className="mt-4 rounded-[16px] border border-[#ff6b6b]/30 bg-[#ff6b6b]/10 px-4 py-3 text-sm text-[#ffc5c5]">{error}</p> : null}
+        {success ? <p className="mt-4 rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{success}</p> : null}
+
+        <div className="mt-6 grid gap-4">
+          {visibleOpportunities.map((opportunity) => {
+            const expanded = expandedId === opportunity.id;
+            return (
+              <article key={opportunity.id} className="rounded-[24px] border border-white/10 bg-white/7 p-4 md:p-5">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap gap-2">
+                      <span className="rounded-full bg-[#FFD166]/15 px-3 py-1 text-xs font-extrabold text-[#ffe2a3]">Live {opportunity.source} listing</span>
+                      <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/60">{opportunity.remoteType.replaceAll("_", "-")}</span>
+                      <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/60">{opportunity.employmentType}</span>
+                    </div>
+                    <h3 className="mt-3 text-2xl font-black">{opportunity.title}</h3>
+                    <p className="mt-1 text-sm font-bold text-white/52">{opportunity.employer} · {opportunity.location}</p>
+                    <p className="mt-1 text-xs font-bold text-white/38">Posted: {displayDate(opportunity.postedAt)} · Closing: {displayDate(opportunity.closingAt)}</p>
+                  </div>
+                  <div className="flex flex-col gap-2 md:items-end">
+                    <span className="w-fit rounded-full bg-[#FFD166] px-4 py-2 text-sm font-extrabold text-[#241707]">{matchLabel(opportunity.match.suitabilityLabel)}</span>
+                    <span className="w-fit rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/68">Eligibility: {eligibilityLabel(opportunity.match.eligibilityStatus)}</span>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_.8fr]">
+                  <div className="rounded-[18px] border border-white/10 bg-black/10 p-4">
+                    <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/40">Why PATHZY recommends this</p>
+                    <ul className="mt-2 grid gap-1 text-sm leading-6 text-white/66">
+                      {opportunity.match.reasons.slice(0, 4).map((reason) => <li key={reason}>- {reason}</li>)}
+                    </ul>
+                  </div>
+                  <div className="rounded-[18px] border border-white/10 bg-black/10 p-4">
+                    <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/40">What to check</p>
+                    <ul className="mt-2 grid gap-1 text-sm leading-6 text-white/66">
+                      {[...opportunity.match.unknowns, ...opportunity.match.gaps].slice(0, 4).map((item) => <li key={item}>- {item}</li>)}
+                      {!opportunity.match.unknowns.length && !opportunity.match.gaps.length ? <li>No major check found from your confirmed profile.</li> : null}
+                    </ul>
+                  </div>
+                </div>
+
+                {initialJobIntelligence[opportunity.id] ? (
+                  <JobIntelligencePanel analysis={initialJobIntelligence[opportunity.id]} />
+                ) : null}
+
+                {expanded ? (
+                  <div className="mt-4 grid gap-4 rounded-[20px] border border-white/10 bg-black/12 p-4">
+                    <div>
+                      <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/40">About the job</p>
+                      <p className="mt-2 text-sm leading-6 text-white/64">{opportunity.description}</p>
+                    </div>
+                    {opportunity.responsibilities.length ? (
+                      <div>
+                        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/40">Responsibilities</p>
+                        <ul className="mt-2 grid gap-1 text-sm leading-6 text-white/64">
+                          {opportunity.responsibilities.slice(0, 6).map((item) => <li key={item}>- {item}</li>)}
+                        </ul>
+                      </div>
+                    ) : null}
+                    {opportunity.requirements.length ? (
+                      <div>
+                        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/40">Requirements</p>
+                        <ul className="mt-2 grid gap-1 text-sm leading-6 text-white/64">
+                          {opportunity.requirements.slice(0, 8).map((item) => <li key={item}>- {item}</li>)}
+                        </ul>
+                      </div>
+                    ) : null}
+                    <div>
+                      <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/40">Source</p>
+                      <p className="mt-2 text-sm leading-6 text-white/64">Source: {opportunity.source}. PATHZY opens the genuine vacancy destination when you apply.</p>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setExpandedId(expanded ? "" : opportunity.id)} className="rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/70 transition hover:bg-white/14">
+                    {expanded ? "Hide details" : "View Job"}
+                  </button>
+                  <button disabled={busyId === opportunity.id} onClick={() => updateAction(opportunity, { saved: !opportunity.action.saved })} className={`rounded-full px-4 py-2 text-sm font-extrabold ${opportunity.action.saved ? "bg-[#39d98a]/18 text-[#9df0c4]" : "bg-white/10 text-white/68"}`}>
+                    {opportunity.action.saved ? "Saved" : "Save"}
+                  </button>
+                  <button disabled={preparingId === opportunity.id || busyId === opportunity.id} onClick={() => prepareApplication(opportunity)} className="rounded-full bg-[#FFD166] px-4 py-2 text-sm font-extrabold text-[#241707] transition hover:bg-[#ffe19a] disabled:cursor-not-allowed disabled:opacity-60">
+                    {preparingId === opportunity.id ? "Preparing..." : "Prepare Application"}
+                  </button>
+                  <Link href={opportunity.applicationUrl} target="_blank" rel="noreferrer" className="rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/68 transition hover:bg-white/14">Apply on source site</Link>
+                  <button disabled={busyId === opportunity.id} onClick={() => updateAction(opportunity, { saved: true, applied: !opportunity.action.applied })} className={`rounded-full px-4 py-2 text-sm font-extrabold ${opportunity.action.applied ? "bg-[#5B8CFF]/22 text-[#c7d6ff]" : "bg-white/10 text-white/68"}`}>
+                    {opportunity.action.applied ? "Applied" : "Mark as Applied"}
+                  </button>
+                  {opportunity.action.applied ? (
+                    <Link href={`${appRoutes.applications}?company=${encodeURIComponent(opportunity.employer)}&role=${encodeURIComponent(opportunity.title)}&type=${encodeURIComponent(opportunity.category)}`} className="rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/68 transition hover:bg-white/14">Track application</Link>
+                  ) : null}
+                  <button disabled={busyId === opportunity.id} onClick={() => updateAction(opportunity, { hidden: true })} className="rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/54">Not for me</button>
+                </div>
+              </article>
+            );
+          })}
+          {!visibleOpportunities.length ? (
+            <div className="rounded-[22px] border border-white/10 bg-white/7 p-6 text-center text-white/58">
+              {providerStatus?.status === "provider_unavailable"
+                ? "The job provider is unavailable right now. PATHZY will not show fake vacancies."
+                : providerStatus?.status === "invalid_provider_response"
+                  ? "The job provider returned a response PATHZY could not read. No fake vacancies are shown."
+                  : providerStatus?.status === "no_jobs_found"
+                    ? "No real jobs were found for this search. Try a broader role or location."
+                    : "No visible opportunities in this tab. Save a job, broaden your search, or update your Professional Identity."}
+            </div>
+          ) : null}
         </div>
       </Card>
 
@@ -469,73 +654,6 @@ export function OpportunitiesHub({
           onPrepareApplication={() => prepareSmartApplication(false)}
           onCreateAnotherVersion={() => prepareSmartApplication(true)}
         />
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="text-2xl font-black">{sectionTitle(activeCategory)}</h2>
-            <p className="mt-2 text-sm leading-6 text-white/58">Jobs for You, Internships for You, Learnerships for You, and Scholarships for You are ranked by fit, readiness, location, and skills.</p>
-          </div>
-          <span className="w-fit rounded-full bg-[#39d98a]/15 px-4 py-2 text-sm font-extrabold text-[#9df0c4]">{visibleOpportunities.length} visible</span>
-        </div>
-        {error ? <p className="mt-4 rounded-[16px] border border-[#ff6b6b]/30 bg-[#ff6b6b]/10 px-4 py-3 text-sm text-[#ffc5c5]">{error}</p> : null}
-        {success ? <p className="mt-4 rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{success}</p> : null}
-        <div className="mt-5 grid gap-4">
-          {visibleOpportunities.map((opportunity) => (
-            <article key={opportunity.id} className="rounded-[22px] border border-white/10 bg-white/7 p-4 md:p-5">
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="rounded-full bg-[#FFD166]/15 px-3 py-1 text-xs font-extrabold text-[#ffe2a3]">Sample opportunity for testing</span>
-                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/60">{opportunity.category}</span>
-                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/60">{opportunity.mode}</span>
-                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/60">{opportunity.country}</span>
-                  </div>
-                  <h3 className="mt-3 text-xl font-black">{opportunity.title}</h3>
-                  <p className="mt-1 text-sm font-bold text-white/48">{opportunity.provider} - {opportunity.deadline}</p>
-                </div>
-                <span className="w-fit rounded-full blue-purple px-4 py-2 text-sm font-extrabold text-white">{opportunity.fit}% match</span>
-              </div>
-              <p className="mt-4 leading-7 text-white/64">{opportunity.description}</p>
-              {initialJobIntelligence[opportunity.id] ? (
-                <JobIntelligencePanel analysis={initialJobIntelligence[opportunity.id]} />
-              ) : null}
-              <div className="mt-4 grid gap-3 md:grid-cols-[1fr_.8fr]">
-                <div className="rounded-[18px] border border-white/10 bg-black/10 p-4">
-                  <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/40">Why it matches</p>
-                  <ul className="mt-2 grid gap-1 text-sm leading-6 text-white/62">
-                    {opportunity.reasons.map((reason) => <li key={reason}>- {reason}</li>)}
-                  </ul>
-                </div>
-                <div className="rounded-[18px] border border-white/10 bg-black/10 p-4">
-                  <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/40">Preparation</p>
-                  <p className="mt-2 font-bold text-white/72">{opportunity.outcome}</p>
-                  <p className="mt-2 text-sm leading-6 text-white/52">Missing skills: {opportunity.skillTags.slice(0, 4).join(" - ")}</p>
-                  <p className="mt-2 text-sm leading-6 text-white/52">Preparation time: 45-90 minutes</p>
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button disabled={busyId === opportunity.id} onClick={() => updateAction(opportunity, { saved: !opportunity.action.saved })} className={`rounded-full px-4 py-2 text-sm font-extrabold ${opportunity.action.saved ? "bg-[#39d98a]/18 text-[#9df0c4]" : "bg-white/10 text-white/68"}`}>
-                  {opportunity.action.saved ? "Saved" : "Save"}
-                </button>
-                <Link href={`/professional-identity/cv?role=${encodeURIComponent(opportunity.title)}&company=${encodeURIComponent(opportunity.provider)}`} className="rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/68 transition hover:bg-white/14">Prepare Application</Link>
-                <button disabled={busyId === opportunity.id} onClick={() => updateAction(opportunity, { saved: true, applied: !opportunity.action.applied })} className={`rounded-full px-4 py-2 text-sm font-extrabold ${opportunity.action.applied ? "bg-[#5B8CFF]/22 text-[#c7d6ff]" : "bg-white/10 text-white/68"}`}>
-                  {opportunity.action.applied ? "Applied" : "Mark as Applied"}
-                </button>
-                {opportunity.action.applied ? (
-                  <Link href={`${appRoutes.applications}?company=${encodeURIComponent(opportunity.provider)}&role=${encodeURIComponent(opportunity.title)}&type=${encodeURIComponent(opportunity.category)}`} className="rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/68 transition hover:bg-white/14">Track application</Link>
-                ) : null}
-                <Link href={`/interview?role=${encodeURIComponent(opportunity.title)}&company=${encodeURIComponent(opportunity.provider)}`} className="rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/68 transition hover:bg-white/14">Practice Interview</Link>
-                <Link href={`/professional-identity/cover-letter?role=${encodeURIComponent(opportunity.title)}&company=${encodeURIComponent(opportunity.provider)}`} className="rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/68 transition hover:bg-white/14">Cover letter</Link>
-                <Link href={`/professional-identity/recruiter-message?role=${encodeURIComponent(opportunity.title)}&company=${encodeURIComponent(opportunity.provider)}`} className="rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/68 transition hover:bg-white/14">Recruiter message</Link>
-                <button disabled={busyId === opportunity.id} onClick={() => updateAction(opportunity, { hidden: true })} className="rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/54">Hide</button>
-              </div>
-            </article>
-          ))}
-          {!visibleOpportunities.length ? (
-            <div className="rounded-[22px] border border-white/10 bg-white/7 p-6 text-center text-white/58">
-              No visible opportunities in this category. Switch filters or refresh after updating your Discovery answers.
-            </div>
-          ) : null}
-        </div>
       </Card>
     </div>
   );

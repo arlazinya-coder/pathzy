@@ -54,6 +54,7 @@ const authRouting = readFileSync("lib/navigation/auth-routing.ts", "utf8");
 const redirects = readFileSync("lib/navigation/redirects.ts", "utf8");
 const authSessionSafety = readFileSync("lib/auth/session-safety.ts", "utf8");
 const authFormErrors = readFileSync("lib/auth/auth-form-errors.ts", "utf8");
+const supabaseBrowserClient = readFileSync("lib/supabase/client.ts", "utf8");
 const authorization = readFileSync("lib/access/authorization.ts", "utf8");
 const languagePreferences = readFileSync("lib/language/language-preferences.ts", "utf8");
 const pathzyI18n = readFileSync("lib/language/pathzy-i18n.ts", "utf8");
@@ -69,6 +70,8 @@ const professionalIdentitySectionRoute = readFileSync("app/professional-identity
 const profileActionEditor = readFileSync("components/professional-identity/profile-action-editor.tsx", "utf8");
 const professionalPhotoApi = readFileSync("app/api/professional-identity/photo/route.ts", "utf8");
 const professionalIdentityCompletion = readFileSync("lib/professional-identity/professional-identity-completion.ts", "utf8");
+const professionalIdentityExperience = readFileSync("lib/professional-identity/professional-identity-experience.ts", "utf8");
+const professionalIdentityCvModel = readFileSync("lib/professional-identity/professional-identity-cv-model.ts", "utf8");
 const professionalIdentityReadService = readFileSync("lib/professional-identity/professional-identity-read-service.ts", "utf8");
 const professionalIdentityDiscoveryCompatibility = readFileSync("lib/professional-identity/professional-identity-discovery-compatibility.ts", "utf8");
 const professionalIdentityAutosave = readFileSync("lib/professional-identity/use-professional-identity-autosave.ts", "utf8");
@@ -79,11 +82,14 @@ const cvConfiguration = readFileSync("lib/professional-documents/cv-configuratio
 const employmentIntelligenceDomainIndex = readFileSync("lib/employment-intelligence/domain/index.ts", "utf8");
 const employmentIntelligenceInputContract = readFileSync("lib/employment-intelligence/domain/employment-intelligence-input.ts", "utf8");
 const employmentIntelligenceProfileContract = readFileSync("lib/employment-intelligence/domain/employment-intelligence-profile.ts", "utf8");
+const employmentOpportunityMatchingContract = readFileSync("lib/employment-intelligence/domain/opportunity-matching.ts", "utf8");
 const employmentIntelligenceCollectionInvariants = readFileSync("lib/employment-intelligence/domain/collection-invariants.ts", "utf8");
 const employmentIntelligenceCountryContract = readFileSync("lib/employment-intelligence/domain/country-context.ts", "utf8");
 const employmentIntelligenceEngineIndex = readFileSync("lib/employment-intelligence/engine/index.ts", "utf8");
+const employmentSharedIntelligenceEngine = readFileSync("lib/employment-intelligence/engine/build-shared-intelligence.ts", "utf8");
 const employmentIntelligenceEngineSource = [
   "lib/employment-intelligence/engine/assess-evidence.ts",
+  "lib/employment-intelligence/engine/build-shared-intelligence.ts",
   "lib/employment-intelligence/engine/assess-readiness.ts",
   "lib/employment-intelligence/engine/build-explanations.ts",
   "lib/employment-intelligence/engine/calculate-confidence.ts",
@@ -204,11 +210,13 @@ const discoveryAnswerState = readFileSync("lib/discovery/discovery-answer-state.
 const generateRoadmapApi = readFileSync("app/api/generate-roadmap/route.ts", "utf8");
 const professionalCvPage = readFileSync("app/professional-identity/cv/page.tsx", "utf8");
 const professionalCoverLetterPage = readFileSync("app/professional-identity/cover-letter/page.tsx", "utf8");
+const professionalLinkedInPage = readFileSync("app/professional-identity/linkedin/page.tsx", "utf8");
 const applicationsPage = readFileSync("app/applications/page.tsx", "utf8");
 const skillsPage = readFileSync("app/skills/page.tsx", "utf8");
 const billingPage = readFileSync("app/billing/page.tsx", "utf8");
 const settingsPage = readFileSync("app/settings/page.tsx", "utf8");
 const permissions = readFileSync("lib/navigation/permissions.ts", "utf8");
+const coreDocumentDownloadAccess = readFileSync("lib/access/core-document-download-access.ts", "utf8");
 const entitlements = readFileSync("lib/access/entitlements.ts", "utf8");
 const betaEntitlementsApi = readFileSync("app/api/admin/beta-entitlements/route.ts", "utf8");
 const entitlementMigration = readFileSync("supabase/migrations/20260716120000_create_user_entitlements.sql", "utf8");
@@ -217,6 +225,8 @@ const documentTemplateEngine = readFileSync("lib/professional-identity/document-
 const professionalPhotoContract = readFileSync("lib/professional-identity/professional-photo.ts", "utf8");
 const documentDownloads = readFileSync("components/professional-identity/document-downloads.ts", "utf8");
 const professionalIdentityTool = readFileSync("components/professional-identity/professional-identity-tool.tsx", "utf8");
+const professionalIdentityCoverLetterModel = readFileSync("lib/professional-identity/professional-identity-cover-letter-model.ts", "utf8");
+const professionalIdentityLinkedInModel = readFileSync("lib/professional-identity/professional-identity-linkedin-model.ts", "utf8");
 const templateMiniPreview = readFileSync("components/professional-identity/template-mini-preview.tsx", "utf8");
 const myDocumentsClient = readFileSync("components/professional-identity/my-documents-client.tsx", "utf8");
 const cvBuilderPage = readFileSync("app/cv-builder/page.tsx", "utf8");
@@ -321,6 +331,12 @@ const smartApplicationsMigration = readFileSync("supabase/migrations/20260718163
 const applicationTrackerMigration = readFileSync("supabase/migrations/20260718170000_extend_application_tracker_phase9b.sql", "utf8");
 const opportunitiesPage = readFileSync("app/opportunities/page.tsx", "utf8");
 const opportunitiesHub = readFileSync("components/opportunities/opportunities-hub.tsx", "utf8");
+const opportunitiesTypes = readFileSync("lib/opportunities/types.ts", "utf8");
+const opportunitiesMatching = readFileSync("lib/opportunities/matching.ts", "utf8");
+const opportunitiesPrepareApi = readFileSync("app/api/opportunities/prepare/route.ts", "utf8");
+const jobProviderTypes = readFileSync("lib/opportunities/providers/types.ts", "utf8");
+const adzunaProviderSource = readFileSync("lib/opportunities/providers/adzuna-provider.ts", "utf8");
+const jobProviderServerSource = readFileSync("lib/opportunities/providers/server.ts", "utf8");
 const employmentTrackerClient = readFileSync("components/employment-tracker/employment-tracker-client.tsx", "utf8");
 const employmentTrackerPage = readFileSync("app/employment-tracker/page.tsx", "utf8");
 const employmentTrackerApi = readFileSync("app/api/employment-tracker/route.ts", "utf8");
@@ -338,6 +354,7 @@ const legacyMedicalCvFixture = readFileSync("tests/fixtures/legacy-medical-cv.tx
 const cvImportFixtureMatrix = readFileSync("tests/fixtures/cv-import-matrix.txt", "utf8");
 const cvInterpretationFixtureMatrix = readFileSync("tests/fixtures/cv-interpretation-general-matrix.txt", "utf8");
 const coverLetterGeneration = professionalIdentityService.match(/export async function generateCoverLetter[\s\S]*?export async function generateLinkedInProfile/)?.[0] ?? "";
+const linkedInGeneration = professionalIdentityService.match(/export async function generateLinkedInProfile[\s\S]*?export async function generateRecruiterMessage/)?.[0] ?? "";
 
 const runtimeModuleCache = new Map();
 function loadProductionTsModule(filePath) {
@@ -396,6 +413,8 @@ function loadProductionTsModule(filePath) {
 
 const routeRuntime = loadProductionTsModule("lib/navigation/routes.ts");
 const authRoutingRuntime = loadProductionTsModule("lib/navigation/auth-routing.ts");
+const permissionsRuntime = loadProductionTsModule("lib/navigation/permissions.ts");
+const coreDocumentDownloadAccessRuntime = loadProductionTsModule("lib/access/core-document-download-access.ts");
 const supabaseConfigRuntime = loadProductionTsModule("lib/supabase/config.ts");
 const authFormErrorsRuntime = loadProductionTsModule("lib/auth/auth-form-errors.ts");
 const languagePreferenceRuntime = loadProductionTsModule("lib/language/language-preferences.ts");
@@ -405,6 +424,11 @@ const authorizationRuntime = loadProductionTsModule("lib/access/authorization.ts
 const authSessionRuntime = loadProductionTsModule("lib/auth/session-safety.ts");
 const currentSituationRuntime = loadProductionTsModule("lib/professional-identity/current-situation.ts");
 const professionalIdentityCompletionRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-completion.ts");
+const professionalIdentityExperienceRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-experience.ts");
+const professionalIdentityCvModelRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-cv-model.ts");
+const professionalIdentityCoverLetterModelRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-cover-letter-model.ts");
+const professionalIdentityLinkedInModelRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-linkedin-model.ts");
+const documentDownloadsRuntime = loadProductionTsModule("components/professional-identity/document-downloads.ts");
 const professionalIdentityWriteRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-write-service.ts");
 const employmentIntelligenceDomainRuntime = loadProductionTsModule("lib/employment-intelligence/domain/index.ts");
 const employmentIntelligenceEngineRuntime = loadProductionTsModule("lib/employment-intelligence/engine/index.ts");
@@ -442,6 +466,11 @@ assert.equal(authFormErrorsRuntime.isAuthNetworkFailure(new TypeError("NetworkEr
 assert.equal(authFormErrorsRuntime.friendlyAuthError(new TypeError("NetworkError when attempting to fetch resource."), "signup"), authFormErrorsRuntime.AUTH_NETWORK_USER_MESSAGE, "Signup network failures must use a safe user-facing retry message.");
 assert.equal(authFormErrorsRuntime.friendlyAuthError(new TypeError("Failed to fetch"), "login"), authFormErrorsRuntime.AUTH_NETWORK_USER_MESSAGE, "Login network failures must use the same safe retry message.");
 assert.doesNotMatch(authFormErrorsRuntime.friendlyAuthError(new TypeError("NetworkError when attempting to fetch resource."), "signup"), /NetworkError|supabase\.co|eyJ|sb_publishable_/i, "Auth network errors must not render raw browser internals or key-like values.");
+assert.match(supabaseBrowserClient, /export function createPathzyAuthFetch/, "Supabase browser auth must use a shared PATHZY fetch boundary.");
+assert.match(supabaseBrowserClient, /global:\s*{\s*fetch:\s*createPathzyAuthFetch\(\)/s, "Supabase browser auth must install the shared fetch boundary.");
+assert.match(supabaseBrowserClient, /AUTH_FETCH_TIMEOUT_MS/, "Supabase browser auth must bound network failures instead of leaving login loading indefinitely.");
+assert.match(supabaseBrowserClient, /new Response\(/, "Supabase browser auth network failures must be converted to normal auth responses before Supabase internals log raw fetch errors.");
+assert.doesNotMatch(supabaseBrowserClient, /console\.error/, "Supabase browser auth must not emit raw network errors through console.error.");
 assert.equal(languagePreferenceRuntime.suggestedLanguageFromBrowser("fr-ZA,fr;q=0.9,en;q=0.8"), "fr", "Browser French should suggest French without using flags.");
 assert.equal(languagePreferenceRuntime.normalizeSupportedLanguage("fr-FR"), "fr", "Regional French locales must normalize to the supported French dictionary key.");
 assert.equal(languagePreferenceRuntime.normalizeSupportedLanguage("fr-CA"), "fr", "Canadian French locales must normalize to the supported French dictionary key.");
@@ -546,6 +575,21 @@ assert.equal(phase3bEmptyProfile.missingInformation.includes("WORK_AUTHORIZATION
 assert.equal(phase3bEmptyProfile.barriers.some((barrier) => barrier.definitionCode === "WORK_AUTHORIZATION_UNCERTAINTY"), true, "Phase 3B must separate work eligibility uncertainty from general employability.");
 assert.equal(phase3bEmptyProfile.engineVersion, employmentIntelligenceEngineRuntime.EMPLOYMENT_INTELLIGENCE_ENGINE_VERSION_3E, "Generated profiles must include the current deterministic engine version.");
 assert.equal(phase3bEmptyProfile.staleStatus, "CURRENT", "Phase 3B generated profiles must carry stale status.");
+assert.match(employmentIntelligenceProfileContract, /candidateContext: CandidateContextAssessment;/, "Employment Intelligence Profile must expose reusable candidate classification.");
+assert.match(employmentIntelligenceProfileContract, /careerDirection: CareerDirection;/, "Employment Intelligence Profile must expose grounded career direction.");
+assert.match(employmentIntelligenceProfileContract, /skillIntelligence: SkillIntelligenceSummary;/, "Employment Intelligence Profile must expose normalized skill evidence.");
+assert.match(employmentIntelligenceProfileContract, /opportunityMatcherContract: OpportunityMatcherContract;/, "Employment Intelligence Profile must expose a future Opportunity Matcher contract.");
+assert.match(employmentOpportunityMatchingContract, /export type NormalizedJobOpportunity[\s\S]*closingDate\?: string;[\s\S]*workAuthorizationRequirements\?: string\[]/, "Employment Intelligence must define the normalized future job opportunity contract.");
+assert.match(employmentOpportunityMatchingContract, /eligibilityStatus[\s\S]*suitabilityScore[\s\S]*criticalBarriers[\s\S]*recommendedAction/, "Opportunity matching must separate hard eligibility from professional suitability.");
+assert.match(employmentSharedIntelligenceEngine, /export function classifyCandidateContext/, "Shared Employment Intelligence engine must classify candidate context outside page UI.");
+assert.match(employmentSharedIntelligenceEngine, /export function deriveCareerDirections/, "Shared Employment Intelligence engine must derive career direction for downstream jobs and documents.");
+assert.match(employmentSharedIntelligenceEngine, /export function buildSkillIntelligence/, "Shared Employment Intelligence engine must normalize skill evidence.");
+assert.match(employmentSharedIntelligenceEngine, /export function explainOpportunityMatch/, "Shared Employment Intelligence engine must expose explainable opportunity matching.");
+assert.match(employmentIntelligenceEngineSource, /classifyCandidateContext[\s\S]*deriveCareerDirections[\s\S]*buildSkillIntelligence[\s\S]*buildOpportunityMatcherContract/, "Employment Intelligence generation must populate the shared opportunity-facing profile fields.");
+assert.equal(Array.isArray(phase3bEmptyProfile.candidateContext.primaryContexts), true, "Candidate classification must be present on generated profiles.");
+assert.equal(phase3bEmptyProfile.careerDirection.primaryTargets.length > 0, true, "Career direction must remain present even when provisional.");
+assert.equal(phase3bEmptyProfile.skillIntelligence.normalizedSkills.length, 0, "Empty profiles must not invent skills.");
+assert.equal(phase3bEmptyProfile.opportunityMatcherContract.consumes, "EmploymentIntelligenceProfile", "Jobs must consume Employment Intelligence rather than recalculating Professional Identity.");
 assertCanonicalCodes(phase3bEmptyProfile.readinessDimensions.map((dimension) => dimension.key), "Phase 3B readiness output must use canonical dimension codes.");
 assertCanonicalCodes(phase3bEmptyProfile.pathwayRecommendations.map((pathway) => pathway.pathwayCode), "Phase 3B pathway output must use canonical pathway codes.");
 assertUniqueValues(phase3bEmptyProfile.pathwayRecommendations.map((pathway) => pathway.pathwayCode), "Phase 3B pathway recommendations must not duplicate pathways.");
@@ -559,6 +603,58 @@ assert.deepEqual(
   "Phase 3B generated profiles must satisfy Employment Intelligence collection invariants."
 );
 assert.equal(phase3bEmptyProfile.readinessDimensions.every((dimension) => Number.isFinite(dimension.optionalScore ?? 0)), true, "Phase 3B readiness dimensions must never emit NaN scores.");
+const phase3bGraduateProfile = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(phase3bFixtures.graduateNoExperience, phase3bContext);
+assert.equal(phase3bGraduateProfile.candidateContext.primaryContexts.includes("GRADUATE_OR_EMERGING_TALENT"), true, "Graduate/no-experience candidates must be classified without treating them as automatically unqualified.");
+assert.equal(phase3bGraduateProfile.candidateContext.primaryContexts.includes("NO_FORMAL_EXPERIENCE"), true, "No formal experience must be a context signal, not a negative conclusion.");
+assert.equal(phase3bGraduateProfile.skillIntelligence.normalizedSkills.some((skill) => skill.canonicalName.toLowerCase().includes("spreadsheet")), true, "Graduate skills must be normalized from Professional Identity.");
+const phase3bExecutiveProfile = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(phase3bFixtures.seniorExecutive, phase3bContext);
+assert.equal(phase3bExecutiveProfile.candidateContext.primaryContexts.includes("EXPERIENCED_PROFESSIONAL"), true, "Experienced candidates must receive different candidate-context weighting.");
+assert.equal(phase3bExecutiveProfile.candidateContext.weightingNotes.some((note) => /Experience, achievements and specialization/.test(note)), true, "Experienced candidate weighting must privilege experience and achievements.");
+const phase3bTechnicalProfile = employmentIntelligenceEngineRuntime.generateEmploymentIntelligence(phase3bFixtures.technicalProjects, phase3bContext);
+assert.equal(phase3bTechnicalProfile.skillIntelligence.normalizedSkills.some((skill) => skill.canonicalName === "SQL" && skill.evidenceStates.includes("PROJECT_EVIDENCED")), true, "Skill intelligence must deduplicate equivalent skills and retain project evidence.");
+assert.equal(phase3bTechnicalProfile.skillIntelligence.skillsNeedingEvidence.every((skill) => skill.unsupportedClaim), true, "Unsupported skills must stay marked as needing evidence.");
+const blockedLicenceMatch = employmentIntelligenceEngineRuntime.explainOpportunityMatch({
+  opportunity: {
+    id: "security-role",
+    source: "fixture",
+    title: "Security Officer",
+    employer: "Example Employer",
+    status: "ACTIVE",
+    requirements: [{ id: "licence", label: "Security registration", category: "LICENCE", importance: "MANDATORY" }],
+    requiredSkills: [],
+    preferredSkills: [],
+    requiredEducation: [],
+    licences: ["Security registration"],
+    languages: []
+  },
+  careerDirection: phase3bGraduateProfile.careerDirection,
+  skillIntelligence: phase3bGraduateProfile.skillIntelligence,
+  missingInformation: [],
+  evidenceSummary: { assessments: [], evidenceGaps: [], strongestSupportedAssets: phase3bGraduateProfile.strengths, unsupportedClaims: [], conflicts: [], overallEvidenceConfidence: phase3bGraduateProfile.confidence }
+});
+assert.notEqual(blockedLicenceMatch.eligibilityStatus, "ELIGIBLE", "Mandatory missing licence must affect eligibility separately from suitability.");
+assert.equal(Number.isFinite(blockedLicenceMatch.suitabilityScore), true, "Opportunity suitability may still be scored while eligibility is conditional or blocked.");
+assert.equal(blockedLicenceMatch.reasons.some((reason) => /Eligibility and suitability are evaluated separately/.test(reason)), true, "Opportunity matches must explain eligibility and suitability separately.");
+const expiredMatch = employmentIntelligenceEngineRuntime.explainOpportunityMatch({
+  opportunity: {
+    id: "expired-role",
+    source: "fixture",
+    title: "Junior Analyst",
+    employer: "Example Employer",
+    status: "EXPIRED",
+    requirements: [],
+    requiredSkills: ["spreadsheet analysis"],
+    preferredSkills: [],
+    requiredEducation: [],
+    licences: [],
+    languages: []
+  },
+  careerDirection: phase3bGraduateProfile.careerDirection,
+  skillIntelligence: phase3bGraduateProfile.skillIntelligence,
+  missingInformation: [],
+  evidenceSummary: { assessments: [], evidenceGaps: [], strongestSupportedAssets: phase3bGraduateProfile.strengths, unsupportedClaims: [], conflicts: [], overallEvidenceConfidence: phase3bGraduateProfile.confidence }
+});
+assert.equal(expiredMatch.recommendedAction, "DO_NOT_RECOMMEND_NOW", "Expired opportunities must not be recommended as current opportunities.");
 const duplicateDiagnosisEvidence = [
   {
     id: "diagnosis-experience",
@@ -844,6 +940,267 @@ const completeReadinessDiscovery = {
     employment_readiness_check_completed: true
   }
 };
+const languageNeutralAnswers = {
+  ...completeReadinessDiscovery.answers,
+  languages: [],
+  interface_language: "en",
+  professional_document_language: "same_as_interface"
+};
+const englishCompletionValues = professionalIdentityCompletionRuntime.professionalIdentityValuesFromSources(
+  { ...completeIdentityProfile, language: "english" },
+  { answers: languageNeutralAnswers },
+  { email: "nicka@example.com" }
+);
+const frenchCompletionValues = professionalIdentityCompletionRuntime.professionalIdentityValuesFromSources(
+  { ...completeIdentityProfile, language: "french" },
+  { answers: { ...languageNeutralAnswers, interface_language: "fr" } },
+  { email: "nicka@example.com" }
+);
+const englishCompletion = professionalIdentityCompletionRuntime.calculateProfessionalIdentityCompletion(englishCompletionValues);
+const frenchCompletion = professionalIdentityCompletionRuntime.calculateProfessionalIdentityCompletion(frenchCompletionValues);
+const englishMissingSectionIds = englishCompletion.sections.filter((section) => !section.complete).map((section) => section.key);
+const frenchMissingSectionIds = frenchCompletion.sections.filter((section) => !section.complete).map((section) => section.key);
+assert.equal(englishCompletion.percentage, frenchCompletion.percentage, "The same canonical Professional Identity must have the same completion percentage in English and French.");
+assert.equal(englishCompletion.requiredChecks.filter((check) => !check.complete).length, frenchCompletion.requiredChecks.filter((check) => !check.complete).length, "The same canonical Professional Identity must have the same required-missing count in English and French.");
+assert.deepEqual(englishMissingSectionIds, frenchMissingSectionIds, "The same canonical Professional Identity must have the same missing section IDs in English and French.");
+assert.equal(englishCompletionValues.languages.length, 0, "Interface/profile language must not be treated as the professional spoken-language section.");
+assert.equal(frenchCompletionValues.languages.length, 0, "French interface/profile language must not be treated as the professional spoken-language section.");
+const professionalIdentityCvValues = professionalIdentityCompletionRuntime.professionalIdentityValuesFromSources(
+  {
+    ...completeIdentityProfile,
+    full_name: "Nicka Candida",
+    phone: "+27 11 000 0000",
+    linkedin_url: "https://linkedin.com/in/nicka",
+    portfolio_url: "https://portfolio.example"
+  },
+  {
+    answers: {
+      ...completeReadinessDiscovery.answers,
+      professional_summary: "Early career data analyst focused on practical reporting.",
+      education_history: ["Diploma in Information Technology"],
+      experience_history: ["Data intern | Example Company | Built weekly reports"],
+      skills: ["Excel", "SQL", "Communication"],
+      projects_history: ["Community dashboard project"],
+      achievements: ["Improved report turnaround"],
+      certificates_list: ["Google Data Analytics"],
+      languages: ["English | Professional"]
+    }
+  },
+  { email: "nicka@example.com" }
+);
+const professionalIdentityCv = professionalIdentityCvModelRuntime.cvModelFromProfessionalIdentity(professionalIdentityCvValues);
+assert.equal(professionalIdentityCv.fullName, "Nicka Candida", "Professional Identity values must automatically populate the CV full name.");
+assert.equal(professionalIdentityCv.targetRole, "Data Analyst", "Professional Identity career goal must automatically populate the CV target role.");
+assert.ok(professionalIdentityCv.coreSkills.includes("SQL"), "Professional Identity skills must automatically populate the CV skill model.");
+assert.equal(professionalIdentityCv.professionalExperience[0]?.role, "Data intern", "Professional Identity experience role must populate the CV role field.");
+assert.equal(professionalIdentityCv.professionalExperience[0]?.company, "Example Company", "Professional Identity experience company must populate the CV company field.");
+assert.deepEqual(Array.from(professionalIdentityCv.professionalExperience[0]?.achievements ?? []), ["Built weekly reports"], "Professional Identity experience evidence must populate CV achievements without flattening into the role.");
+const professionalIdentityCvDocument = professionalIdentityCvModelRuntime.professionalIdentityCvDocument(professionalIdentityCvValues, { templateName: "Modern ATS", lastUpdated: "2026-08-24T10:00:00.000Z" });
+assert.equal(professionalIdentityCvDocument.contentJson.source, "professional_identity", "Automatic CV documents must mark Professional Identity as their source.");
+assert.deepEqual(professionalIdentityCvDocument.contentJson.cvModel, professionalIdentityCv, "Automatic CV preview and export must use the same normalized CV model derived from Professional Identity.");
+assert.equal(professionalIdentityCvModelRuntime.professionalIdentityHrefForCvSection("Education"), "/professional-identity?section=education&returnTo=%2Fprofessional-identity%2Fcv", "CV section edit links must preserve a route back to the CV workspace.");
+const twoExperienceFixture = [
+  {
+    id: "exp-pathzy-founder",
+    role: "Founder & Product Owner",
+    company: "PATHZY",
+    location: "Johannesburg",
+    startDate: "2025",
+    endDate: "Present",
+    description: "Building an employment operating system for guided career support.",
+    achievements: ["Designed the Professional Identity workflow."]
+  },
+  {
+    id: "exp-avolito-marketing",
+    role: "Co-founder & Marketing Lead",
+    company: "AVOLITO Beverages",
+    location: "Johannesburg",
+    startDate: "2026",
+    endDate: "Present",
+    description: "Coordinating launch planning, brand messaging and early marketing operations.",
+    achievements: ["Prepared go-to-market content."]
+  }
+];
+const structuredIdentityValues = professionalIdentityCompletionRuntime.normalizeProfessionalIdentityCompletionValues({
+  ...professionalIdentityCvValues,
+  experience: twoExperienceFixture,
+  projects: ["PATHZY product workspace"],
+  achievements: ["Prepared go-to-market content", "Built launch checklist"],
+  certificates: ["Product strategy course", "Marketing certificate"],
+  education: ["Diploma in Business | Entrepreneurship | Example College | 2024"]
+});
+const normalizedExperienceEntries = professionalIdentityExperienceRuntime.normalizeProfessionalIdentityExperienceEntries(structuredIdentityValues.experience);
+assert.equal(normalizedExperienceEntries.length, 2, "Two Professional Identity experiences must remain two normalized records.");
+assert.equal(normalizedExperienceEntries.map((entry) => entry.role).join(" -> "), "Founder & Product Owner -> Co-founder & Marketing Lead", "Experience ordering must be preserved.");
+assert.equal(normalizedExperienceEntries.map((entry) => entry.company).join(" -> "), "PATHZY -> AVOLITO Beverages", "Each experience company must stay attached to the correct role.");
+assert.equal(normalizedExperienceEntries.map((entry) => professionalIdentityExperienceRuntime.experienceEntryDateLabel(entry)).join(" -> "), "2025 - Present -> 2026 - Present", "Each experience date range must stay attached to the correct role.");
+const duplicateLegacyExperienceFixture = professionalIdentityExperienceRuntime.normalizeProfessionalIdentityExperienceEntries([
+  {
+    id: "exp-pathzy-founder",
+    role: "Founder & Product Owner",
+    company: "PATHZY",
+    location: "Johannesburg",
+    startDate: "2025",
+    endDate: "Present",
+    description: "Founder & Product Owner - PATHZY - 2025 - Present - Building an employment operating system for guided career support.",
+    sourceText: "Founder & Product Owner | PATHZY | Johannesburg | 2025 - Present | Building an employment operating system for guided career support.",
+    achievements: [
+      "Founder & Product Owner | PATHZY | Johannesburg | 2025 - Present | Building an employment operating system for guided career support.",
+      "Designed the Professional Identity workflow."
+    ]
+  },
+  {
+    id: "exp-avolito-marketing",
+    role: "Co-founder & Marketing Lead",
+    company: "AVOLITO Beverages",
+    location: "Johannesburg",
+    startDate: "2026",
+    endDate: "Present",
+    raw: "Co-founder & Marketing Lead | AVOLITO Beverages | Johannesburg | 2026 - Present | Coordinating launch planning, brand messaging and early marketing operations.",
+    achievements: ["Prepared go-to-market content."]
+  }
+]);
+assert.equal(duplicateLegacyExperienceFixture.length, 2, "Legacy composite sourceText/raw fields must not create extra Professional Identity experience records.");
+assert.equal(duplicateLegacyExperienceFixture[0].description, "Building an employment operating system for guided career support.", "Professional Identity Review must not show a second grey duplicate paragraph from structured Experience 1.");
+assert.deepEqual(Array.from(duplicateLegacyExperienceFixture[0].achievements), ["Designed the Professional Identity workflow."], "Composite legacy achievements must be removed while genuine achievements remain.");
+assert.equal(duplicateLegacyExperienceFixture[1].description, "Coordinating launch planning, brand messaging and early marketing operations.", "A raw legacy record may fill missing description without duplicating role/company/dates.");
+const staleLegacyAfterSaveValues = professionalIdentityCompletionRuntime.professionalIdentityValuesFromSources(
+  completeIdentityProfile,
+  {
+    answers: {
+      ...completeReadinessDiscovery.answers,
+      experience_entries: [
+        {
+          id: "exp-new-current",
+          role: "Updated Product Lead",
+          company: "New PATHZY Studio",
+          location: "Johannesburg",
+          startDate: "2026",
+          endDate: "Present",
+          description: "Leading the refreshed Professional Identity experience after the latest save.",
+          achievements: ["Improved source-of-truth persistence."]
+        }
+      ],
+      experience_history: ["Old Product Assistant | Legacy Company | 2024 - 2025 | This value should not render after save."],
+      personal_background: "Old Product Assistant | Legacy Company | 2024 - 2025 | This value should not render after save."
+    }
+  },
+  { email: "nicka@example.com" }
+);
+const savedExperienceEntries = professionalIdentityExperienceRuntime.normalizeProfessionalIdentityExperienceEntries(staleLegacyAfterSaveValues.experience);
+assert.equal(savedExperienceEntries.length, 1, "After saving edited Experience, Review must read the latest canonical entry rather than old legacy fields.");
+assert.equal(savedExperienceEntries[0].role, "Updated Product Lead", "Review must show the new saved Experience value immediately.");
+assert.equal(savedExperienceEntries.some((entry) => /Old Product Assistant|Legacy Company/.test(JSON.stringify(entry))), false, "Review must not render stale pre-edit Experience values after save.");
+const staleLegacyCvModel = professionalIdentityCvModelRuntime.cvModelFromProfessionalIdentity(staleLegacyAfterSaveValues);
+const staleLegacyCvHtml = documentDownloadsRuntime.renderCvHtmlFromModel(staleLegacyCvModel, "PATHZY Signature Professional");
+assert.match(staleLegacyCvHtml, /Updated Product Lead[\s\S]*New PATHZY Studio/, "CV projection must show the new saved Experience value after returnTo navigation.");
+assert.doesNotMatch(staleLegacyCvHtml, /Old Product Assistant|Legacy Company/, "CV projection must not show stale pre-edit Experience values after save.");
+const staleLegacyLinkedIn = professionalIdentityLinkedInModelRuntime.linkedinProfileModelFromProfessionalIdentity(staleLegacyAfterSaveValues, { language: "english" });
+assert.equal(staleLegacyLinkedIn.experience[0]?.role, "Updated Product Lead", "LinkedIn projection must show the new saved Experience value after returnTo navigation.");
+assert.equal(staleLegacyLinkedIn.experience.some((entry) => /Old Product Assistant|Legacy Company/.test(JSON.stringify(entry))), false, "LinkedIn projection must not show stale pre-edit Experience values after save.");
+assert.match(professionalIdentityExperience, /export type ProfessionalIdentityExperienceEntry = \{[\s\S]*role: string;[\s\S]*company: string;[\s\S]*description: string;[\s\S]*achievements: string\[\]/, "Professional Identity must define a structured shared ExperienceEntry contract.");
+assert.match(professionalIdentityPage, /function renderReviewValue[\s\S]*normalizeProfessionalIdentityExperienceEntries\(section\.value\)[\s\S]*experienceEntryDateLabel\(entry\)[\s\S]*Experience[\s\S]*index \+ 1/, "Review My Information must render Professional Identity experience as separate entries instead of one joined paragraph.");
+const structuredCvModel = professionalIdentityCvModelRuntime.cvModelFromProfessionalIdentity(structuredIdentityValues);
+assert.equal(structuredCvModel.professionalExperience.length, 2, "Two Professional Identity experiences must become two CV experience records.");
+assert.equal(structuredCvModel.professionalExperience.map((entry) => entry.role).join(" -> "), "Founder & Product Owner -> Co-founder & Marketing Lead", "CV experience ordering must be preserved.");
+assert.equal(structuredCvModel.professionalExperience[0].achievements.includes("Building an employment operating system for guided career support."), true, "CV Experience 1 description must stay attached to Experience 1.");
+assert.equal(structuredCvModel.professionalExperience[1].achievements.includes("Coordinating launch planning, brand messaging and early marketing operations."), true, "CV Experience 2 description must stay attached to Experience 2.");
+const structuredCvHtml = documentDownloadsRuntime.renderCvHtmlFromModel(structuredCvModel, "PATHZY Signature Professional");
+assert.match(structuredCvHtml, /Founder &amp; Product Owner[\s\S]*PATHZY \| Johannesburg \| 2025 \| Present[\s\S]*Building an employment operating system[\s\S]*Co-founder &amp; Marketing Lead[\s\S]*AVOLITO Beverages \| Johannesburg \| 2026 \| Present[\s\S]*Coordinating launch planning/, "Designed CV preview must render each Professional Identity experience separately.");
+assert.equal((structuredCvHtml.match(/Founder &amp; Product Owner/g) ?? []).length, 1, "CV must not duplicate Experience 1.");
+assert.equal((structuredCvHtml.match(/Co-founder &amp; Marketing Lead/g) ?? []).length, 1, "CV must not duplicate Experience 2.");
+const longStructuredCvHtml = documentDownloadsRuntime.renderCvHtmlFromModel({
+  ...structuredCvModel,
+  professionalExperience: Array.from({ length: 14 }, (_, index) => ({
+    ...structuredCvModel.professionalExperience[index % structuredCvModel.professionalExperience.length],
+    role: `Structured Role ${index + 1}`,
+    achievements: ["Managed a long realistic responsibility narrative with enough detail to require natural document flow across the A4 preview without overlap or clipping."]
+  }))
+}, "PATHZY Signature Professional");
+assert.ok((longStructuredCvHtml.match(/class="cv-render-page-frame"/g) ?? []).length > 1, "Long structured Professional Identity experience must reflow to additional CV pages.");
+const problematicCvFixture = {
+  ...professionalIdentityCv,
+  fullName: "Florent Kalanda",
+  targetRole: "Laboratory Technician",
+  email: "florent@example.com",
+  phone: "+27 11 222 3333",
+  city: "Johannesburg",
+  country: "South Africa",
+  professionalSummary: "Laboratory professional with practical experience in sample processing, records, quality procedures and multidisciplinary team support.",
+  coreSkills: ["Sample processing", "Quality control", "Record keeping", "Team communication", "Safety procedures", "Inventory support"],
+  technicalSkills: ["Microscopy", "Laboratory information systems", "Specimen preparation", "Equipment maintenance"],
+  professionalExperience: [
+    {
+      role: "Laboratory Technician | Target Laboratory | Johannesburg | 2022 - 2024 | Prepared and processed samples while maintaining quality records for supervisor review | Supported equipment checks and daily laboratory workflow coordination",
+      company: "",
+      location: "",
+      startDate: "",
+      endDate: "",
+      current: false,
+      achievements: []
+    }
+  ],
+  education: [
+    { qualification: "BTech degree in ICT", institution: "Vaal University of Technology", fieldOfStudy: "Information and Communication Technology | Information Technology", year: "2021", status: "Completed" }
+  ],
+  certifications: [
+    { name: "Good Laboratory Practice", provider: "Training Provider", year: "2023", credentialUrl: "REF. NO. 12345" }
+  ],
+  references: { availableUponRequest: true, items: [] }
+};
+const signatureCvHtml = documentDownloadsRuntime.renderCvHtmlFromModel(problematicCvFixture, "PATHZY Signature Professional");
+const signatureCvPdf = documentDownloadsRuntime.simplePdfDocumentFromModel("Signature CV", problematicCvFixture, "PATHZY Signature Professional");
+assert.match(signatureCvHtml, /data-pathzy-cv-document-root="candidate-cv-only"/, "Designed Preview must render inside a dedicated candidate CV document root.");
+assert.equal((signatureCvHtml.match(/class="cv-render-page-frame"/g) ?? []).length, 1, "A normal one-page Signature CV fixture must produce one real A4 page frame.");
+assert.match(signatureCvHtml, /Laboratory Technician[\s\S]*Target Laboratory \| Johannesburg \| 2022 - 2024[\s\S]*Prepared and processed samples/, "Experience must render role, metadata and body evidence as separate structured lines.");
+assert.doesNotMatch(signatureCvHtml, /Laboratory Technician \| Target Laboratory \| Johannesburg \| 2022 - 2024 \| Prepared/, "Experience renderer must not collapse role, date and body copy into one uncontrolled pipe-delimited line.");
+assert.match(signatureCvHtml, /BTech - Information &amp; Communication Technology[\s\S]*Vaal University of Technology \| 2021 \| Completed/, "Education must render normalized qualification and institution metadata separately.");
+assert.doesNotMatch(signatureCvHtml, /Information and Communication Technology \| Information Technology/, "Education normalization must suppress overlapping field-of-study duplicates.");
+assert.equal((signatureCvHtml.match(/>EDUCATION<\/div>/g) ?? []).length, 1, "Education must appear exactly once in the Signature CV document.");
+assert.equal((signatureCvHtml.match(/>CERTIFICATIONS<\/div>/g) ?? []).length, 1, "Certifications must appear exactly once in the Signature CV document.");
+assert.equal((signatureCvHtml.match(/LinkedIn:/g) ?? []).length, 1, "LinkedIn must render once in the recruiter-facing header and must not be duplicated in side links.");
+assert.doesNotMatch(signatureCvHtml, /Employment Center|Applications|Interview Preparation|Career Analytics|Settings|Logout|Your Mentor/, "Application navigation must never render inside the candidate CV preview root.");
+assert.doesNotMatch(signatureCvPdf, /Employment Center|Applications|Interview Preparation|Career Analytics|Settings|Logout|Your Mentor/, "PDF export must never contain PATHZY application chrome.");
+assert.doesNotMatch(signatureCvHtml, /salary|employment diagnosis|PATHZY score|work authorization|nationality/i, "Internal employment intelligence and sensitive profile fields must be excluded from the recruiter-facing Signature CV by default.");
+const unseparatedSignatureCvHtml = documentDownloadsRuntime.renderCvHtmlFromModel({
+  ...problematicCvFixture,
+  coreSkills: ["Communication", "Communication"],
+  professionalSkills: ["Communication", "Record keeping"],
+  technicalSkills: ["Communication", "Laboratory information systems"],
+  professionalExperience: [
+    {
+      role: "Co-founder & Marketing Lead AVOLITO Beverages 2026 Present Contributing to the development of a beverage business through marketing coordination and launch planning.",
+      company: "",
+      location: "",
+      startDate: "",
+      endDate: "",
+      current: false,
+      achievements: []
+    }
+  ],
+  projects: [],
+  achievements: []
+}, "PATHZY Signature Professional");
+assert.match(unseparatedSignatureCvHtml, /Co-founder &amp; Marketing Lead[\s\S]*AVOLITO Beverages \| 2026 - Present[\s\S]*Contributing to the development/, "Unseparated imported experience must be parsed into role, organization, date and evidence lines.");
+assert.doesNotMatch(unseparatedSignatureCvHtml, /Co-founder &amp; Marketing Lead AVOLITO Beverages 2026 Present Contributing/, "Unseparated imported experience must not render as one collapsed title line.");
+assert.equal((unseparatedSignatureCvHtml.match(/>Communication<\/div>/g) ?? []).length, 1, "Duplicate skills from the canonical model must render once in the Signature CV.");
+assert.doesNotMatch(unseparatedSignatureCvHtml, />PROJECTS<\/div>|>ACHIEVEMENTS<\/div>/, "Empty optional Signature CV sections must not render placeholder headings.");
+const longSignatureCvHtml = documentDownloadsRuntime.renderCvHtmlFromModel({
+  ...problematicCvFixture,
+  professionalExperience: Array.from({ length: 10 }, (_, index) => ({
+    role: `Operations Coordinator ${index + 1}`,
+    company: "Example Organisation",
+    location: "Remote",
+    startDate: "2020",
+    endDate: "2024",
+    current: false,
+    achievements: [
+      "Coordinated detailed weekly reporting, stakeholder updates, records, schedules, issue tracking and follow-through across a busy operational environment with changing priorities."
+    ]
+  }))
+}, "PATHZY Signature Professional");
+assert.ok((longSignatureCvHtml.match(/class="cv-render-page-frame"/g) ?? []).length > 1, "Long Signature CV content must create additional A4 pages instead of overlapping or compressing text.");
+assert.match(professionalIdentityTool, /border border-\[#f2d3c2\]\/16 bg-\[#121411\] p-5 text-\[#fffaf2\][\s\S]*Your CV is ready[\s\S]*text-\[#fffaf2\][\s\S]*Create your cover letter[\s\S]*text-\[#e7ded0\]\/82/, "The CV next-step card must keep readable light text on its dark premium surface.");
 const completeDiagnosisDiscovery = {
   answers: {
     ...completeReadinessDiscovery.answers,
@@ -973,10 +1330,16 @@ const routeDecisionCases = [
     destination: "/professional-identity?finish=1"
   },
   {
-    name: "diagnosis pending",
+    name: "returning completed setup goes home",
     input: { authenticated: true, profile: { ...completeIdentityProfile, onboarding_completed: true }, discovery: completeReadinessDiscovery, diagnosisComplete: false },
-    state: "diagnosis_pending",
-    destination: "/discovery?reason=setup-complete"
+    state: "home_ready",
+    destination: "/roadmap"
+  },
+  {
+    name: "post setup completion cannot fall back to public landing",
+    input: { authenticated: true, profile: { ...completeIdentityProfile, onboarding_completed: true }, discovery: completeReadinessDiscovery, requestedDestination: "/" },
+    state: "home_ready",
+    destination: "/roadmap"
   },
   {
     name: "home ready",
@@ -1032,6 +1395,12 @@ const routeDecisionCases = [
     input: { authenticated: true, profile: { ...completeIdentityProfile, onboarding_completed: true }, discovery: completeDiagnosisDiscovery, requestedDestination: "https://evil.example/app" },
     state: "home_ready",
     destination: "/roadmap"
+  },
+  {
+    name: "home ready public landing return",
+    input: { authenticated: true, profile: { ...completeIdentityProfile, onboarding_completed: true }, discovery: completeDiagnosisDiscovery, requestedDestination: "/" },
+    state: "home_ready",
+    destination: "/roadmap"
   }
 ];
 for (const routeCase of routeDecisionCases) {
@@ -1045,6 +1414,11 @@ assert.equal(
   authRoutingRuntime.resolvePathzyNextRoute({ authenticated: true, profile: completeIdentityProfile, discovery: { answers: { ...completeReadinessDiscovery.answers, skills: [], professional_summary: "" } } }).currentState,
   "identity_in_progress",
   "Missing required fields must block setup."
+);
+assert.equal(
+  authRoutingRuntime.resolvePathzyNextRoute({ authenticated: true, profile: { ...completeIdentityProfile, onboarding_completed: true, career_goal: "" }, discovery: completeReadinessDiscovery }).destination,
+  "/roadmap",
+  "Returning users with completed setup must go to Home even when Professional Identity can still be improved."
 );
 const availabilityWithoutPreferenceDecision = authRoutingRuntime.resolvePathzyNextRoute({
   authenticated: true,
@@ -1151,12 +1525,13 @@ assert.match(authRouting, /currentState === "document_language_pending"[\s\S]*pr
 assert.match(authRouting, /currentState === "coach_intro_pending"[\s\S]*professionalIdentityOnboardingStage\("careerCoach"\)/, "Users who completed language setup must resume at Career Coach introduction.");
 assert.match(authRouting, /resolvePathzyNextRoute[\s\S]*routeBuilders\.professionalIdentityReview\(\)/, "Required-complete users must be routed to Review My Information before Home.");
 assert.match(authRouting, /safePostAuthDestination\(input\.requestedDestination, appRoutes\.authenticatedHome\)/, "Complete users must return to a safe intended route or Home.");
+assert.match(authRouting, /pathname === appRoutes\.home[\s\S]*return fallback/, "Authenticated post-setup routing must never treat the public landing page as a valid completed-user destination.");
 assert.match(authRouting, /routeMatches\(destinationPathname, appRoutes\.billing\)[\s\S]*appRoutes\.foundingMembers[\s\S]*appRoutes\.pricing[\s\S]*return appRoutes\.authenticatedHome/, "Founder, pricing, and billing routes must not intercept post-auth defaults.");
 assert.match(supabaseMiddleware, /const intendedPath = `\$\{request\.nextUrl\.pathname\}\$\{request\.nextUrl\.search\}`/, "Protected route redirects must preserve the intended path and query string.");
 assert.match(supabaseMiddleware, /isProtected && user && path !== appRoutes\.professionalIdentity[\s\S]*getPostAuthDestination\(supabase, user, intendedPath\)/, "Protected authenticated routes must use centralized Professional Identity completion coverage.");
 assert.match(professionalIdentityPage, /searchParams[\s\S]*resolvedSection = params\.section \?\? \(routeDecision\.currentState === "identity_in_progress" \? routeDecision\.resumeSection : undefined\)[\s\S]*initialSection=\{resolvedSection\}/, "Professional Identity must pass the canonical resume section to the existing editor.");
 assert.match(professionalIdentityPage, /professionalIdentityIntroStages[\s\S]*"welcome"[\s\S]*"interfaceLanguage"[\s\S]*"documentLanguage"[\s\S]*"careerCoach"[\s\S]*"professionalIdentityIntroduction"/, "Professional Identity page must recognize every focused onboarding stage.");
-assert.match(professionalIdentityPage, /routeDecision = resolvePathzyNextRoute[\s\S]*setupRouteStates[\s\S]*redirect\(routeDecision\.destination\)/, "Professional Identity page must redirect new or incomplete users to the canonical stage before rendering the returning-user overview.");
+assert.match(professionalIdentityPage, /routeDecision = resolvePathzyNextRoute[\s\S]*setupRouteStates[\s\S]*diagnosis_pending[\s\S]*home_ready[\s\S]*redirect\(routeDecision\.destination\)/, "Professional Identity page must redirect setup-complete users through the canonical diagnosis/home resolver instead of rendering a stale overview.");
 assert.match(professionalIdentityPage, /setupComplete && requestedStage[\s\S]*redirect\(appRoutes\.professionalIdentity\)/, "Completed users must not repeat a stale Welcome or setup stage URL.");
 assert.match(professionalIdentityPage, /stageForState[\s\S]*welcome_pending: "welcome"[\s\S]*professional_identity_intro_pending: "professionalIdentityIntroduction"/, "Professional Identity page must render first-time setup mode from resolver state even before a redirect completes.");
 assert.match(professionalIdentityPage, /resolvedStage = requestedStage \?\? stageForState\[routeDecision\.currentState\][\s\S]*showEditor = Boolean\(resolvedSection \|\| resolvedStage\)/, "First-time resolver states must select the guided editor, not the returning-user overview.");
@@ -1169,6 +1544,7 @@ assert.doesNotMatch(professionalIdentityReadService, /\.select\("[^"]*(setup_fin
 assert.doesNotMatch(authRouting, /profile\?\.(setup_finished|identity_review_completed|employment_diagnosis_completed)/, "Workflow resolver must read setup, review and diagnosis completion from discovery-owned state, not missing user_profiles columns.");
 assert.match(professionalIdentityReadService, /professionalIdentityValuesFromSources\(profile, discovery, user\)[\s\S]*calculateProfessionalIdentityCompletion\(values\)[\s\S]*professionalIdentityRequiredChecksFromValues\(values\)/, "Phase 2.6 read service must expose one hydrated identity state, completion and required-check model.");
 assert.match(professionalIdentityPage, /getProfessionalIdentityReadModel\(supabase, user\)[\s\S]*values: professionalIdentityValues[\s\S]*completion: identityCompletion[\s\S]*requiredChecks/, "Review and Editor must consume the shared Professional Identity read model instead of rebuilding profile state locally.");
+assert.match(professionalIdentityReadService, /noStore\(\)[\s\S]*loadProfessionalIdentitySources\(supabase, user\.id\)/, "Professional Identity Review reads must bypass stale route cache before loading the canonical profile and discovery sources.");
 assert.match(profileActionEditor, /calculateProfessionalIdentityCompletion\(values\)[\s\S]*progress = identityCompletion\.percentage/, "The guided editor must use the same shared completion percentage as Review.");
 assert.match(profileActionEditor, /professionalIdentityMissingFields\(step\.key as ProfessionalIdentityCompletionSectionKey, values\)/, "Disabled Continue guidance must use the shared missing-field engine.");
 assert.match(authRouting, /loadProfessionalIdentitySources\(supabase, user\.id\)/, "Post-auth routing must load Professional Identity through the shared read service.");
@@ -1179,7 +1555,15 @@ assert.match(profileActionEditor, /sectionAliases[\s\S]*requestedStep[\s\S]*requ
 assert.match(profileActionEditor, /normalizePathzyError/, "Professional Identity editor must normalize non-Error save failures before showing user-facing messages.");
 assert.match(professionalIdentityAutosave, /const persistStep = useCallback[\s\S]*try \{[\s\S]*fetch\("\/api\/professional-profile"[\s\S]*catch \(caught\)[\s\S]*normalizePathzyError\(caught, pathzyT\(activeLanguage, "onboarding\.save\.error"\)\)/, "Professional Identity autosave must catch rejected browser events in the shared client save pipeline instead of leaking them to the dev overlay.");
 assert.match(profileActionEditor, /async function finishSetup\(\)[\s\S]*try \{[\s\S]*fetch\("\/api\/professional-profile"[\s\S]*catch \(caught\)[\s\S]*normalizePathzyError\(caught, pathzyPhase2T\(language, "identity\.finish\.failure"\)\)/, "Professional Identity finish setup must catch rejected browser events instead of leaking them to the dev overlay.");
-assert.match(profileActionEditor, /const saved = await persistStep\(activeStep, values\);[\s\S]*if \(saved === false\) return;[\s\S]*router\.push\(`\$\{reviewHref\}#identity-review-\$\{activeStep\.key\}`\)/, "Review navigation must not continue after a failed save.");
+assert.match(professionalProfileApi, /finishProfessionalIdentitySetupWrite[\s\S]*loadProfessionalIdentitySources\(supabase, user\.id\)[\s\S]*resolvePathzyNextRoute/, "Finish Setup must return the canonical workflow resolver destination after completion.");
+assert.match(profileActionEditor, /router\.push\(typeof data\.redirectTo === "string" \? data\.redirectTo : `\$\{appRoutes\.discovery\}\?reason=setup-complete`\)[\s\S]*window\.setTimeout\(\(\) => router\.refresh\(\), 0\)/, "Finish Setup fallback must continue to Employment Diagnosis and refresh the destination instead of leaving stale authenticated state.");
+assert.match(professionalProfileApi, /Cache-Control", "no-store"/, "Professional Identity save responses must not be cached after successful or failed saves.");
+assert.match(professionalProfileApi, /revalidateProfessionalIdentityReview[\s\S]*"\/professional-identity"[\s\S]*"\/professional-identity\/review"[\s\S]*"\/professional-identity\/cv"[\s\S]*"\/professional-identity\/cover-letter"[\s\S]*"\/professional-identity\/linkedin"[\s\S]*"\/discovery\/results"[\s\S]*"\/roadmap"[\s\S]*"\/opportunities"[\s\S]*"\/applications"/, "Saving Professional Identity must invalidate Review, document projections, Employment Intelligence, Opportunities and Applications.");
+assert.match(professionalIdentityReadService, /\.select\("id,answers,generated_result,created_at"\)[\s\S]*\.order\("created_at", \{ ascending: false \}\)/, "Professional Identity reads must use the indexed discovery freshness column instead of stale compatibility ordering.");
+assert.match(professionalIdentityWriteService, /const refreshedAt = new Date\(\)\.toISOString\(\)[\s\S]*created_at: refreshedAt[\s\S]*\.update\(payload\)/, "Professional Identity saves must refresh the compatibility row timestamp so later reads pick up the newest saved value without a new migration.");
+assert.match(profileActionEditor, /const returnDestination = returnTo === "review"[\s\S]*safeRedirectDestination\(returnTo, appRoutes\.professionalIdentity\)[\s\S]*const shouldReturnAfterSave = Boolean\(returnDestination\)/, "Professional Identity editor must preserve safe returnTo destinations for Review, CV, Cover Letter, LinkedIn and future projections.");
+assert.match(profileActionEditor, /function returnToSavedDestination\(sectionKey\?: string\)[\s\S]*router\.push\(destination\)[\s\S]*window\.setTimeout\(\(\) => router\.refresh\(\), 0\)/, "Returning from a saved edit section must refresh the destination payload after navigating back.");
+assert.match(profileActionEditor, /const saved = await persistStep\(activeStep, values\);[\s\S]*if \(saved === false\) return;[\s\S]*shouldReturnAfterSave[\s\S]*returnToSavedDestination\(activeStep\.key\)/, "Return navigation must not continue after a failed save and must return only through the shared refresh helper.");
 for (const [key, route] of [
   ["LANDING", "/"],
   ["WELCOME_HOME", "/"],
@@ -1242,7 +1626,8 @@ assert.match(roadmapPage, /const professionalDirection = localizedProfessionalTi
 assert.match(roadmapPage, /getProfessionalIdentityReadModelSafe\(supabase, user, "employment intelligence home identity"\)[\s\S]*getDetailedEmploymentIntelligence\(supabase, user\.id\)/, "Authenticated Home must use the shared Professional Identity read model and persisted Employment Intelligence service.");
 assert.match(appShell, /getProfessionalIdentityReadModelSafe\(supabase, user, "app shell identity"\)[\s\S]*profile: identityReadModel\?\.profile[\s\S]*discovery: identityReadModel\?\.discovery/, "Authenticated app shell workflow gating must use the shared Professional Identity read model.");
 assert.match(nextActionEngine, /getProfessionalIdentityReadModelSafe\(supabase, user, "next action identity"\)[\s\S]*identityReadModel\.profile[\s\S]*identityReadModel\.discovery/, "Continue and next-action decisions must use the same Professional Identity read model as Home and setup routing.");
-assert.match(roadmapPage, /buildEmploymentHomeViewModel\(intelligence, language\)[\s\S]*<EmploymentIntelligenceHome model=\{model\} language=\{language\}/, "Authenticated Home must render the Phase 3G four-area intelligence Home from the shared view model.");
+assert.match(roadmapPage, /buildEmploymentHomeViewModel\(intelligence, language\)[\s\S]*buildNextStep\(language, missingRequired, model\.primaryAction\)/, "Authenticated Home must use persisted intelligence only to choose one next best step.");
+assert.doesNotMatch(roadmapPage, /<EmploymentIntelligenceHome|IntelligenceFreshnessPanel|EmploymentPositionSummary|CareerPlanPreview|ReadinessDetails/, "Default Home must not mount the dense Employment Intelligence dashboard blocks.");
 assert.match(employmentIntelligenceUiSource, /IntelligenceFreshnessPanel[\s\S]*EmploymentActionCard[\s\S]*EmploymentPositionSummary[\s\S]*CareerPlanPreview[\s\S]*secondaryActions/, "Phase 3G Home must keep a focused four-section intelligence hierarchy.");
 assert.match(employmentIntelligenceUiSource, /ButtonLink href=\{appRoutes\.employmentCenter\}/, "Employment Center entry must open the canonical Employment Center route.");
 assert.doesNotMatch(roadmapPage, /secondaryHref=\{appRoutes\.applications\}[\s\S]*secondaryLabel="Track Applications"/, "Authenticated Home must not shortcut users into Applications before they apply.");
@@ -1252,6 +1637,12 @@ assert.doesNotMatch(roadmapPage, /button: "Start My Journey"|dashboardActions|ke
 assert.doesNotMatch(roadmapPage, /row-span|featured/, "Authenticated landing page must not keep one oversized recommendation card.");
 assert.doesNotMatch(roadmapPage, /overflow-x-auto|whitespace-nowrap|min-w-\[/, "Authenticated landing page must not require horizontal scrolling on mobile.");
 assert.doesNotMatch(roadmapPage, /Sample Career Plan|Your 90-day control center|Continue My Journey|Interactive 90-day plan|Compare careers/, "Authenticated landing page must not show the previous crowded journey content.");
+assert.doesNotMatch(roadmapPage, /UP TO DATE|TOOLS|TODAY|Secondary actions|EmploymentPositionSummary|CareerPlanPreview|Career Plan block/, "Default Home must not show the removed Up To Date, Tools, Today, position summary, secondary actions, or Career Plan blocks.");
+for (const homeDestination of ["appRoutes.professionalIdentity", "appRoutes.employmentCenter", "appRoutes.opportunities", "appRoutes.applications"]) {
+  assert.match(roadmapPage, new RegExp(homeDestination.replace(/[.]/g, "\\.")), `Simple Home navigation must include ${homeDestination}.`);
+}
+assert.match(roadmapPage, /Your PATHZY[\s\S]*Next best step|Votre PATHZY[\s\S]*Prochaine etape/, "Default Home must use the simplified Your PATHZY and Next Best Step hierarchy.");
+assert.match(roadmapPage, /professionalIdentitySectionHref\(firstMissing\.section, appRoutes\.roadmap\)/, "Completed users with Professional Identity gaps must see an update recommendation instead of being redirected away from Home.");
 assert.match(roadmapPage, /getDetailedEmploymentIntelligence/, "Phase 3G Home must use the persisted Employment Intelligence service instead of legacy dashboard summary queries.");
 assert.doesNotMatch(roadmapPage, /getPathzyNextAction|summarizeApplicationTracker|buildCareerAnalytics|safeQuery/, "Phase 3G Home must not mix legacy dashboard intelligence sources with persisted Employment Intelligence.");
 assert.match(operatingSystem, /applicationEventsForPathzyTimeline/, "Phase 9F must reuse application tracker timeline signals for the PATHZY Timeline.");
@@ -1373,7 +1764,11 @@ assert.doesNotMatch(navigation, /label: "Founding Members"/, "Founder access mus
 assert.match(permissions, /export function canCreateCV[\s\S]*return normalizePermissionContext\(context\)\.isAuthenticated;/, "Free and premium users must be able to create CVs on the same route.");
 assert.match(permissions, /export function canUseProfessionalIdentity[\s\S]*return normalizePermissionContext\(context\)\.isAuthenticated;/, "Professional Identity access must depend on authentication, not paid membership.");
 assert.match(permissions, /export function canUsePremiumTemplates[\s\S]*return normalizePermissionContext\(context\)\.isAuthenticated;/, "Free users must be able to preview available premium designs.");
-assert.match(permissions, /export function canExportProfessionalDocuments[\s\S]*return hasPremiumAccess\(context\);/, "Only premium document export/download actions should require paid or Founder access.");
+assert.match(coreDocumentDownloadAccess, /currentCoreDocumentDownloadAccess = "allowed"/, "Core document download access must have one shared current product decision.");
+assert.match(permissions, /export function canExportProfessionalDocuments[\s\S]*return canDownloadCoreDocument\(context\);/, "Core document export/download actions must use the shared current download-access helper.");
+assert.equal(coreDocumentDownloadAccessRuntime.canDownloadCoreDocument({ isAuthenticated: true, accessLevel: "free" }), true, "Authenticated users must be able to download core PATHZY documents.");
+assert.equal(permissionsRuntime.canExportProfessionalDocuments({ isAuthenticated: true, accessLevel: "free" }), true, "Free authenticated users must not be redirected to pricing when downloading core documents.");
+assert.equal(permissionsRuntime.canExportProfessionalDocuments({ isAuthenticated: false, role: "guest" }), false, "Logged-out visitors must still authenticate before downloading user documents.");
 assert.match(entitlements, /export type AccessLevel = "founder" \| "beta_full" \| "trial" \| "paid_pro" \| "paid_premium" \| "expired" \| "free"/, "PATHZY must define the complete founder, beta, trial, paid, expired and free access model.");
 assert.match(entitlements, /export function canAccessFeature\(entitlements:[\s\S]*feature: EntitlementFeature\): boolean/, "All feature gates must use the shared entitlement access decision.");
 assert.match(entitlements, /if \(entitlements\.isAdmin \|\| entitlements\.isFounder\) return true;/, "Founder and admin accounts must have permanent full access through the central helper.");
@@ -1381,9 +1776,9 @@ assert.match(entitlements, /if \(entitlements\.isBetaFull \|\| entitlements\.isT
 assert.match(entitlements, /\["founder", "beta_full", "paid_premium", "paid_pro", "trial", "expired", "free"\]/, "Expired beta users must retain an explicit expired state instead of being treated as deleted users.");
 assert.match(entitlements, /const status: EntitlementStatus = accessLevel === "expired" \? "expired"/, "Expired access must map to an explicit expired entitlement status.");
 assert.match(entitlements, /Your private beta access has ended\. Your documents are safe/, "Expired beta messaging must explain that user documents remain safe.");
-assert.match(permissions, /canAccessFeature\([\s\S]*"document_export"\)/, "Existing premium export gates must delegate to the central entitlement helper.");
+assert.match(entitlements, /feature === "professional_identity"[\s\S]*feature === "document_export"/, "Current core document export gates must remain allowed while future premium entitlement architecture stays available.");
 assert.match(professionalIdentityService, /userCanAccessFeature\(supabase, userId, "professional_identity"\)/, "Professional Identity access must use the shared entitlement helper.");
-assert.match(professionalIdentityService, /getUserEntitlements\(supabase, userId\)[\s\S]*canExportProfessionalDocuments/, "Professional document export gates must read shared entitlements before deciding access.");
+assert.match(professionalIdentityService, /canCurrentUserExportProfessionalDocuments[\s\S]*return canExportProfessionalDocuments\(\{ isAuthenticated: Boolean\(userId\) \}\);/, "Professional document export gates must use the shared current core-document access decision without an extra entitlement fetch.");
 assert.match(launchService, /getUserEntitlements\(supabase, userId\)[\s\S]*entitlements\.isFounder \|\| entitlements\.isAdmin \|\| entitlements\.isBetaFull \|\| entitlements\.isTrial \|\| entitlements\.isPaid/, "Launch access and Mentor usage must receive the shared full-access state.");
 assert.match(appShell, /entitlements\?\.badge === "FOUNDING TESTER"[\s\S]*title=\{entitlements\.message \?\? undefined\}[\s\S]*FOUNDING TESTER/, "Active founder or beta users must see the private beta badge in the authenticated shell.");
 assert.match(entitlementMigration, /create table if not exists public\.user_entitlements/, "The beta entitlement migration must create a dedicated entitlement table.");
@@ -1406,25 +1801,29 @@ assert.match(professionalCoverLetterPage, /locked=\{!unlocked\}[\s\S]*exportLock
 assert.doesNotMatch(professionalIdentityPage, /button: "My CV"|tools = \[/, "Professional Identity setup must not render the old document tool grid.");
 assert.match(professionalCvPage, /title="My CV"/, "CV workspace page header must use the My CV label.");
 assert.match(professionalCoverLetterPage, /title="My Cover Letter"/, "Cover Letter workspace page header must use the My Cover Letter label.");
-assert.match(professionalCvPage, /Build your professional CV[\s\S]*PATHZY will prepare the first draft, and you can review, edit and improve it before downloading\./, "My CV page must show the explanatory intro card before the workspace.");
-assert.match(professionalCvPage, /Create your cover letter[\s\S]*Build Cover Letter/, "My CV page must show the cover letter next-step intro card.");
-assert.match(professionalCvPage, /ButtonLink href=\{PATHZY_ROUTES\.COVER_LETTER\}>Build Cover Letter<\/ButtonLink>/, "Build Cover Letter must use the canonical Cover Letter route.");
-assert.match(professionalCoverLetterPage, /Build your professional cover letter[\s\S]*PATHZY will prepare your first draft for you to review and improve\./, "My Cover Letter page must show the explanatory intro card before the workspace.");
-assert.match(professionalCoverLetterPage, /Optimise your LinkedIn[\s\S]*Optimise LinkedIn/, "My Cover Letter page must show the LinkedIn next-step intro card.");
-assert.match(professionalCoverLetterPage, /ButtonLink href=\{PATHZY_ROUTES\.LINKEDIN_OPTIMIZER\}>Optimise LinkedIn<\/ButtonLink>/, "Optimise LinkedIn must use the canonical LinkedIn route.");
-assert.match(professionalCoverLetterPage, /mb-6 grid gap-4 md:grid-cols-2/, "My Cover Letter intro cards must use the same two-card desktop architecture as My CV.");
-const myCvIntroIndex = professionalCvPage.indexOf("Build your professional CV");
-const coverLetterIntroIndex = professionalCvPage.indexOf("Create your cover letter");
+assert.match(professionalIdentityTool, /function renderCvDocumentBar[\s\S]*MY CV[\s\S]*Professional CV/, "My CV must introduce the document through the compact document studio bar.");
+assert.doesNotMatch(professionalCvPage, /professionalIdentityHref|ButtonLink href=\{professionalIdentityHref\}>Professional Identity<\/ButtonLink>|Synced with Professional Identity\./, "My CV page must not render the old persistent Professional Identity status/action card.");
+assert.match(professionalIdentityTool, /Your CV is ready[\s\S]*Create your cover letter[\s\S]*PATHZY_ROUTES\.COVER_LETTER/, "My CV must show one consolidated cover-letter next-step card after the document studio.");
+assert.match(professionalIdentityTool, /function renderCoverLetterDocumentBar[\s\S]*MY COVER LETTER[\s\S]*Status: \{statusLabel\}/, "My Cover Letter must show status in the shared document studio bar.");
+assert.match(professionalCoverLetterPage, /getProfessionalIdentityReadModelSafe\(supabase, user, "cover letter professional identity"\)/, "My Cover Letter page must read the canonical Professional Identity model before creating a letter.");
+assert.match(professionalCoverLetterPage, /resolveCoverLetterJobContext\(supabase, user\.id, params\)/, "My Cover Letter page must resolve saved-job, application, pasted, or manual job context.");
+assert.match(professionalCoverLetterPage, /loadExistingCoverLetterDocument\(supabase, user\.id, params\.documentId\)/, "My Cover Letter page must preserve existing cover-letter documents opened by documentId.");
+assert.match(professionalCoverLetterPage, /professionalIdentityCoverLetterDocument\(identity\.values, jobContext/, "My Cover Letter page must seed new letters from Professional Identity plus job context.");
+assert.match(professionalCoverLetterPage, /coverLetterSyncStatus=\{coverLetterSyncStatus\}/, "My Cover Letter page must pass source-of-truth sync status into the shared document workspace.");
+assert.match(professionalIdentityTool, /Your cover letter is ready[\s\S]*Prepare for interview[\s\S]*PATHZY_ROUTES\.INTERVIEW_PREPARATION/, "My Cover Letter next step must live below the document studio and guide users toward interview preparation.");
+assert.match(professionalCoverLetterPage, /coverLetterJobHref=\{jobHref\}/, "My Cover Letter page must pass the resolved job/application destination into the shared workspace.");
+assert.match(professionalCoverLetterPage, /page-pad mx-auto w-full max-w-\[1560px\]/, "My Cover Letter wrapper must use the same wide document workspace container as My CV.");
+const myCvIntroIndex = professionalCvPage.indexOf("Professional CV");
 const cvToolIndex = professionalCvPage.indexOf("<ProfessionalIdentityTool");
-assert.ok(myCvIntroIndex > -1 && coverLetterIntroIndex > myCvIntroIndex && cvToolIndex > coverLetterIntroIndex, "My CV intro cards must render below the page heading and before the existing CV workspace.");
-const myCvIntroCard = professionalCvPage.slice(myCvIntroIndex, coverLetterIntroIndex);
-assert.doesNotMatch(myCvIntroCard, /ButtonLink|<Link|href=|<button/, "The My CV explanatory intro card must not contain a button or link.");
-const myCoverLetterIntroIndex = professionalCoverLetterPage.indexOf("Build your professional cover letter");
-const linkedInIntroIndex = professionalCoverLetterPage.indexOf("Optimise your LinkedIn");
+assert.ok(cvToolIndex > -1 && myCvIntroIndex > -1, "My CV wrapper must mount the CV document studio.");
+const myCvHeaderBlock = professionalCvPage.slice(myCvIntroIndex, cvToolIndex);
+assert.doesNotMatch(myCvHeaderBlock, /Professional Identity<\/ButtonLink>|Edit Professional Identity|Synced with Professional Identity/, "The My CV header area must not expose persistent Professional Identity correction controls.");
+assert.doesNotMatch(myCvHeaderBlock, /Build your professional CV|prepare the first draft|Edit CV/, "The My CV header area must not use the old draft-first CV copy.");
 const coverLetterToolIndex = professionalCoverLetterPage.indexOf("<ProfessionalIdentityTool");
-assert.ok(myCoverLetterIntroIndex > -1 && linkedInIntroIndex > myCoverLetterIntroIndex && coverLetterToolIndex > linkedInIntroIndex, "My Cover Letter intro cards must render below the page heading and before the existing Cover Letter workspace.");
-const myCoverLetterIntroCard = professionalCoverLetterPage.slice(myCoverLetterIntroIndex, linkedInIntroIndex);
-assert.doesNotMatch(myCoverLetterIntroCard, /ButtonLink|<Link|href=|<button/, "The My Cover Letter explanatory intro card must not contain a button or link.");
+const coverLetterDocumentBarIndex = professionalIdentityTool.indexOf("renderCoverLetterDocumentBar()");
+const coverLetterCorrectionIndex = professionalIdentityTool.indexOf("renderCoverLetterIdentityCorrectionCard()", coverLetterDocumentBarIndex);
+assert.ok(coverLetterToolIndex > -1 && coverLetterDocumentBarIndex > -1 && coverLetterCorrectionIndex > coverLetterDocumentBarIndex, "My Cover Letter route must mount the shared workspace, whose document bar and correction strip own the visible header flow.");
+assert.match(professionalIdentityTool, /function renderCoverLetterDocumentBar[\s\S]*Edit Information[\s\S]*Change Job/, "The My Cover Letter document bar must provide clear Professional Identity and Job Context navigation.");
 assert.match(settingsPage, />My CV<\/ButtonLink>/, "Settings shortcut must use the My CV label.");
 assert.match(navigation, /"My CV"/, "Shared user-facing product data must use the My CV label.");
 assert.doesNotMatch(`${professionalIdentityPage}\n${professionalCvPage}\n${settingsPage}\n${navigation}\n${readFileSync("app/qa-pathzy-journey/page.tsx", "utf8")}`, /Create My CV/, "Relevant user-facing CV workspace labels must not say Create My CV.");
@@ -1472,7 +1871,7 @@ assert.match(professionalProfileApi, /syncProfessionalIdentityAfterWrite\(supaba
 assert.match(professionalIdentitySync, /if \(options\.mode === "autosave"\) return \{ skipped: true \}/, "Background autosave must avoid unrelated readiness refresh work during typing.");
 assert.match(profileActionEditor, /aria-live="polite"[\s\S]*min-w-\[9\.5rem\][\s\S]*min-h-5/, "Professional Identity save status and helper message areas must reserve stable dimensions.");
 assert.match(professionalIdentityAutosave, /saveId === latestSave\.current[\s\S]*setAutosaveState\("saved"\)/, "Stale save responses must not overwrite the latest visible save state.");
-assert.match(profileActionEditor, /shouldReturnToReview[\s\S]*router\.push\(`\$\{reviewHref\}#identity-review-\$\{activeStep\.key\}`\)/, "Editing a missing section from Review must return to Review after the section is saved without a full document reload.");
+assert.match(profileActionEditor, /shouldReturnAfterSave[\s\S]*returnToSavedDestination\(activeStep\.key\)/, "Editing a missing section from Review or a projection workspace must return to a refreshed destination after the section is saved without a full document reload.");
 assert.doesNotMatch(profileActionEditor, /window\.location\.assign/, "Professional Identity edit and review navigation must avoid full page reloads.");
 assert.match(profileActionEditor, /identity\.review\.cancelReturn[\s\S]*identity\.review\.saveReturn/, "Edit from Review must expose Cancel and Save-and-return-to-Review actions.");
 assert.match(profileActionEditor, /setupComplete \?[\s\S]*identity\.review\.returnToIdentity[\s\S]*: requiredComplete \?[\s\S]*identity\.finish\.submit/, "Completed users must not see Finish Setup as the primary review action.");
@@ -1566,7 +1965,7 @@ assert.match(appShell, /focusedOnboarding[\s\S]*journeyDecision\?\.currentState 
 assert.match(appShell, /user && !focusedOnboarding \? <FloatingMentorButton/, "Focused onboarding shell must hide floating mentor during first-time setup.");
 assert.match(languagePreferences, /professionalDocumentLanguageLabels[\s\S]*same_as_interface[\s\S]*normalizeProfessionalDocumentLanguageChoice/, "Language preference architecture must support independent document language choices.");
 assert.match(languageSelector, /publicLanguageStorageKey[\s\S]*document\.cookie[\s\S]*languageChangedEventName/, "Public language selection must persist before authentication and notify current pages.");
-assert.match(profileActionEditor, /const \{ language: storedInterfaceLanguage, setLanguage: setPathzyInterfaceLanguage \} = usePathzyLanguage[\s\S]*current\.interface_language === storedInterfaceLanguage \? current : \{ \.\.\.current, interface_language: storedInterfaceLanguage \}/, "Professional Identity editor must immediately mirror the active provider language without waiting for a manual refresh.");
+assert.match(profileActionEditor, /const \{ language: storedInterfaceLanguage, setLanguage: setPathzyInterfaceLanguage \} = usePathzyLanguage[\s\S]*current\.interface_language \|\| !storedInterfaceLanguage \? current : \{ \.\.\.current, interface_language: storedInterfaceLanguage \}/, "Professional Identity editor must seed an empty interface-language value without letting presentation switches rewrite canonical progress state.");
 assert.match(profileActionEditor, /function updateInterfaceLanguage\(language: SupportedLanguageCode\)[\s\S]*setPathzyInterfaceLanguage\(language\)[\s\S]*updateValue\("interface_language", language\)/, "Professional Identity interface-language choices must update the shared provider while preserving the independent document-language value.");
 assert.match(profileActionEditor, /setValues\(\(current\) => \(hasHydrated\.current \? \{ \.\.\.mergedInitialValues, \.\.\.current \} : mergedInitialValues\)\)/, "Professional Identity editor must preserve unsaved typed values when a language switch refreshes server-rendered content.");
 assert.match(profileActionEditor, /useProfessionalIdentityAutosave<ProfessionalIdentityValues, JourneyStep>[\s\S]*persistStep[\s\S]*scheduleAutosave[\s\S]*retryActiveSave/, "Professional Identity editor must consume the shared client save pipeline instead of owning autosave request sequencing.");
@@ -1583,12 +1982,14 @@ assert.match(currentSituationEditorBlock, /currentSituationDisplayLabel\(activeL
 assert.doesNotMatch(profileActionEditor, /currentSituationLabels\[activeLanguage\]\[situation\]/, "Professional Identity must not index current-situation labels with an unnormalized runtime language.");
 assert.match(currentSituationContract, /normalizeSupportedLanguage\(language, fallbackLanguage\)/, "Current Situation labels must normalize language before lookup.");
 assert.match(currentSituationContract, /currentSituationLabels\[resolvedLanguage\]\?\.\[normalized\] \?\? currentSituationLabels\.en\[normalized\]/, "Current Situation labels must fall back safely when a translation key is missing.");
-assert.match(profileActionEditor, /const activeLanguage: SupportedLanguageCode = normalizeSupportedLanguage\(values\.interface_language, storedInterfaceLanguage\)/, "Professional Identity active language must normalize legacy, regional, undefined, and unsupported values before rendering.");
+assert.match(profileActionEditor, /const activeLanguage: SupportedLanguageCode = normalizeSupportedLanguage\(storedInterfaceLanguage, values\.interface_language\)/, "Professional Identity active language must follow the shared provider while preserving the saved canonical interface-language value.");
 assert.match(pathzyI18n, /function resolvedLanguage\(language\?: string \| null\): SupportedLanguageCode[\s\S]*normalizeSupportedLanguage\(language\)/, "Shared i18n helpers must normalize runtime language values before dictionary lookup.");
 assert.match(pathzyI18n, /export function professionalIdentitySectionText\(language: SupportedLanguageCode \| string \| null \| undefined[\s\S]*professionalIdentitySectionTranslations\[normalizedLanguage\]\?\.\[sectionKey\]/, "Professional Identity section labels must be resolved through the shared safe section helper.");
 assert.doesNotMatch(profileActionEditor, /professionalIdentitySectionTranslations\[activeLanguage\]/, "Profile editor must not index Professional Identity section translations directly.");
 assert.doesNotMatch(professionalIdentityPage, /professionalIdentitySectionTranslations\[interfaceLanguage\]/, "Professional Identity review must not index section translations directly.");
 assert.match(professionalIdentityCompletion, /interface_language: normalizeLanguageCode\(firstText\(answers\.interface_language, profile\?\.language\)\)/, "Professional Identity hydration must normalize interface language before passing values to the client.");
+assert.match(professionalIdentityCompletion, /languages: answerList\(discovery, "languages"\)/, "Professional Identity hydration must not derive professional spoken languages from the interface/profile language.");
+assert.match(professionalIdentityCompletion, /normalizeProfessionalIdentityCompletionValues[\s\S]*current_status: normalizeCurrentSituation[\s\S]*interface_language: interfaceLanguage \? normalizeLanguageCode\(interfaceLanguage\) : ""/, "Professional Identity completion must normalize canonical section values before calculating progress.");
 assert.match(cvConfiguration, /normalizeLanguageCode\(language\)[\s\S]*labels\[resolvedLanguage\]\?\.\[purpose\] \?\? labels\.en\[purpose\]/, "Professional document enum label maps must normalize language before lookup.");
 for (const sectionName of ["Profil", "Informations personnelles", "Nationalité", "Autorisation de travail", "Objectif professionnel", "Résumé professionnel", "Compétences", "Préférences d'emploi", "Disponibilité"]) {
   assert.match(pathzyI18n, new RegExp(sectionName), `French Professional Identity section translation must include ${sectionName}.`);
@@ -1610,7 +2011,8 @@ assert.doesNotMatch(professionalProfileApi, /from\("user_profiles"\)\.upsert|fro
 assert.match(professionalIdentitySync, /updatePathzyBrain/, "Professional Identity synchronization engine must refresh employment readiness after saving.");
 assert.match(professionalProfileApi, /Server-Timing[\s\S]*X-Pathzy-Profile-Save-Duration-Ms/, "Professional Profile save responses must expose safe timing metadata for QA without logging personal values.");
 assert.match(professionalProfileApi, /redirectTo: "\/professional-identity"/, "Professional Profile save endpoint must report the canonical return destination.");
-assert.doesNotMatch(professionalProfileApi, /\/settings|\/billing|\/roadmap|\/onboarding/, "Professional Profile save endpoint must not redirect profile edits to unrelated workflows.");
+const profileSaveSuccessPayload = professionalProfileApi.slice(professionalProfileApi.lastIndexOf("return timedJson({ ok: true, section"));
+assert.doesNotMatch(profileSaveSuccessPayload, /\/settings|\/billing|\/roadmap|\/onboarding/, "Professional Profile save endpoint must not redirect profile edits to unrelated workflows.");
 assert.match(discoveryAnswerState, /export const discoveryAnswerKeys[\s\S]*personal_background[\s\S]*preferred_career_direction/, "Employment Diagnosis must define one canonical answer-key list for first question through final question.");
 assert.match(discoveryAnswerState, /emptyDiscoveryAnswers\(\)[\s\S]*Object\.fromEntries\(discoveryAnswerKeys\.map\(\(key\) => \[key, ""\]\)\)/, "Employment Diagnosis must initialize every question with an empty-string default.");
 assert.match(discoveryAnswerState, /safeDiscoveryText\(value: unknown\): string[\s\S]*typeof value === "string" \? value : ""/, "Employment Diagnosis must normalize undefined and null answers to safe strings.");
@@ -1767,8 +2169,13 @@ assert.match(exportStandard, /PATHZY is the editor\./, "Export standard must def
 assert.match(exportStandard, /PDF is the final published document\./, "Export standard must define PDF as the final document.");
 assert.match(exportStandard, /The CV model is the single source of truth/, "Export standard must require the CV model as source of truth.");
 assert.match(exportStandard, /Premium visual quality is required, not optional\./, "Export standard must require premium visual quality.");
-assert.match(professionalIdentityTool, /draft\.fullName = event\.target\.value;/, "Full name editing must allow spaces while typing.");
-assert.match(professionalIdentityTool, /draft\.targetRole = event\.target\.value;/, "Target role editing must allow spaces while typing.");
+assert.match(professionalIdentityCvModel, /export function cvModelFromProfessionalIdentity/, "CV workspace must use a reusable Professional Identity to CV model transformation layer.");
+assert.match(professionalCvPage, /getProfessionalIdentityReadModel\(supabase, user\)[\s\S]*professionalIdentityCvDocument\(identityReadModel\.values/, "My CV must read Professional Identity and create a synchronized CV document before the client renders.");
+assert.match(professionalCvPage, /initialDocument=\{initialCvDocument\}[\s\S]*cvSyncStatus=\{cvSyncStatus\}/, "My CV must pass the Professional Identity-derived CV model and sync status into the shared workspace.");
+assert.match(professionalIdentityCvModel, /languages: cleanList\(identity\.languages\)\.map\(splitLanguage\)/, "Professional Identity languages must map into the CV model through canonical values, not interface labels.");
+assert.match(professionalIdentityCvModel, /professionalIdentityHrefForCvSection[\s\S]*routeBuilders\.professionalIdentitySection/, "CV section edit actions must route to the matching Professional Identity section with return context.");
+assert.match(professionalIdentityTool, /Edit in Professional Identity/, "CV factual section changes must send the user to Professional Identity instead of a duplicate CV form.");
+assert.doesNotMatch(professionalIdentityTool, /draft\.fullName = event\.target\.value;|draft\.targetRole = event\.target\.value;/, "CV workspace must not expose a separate factual editor for Professional Identity fields.");
 assert.doesNotMatch(professionalIdentityTool, /event\.target\.value\.trim\(\)/, "Editor inputs must not trim while the user is typing.");
 assert.match(professionalIdentityTool, /normalizeCvModelForExport\(cvModel\)/, "Saved CV drafts must store the cleaned CV model without mutating fields while typing.");
 assert.match(professionalIdentityTool, /type CvVersionMetadata = \{[\s\S]*designSystem: string;[\s\S]*versionName: string;[\s\S]*createdAt: string;[\s\S]*updatedAt: string;[\s\S]*lastDownloadedAt: string \| null;[\s\S]*\};/, "CV design versions must store explicit design and timestamp metadata.");
@@ -1776,7 +2183,7 @@ assert.match(professionalIdentityTool, /function cvContentJson\(document: Genera
 assert.match(professionalIdentityTool, /cvModel: normalizeCvModelForExport\(cvModel\),[\s\S]*cvVersion: metadata/, "CV version saves must use one CV model plus separate version metadata.");
 assert.match(professionalIdentityTool, /function duplicateCvVersion/, "CV Builder must let users duplicate a CV design version.");
 assert.match(professionalIdentityTool, /function renameCvVersion/, "CV Builder must let users rename a CV design version.");
-assert.match(professionalIdentityTool, /Template switching changes presentation only\. Your CV model, edits, and saved content stay the same\./, "CV Builder must explain that design changes do not erase content without showing technical version controls.");
+assert.match(professionalIdentityTool, /Presentation changes only\. Your canonical CV content stays the same\./, "CV Builder must explain that design changes do not erase content without showing technical version controls.");
 assert.match(myDocumentsClient, /function saveCvVersionPatch/, "My Documents must allow saved CV versions to be renamed or switched to another design.");
 assert.match(myDocumentsClient, /cvVersion: \{ \.\.\.version, versionName: title, createdAt: now, updatedAt: now, lastDownloadedAt: null \}/, "Duplicated CV documents must get fresh version metadata.");
 assert.match(myDocumentsClient, /renderCvHtmlFromModel\(selectedCvModel, selectedCvVersion\?\.designSystem/, "Saved CV preview must render from the selected version design metadata.");
@@ -1799,21 +2206,17 @@ assert.match(professionalIdentityService, /fullName: cvCandidateName\(inputs\),/
 assert.match(professionalIdentityService, /targetRole: goal,/, "Generated CV model must set targetRole from the career goal.");
 assert.match(professionalIdentityService, /const cvVersion = \{[\s\S]*designSystem: templateName,[\s\S]*versionName: title,[\s\S]*createdAt: now,[\s\S]*updatedAt: now,[\s\S]*lastDownloadedAt: null[\s\S]*\};/, "Generated CVs must create initial CV version metadata.");
 assert.match(professionalIdentityService, /contentJson: \{ cvModel, cvVersion \}/, "Generated CVs must save cvModel and cvVersion together.");
-assert.match(professionalIdentityTool, /const next = \{ \.\.\.document, content, contentJson: \{ \.\.\.\(document\.contentJson \?\? \{\}\), cvModel: draft, cvVersion: version \}/, "CV draft changes must preserve the structured CV model and active version metadata for reload.");
-assert.match(professionalIdentityTool, /window\.localStorage\.setItem\(recoveryKey, JSON\.stringify\(next\)\);/, "CV draft edits must be recoverable from browser storage.");
+assert.match(professionalIdentityCvModel, /contentJson: \{[\s\S]*source: "professional_identity"[\s\S]*cvModel,[\s\S]*cvVersion:/, "Professional Identity-derived CV documents must preserve the structured CV model and active version metadata for preview, PDF, and reload.");
+assert.match(professionalIdentityTool, /templateName: nextData\.designSystem/, "Template switching must keep presentation metadata separate from Professional Identity factual data.");
 assert.match(professionalIdentityTool, /previewCvModel/, "CV preview must use a stable debounced preview model.");
 assert.match(professionalIdentityTool, /setTimeout\(\(\) => \{\s*setPreviewCvModel\(cvModel\);\s*\}, 260\);/, "CV preview updates must be debounced to reduce layout shaking while typing.");
-assert.match(professionalIdentityTool, /if \(immediatePreview\) setPreviewCvModel\(draft\);/, "CV section changes must be able to update preview immediately for hide/add visibility.");
 assert.match(professionalIdentityTool, /function sectionStatus/, "CV editor must show explicit section visibility status.");
 assert.match(professionalIdentityTool, /"Visible"/, "CV editor statuses must include Visible.");
 assert.match(professionalIdentityTool, /"Empty"/, "CV editor statuses must include Empty.");
 assert.match(professionalIdentityTool, /"Hidden"/, "CV editor statuses must include Hidden.");
 assert.match(professionalIdentityTool, /const skillGroupSections = \[[\s\S]*Core[\s\S]*Technical[\s\S]*Professional[\s\S]*\];/, "CV Skills editor must expose Core, Technical, and Professional skill groups.");
-assert.match(professionalIdentityTool, /function renderSkillsSection/, "CV Skills must use a dedicated grouped editor card.");
-assert.match(professionalIdentityTool, /function renderSkillGroup/, "Each CV skill group must use the shared repeatable item controls.");
-assert.match(professionalIdentityTool, /focusedNewRepeatableItem/, "CV repeatable sections must share one Add item focus mechanism.");
-assert.match(professionalIdentityTool, /autoFocus=\{focusedNewRepeatableItem === `\$\{title\}-\$\{index\}`\}/, "Repeatable CV items must autofocus newly added blank items.");
-assert.match(professionalIdentityTool, /setFocusedNewRepeatableItem\(`\$\{title\}-\$\{next\.length - 1\}`\)/, "Add item must create a new blank editable item and focus it.");
+assert.match(professionalIdentityTool, /renderSyncedCvSection\("Core Competencies \/ Skills", skillGroupSections\.flatMap\(\(group\) => cvSectionItems\(group\.title\)\)\)/, "CV Skills must render synchronized summaries from canonical skill groups instead of duplicate editable fields.");
+assert.doesNotMatch(professionalIdentityTool, /function renderSkillsSection|function renderSkillGroup|function renderRepeatableSection/, "The CV workspace must not keep old repeatable factual editor renderers.");
 for (const sectionName of ["Certifications", "Achievements", "References", "Volunteer Experience", "Awards", "Publications", "Conferences", "Professional Memberships", "Interests", "Portfolio Links"]) {
   assert.match(professionalIdentityTool, new RegExp(`"${sectionName}"`), `${sectionName} must remain available as a repeatable CV section.`);
 }
@@ -1822,10 +2225,11 @@ assert.match(professionalIdentityTool, /const cvA4Page = \{ width: 794, height: 
 assert.match(professionalIdentityTool, /ResizeObserver\(calculateScale\)/, "CV preview must recalculate fit-page scaling when its viewport changes.");
 assert.match(professionalIdentityTool, /availableWidth \/ cvA4Page\.width[\s\S]*availableHeight \/ cvA4Page\.height/, "CV Fit Page must account for both preview width and height.");
 assert.match(professionalIdentityTool, /Fit Page[\s\S]*Fit Width[\s\S]*aria-label="Zoom Out"[\s\S]*aria-label="Zoom In"/, "CV preview must expose Fit Page, Fit Width, Zoom Out, and Zoom In controls.");
-assert.match(professionalIdentityTool, /Edit CV[\s\S]*Preview CV/, "Mobile CV workspace must use Edit CV and Preview CV tabs.");
-assert.match(professionalIdentityTool, /const scaledWidth = cvA4Page\.width \* cvPreviewScale[\s\S]*style=\{\{ width: scaledWidth, minHeight:/, "Mobile CV preview must reserve only the scaled A4 width to prevent horizontal overflow.");
+assert.doesNotMatch(professionalIdentityTool, /CvMobileWorkspaceTab|renderCvMobileTabs|Preview CV/, "CV workspace must use the natural Template Gallery -> full A4 Preview flow instead of the old edit/preview tab split.");
+assert.doesNotMatch(professionalIdentityTool, /tool === "cv" \? "Professional Identity source"|tool === "cv" \? "Edit Professional Identity"/, "The shared CV workspace branch must not render a persistent Professional Identity source/editor block.");
+assert.match(professionalIdentityTool, /const scaledWidth = cvA4Page\.width \* cvPreviewScale[\s\S]*style=\{\{ width: scaledWidth, height:/, "Mobile CV preview must reserve only the scaled A4 width and actual scaled page height to prevent horizontal overflow and blank canvas growth.");
 assert.match(documentDownloads, /if \(clean\.length\) sections\.push\(\{ title, items: clean \}\);/, "Empty CV sections must be hidden from preview and PDF.");
-assert.match(documentDownloads, /forbiddenOutputPatterns[\s\S]*\/pathzy\/i[\s\S]*\/will not invent\/i[\s\S]*\/add your\/i/, "Export renderer must filter internal PATHZY guidance and placeholders.");
+assert.match(documentDownloads, /forbiddenOutputPatterns[\s\S]*pathzy\\s\+\(score\|workspace\|dashboard\|application\|guidance\|navigation\|editor\|builder\|support system\)[\s\S]*\/will not invent\/i[\s\S]*\/add your\/i/, "Export renderer must filter internal PATHZY guidance and placeholders without deleting genuine PATHZY employer records.");
 assert.match(documentDownloads, /function chunkLines/, "Long CV content must be chunked for pagination.");
 assert.match(documentDownloads, /function estimateMainItemHeight/, "Main CV sections must estimate height before pagination.");
 assert.match(documentDownloads, /sideOverflow/, "Sidebar overflow must move into paginated content instead of running off Page 1.");
@@ -1855,13 +2259,24 @@ assert.match(documentDownloads, /rightRail = \["executive", "consulting", "engin
 assert.match(documentDownloads, /graduate: \["Professional Summary", "Education", "Projects", "Internships"/, "Graduate Elite must use an education-first document architecture after the Summary section.");
 assert.match(documentDownloads, /healthcare: \["Professional Summary", "Certifications", "Education", "Professional Experience"/, "Healthcare Professional must elevate credentials and education near the top after the Summary section.");
 assert.match(documentDownloads, /engineering: \["Professional Summary", "Projects", "Professional Experience"/, "Engineering must prioritize technical projects and experience after the Summary section.");
+const cvTemplateNames = [...documentTemplateEngine.matchAll(/template\("([^"]+)"/g)].map((match) => match[1]);
+assert.ok(cvTemplateNames.length >= 100, `PATHZY must publish at least 100 premium CV templates; found ${cvTemplateNames.length}.`);
+assert.equal(new Set(cvTemplateNames).size, cvTemplateNames.length, "Published CV template names must be unique.");
 for (const templateName of ["Executive Black", "Modern ATS", "Google Style", "Microsoft Professional", "Deloitte Consulting", "Creative Premium", "Healthcare Professional", "Graduate Elite", "Engineering", "International Standard"]) {
-  assert.match(documentTemplateEngine, new RegExp(`name: "${templateName}"`), `${templateName} must be registered in the reusable template engine.`);
+  assert.ok(cvTemplateNames.includes(templateName), `${templateName} must remain registered in the reusable template engine.`);
   assert.match(documentDownloads, new RegExp(`"${templateName}"[\\s\\S]*identity:`), `${templateName} must have its own design identity.`);
 }
-assert.match(documentTemplateEngine, /atsCharacteristic[\s\S]*recruiterCharacteristic[\s\S]*bestFor[\s\S]*thumbnail/, "Template gallery metadata must include honest ATS/recruiter characteristics, best-for labels, and thumbnails.");
+for (const templateName of ["Administration Precision", "Sales Performance", "Project Manager", "Legal Counsel", "Accounting Professional", "Supply Chain", "Skilled Trades", "Teacher Portfolio", "Laboratory Scientist", "No Experience Starter"]) {
+  assert.ok(cvTemplateNames.includes(templateName), `${templateName} must be part of the additional 50-template CV expansion.`);
+}
+assert.match(documentTemplateEngine, /MAX_TEMPLATE_VARIANTS_PER_DESIGN = 2/, "CV template registry must cap published color variants at two per underlying design.");
+assert.match(documentTemplateEngine, /designKey[\s\S]*templateVariantCounts[\s\S]*validateTemplateVariantLimit\(\)/, "CV template metadata must track design families and enforce variant limits in the shared registry.");
+assert.match(documentTemplateEngine, /family[\s\S]*atsClassification[\s\S]*atsCharacteristic[\s\S]*recruiterCharacteristic[\s\S]*bestFor[\s\S]*thumbnail/, "Template gallery metadata must include families, honest ATS classifications, recruiter characteristics, best-for labels, and thumbnails.");
+for (const classification of ["ATS HIGH", "ATS BALANCED", "VISUAL / RECRUITER-FIRST"]) {
+  assert.match(documentTemplateEngine, new RegExp(classification.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `Template gallery must include ${classification} templates.`);
+}
 assert.match(documentTemplateEngine, /photoCapability: ProfessionalPhotoTemplateCapability/, "CV template metadata must declare a professional-photo capability contract.");
-assert.equal((documentTemplateEngine.match(/photoCapability:\s*\{/g) ?? []).length, 10, "Every premium CV template must declare exactly one photo capability.");
+assert.match(documentTemplateEngine, /noPhoto[\s\S]*optionalPhoto[\s\S]*creativePhoto/, "Template photo capability presets must support disabled, optional, and recommended photo architectures.");
 assert.match(documentTemplateEngine, /photoMode: "none"/, "At least one CV template must explicitly disable photo rendering.");
 assert.match(documentTemplateEngine, /photoMode: "optional"/, "At least one CV template must support optional canonical photo rendering.");
 assert.match(documentTemplateEngine, /photoMode: "recommended"/, "At least one CV template must support a photo-recommended architecture.");
@@ -1898,7 +2313,9 @@ assert.doesNotMatch(documentTemplateEngine, /atsRating|recruiterRating/, "Templa
 assert.match(professionalIdentityService, /premiumDocumentTemplates = documentTemplateGallery/, "Professional Identity service must reuse the shared template gallery.");
 assert.match(professionalIdentityTool, /documentTemplateGallery\.map/, "CV Builder must render the shared visual template gallery.");
 assert.match(professionalIdentityTool, /Template gallery[\s\S]*Choose a recruiter-ready design/, "CV Builder must expose a visual template gallery.");
-assert.match(professionalIdentityTool, /\[grid-template-columns:repeat\(auto-fit,minmax\(220px,1fr\)\)\]/, "CV Builder template gallery must use a responsive minimum-width card grid.");
+assert.match(professionalIdentityTool, /cvTemplateFamily[\s\S]*cvTemplateAtsFilter[\s\S]*cvTemplateSearch/, "CV Builder must keep the 50+ template library compact with family, ATS, and search filtering.");
+assert.match(professionalIdentityTool, /recommendedDocumentTemplates[\s\S]*Browse all templates[\s\S]*cvTemplateBrowserOpen/, "CV Builder must show a compact selector and open the 100+ template gallery only on demand.");
+assert.match(professionalIdentityTool, /\[grid-template-columns:repeat\(auto-fit,minmax\(154px,1fr\)\)\]/, "CV Builder template browser must use a compact responsive metadata grid.");
 assert.match(professionalIdentityTool, /<TemplateMiniPreview template=\{template\} \/>/, "CV Builder template gallery must use the shared architecture mini preview component.");
 assert.match(templateMiniPreview, /cv-template-mini-preview/, "CV Builder template gallery must show lightweight mini document previews instead of abstract skeleton-only cards.");
 for (const layout of ["single", "international", "executive", "consulting", "technical", "creative", "graduate"]) {
@@ -1906,49 +2323,56 @@ for (const layout of ["single", "international", "executive", "consulting", "tec
 }
 assert.doesNotMatch(professionalIdentityTool, /lg:flex-row lg:items-start lg:justify-between/, "CV gallery parent must not use the old stretched desktop flex-row layout.");
 assert.doesNotMatch(professionalIdentityTool, /min-h-\[330px\]/, "CV template cards must use natural content height, not fixed minimum card height.");
-assert.match(professionalIdentityTool, /template\.atsCharacteristic[\s\S]*template\.recruiterCharacteristic/, "CV Builder template cards must show honest characteristics instead of static percentages.");
+assert.match(professionalIdentityTool, /template\.atsClassification[\s\S]*template\.atsCharacteristic/, "CV Builder template cards must show honest ATS classifications and characteristics instead of static percentages.");
 assert.doesNotMatch(professionalIdentityTool, /ATS \{template\.atsRating\}%|Recruiter \{template\.recruiterRating\}%/, "CV Builder template cards must not show fake ATS or recruiter percentages.");
-assert.match(professionalIdentityTool, /onClick=\{\(\) => updateValue\("templateName", template\.name\)\}/, "Template cards must switch instantly while preserving the same CV model.");
-assert.match(professionalIdentityTool, /Template switching changes presentation only\. Your CV model, edits, and saved content stay the same\./, "CV Builder must explain that switching templates preserves data.");
+assert.match(professionalIdentityTool, /selectTemplate\(template\.name\)[\s\S]*setCvTemplateBrowserOpen\(false\)/, "Template cards must switch instantly, close the browser, and preserve the same CV model.");
+assert.match(professionalIdentityTool, /Presentation changes only\. Your canonical CV content stays the same\./, "CV Builder must explain that switching templates preserves data.");
 assert.match(professionalIdentityTool, /renderCvHtmlFromModel\(previewCvModel, templateName, activeCvSection\)/, "Designed Preview must render the selected template from the live canonical CV model.");
 assert.match(professionalIdentityTool, /simplePdfDocumentFromModel\(document\.title, cvModel, templateName\)/, "PDF export path must stay aligned to the selected template and canonical CV model.");
+assert.match(professionalIdentityTool, /if \(exportLocked && !coreDownloadsAllowed\)/, "Current core document PDF downloads must bypass legacy pricing redirects.");
+assert.match(professionalIdentityTool, /downloadBusy[\s\S]*Preparing\.\.\.[\s\S]*Download PDF/, "PDF downloads must provide immediate progress feedback and prevent duplicate clicks.");
+assert.doesNotMatch(myDocumentsClient, /PremiumUpgradeCard[\s\S]*Upgrade to download/, "Saved core document downloads must not render an upgrade card.");
 assert.match(professionalIdentityTool, /Improve your CV/, "CV Builder must show Improve your CV recommendations instead of generic missing-field messages.");
 assert.match(professionalIdentityTool, /Add \{parsedCv\.missing\.join\(", "\)\.toLowerCase\(\)\}/, "CV recommendations must be based on the structured CV model gaps.");
 assert.doesNotMatch(professionalCvPage, /premiumDocumentTemplates\.map|TemplateMiniPreview/, "CV page wrapper must not render a second template gallery after the editor workspace.");
-const cvEditorIndex = professionalIdentityTool.indexOf("Structured editor");
-const cvPreviewIndex = professionalIdentityTool.indexOf("Live preview engine");
-const cvGalleryIndex = professionalIdentityTool.indexOf("Choose a recruiter-ready design", cvPreviewIndex + 1);
-const cvNextActionIndex = professionalIdentityTool.indexOf("Your CV is ready. What would you like to do next?");
 assert.equal(professionalIdentityTool.indexOf("CV generated"), -1, "CV Builder must not render the old generated/version management card.");
 assert.doesNotMatch(professionalIdentityTool, /CV version name|Content source: one CV model\.|When I save content edits, also update linked CV versions|Duplicate CV/, "CV Builder must keep technical version controls out of the visible workspace.");
-assert.match(professionalIdentityTool, /Live preview engine[\s\S]*Regenerate[\s\S]*Upload CV[\s\S]*Download PDF[\s\S]*Designed Preview[\s\S]*ATS Preview/, "Live Preview Engine must contain CV management and preview/output actions.");
-assert.ok(cvEditorIndex > -1 && cvPreviewIndex > cvEditorIndex && cvGalleryIndex > cvPreviewIndex && cvNextActionIndex > cvGalleryIndex, "CV page flow must be editor, live preview workspace, template gallery, then next-action area.");
+assert.match(professionalIdentityTool, /function renderCvDocumentBar[\s\S]*Download PDF[\s\S]*Edit information[\s\S]*ATS Preview/, "CV document bar must expose the primary download, information edit, and ATS actions.");
+assert.match(professionalIdentityTool, /Document studio[\s\S]*Refresh from Identity[\s\S]*More[\s\S]*Upload CV/, "CV import and refresh actions must be grouped as secondary document-studio controls.");
+const cvGalleryCallIndex = professionalIdentityTool.indexOf('{tool === "cv" ? renderCvTemplateGallery() : null}');
+const cvIdentityCorrectionIndex = professionalIdentityTool.indexOf('{tool === "cv" ? renderCvIdentityCorrectionCard() : null}');
+const cvDocumentBarIndex = professionalIdentityTool.indexOf('{tool === "cv" ? renderCvDocumentBar() : null}');
+const cvPreviewCardIndex = professionalIdentityTool.indexOf('<Card className="overflow-hidden border-[#7f1d1d]/18', cvGalleryCallIndex);
+const cvNextActionIndex = professionalIdentityTool.indexOf("Your CV is ready", cvPreviewCardIndex);
+assert.ok(cvDocumentBarIndex > -1 && cvIdentityCorrectionIndex > cvDocumentBarIndex && cvGalleryCallIndex > cvIdentityCorrectionIndex && cvPreviewCardIndex > cvGalleryCallIndex && cvNextActionIndex > cvPreviewCardIndex, "CV page flow must be document bar, compact Professional Identity correction, template selector, full-width A4 document studio, then next-step area.");
+assert.match(professionalIdentityTool, /Want to change your CV information\?[\s\S]*routeBuilders\.professionalIdentityReview\(appRoutes\.professionalIdentityCv\)/, "CV correction strip must route through Professional Identity while preserving return-to-CV context.");
 assert.equal((professionalIdentityTool.match(/Choose a recruiter-ready design/g) ?? []).length, 2, "CV and Cover Letter must each render one My CV-style Template Gallery instance.");
-assert.equal((professionalIdentityTool.match(/Structured editor/g) ?? []).length, 1, "CV Builder must render one Structured Editor instance.");
-assert.equal((professionalIdentityTool.match(/Live preview engine/g) ?? []).length, 2, "CV and Cover Letter must each render one Live Preview Engine instance.");
+assert.equal((professionalIdentityTool.match(/Structured editor/g) ?? []).length, 0, "Cover Letter must not keep the old persistent Structured Editor layout.");
+assert.equal((professionalIdentityTool.match(/Live preview engine/g) ?? []).length, 0, "Cover Letter must use Document Studio instead of the old Live Preview Engine label.");
 for (const sectionLabel of ["Header", "Summary", "Experience", "Education", "Skills", "Projects", "Certifications", "More"]) {
   assert.match(professionalIdentityTool, new RegExp(`label: "${sectionLabel}"`), `CV Document Studio section navigator must include ${sectionLabel}.`);
 }
-assert.match(professionalIdentityTool, /function renderCvSectionNavigator/, "CV editor must render a vertical accordion section navigator.");
-assert.match(professionalIdentityTool, /data-cv-editor-accordion="primary"/, "CV primary sections must be rendered as a vertical accordion.");
+assert.match(professionalIdentityTool, /function renderCvSectionNavigator/, "CV source-section helpers may remain available for contextual Professional Identity navigation.");
+assert.doesNotMatch(professionalIdentityTool, /tool === "cv" \? \([\s\S]*renderCvSectionNavigator\(\)/, "CV workspace must not render the old persistent source-section accordion.");
+assert.match(professionalIdentityTool, /data-cv-editor-accordion="primary"/, "CV primary section metadata remains available for contextual source summaries.");
 assert.match(professionalIdentityTool, /aria-expanded=\{isOpen\}[\s\S]*aria-controls=\{panelId\}/, "CV accordion buttons must expose expanded state and panel controls.");
 assert.match(professionalIdentityTool, /onClick=\{\(\) => toggleCvPrimarySection\(item\)\}/, "CV accordion headings must expand and collapse primary sections.");
 assert.match(professionalIdentityTool, /setActiveCvSection\(""\)/, "Clicking an open primary accordion section must collapse it without clearing CV data.");
-assert.match(professionalIdentityTool, /function renderCvAccordionContent/, "CV accordion must render the existing editor inside the open section row.");
+assert.match(professionalIdentityTool, /function renderCvAccordionContent[\s\S]*renderSyncedCvSection/, "CV accordion must render Professional Identity-synced section summaries inside the open section row.");
 assert.doesNotMatch(professionalIdentityTool, /function renderActiveCvEditor/, "CV editor must not use the old detached active-editor block.");
 assert.doesNotMatch(professionalIdentityTool, /overflow-x-auto[\s\S]{0,120}cvPrimaryNavigation|lg:grid-cols-4[\s\S]{0,160}cvPrimaryNavigation/, "CV primary sections must not use the old horizontal tab/grid selector.");
-assert.match(professionalIdentityTool, /data-cv-editor-accordion="optional"/, "More must render optional sections as a nested vertical accordion.");
-assert.match(professionalIdentityTool, /activeCvSection === title[\s\S]*setActiveCvSection\("More"\)/, "Clicking an open optional section must collapse it back to More.");
-assert.match(professionalIdentityTool, /data-cv-editor-form-flow="single-column"/, "Expanded CV accordion editors must use a single-column field flow.");
-assert.doesNotMatch(professionalIdentityTool, /renderHeaderEditor[\s\S]*sm:grid-cols-2/, "Header expanded accordion content must not place editable fields in two columns.");
-assert.match(professionalIdentityTool, /Full name[\s\S]*Target role[\s\S]*Email[\s\S]*Phone[\s\S]*City[\s\S]*Country[\s\S]*LinkedIn[\s\S]*Portfolio/, "Header editor must preserve all existing fields in vertical order.");
-assert.match(professionalIdentityTool, /tool === "cv" \? "grid gap-5 lg:grid-cols-2 lg:items-stretch"/, "CV workspace must use a 50/50 desktop editor and preview layout.");
-assert.match(professionalIdentityTool, /tool === "cover-letter" \? "grid gap-5 lg:grid-cols-4"/, "Cover Letter workspace must keep its existing four-column layout.");
-assert.match(professionalIdentityTool, /tool === "cv" \? `\$\{cvMobileTab === "edit" \? "block" : "hidden"\} lg:block lg:h-\[calc\(100vh_-_164px\)\] lg:min-h-\[680px\] lg:overflow-y-auto`/, "CV editor must be independently scrollable in the desktop 50% column and tabbed on mobile.");
-assert.match(professionalIdentityTool, /cvMobileTab === "preview" \? "block" : "hidden"[\s\S]*lg:h-\[calc\(100vh_-_164px\)\] lg:min-h-\[680px\] lg:overflow-hidden/, "CV preview must stay in a viewport-controlled desktop column and switch behind the Preview CV mobile tab.");
+assert.match(professionalIdentityTool, /function renderSyncedMoreSections[\s\S]*cvMoreSections\.map\(\(title\) => renderSyncedCvSection\(title, cvSectionItems\(title\)/, "More must render optional sections as Professional Identity-synced summaries.");
+assert.doesNotMatch(professionalIdentityTool, /data-cv-editor-accordion="optional"|activeCvSection === title[\s\S]*setActiveCvSection\("More"\)/, "More must not keep the old duplicate optional-section editor.");
+assert.match(professionalIdentityTool, /renderSyncedHeaderSection[\s\S]*parsedCv\.fullName[\s\S]*parsedCv\.targetRole[\s\S]*parsedCv\.email[\s\S]*parsedCv\.phone[\s\S]*parsedCv\.city[\s\S]*parsedCv\.country[\s\S]*parsedCv\.linkedIn[\s\S]*parsedCv\.portfolio/, "Header summaries must preserve all Professional Identity-derived header fields.");
+assert.match(professionalIdentityTool, /tool === "cv" \|\| tool === "cover-letter" \? "grid gap-5"/, "CV and Cover Letter workspaces must use the same full-width document-studio flow.");
+assert.match(professionalIdentityTool, /renderCvTemplateGallery\(\)[\s\S]*<Card className="overflow-hidden border-\[#7f1d1d\]\/18/, "CV template selector must render before the full-width preview card.");
+assert.match(professionalIdentityTool, /data-cv-document-studio="true"/, "CV preview must render inside the dedicated document studio container.");
 assert.match(professionalIdentityTool, /renderCvPreviewViewer\(\)/, "CV A4 preview must render through the shared fit-page preview viewer.");
 assert.match(professionalIdentityTool, /ref=\{cvPreviewViewportRef\}[\s\S]*aria-label="Live CV A4 preview"/, "CV preview viewer must measure the real preview viewport.");
-assert.match(professionalIdentityTool, /function renderCvCompactStatus/, "CV Health and save state must be compact in the editor heading area.");
+assert.match(professionalIdentityTool, /cvPreviewHtml\.match\(\/<div class="cv-render-page-frame"\/g\)/, "CV page count must count only real rendered A4 page frames, not CSS selectors.");
+assert.match(professionalIdentityTool, /style=\{\{ width: scaledWidth, height:/, "CV preview stage must reserve actual scaled page height instead of a giant blank min-height canvas.");
+assert.match(professionalIdentityTool, /data-cv-document-stage="true"/, "Application chrome must remain outside the scoped CV document stage.");
+assert.match(professionalIdentityTool, /function renderCvCompactStatus/, "CV Health helper remains available without rendering a persistent Professional Identity side block.");
 assert.match(professionalIdentityTool, /function saveStatusLabel/, "CV Document Studio must centralize compact save status text.");
 assert.doesNotMatch(professionalIdentityTool, /mainCvSections\.slice\(1\)\.map/, "CV editor must not render the old endless stacked section editor.");
 assert.match(professionalIdentityTool, /function duplicateCvVersion/, "CV duplicate/version behavior must remain available after the studio refactor.");
@@ -2478,13 +2902,51 @@ assert.ok(!/(^|["\s])page\s+\d+/i.test(JSON.stringify(florentCanonicalCv)) && !/
 assert.ok(florentCanonicalCv.professionalExperience.every((item) => !(item.role.includes("|") && !item.company && !item.startDate && !item.endDate)), "Pipe-separated flattened experience strings must not substitute for structured ExperienceRecord data.");
 assert.ok(florentCanonicalCv.education.every((item) => item.qualification.length < 180 && !/;.*;.*;/.test(item.qualification)), "Qualification title must not absorb an entire module list.");
 assert.ok(florentCanonicalCv.references.items.length >= 2, "References continuing through the import must remain grouped in CanonicalCv references.");
-assert.match(documentDownloads, /export type CoverLetterData = \{[\s\S]*fullName: string;[\s\S]*professionalTitle: string;[\s\S]*companyName: string;[\s\S]*subject: string;[\s\S]*motivationParagraph: string;[\s\S]*evidenceParagraph: string;[\s\S]*companyAlignmentParagraph: string;[\s\S]*designSystem: CoverLetterTemplateName;[\s\S]*\};/, "Cover Letter foundation must define one canonical structured CoverLetterData source of truth.");
-for (const templateName of ["Executive Black", "Modern ATS", "Google Style", "Microsoft Professional", "Deloitte Consulting", "Executive Signature", "Global Corporate", "Tech Minimal", "Creative Professional", "Graduate First Step"]) {
+assert.match(documentDownloads, /export type CoverLetterData = \{[\s\S]*fullName: string;[\s\S]*professionalTitle: string;[\s\S]*companyName: string;[\s\S]*subject: string;[\s\S]*motivationParagraph: string;[\s\S]*evidenceParagraph: string;[\s\S]*companyAlignmentParagraph: string;[\s\S]*designSystem: CoverLetterTemplateName;[\s\S]*\};[\s\S]*export type CoverLetterModel = CoverLetterData;/, "Cover Letter foundation must define one canonical structured CoverLetterData/CoverLetterModel source of truth.");
+for (const templateName of ["PATHZY Signature Letter", "Executive Black", "Modern ATS", "Google Style", "Microsoft Professional", "Deloitte Consulting", "Executive Signature", "Global Corporate", "Tech Minimal", "Creative Professional", "Graduate First Step"]) {
   assert.match(documentDownloads, new RegExp(`name: "${templateName}"`), `${templateName} must be registered in the cover letter template gallery.`);
 }
+assert.match(documentDownloads, /if \(typeof value !== "string"\) return "PATHZY Signature Letter"/, "Cover Letter generation must default to the benchmark PATHZY Signature Letter template.");
 assert.match(documentDownloads, /export function serializeCoverLetterData/, "Cover Letter content text must serialize from coverLetterData.");
 assert.match(documentDownloads, /export function renderCoverLetterHtmlFromData/, "Cover Letter preview must render from coverLetterData.");
 assert.match(documentDownloads, /export function simpleCoverLetterPdfDocument[\s\S]*pdfFromLayout\(buildCoverLetterLayoutFromData\(data\)\)/, "Cover Letter PDF must export from the same coverLetterData renderer.");
+const coverLetterJobContext = {
+  source: "pasted_job_description",
+  company: "Avolito Beverages",
+  role: "Marketing Coordinator",
+  location: "Johannesburg",
+  jobDescription: "Coordinate launch campaigns, supplier communication and weekly reporting.",
+  requirements: ["Marketing coordination", "Weekly reporting", "Stakeholder communication"],
+  responsibilities: ["Coordinate launch campaigns", "Prepare reporting updates"],
+  hiringManager: ""
+};
+const signatureCoverLetterData = professionalIdentityCoverLetterModelRuntime.coverLetterDataFromProfessionalIdentity(professionalIdentityCvValues, coverLetterJobContext, { templateName: "PATHZY Signature Letter", language: "english" });
+assert.equal(signatureCoverLetterData.fullName, "Nicka Candida", "Cover Letter model must draw the candidate name from Professional Identity.");
+assert.equal(signatureCoverLetterData.companyName, "Avolito Beverages", "Cover Letter model must draw the organization from Job Context.");
+assert.equal(signatureCoverLetterData.jobTitle, "Marketing Coordinator", "Cover Letter model must draw the target role from Job Context.");
+assert.equal(signatureCoverLetterData.designSystem, "PATHZY Signature Letter", "Cover Letter model must use the benchmark Signature Letter template.");
+const signatureCoverLetterUserText = [
+  signatureCoverLetterData.openingParagraph,
+  signatureCoverLetterData.motivationParagraph,
+  signatureCoverLetterData.evidenceParagraph,
+  signatureCoverLetterData.companyAlignmentParagraph,
+  signatureCoverLetterData.closingParagraph,
+  ...signatureCoverLetterData.bodyParagraphs
+].join(" ");
+assert.doesNotMatch(signatureCoverLetterUserText, /PATHZY|salary|employment diagnosis|PATHZY score|work authorization|nationality/i, "Generated Cover Letter prose must exclude internal/private fields and product guidance.");
+assert.doesNotMatch(signatureCoverLetterData.greeting, /undefined|null|recruiter/i, "Cover Letter must not invent a recruiter name when none is known.");
+const signatureCoverLetterHtml = documentDownloadsRuntime.renderCoverLetterHtmlFromData(signatureCoverLetterData);
+const signatureCoverLetterPdf = documentDownloadsRuntime.simpleCoverLetterPdfDocument(signatureCoverLetterData);
+assert.match(signatureCoverLetterHtml, /data-pathzy-cover-letter-document-root="candidate-cover-letter-only"/, "Cover Letter preview must render inside an isolated candidate document root.");
+assert.equal((signatureCoverLetterHtml.match(/class="cv-render-page-frame"/g) ?? []).length, 1, "A normal one-page Signature Letter fixture must produce one real A4 page frame.");
+assert.match(signatureCoverLetterHtml, /Nicka Candida[\s\S]*Marketing Coordinator[\s\S]*Avolito Beverages[\s\S]*Kind regards/, "Cover Letter preview must render formal letter hierarchy from the normalized model.");
+assert.doesNotMatch(signatureCoverLetterHtml, /Employment Center|Applications|Interview Preparation|Career Analytics|Settings|Logout|Your Mentor|EN\/FR/, "Application navigation must never render inside the candidate Cover Letter preview root.");
+assert.doesNotMatch(signatureCoverLetterPdf, /Employment Center|Applications|Interview Preparation|Career Analytics|Settings|Logout|Your Mentor|pricing/i, "Cover Letter PDF export must never contain application chrome or pricing redirects.");
+const longSignatureCoverLetterHtml = documentDownloadsRuntime.renderCoverLetterHtmlFromData({
+  ...signatureCoverLetterData,
+  bodyParagraphs: Array.from({ length: 16 }, (_, index) => `Additional relevant paragraph ${index + 1} explaining confirmed application evidence, job context and professional fit without adding unsupported facts.`)
+});
+assert.ok((longSignatureCoverLetterHtml.match(/class="cv-render-page-frame"/g) ?? []).length > 1, "Long Cover Letter content must create another A4 page instead of clipping or overlapping.");
 assert.match(documentDownloads, /export function coverLetterPdfFilename/, "Cover Letter PDF export must use a dedicated clean filename helper.");
 assert.match(documentDownloads, /\$\{candidate\}_Cover_Letter_\$\{company\}_\$\{jobTitle\}_\$\{stamp\}\.pdf/, "Cover Letter filename must include candidate, company, job title, and date.");
 assert.match(documentDownloads, /function resolveCoverLetterDesign/, "Cover Letter renderer must have design-system-specific layout tokens.");
@@ -2499,54 +2961,246 @@ assert.match(documentDownloads, /premiumTemplate = resolveCvTemplateDesign\(cove
 assert.match(documentDownloads, /coverDesign\.paragraphSpacing/, "Cover Letter design systems must change section rhythm, not just color.");
 assert.match(documentDownloads, /coverDesign\.nameSize/, "Cover Letter design systems must change typography, not just color.");
 assert.match(documentDownloads, /coverDesign\.headerStyle === "executive"[\s\S]*premiumTemplate\.amber/, "Executive cover letter must include a distinct premium accent treatment.");
-assert.match(professionalIdentityService, /const templateName = normalizeCoverLetterTemplate\(options\.templateName\);/, "Cover Letter generation must use the cover-letter template family.");
-assert.match(professionalIdentityService, /const coverLetterData: CoverLetterData = \{[\s\S]*professionalTitle: goal,[\s\S]*companyName: company,[\s\S]*jobTitle: role,[\s\S]*motivationParagraph:[\s\S]*evidenceParagraph:[\s\S]*companyAlignmentParagraph:[\s\S]*designSystem: templateName[\s\S]*\};/, "Cover Letter generation must create the expanded structured coverLetterData.");
-assert.match(professionalIdentityService, /contentJson: \{ coverLetterData \}/, "Cover Letter save must persist coverLetterData.");
-assert.match(professionalIdentityService, /async function getLatestCvModel/, "Cover Letter generation must read saved CV data when available.");
-assert.match(coverLetterGeneration, /getLatestCvModel\(supabase, userId\)/, "Cover Letter generation must use the user's latest CV context.");
+assert.match(professionalIdentityCoverLetterModel, /export type CoverLetterJobContext/, "Cover Letter architecture must define a separate job/application context contract.");
+assert.match(professionalIdentityCoverLetterModel, /export function coverLetterDataFromProfessionalIdentity/, "Cover Letter architecture must transform Professional Identity plus job context into the normalized letter model.");
+assert.match(professionalIdentityCoverLetterModel, /export function professionalIdentityCoverLetterDocument/, "Cover Letter architecture must create generated documents from the normalized model.");
+assert.match(professionalIdentityCoverLetterModel, /export function professionalIdentityCoverLetterSyncStatus/, "Cover Letter architecture must expose sync status instead of duplicating profile facts in the document editor.");
+assert.match(professionalIdentityCoverLetterModel, /professionalIdentityRequiredChecksFromValues\(values\)/, "Cover Letter missing-information checks must use the shared Professional Identity completion engine.");
+assert.match(professionalIdentityCoverLetterModel, /!hasJobContext\(jobContext\)[\s\S]*"missing_job_context"[\s\S]*missingSections\.length[\s\S]*"missing_information"/, "Cover Letter sync status must prioritize missing Job Context so the empty state stays actionable.");
+assert.match(professionalIdentityCoverLetterModel, /serializeCoverLetterData\(coverLetterData\)/, "Cover Letter content serialization must come from the normalized coverLetterData model.");
+assert.match(professionalIdentityCoverLetterModel, /manualOverride: false/, "New source-generated Cover Letters must start without a manual override flag.");
+assert.match(professionalIdentityService, /const templateName = normalizeCoverLetterTemplate\(options\.templateName \?\? "PATHZY Signature Letter"\);/, "Cover Letter generation must use the benchmark cover-letter template family by default.");
+assert.match(coverLetterGeneration, /professionalIdentityValuesFromSources\(inputs\.profile, \{ answers: inputs\.discoveryAnswers \}/, "Cover Letter generation must read the Professional Identity compatibility model.");
+assert.match(coverLetterGeneration, /if \(!company \|\| !role\)[\s\S]*job title and company name are required/, "Cover Letter generation must require job title and company before claiming tailored status.");
+assert.doesNotMatch(coverLetterGeneration, /const role = prepareForProfessionalDocument\(options\.role \|\| careerGoal\(inputs\)\)/, "Cover Letter generation must not substitute Professional Identity career goal for missing job context.");
+assert.match(coverLetterGeneration, /const jobContext: CoverLetterJobContext = \{[\s\S]*source: options\.jobDescription \? "pasted_job_description" : "manual"/, "Cover Letter generation must separate job context from Professional Identity.");
+assert.match(coverLetterGeneration, /coverLetterDataFromProfessionalIdentity\(identityValues, jobContext, \{ templateName, language, tone \}\)/, "Cover Letter generation must create coverLetterData through the shared Professional Identity transformation layer.");
+assert.match(professionalIdentityService, /source: "professional_identity_and_job_context"[\s\S]*professionalIdentitySource: "canonical_professional_identity"[\s\S]*jobContext[\s\S]*manualOverride: false/, "Cover Letter save must persist source metadata, job context and manual override state.");
+assert.doesNotMatch(coverLetterGeneration, /getLatestCvModel\(supabase, userId\)/, "Cover Letter generation must not use the latest CV as the factual source of truth.");
 assert.match(coverLetterGeneration, /jobDescriptionFocus\(options\.jobDescription\)/, "Cover Letter generation must use the job description to shape the letter.");
-assert.match(coverLetterGeneration, /coverLetterCvFacts\(latestCv, fallbackSkills\)/, "Cover Letter generation must summarize CV facts instead of copying the CV word-for-word.");
-assert.doesNotMatch(coverLetterGeneration, /PATHZY|will not invent|Template:|Add your full name/, "Generated cover letters must not contain internal PATHZY wording, template notes, or placeholders.");
+assert.doesNotMatch(coverLetterGeneration, /PATHZY Professional Identity|profil PATHZY|will not invent|Template:|Add your full name/, "Generated cover letters must not contain internal source wording, template notes, or placeholders.");
 assert.match(professionalIdentityTool, /coverLetterDataFromUnknown/, "Cover Letter UI must hydrate coverLetterData from saved documents.");
-assert.match(professionalIdentityTool, /renderCoverLetterHtmlFromData\(coverLetterData\)/, "Cover Letter preview must use coverLetterData.");
+assert.match(professionalIdentityTool, /initialCoverLetterData = useMemo/, "Cover Letter UI must hydrate an initial source-generated or saved document without requiring a generate click.");
+assert.match(professionalIdentityTool, /renderCoverLetterHtmlFromData\(previewCoverLetterData\)/, "Cover Letter preview must use the debounced coverLetterData preview state.");
 assert.match(professionalIdentityTool, /simpleCoverLetterPdfDocument\(exportCoverLetterData\)/, "Cover Letter download must use cleaned coverLetterData.");
 assert.match(professionalIdentityTool, /coverLetterPdfFilename\(exportCoverLetterData\)/, "Cover Letter download must use the clean cover letter PDF filename.");
-assert.match(professionalIdentityTool, /const saveOk = await saveDocument\(true\);[\s\S]*if \(!saveOk\) return;/, "Cover Letter download must not continue if saving the latest edits fails.");
+assert.match(professionalIdentityTool, /const saveOk = await saveDocument\(true\);[\s\S]*if \(!saveOk\) \{[\s\S]*setDownloadState\("error"\);[\s\S]*return;[\s\S]*\}/, "Cover Letter download must not continue if saving the latest edits fails.");
 assert.doesNotMatch(professionalIdentityTool, /cover-letter[\s\S]{0,220}docx/i, "Cover Letter user flow must not expose DOCX export.");
 assert.match(professionalIdentityTool, /function updateCoverLetterDraft/, "Cover Letter editor must update coverLetterData as the source of truth.");
-assert.match(professionalIdentityTool, /contentJson: \{ \.\.\.\(document\.contentJson \?\? \{\}\), coverLetterData: draft \}/, "Cover Letter edits must preserve coverLetterData for save and recovery.");
+assert.match(professionalIdentityTool, /manualOverride: Boolean\(existingVersion\.manualOverride\) \|\| manualOverride/, "Cover Letter manual edits must be protected as document-specific overrides.");
+assert.match(professionalIdentityTool, /coverLetterContentJson\(document, draft, true\)/, "Cover Letter edits must preserve metadata and mark the draft as manually edited.");
 assert.match(professionalIdentityTool, /function renderCoverLetterEditor/, "Cover Letter must have a structured editor.");
 assert.match(professionalIdentityTool, /function renderCoverLetterTemplateGallery/, "Cover Letter Studio must expose a letter-specific template gallery.");
 assert.match(professionalIdentityTool, /function renderCoverLetterMiniPreview/, "Cover Letter template cards must show real mini document previews.");
-assert.match(professionalIdentityTool, /coverLetterTemplateGallery\.map/, "Cover Letter template gallery must render all letter-specific templates.");
-assert.match(professionalIdentityTool, /Template switching changes presentation only\. Your cover letter content, edits, application details and saved data stay the same\./, "Cover Letter template switching must explain that content is preserved.");
-assert.match(professionalIdentityTool, /template_name: draft\.designSystem,[\s\S]*coverLetterData: draft/, "Cover Letter template switching must update presentation without losing content.");
+assert.match(professionalIdentityTool, /filteredCoverLetterTemplates\.map/, "Cover Letter template gallery must render browsed letter-specific templates.");
+assert.match(professionalIdentityTool, /Presentation changes only\. Your candidate and job data stay the same\./, "Cover Letter template switching must explain that content is preserved.");
+assert.match(professionalIdentityTool, /template_name: draft\.designSystem,[\s\S]*coverLetterContentJson\(document, draft, false\)/, "Cover Letter template switching must update presentation without losing content or source metadata.");
 assert.doesNotMatch(professionalCoverLetterPage, /premiumDocumentTemplates|documentTemplateGallery\.map/, "Cover Letter page must not render the old borrowed CV template strip.");
 assert.match(professionalIdentityTool, /previewCoverLetterData/, "Cover Letter preview must use a stable debounced preview data state.");
 assert.match(professionalIdentityTool, /setTimeout\(\(\) => \{\s*setPreviewCoverLetterData\(coverLetterData\);\s*\}, 260\);/, "Cover Letter live preview must debounce updates to avoid shaking while typing.");
-assert.match(professionalIdentityTool, /tool === "cover-letter" \? "grid gap-5 lg:grid-cols-4"/, "Cover Letter workspace must keep its stable four-column desktop grid.");
-assert.match(professionalIdentityTool, /tool === "cover-letter" \? "lg:col-span-1"/, "Cover Letter structured editor must keep the left-column span.");
-assert.match(professionalIdentityTool, /<Card className="lg:col-span-3">[\s\S]*Live preview engine[\s\S]*\{selectedTemplateMetadata\.name\} Cover Letter/, "Cover Letter live preview must use the same right-column preview card span as My CV.");
+assert.match(professionalIdentityTool, /tool === "cv" \|\| tool === "cover-letter" \? "grid gap-5"/, "Cover Letter workspace must use the same full-width document-studio flow as My CV.");
+assert.doesNotMatch(professionalIdentityTool, /tool === "cover-letter" \? "lg:col-span-1"|tool === "cover-letter" \? "grid gap-5 lg:grid-cols-4"/, "Cover Letter must not use the old narrow editor and preview column split.");
+assert.match(professionalIdentityTool, /function renderCoverLetterDocumentBar[\s\S]*MY COVER LETTER[\s\S]*Download PDF[\s\S]*Edit Information[\s\S]*Change Job[\s\S]*Preview/, "Cover Letter document bar must mirror My CV primary actions.");
 assert.match(professionalIdentityTool, /renderCoverLetterCompactStatus\(\)/, "Cover Letter editor must show Cover Letter Health in the structured editor.");
 assert.match(professionalIdentityTool, /Cover Letter Health/, "Cover Letter health label must be visible.");
 assert.match(professionalIdentityTool, /const \[coverLetterHealthExpanded, setCoverLetterHealthExpanded\] = useState\(false\)/, "Cover Letter Health disclosure must be collapsed by default.");
 assert.match(professionalIdentityTool, /aria-expanded=\{coverLetterHealthExpanded\}[\s\S]*aria-controls=\{panelId\}[\s\S]*setCoverLetterHealthExpanded/, "Cover Letter Health disclosure must use the existing accessible Expand/Collapse pattern.");
-assert.match(professionalIdentityTool, /Designed Preview shows the print-ready A4 document that the PDF export uses\./, "Cover Letter preview must use the same preview explanation as My CV.");
-assert.match(professionalIdentityTool, /Regenerate[\s\S]*Generate Draft[\s\S]*Download PDF[\s\S]*Designed Preview/, "Cover Letter live preview must expose generation, PDF, and designed preview actions.");
-assert.match(professionalIdentityTool, /Draft details[\s\S]*Language[\s\S]*Premium template[\s\S]*fields\.map/, "Cover Letter draft inputs must remain available inside the live preview engine.");
+assert.match(professionalIdentityTool, /Designed Preview shows the print-ready A4 cover letter that the PDF export uses\./, "Cover Letter preview must use the same preview explanation as My CV.");
+assert.match(professionalIdentityTool, /Download PDF[\s\S]*Edit Information[\s\S]*Change Job[\s\S]*Preview[\s\S]*Generate Cover Letter/, "Cover Letter workspace must expose PDF, edit information, change job, preview, and generation actions.");
+assert.match(professionalIdentityTool, /function renderCoverLetterJobContextEntry[\s\S]*data-cover-letter-job-context-flow="true"/, "Cover Letter job context must be handled by one shared actionable flow.");
+assert.match(professionalIdentityTool, /Which opportunity are you applying for\?[\s\S]*Choose a saved job[\s\S]*Paste job description[\s\S]*Enter job details/, "Missing job context must show the user clear next-step options.");
+assert.match(professionalIdentityTool, /Job title \/ position[\s\S]*required[\s\S]*Company name[\s\S]*required/, "Manual Cover Letter job details must require only job title and company.");
+assert.match(professionalIdentityTool, /Hiring manager \/ recruiter name[\s\S]*placeholder="Optional"/, "Recruiter or hiring manager name must remain optional.");
+assert.match(professionalIdentityTool, /Paste the job advert \/ description[\s\S]*Review extracted details[\s\S]*Review the extracted details before generation/, "Pasted job descriptions must be reviewed before generation.");
+assert.match(professionalIdentityTool, /coverLetterJobHref[\s\S]*Open saved jobs/, "Saved-job selection must use the existing Opportunities or Saved Jobs route.");
+assert.match(professionalIdentityTool, /onClick=\{\(\) => setCoverLetterJobContextMode\("choose"\)\}[\s\S]*Change Job/, "Change Job must open the same job-context flow.");
 assert.match(professionalCoverLetterPage, /name: "jobDescription"/, "Cover Letter route must still provide the optional job description input.");
-assert.match(professionalIdentityTool, /renderCoverLetterEditor\(\)[\s\S]*tool === "cover-letter" \? \([\s\S]*Live preview engine[\s\S]*renderCoverLetterHtmlFromData\(previewCoverLetterData\)/, "Cover Letter editor and real A4 preview must render at the same time.");
-assert.match(professionalIdentityTool, /function renderCoverLetterTemplateGallery\(\)[\s\S]*<Card className="lg:col-span-4">/, "Cover Letter template gallery must sit outside the workspace columns like My CV.");
+assert.match(professionalCoverLetterPage, /keyRequirements: \(jobContext\.requirements \?\? \[\]\)\.join\("\\n"\)[\s\S]*recruiterName: jobContext\.hiringManager \?\? ""[\s\S]*jobUrl: jobContext\.url \?\? ""/, "Cover Letter route must pass canonical Job Context details into the shared workspace.");
+assert.match(professionalIdentityTool, /renderCoverLetterJobAndEditorDisclosure\(\)[\s\S]*renderCoverLetterPreviewViewer\(\)/, "Cover Letter editor controls and real A4 preview must render in the same document studio.");
+assert.match(professionalIdentityTool, /function renderCoverLetterTemplateGallery\(\)[\s\S]*Browse all templates[\s\S]*coverLetterTemplateBrowserOpen/, "Cover Letter template gallery must use the compact selector and browser pattern like My CV.");
 assert.match(professionalIdentityTool, /Choose a recruiter-ready design[\s\S]*renderCoverLetterMiniPreview\(template\)[\s\S]*Best for: \{template\.bestFor\}/, "Cover Letter gallery must use My CV gallery architecture with real mini previews and best-for labels.");
-assert.match(professionalIdentityTool, /template\.architecture\.replace\("-", " "\)} layout[\s\S]*PDF ready/, "Cover Letter template cards must show attribute labels.");
+assert.match(professionalIdentityTool, /template\.architecture\.replace\("-", " "\)} letter[\s\S]*PDF ready/, "Cover Letter template cards must show attribute labels.");
 assert.doesNotMatch(professionalIdentityTool, /tool !== "cv" \? \([\s\S]*tool === "cover-letter" \? "lg:col-span-2"/, "Cover Letter must not use the old full-width generator card above the workspace.");
+assert.match(professionalIdentityLinkedInModel, /export type LinkedInProfileModel = \{[\s\S]*headline[\s\S]*about[\s\S]*openToWorkTargets[\s\S]*experience[\s\S]*education[\s\S]*skills[\s\S]*projects[\s\S]*certifications[\s\S]*licences[\s\S]*keywordStrategy[\s\S]*sourceMetadata/, "LinkedIn must have a normalized projection model separate from CV and page-local state.");
+assert.match(professionalIdentityLinkedInModel, /source: "professional_identity"/, "LinkedIn profile model must identify Professional Identity as its factual source.");
+assert.match(professionalIdentityLinkedInModel, /fullName: string;[\s\S]*professionalTitle: string;[\s\S]*profilePhotoAvailable: boolean;[\s\S]*linkedInUrl: string;[\s\S]*professionalLinks: string\[\]/, "LinkedIn model must carry profile-intro presentation data from Professional Identity.");
+assert.match(professionalIdentityLinkedInModel, /skillEvidence: \{[\s\S]*supported: string\[\];[\s\S]*suggestedToDevelop: string\[\]/, "LinkedIn model must distinguish supported skills from suggested skills to develop.");
+assert.match(professionalIdentityLinkedInModel, /keywordStrategy: \{[\s\S]*supported: string\[\];[\s\S]*opportunities: string\[\]/, "LinkedIn keyword intelligence must not mix supported keywords and development opportunities.");
+assert.match(professionalIdentityLinkedInModel, /dimensions: \{ label: string; complete: boolean; recommendation: string \}\[\]/, "LinkedIn profile strength must be based on explicit dimensions.");
+assert.match(professionalIdentityLinkedInModel, /export function linkedinProfileModelFromProfessionalIdentity/, "LinkedIn must transform Professional Identity into the normalized LinkedIn model.");
+assert.match(professionalIdentityLinkedInModel, /normalizeProfessionalIdentityCompletionValues\(values\)/, "LinkedIn generation must normalize canonical Professional Identity values before presentation.");
+assert.match(professionalIdentityLinkedInModel, /professionalIdentityRequiredChecksFromValues\(identity\)/, "LinkedIn missing information must use the shared Professional Identity completion engine.");
+assert.match(professionalIdentityLinkedInModel, /export function serializeLinkedInProfileModel\(model: LinkedInProfileModel\)/, "LinkedIn output must serialize from the normalized LinkedIn model.");
+assert.match(professionalIdentityLinkedInModel, /manualOverride: Boolean\(options\.manualOverride\)/, "LinkedIn source-generated documents must preserve manual override state.");
+assert.match(professionalIdentityLinkedInModel, /routeBuilders\.professionalIdentitySection\(section, appRoutes\.professionalIdentityLinkedin\)/, "LinkedIn missing-information links must preserve return-to-LinkedIn context.");
+const linkedInProjectionFixture = professionalIdentityLinkedInModelRuntime.linkedinProfileModelFromProfessionalIdentity({
+  full_name: "Nika Mokoena",
+  career_goal: "Data Analyst",
+  professional_summary: "Data analyst with practical reporting experience. Data analyst with practical reporting experience.",
+  experience: [
+    "Data Analyst | Acme Analytics | 2023 - Present | Built dashboards for weekly reporting",
+    "Data Analyst | Acme Analytics | 2023 - Present | Built dashboards for weekly reporting"
+  ],
+  education: ["Diploma in Information Systems | Data Analytics | Example College | 2022"],
+  skills: ["SQL", "SQL", "Power BI", "Excel", "Reporting", "Data cleaning"],
+  projects: ["Relevant project", "Customer dashboard", "Data Analyst | Acme Analytics | 2023 - Present | Built dashboards for weekly reporting"],
+  achievements: ["Customer dashboard", "Reduced reporting turnaround time"],
+  certificates: ["Certification", "AWS Cloud Practitioner"],
+  licences: [],
+  languages: ["English - professional"],
+  portfolio_url: "https://example.com"
+}, { language: "english" });
+assert.equal((linkedInProjectionFixture.about.match(/Data analyst with practical reporting experience\./g) ?? []).length, 1, "LinkedIn About must deduplicate repeated Professional Summary sentences.");
+assert.equal(/Built dashboards for weekly reporting/.test(linkedInProjectionFixture.about), false, "LinkedIn About must not append raw Experience descriptions verbatim.");
+assert.ok(linkedInProjectionFixture.about.split(/\s+/).length <= 300, "LinkedIn About must stay within the supported 150-300 word target ceiling.");
+assert.equal(linkedInProjectionFixture.experience.length, 1, "Duplicate experience records must render once.");
+assert.deepEqual({
+  role: linkedInProjectionFixture.experience[0].role,
+  company: linkedInProjectionFixture.experience[0].company,
+  dates: linkedInProjectionFixture.experience[0].dates,
+  description: linkedInProjectionFixture.experience[0].description
+}, {
+  role: "Data Analyst",
+  company: "Acme Analytics",
+  dates: "2023 - Present",
+  description: "Built dashboards for weekly reporting"
+}, "LinkedIn Experience must be structured into role, company, dates and description.");
+assert.equal(linkedInProjectionFixture.education[0].qualification, "Diploma in Information Systems", "LinkedIn Education must keep qualification structured.");
+assert.equal(linkedInProjectionFixture.education[0].field, "Data Analytics", "LinkedIn Education must keep field structured.");
+assert.equal(linkedInProjectionFixture.education[0].institution, "Example College", "LinkedIn Education must keep institution structured.");
+assert.equal(linkedInProjectionFixture.education[0].dates, "2022", "LinkedIn Education must keep dates structured.");
+assert.equal(linkedInProjectionFixture.projects.includes("Relevant project"), false, "LinkedIn Projects must not render placeholder project entries.");
+assert.equal(linkedInProjectionFixture.projects.some((item) => /Built dashboards for weekly reporting/.test(item)), false, "LinkedIn Projects must not repeat full Experience records.");
+assert.equal(linkedInProjectionFixture.certifications.includes("Certification"), false, "LinkedIn Certifications must not render generic placeholder entries.");
+assert.equal(new Set(linkedInProjectionFixture.skills.map((item) => item.toLowerCase())).size, linkedInProjectionFixture.skills.length, "LinkedIn skills must be deduplicated before rendering.");
+assert.doesNotMatch(professionalIdentityLinkedInModelRuntime.serializeLinkedInProfileModel(linkedInProjectionFixture), /Relevant project|PATHZY CV|^- Certification$/m, "Serialized LinkedIn profile must not leak placeholder content.");
+const structuredLinkedInProjection = professionalIdentityLinkedInModelRuntime.linkedinProfileModelFromProfessionalIdentity(structuredIdentityValues, { language: "english" });
+assert.equal(structuredLinkedInProjection.experience.length, 2, "Two Professional Identity experiences must become two LinkedIn experience entries.");
+assert.equal(structuredLinkedInProjection.experience.map((entry) => entry.role).join(" -> "), "Founder & Product Owner -> Co-founder & Marketing Lead", "LinkedIn experience ordering must be preserved.");
+assert.equal(structuredLinkedInProjection.experience[0].description.includes("Building an employment operating system"), true, "LinkedIn Experience 1 description must stay attached to Experience 1.");
+assert.equal(structuredLinkedInProjection.experience[1].description.includes("Coordinating launch planning"), true, "LinkedIn Experience 2 description must stay attached to Experience 2.");
+const serializedStructuredLinkedIn = professionalIdentityLinkedInModelRuntime.serializeLinkedInProfileModel(structuredLinkedInProjection);
+assert.equal((serializedStructuredLinkedIn.match(/Founder & Product Owner/g) ?? []).length, 1, "Serialized LinkedIn output must not duplicate Experience 1.");
+assert.equal((serializedStructuredLinkedIn.match(/Co-founder & Marketing Lead/g) ?? []).length, 1, "Serialized LinkedIn output must not duplicate Experience 2.");
+const structuredCoverLetterData = professionalIdentityCoverLetterModelRuntime.coverLetterDataFromProfessionalIdentity(structuredIdentityValues, { company: "Example Employer", role: "Product Marketing Lead", source: "manual" }, { language: "english", templateName: "PATHZY Signature Letter" });
+assert.match(structuredCoverLetterData.evidenceParagraph, /Founder & Product Owner|Co-founder & Marketing Lead/, "Cover Letter intelligence must receive separate Professional Identity experience evidence records for selection.");
+assert.doesNotMatch(structuredCoverLetterData.evidenceParagraph, /Founder & Product Owner[\s\S]*Co-founder & Marketing Lead[\s\S]*Founder & Product Owner/, "Cover Letter evidence must not duplicate structured experience records.");
+const cleanStructuredWriteValues = professionalIdentityWriteRuntime.cleanProfessionalIdentityValues({ experience: twoExperienceFixture });
+assert.equal(Array.isArray(cleanStructuredWriteValues.experience), true, "Professional Identity write sanitizer must preserve structured experience arrays.");
+assert.equal(typeof cleanStructuredWriteValues.experience[0], "object", "Professional Identity write sanitizer must not convert structured experience records into strings.");
+assert.equal(cleanStructuredWriteValues.experience[0].role, "Founder & Product Owner", "Professional Identity write sanitizer must preserve structured experience fields.");
+assert.match(professionalIdentityCompletion, /experience: firstExperienceList\(answers\.experience_entries, answers\.experience_history, answers\.personal_background\)/, "Professional Identity read path must prefer canonical structured experience entries over legacy text compatibility.");
+assert.match(professionalIdentityWriteService, /experience_history: experienceEntries[\s\S]*experience_entries: experienceEntries[\s\S]*personal_background: ""/, "Professional Identity write path must not refresh a second full-text legacy experience copy.");
+assert.doesNotMatch(professionalIdentityWriteService, /personal_background: experienceEntries\.map\(experienceEntryToText\)\.join/, "Professional Identity write path must stop storing structured experience as a duplicate concatenated paragraph.");
+const knownInputValue = (value) => ({ value, provenance: "KNOWN" });
+const normalizedEmploymentInput = employmentIntelligenceEngineRuntime.normalizeEmploymentIntelligenceInput({
+  userId: "user-1",
+  inputSnapshotVersion: "fixture",
+  professionalIdentity: {
+    currentSituation: knownInputValue("employed"),
+    profileCompletionMetadata: knownInputValue({}),
+    location: knownInputValue({}),
+    nationality: knownInputValue("South African"),
+    workAuthorisation: knownInputValue({}),
+    careerGoal: knownInputValue("Product Marketing Lead"),
+    summary: knownInputValue("Product builder."),
+    education: knownInputValue(structuredIdentityValues.education),
+    experience: knownInputValue(structuredIdentityValues.experience),
+    skills: knownInputValue(structuredIdentityValues.skills),
+    projects: knownInputValue(structuredIdentityValues.projects),
+    achievements: knownInputValue(structuredIdentityValues.achievements),
+    certificates: knownInputValue(structuredIdentityValues.certificates),
+    licences: knownInputValue(structuredIdentityValues.licences),
+    languages: knownInputValue(structuredIdentityValues.languages),
+    references: knownInputValue(structuredIdentityValues.references),
+    portfolio: knownInputValue([]),
+    socialProfiles: knownInputValue([]),
+    employmentPreferences: knownInputValue({}),
+    salaryExpectations: knownInputValue({}),
+    availability: knownInputValue({}),
+    evidenceMetadata: knownInputValue({})
+  },
+  employmentDiagnosis: {
+    unemploymentDuration: knownInputValue(""),
+    applicationActivity: knownInputValue({}),
+    interviewHistory: knownInputValue({}),
+    barriers: knownInputValue([]),
+    transportAccess: knownInputValue(""),
+    deviceInternetAccess: knownInputValue(""),
+    incomeUrgency: knownInputValue(""),
+    careResponsibilities: knownInputValue(""),
+    workAuthorisationConstraints: knownInputValue(""),
+    documentationAvailability: knownInputValue(""),
+    digitalConfidence: knownInputValue(""),
+    literacyCommunicationComfort: knownInputValue(""),
+    preferredWorkType: knownInputValue(""),
+    mobility: knownInputValue(""),
+    willingnessToLearn: knownInputValue(""),
+    supportNeeds: knownInputValue([]),
+    userConfidence: knownInputValue(""),
+    immediateGoals: knownInputValue([]),
+    longTermGoals: knownInputValue([])
+  },
+  countryContext: {}
+}).input;
+assert.equal(normalizedEmploymentInput.professionalIdentity.experience.value.length, 2, "Employment Intelligence must receive each Professional Identity experience separately.");
+assert.equal(normalizedEmploymentInput.professionalIdentity.experience.value[1].company, "AVOLITO Beverages", "Employment Intelligence must preserve company data per experience record.");
+assert.equal(structuredIdentityValues.education.length, 1, "Education collection must remain a separate record collection.");
+assert.equal(structuredIdentityValues.projects.length, 1, "Projects collection must remain a separate record collection.");
+assert.equal(structuredIdentityValues.achievements.length, 2, "Achievements collection must preserve separate records.");
+assert.equal(structuredIdentityValues.certificates.length, 2, "Certifications collection must preserve separate records.");
+assert.match(professionalIdentityService, /linkedinProfileModelFromProfessionalIdentity[\s\S]*serializeLinkedInProfileModel/, "Professional Identity service must use the LinkedIn projection model and serializer.");
+assert.match(linkedInGeneration, /professionalIdentityValuesFromSources\(inputs\.profile, \{ answers: inputs\.discoveryAnswers \}/, "LinkedIn generation must read the Professional Identity compatibility model.");
+assert.match(linkedInGeneration, /linkedinProfileModelFromProfessionalIdentity\(identityValues, \{ language, profileUpdatedAt: inputs\.profile\?\.updated_at/, "LinkedIn generation must build the profile projection directly from Professional Identity values.");
+assert.match(linkedInGeneration, /serializeLinkedInProfileModel\(model\)/, "LinkedIn generation must serialize the normalized LinkedIn model.");
+assert.match(linkedInGeneration, /linkedinProfileModel: model[\s\S]*professionalIdentitySource: "canonical_professional_identity"[\s\S]*manualOverride: false/, "LinkedIn saved documents must persist source metadata and start without manual override.");
+assert.doesNotMatch(linkedInGeneration, /getLatestCvModel|cvModelFromUnknown|latestCv|cv_documents/, "LinkedIn generation must not use CV documents as the factual source of truth.");
+assert.match(professionalLinkedInPage, /getProfessionalIdentityReadModelSafe\(supabase, user, "linkedin professional identity"\)/, "LinkedIn page must read canonical Professional Identity before rendering.");
+assert.match(professionalLinkedInPage, /loadExistingLinkedInDocument\(supabase, user\.id, params\.documentId\)/, "LinkedIn page must preserve saved LinkedIn-specific documents opened by documentId.");
+assert.match(professionalLinkedInPage, /professionalIdentityLinkedInDocument\(identity\.values/, "LinkedIn page must seed new projections from Professional Identity automatically.");
+assert.match(professionalLinkedInPage, /professionalIdentityLinkedInSyncStatus\(identity\.values/, "LinkedIn page must expose Professional Identity sync status.");
+assert.match(professionalLinkedInPage, /linkedInSyncStatus=\{linkedInSyncStatus\}/, "LinkedIn page must pass source-of-truth sync status into the shared document workspace.");
+assert.match(professionalLinkedInPage, /title="My LinkedIn"[\s\S]*description="PATHZY already knows your professional background\. It helps you present it properly on LinkedIn\."/ , "LinkedIn page must immediately explain the Professional Identity projection purpose.");
+assert.doesNotMatch(professionalLinkedInPage, /PageHeader|Improve My LinkedIn|Copy section by section/, "LinkedIn page must not keep the old generic intro-card layout.");
+assert.doesNotMatch(professionalLinkedInPage, /name: "fullName"|name: "education"|name: "experience"|name: "skills"/, "LinkedIn page must not ask users to recreate factual Professional Identity fields.");
+assert.match(professionalIdentityTool, /linkedInSyncStatus\?: ProfessionalIdentityLinkedInSyncStatus/, "Shared document workspace must accept LinkedIn source sync status.");
+assert.match(professionalIdentityTool, /function linkedInModelFromDocument/, "LinkedIn preview must hydrate from the saved normalized LinkedIn model.");
+assert.match(professionalIdentityTool, /function linkedInContentJson/, "LinkedIn save path must preserve LinkedIn source metadata.");
+assert.match(professionalIdentityTool, /linkedInContentJson\(document, true\)/, "Manual LinkedIn wording edits must mark the document-specific override without changing Professional Identity.");
+assert.match(professionalIdentityTool, /manualOverride: Boolean\(existingVersion\.manualOverride\) \|\| manualOverride/, "Manual LinkedIn customization must not be silently destroyed by later sync operations.");
+assert.match(professionalIdentityTool, /data-linkedin-page-height="content-driven"[\s\S]*renderLinkedInStudio\(\)/, "LinkedIn page height must be driven by content instead of a document canvas.");
+assert.doesNotMatch(professionalIdentityTool, /#5B8CFF|#8fb0ff|#c7d6ff|blue-purple|#050816/, "Professional document workspaces must use the premium navy, cream, burgundy and PATHZY red palette without legacy light-blue UI accents.");
+assert.match(professionalIdentityTool, /scroll-mt-24[\s\S]*data-linkedin-nav-offset="app-shell"/, "LinkedIn content must reserve safe scroll offset below the sticky PATHZY navigation.");
+assert.match(professionalIdentityTool, /function renderLinkedInDocumentBar[\s\S]*Synced with Professional Identity[\s\S]*MY LINKEDIN[\s\S]*LinkedIn Professional Profile[\s\S]*Profile Strength:[\s\S]*Target Role:[\s\S]*Edit Information[\s\S]*Optimize Profile[\s\S]*Open LinkedIn/, "LinkedIn workspace must expose the required compact premium header and actions.");
+assert.doesNotMatch(professionalIdentityTool, /function renderLinkedInDocumentBar[\s\S]*Copy Profile[\s\S]*function renderLinkedInIdentityCorrectionCard/, "LinkedIn header must not include Copy Profile; full-profile copy belongs in the ready panel.");
+assert.match(professionalIdentityTool, /NEED TO CHANGE YOUR INFORMATION\?[\s\S]*Your LinkedIn content uses your Professional Identity\. Update it once and PATHZY keeps this profile synchronized\.[\s\S]*routeBuilders\.professionalIdentityReview\(appRoutes\.professionalIdentityLinkedin\)/, "LinkedIn correction strip must stay compact and route factual edits back to Professional Identity with return context.");
+assert.doesNotMatch(professionalIdentityTool, /Source: Professional Identity &gt; \{sourceSection\.replace/, "LinkedIn cards must not repeat source labels inside every section.");
+assert.match(professionalIdentityTool, /Copy[\s\S]*Edit Information/, "LinkedIn output must support section-by-section copy and source editing.");
+assert.match(professionalIdentityTool, /Don&apos;t have LinkedIn yet\? PATHZY has prepared your profile content\. You can use it when creating your LinkedIn profile\./, "Users without a LinkedIn URL must still be supported.");
+assert.match(professionalIdentityTool, /Open LinkedIn/, "Existing LinkedIn URLs may be opened without claiming live synchronization.");
+assert.doesNotMatch(professionalIdentityTool, /Updated on LinkedIn|Synced with LinkedIn/, "PATHZY must not claim live LinkedIn updates or synchronization without an integration.");
+assert.match(professionalIdentityTool, /Profile Strength: \{model\?\.completeness\.label \?\? "Ready to prepare"\}/, "LinkedIn Profile Strength must use the real calculated completeness label in the compact header.");
+assert.match(professionalIdentityTool, /data-linkedin-studio-layout="responsive-card-grid"[\s\S]*data-linkedin-profile-workspace="exact-content-flow"/, "LinkedIn studio must use the exact ordered content flow instead of a narrow rail layout.");
+assert.doesNotMatch(professionalIdentityTool, /data-linkedin-optimization-rail="content-height"/, "LinkedIn optimization cards must be part of the responsive grid instead of a separate rail.");
+assert.match(professionalIdentityTool, /data-linkedin-section="headline"[\s\S]*data-linkedin-section="about"[\s\S]*data-linkedin-section="experience"[\s\S]*data-linkedin-section="education-skills"[\s\S]*data-linkedin-section="projects-achievements"[\s\S]*data-linkedin-section="certifications-languages-links"[\s\S]*data-linkedin-section="improve-linkedin"[\s\S]*data-linkedin-section="ready-to-use"[\s\S]*data-linkedin-section="next-step"/, "LinkedIn page must follow the exact required section order.");
+assert.match(professionalIdentityTool, /IMPROVE YOUR LINKEDIN[\s\S]*slice\(0, 3\)[\s\S]*See full analysis/, "LinkedIn intelligence must be combined into one compact optimization panel with three default recommendations.");
+assert.match(professionalIdentityTool, /TOP SKILLS[\s\S]*slice\(0, 8\)[\s\S]*View all skills/, "LinkedIn skills must show top skills first with an on-demand full list.");
+assert.match(professionalIdentityTool, /lg:grid-cols-\[minmax\(0,1\.05fr\)_minmax\(0,0\.95fr\)\][^"]*" data-linkedin-section="education-skills"/, "Education and Skills must sit side by side on desktop.");
+assert.match(professionalIdentityTool, /lg:grid-cols-3" data-linkedin-section="certifications-languages-links"/, "Certifications, Languages, and Professional Links must use a compact three-column desktop row.");
+assert.match(professionalIdentityTool, /item\.role[\s\S]*item\.company[\s\S]*item\.dates[\s\S]*item\.location[\s\S]*item\.description/, "LinkedIn Experience cards must render structured fields instead of one collapsed record string.");
+assert.match(professionalIdentityTool, /item\.qualification[\s\S]*item\.field[\s\S]*item\.institution[\s\S]*item\.dates/, "LinkedIn Education cards must render structured fields instead of one concatenated string.");
+assert.doesNotMatch(professionalIdentityTool, /data-linkedin-profile-workspace="true"/, "LinkedIn must not reuse the old oversized profile-preview canvas marker.");
+assert.match(professionalIdentityTool, /updateLinkedInDraft[\s\S]*linkedInContentJson\(document, true\)[\s\S]*linkedinProfileModel: draft/, "Manual LinkedIn generated wording edits must be protected as projection overrides.");
 assert.match(professionalIdentityTool, /function renderDocumentNextActions\(\)/, "Professional document next-actions must use one shared renderer.");
-assert.match(professionalIdentityTool, /Your CV is ready\. What would you like to do next\?/, "The existing CV next-actions heading must be preserved.");
-assert.match(professionalIdentityTool, /Your cover letter is ready\. What would you like to do next\?/, "Cover Letter must show a document-specific next-actions heading.");
-assert.match(professionalIdentityTool, /Your LinkedIn profile is ready\. What would you like to do next\?/, "LinkedIn must show a document-specific next-actions heading.");
+assert.match(professionalIdentityTool, /Your CV is ready[\s\S]*Create Cover Letter[\s\S]*More actions/, "CV next-actions must guide users to one primary cover-letter step with secondary actions under More actions.");
+assert.match(professionalIdentityTool, /Your cover letter is ready[\s\S]*Prepare for interview[\s\S]*More actions/, "Cover Letter next-actions must use one primary interview-preparation step with secondary actions under More actions.");
+assert.match(professionalIdentityTool, /READY TO USE YOUR PROFILE\?[\s\S]*Copy Full Profile[\s\S]*(Open LinkedIn|Add LinkedIn URL)[\s\S]*NEXT STEP[\s\S]*Understand where you fit in the job market\.[\s\S]*View Employment Intelligence/, "LinkedIn must show the required ready-to-use and Employment Intelligence progression panels.");
 assert.match(professionalIdentityTool, /tool === "cover-letter" \? \([\s\S]*Return to My CV[\s\S]*Optimise LinkedIn[\s\S]*Find Opportunities[\s\S]*Ask Your Mentor[\s\S]*Improve Cover Letter/, "Cover Letter next-actions must avoid linking back to the current page.");
-assert.match(professionalIdentityTool, /tool === "linkedin" \? \([\s\S]*Return to My CV[\s\S]*Build Cover Letter[\s\S]*Find Opportunities[\s\S]*Ask Your Mentor[\s\S]*Improve LinkedIn/, "LinkedIn next-actions must avoid linking back to the current page.");
-for (const sectionName of ["1. Personal Header", "2. Application Details", "3. Greeting", "4. Opening Paragraph", "5. Motivation / Why This Role", "6. Evidence / Why Me", "7. Company Alignment", "8. Additional Paragraphs", "9. Closing Paragraph", "10. Sign-off"]) {
+assert.doesNotMatch(professionalIdentityTool, /tool === "linkedin" \? \(/, "LinkedIn must not use the shared multi-button next-actions panel.");
+assert.doesNotMatch(professionalIdentityTool, /renderCoverLetterField\("Full name"|renderCoverLetterField\("Professional title"|renderCoverLetterField\("Email"|renderCoverLetterField\("Phone"|renderCoverLetterField\("City"|renderCoverLetterField\("Country"/, "Cover Letter editor must not expose editable duplicate Professional Identity profile fields.");
+assert.match(professionalIdentityTool, /Want to change something\?[\s\S]*Your Cover Letter uses your Professional Identity as its source of truth[\s\S]*routeBuilders\.professionalIdentityReview\(appRoutes\.professionalIdentityCoverLetter\)/, "Cover Letter correction strip must mirror My CV and preserve return-to-cover-letter context.");
+assert.match(professionalIdentityTool, /routeBuilders\.professionalIdentityReview\(appRoutes\.professionalIdentityCoverLetter\)/, "Cover Letter factual corrections must route back to Professional Identity with return context.");
+for (const sectionName of ["2. Job / Application Details", "3. Greeting", "4. Opening Paragraph", "5. Motivation / Why This Role", "6. Evidence / Why Me", "7. Company Alignment", "8. Additional Paragraphs", "9. Closing Paragraph", "10. Sign-off"]) {
   assert.match(professionalIdentityTool, new RegExp(sectionName.replace(/[.]/g, "\\.")), `Cover Letter editor must include ${sectionName}.`);
 }
 assert.match(professionalIdentityTool, /Add paragraph/, "Cover Letter body paragraphs must support adding a paragraph.");
@@ -2635,6 +3289,108 @@ for (const label of ["Inspect a job advert", "Analyser une offre d'emploi", "Pas
 }
 assert.match(opportunitiesPage, /getOrCreateCanonicalProfile\(supabase, user\.id\)/, "Opportunities must read the canonical profile before job analysis.");
 assert.match(opportunitiesPage, /analyzeJobAgainstCanonicalProfile\(\{ profile: canonicalProfile, job, userId: user\.id \}\)/, "Opportunities must use the shared Job Intelligence matcher.");
+assert.match(jobProviderTypes, /export type JobProvider = \{[\s\S]*search\(input: JobProviderSearchInput\): Promise<JobProviderSearchResult>/, "Real job providers must use a reusable JobProvider abstraction.");
+for (const field of ["source", "externalId", "employer", "employmentType", "applicationUrl", "sourceUrl", "lastVerifiedAt"]) {
+  assert.match(opportunitiesTypes, new RegExp(`${field}\\??: `), `Normalized opportunities must expose ${field} in the production provider contract.`);
+}
+assert.match(opportunitiesTypes, /remoteType: "REMOTE" \| "HYBRID" \| "ON_SITE" \| "UNKNOWN";[\s\S]*responsibilities: string\[];[\s\S]*requirements: string\[];[\s\S]*requiredSkills: string\[];[\s\S]*preferredSkills: string\[];/, "Normalized opportunities must preserve structured requirements and work arrangement.");
+assert.match(opportunitiesTypes, /status: "ACTIVE" \| "CLOSING_SOON" \| "EXPIRED" \| "UNKNOWN";/, "Opportunity freshness must use the canonical uppercase status model.");
+assert.match(opportunitiesTypes, /OpportunityMatchExplanation[\s\S]*suitabilityLabel[\s\S]*eligibilityStatus[\s\S]*unknowns[\s\S]*recommendation/, "Opportunity matching must expose suitability, eligibility and unknown information separately.");
+assert.match(adzunaProviderSource, /process\.env\.ADZUNA_APP_ID[\s\S]*process\.env\.ADZUNA_APP_KEY/, "Adzuna credentials must be read from server environment variables.");
+assert.doesNotMatch(adzunaProviderSource + opportunitiesPage + opportunitiesHub, /NEXT_PUBLIC_ADZUNA|ADZUNA_APP_KEY[^;\n]*client/i, "Adzuna credentials must not be exposed through public client variables.");
+assert.match(adzunaProviderSource, /https:\/\/api\.adzuna\.com\/v1\/api\/jobs[\s\S]*\/\$\{country\}\/search\/\$\{page\}[\s\S]*app_id[\s\S]*app_key/, "Adzuna provider must call the official search endpoint with app_id and app_key.");
+assert.match(jobProviderServerSource, /getProductionJobProvider[\s\S]*new AdzunaJobProvider\(\)/, "The production job provider must be selected behind a server provider factory.");
+assert.match(opportunitiesPage, /fetchProductionOpportunities\(\{ \.\.\.search, resultsPerPage: 20 \}\)/, "Jobs page must fetch normalized provider opportunities.");
+assert.match(opportunitiesPage, /personalizeRealOpportunities\(\{[\s\S]*profile: canonicalProfile[\s\S]*actions:/, "Jobs page must rank real opportunities through the shared Professional Identity matcher.");
+assert.doesNotMatch(opportunitiesPage, /personalizeOpportunities|opportunityCatalog|discovery_responses|personalizeProviderOpportunities/, "Jobs page must not use the static sample catalog, discovery data, or page-local matching for production vacancies.");
+assert.match(opportunitiesMatching, /normalizeOpportunityFreshness[\s\S]*status !== "EXPIRED"/, "Expired jobs must be removed from active recommendations.");
+assert.match(opportunitiesMatching, /deduplicateOpportunities[\s\S]*sourceUrl[\s\S]*applicationUrl/, "Opportunity matching must deduplicate vacancies by source, URL and content signals.");
+assert.match(opportunitiesMatching, /getOrCreateCanonicalProfile|CanonicalProfessionalIdentity/, "Opportunity matching must use the canonical Professional Identity as candidate truth.");
+assert.doesNotMatch(opportunitiesMatching, /user_documents|cv_documents|linkedin/i, "Opportunity matching must not use CV or LinkedIn generated text as candidate truth.");
+assert.match(opportunitiesMatching, /PATHZY needs your licence information/, "Unknown licence data must be presented as unknown information, not as a confirmed missing licence.");
+assert.match(opportunitiesMatching, /eligibilityStatus[\s\S]*suitabilityScore[\s\S]*recommendationFor/, "Eligibility and suitability must be calculated separately.");
+assert.match(opportunitiesMatching, /requiredSkills[\s\S]*preferredSkills/, "Mandatory and preferred requirements must be handled separately.");
+for (const providerState of ["providerStatus", "provider_unavailable", "no_jobs_found", "invalid_provider_response"]) {
+  assert.match(opportunitiesHub, new RegExp(providerState), `Opportunities UI must handle ${providerState}.`);
+}
+assert.match(opportunitiesHub, /PATHZY never substitutes fake vacancies[\s\S]*No fake vacancies are shown|No fake vacancies are shown[\s\S]*PATHZY never substitutes fake vacancies/, "Opportunities UI must never substitute fake vacancies.");
+assert.match(opportunitiesHub, /Recommended[\s\S]*Near Reach[\s\S]*Saved[\s\S]*All Jobs/, "Jobs page must expose the simple Recommended, Near Reach, Saved and All Jobs tabs.");
+assert.match(opportunitiesHub, /View Job[\s\S]*Save[\s\S]*Prepare Application[\s\S]*Apply on source site/, "Job cards must expose view, save, prepare and real application actions.");
+assert.match(opportunitiesHub, /Why PATHZY recommends this[\s\S]*What to check[\s\S]*About the job[\s\S]*Source/, "Job details must explain fit, checks, job content and source.");
+assert.doesNotMatch(opportunitiesHub, /sample opportunities for testing|Sample opportunity for testing/, "Production Opportunities UI must not label provider listings as samples.");
+assert.match(opportunitiesPrepareApi, /createJobImport\(supabase, user\.id,[\s\S]*sourceType: "existing_opportunity"[\s\S]*opportunityToJobImportText\(opportunity\)/, "Prepare Application must preserve the selected normalized Opportunity as Job Context.");
+assert.match(opportunitiesPrepareApi, /pathzy_static_catalog[\s\S]*Only real or verified opportunities/, "Prepare Application must reject production use of the old static catalog source.");
+assert.match(opportunitiesPrepareApi, /coverLetterUrl: routeBuilders\.coverLetterWorkspace\(\{ jobId: jobImport\.id \}\)/, "Prepare Application must route to Cover Letter with the saved job context.");
+assert.match(professionalCoverLetterPage, /loadJobImportContext[\s\S]*from\("job_imports"\)[\s\S]*requirements: jsonList\(inspection\.requirements\)[\s\S]*responsibilities: jsonList\(inspection\.responsibilities\)/, "Cover Letter must resolve prepared Opportunity job imports automatically.");
+const adzunaProviderRuntime = loadProductionTsModule("lib/opportunities/providers/adzuna-provider.ts");
+let capturedAdzunaUrl = "";
+const adzunaProvider = new adzunaProviderRuntime.AdzunaJobProvider("app-id", "app-key", async (url) => {
+  capturedAdzunaUrl = url.toString();
+  return {
+    ok: true,
+    status: 200,
+    json: async () => ({
+      results: [
+        {
+          id: 12345,
+          title: "Junior Operations Coordinator",
+          company: { display_name: "Example Employer" },
+          description: "Coordinate daily operations. Must use Microsoft Excel for reporting. Preferred communication skills. Responsible for maintaining weekly records.",
+          location: { display_name: "Cape Town, South Africa" },
+          contract_time: "full_time",
+          contract_type: "permanent",
+          salary_min: 180000,
+          salary_max: 240000,
+          created: "2026-08-20T10:00:00Z",
+          redirect_url: "https://www.adzuna.co.za/details/12345",
+          category: { label: "Admin Jobs", tag: "admin-jobs" }
+        }
+      ]
+    })
+  };
+});
+const adzunaSearchResult = await adzunaProvider.search({ query: "operations coordinator", country: "South Africa", location: "Cape Town", resultsPerPage: 1 });
+assert.match(capturedAdzunaUrl, /api\.adzuna\.com\/v1\/api\/jobs\/za\/search\/1/, "Adzuna provider must use the country-specific search endpoint.");
+assert.match(capturedAdzunaUrl, /app_id=app-id/, "Adzuna provider must send app_id server-side.");
+assert.match(capturedAdzunaUrl, /app_key=app-key/, "Adzuna provider must send app_key server-side.");
+assert.equal(adzunaSearchResult.status.status, "available", "A valid Adzuna response must mark the provider available.");
+assert.deepEqual(
+  Object.fromEntries(["id", "source", "externalId", "title", "employer", "description", "location", "employmentType", "remoteType", "salaryMin", "salaryMax", "salaryCurrency", "postedAt", "applicationUrl", "sourceUrl", "category", "status", "lastVerifiedAt", "requirements", "responsibilities", "requiredSkills", "preferredSkills"].map((key) => [key, key in adzunaSearchResult.opportunities[0]])),
+  {
+    id: true,
+    source: true,
+    externalId: true,
+    title: true,
+    employer: true,
+    description: true,
+    location: true,
+    employmentType: true,
+    remoteType: true,
+    salaryMin: true,
+    salaryMax: true,
+    salaryCurrency: true,
+    postedAt: true,
+    applicationUrl: true,
+    sourceUrl: true,
+    category: true,
+    status: true,
+    lastVerifiedAt: true,
+    requirements: true,
+    responsibilities: true,
+    requiredSkills: true,
+    preferredSkills: true
+  },
+  "Adzuna jobs must normalize into the required PATHZY Opportunity fields."
+);
+assert.equal(adzunaSearchResult.opportunities[0].source, "adzuna", "Normalized opportunities must retain their source provider.");
+assert.equal(adzunaSearchResult.opportunities[0].employer, "Example Employer", "Adzuna company display name must map to employer.");
+assert.equal(adzunaSearchResult.opportunities[0].status, "ACTIVE", "Fresh provider jobs must use the canonical active status.");
+assert.equal(adzunaSearchResult.opportunities[0].remoteType, "ON_SITE", "Provider work mode must normalize to the canonical remoteType.");
+assert.ok(adzunaSearchResult.opportunities[0].requiredSkills.length >= 1, "Provider descriptions must produce structured requirement signals where possible.");
+const invalidAdzunaResult = await new adzunaProviderRuntime.AdzunaJobProvider("app-id", "app-key", async () => ({ ok: true, status: 200, json: async () => ({}) })).search({});
+assert.equal(invalidAdzunaResult.status.status, "invalid_provider_response", "Invalid provider responses must not create fake opportunities.");
+const unavailableAdzunaResult = await new adzunaProviderRuntime.AdzunaJobProvider("", "", async () => ({ ok: true, status: 200, json: async () => ({ results: [] }) })).search({});
+assert.equal(unavailableAdzunaResult.status.status, "provider_unavailable", "Missing Adzuna server credentials must produce a provider unavailable state.");
 assert.match(opportunitiesHub, /JobIntelligencePanel/, "Opportunities UI must display more than a single match percentage.");
 assert.match(opportunitiesHub, /User reviews before applying/, "Opportunities UI must keep the user in control.");
 assert.match(opportunitiesHub, /Inspect a job advert/, "Opportunities UI must expose the Phase 8A job import flow.");

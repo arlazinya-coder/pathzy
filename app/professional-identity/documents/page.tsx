@@ -31,13 +31,16 @@ function toolFromDocumentType(type: string): SavedDocument["tool"] {
 export default async function MyDocumentsPage() {
   const { user, supabase } = await requireAuthenticatedUser("/professional-identity/documents");
   let documents: SavedDocument[] = [];
-  const canExport = await canCurrentUserExportProfessionalDocuments(supabase, user.id);
 
-  const { data: unifiedDocuments, error: unifiedError } = await supabase
-    .from("user_documents")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("updated_at", { ascending: false });
+  const [canExport, unifiedResult] = await Promise.all([
+    canCurrentUserExportProfessionalDocuments(supabase, user.id),
+    supabase
+      .from("user_documents")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false })
+  ]);
+  const { data: unifiedDocuments, error: unifiedError } = unifiedResult;
 
   if (!unifiedError && unifiedDocuments?.length) {
     documents = unifiedDocuments.map((row) => ({

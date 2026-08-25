@@ -193,7 +193,7 @@ function internalPathWithQuery(target?: string | null) {
   }
 }
 
-export function safeRedirectDestination(target?: string | null, fallback = appRoutes.authenticatedHome) {
+export function safeRedirectDestination(target?: string | null, fallback: string = appRoutes.authenticatedHome) {
   const normalized = internalPathWithQuery(target);
   if (!normalized) return fallback;
   const pathname = new URL(normalized, "https://pathzy.local").pathname;

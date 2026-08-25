@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import {
   finishProfessionalIdentitySetupWrite,
   professionalIdentityWriteSections,
@@ -8,9 +9,11 @@ import {
 } from "@/lib/professional-identity/professional-identity-write-service";
 import { syncProfessionalIdentityAfterWrite } from "@/lib/professional-identity/professional-identity-sync";
 import {
+  resolvePathzyNextRoute,
   professionalIdentityReviewHref,
   professionalIdentitySectionHref
 } from "@/lib/navigation/auth-routing";
+import { loadProfessionalIdentitySources } from "@/lib/professional-identity/professional-identity-read-service";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -27,11 +30,30 @@ function timedJson(body: unknown, startedAt: number, init?: ResponseInit) {
   const duration = Math.max(0, Date.now() - startedAt);
   response.headers.set("Server-Timing", `pathzy_profile_save;dur=${duration}`);
   response.headers.set("X-Pathzy-Profile-Save-Duration-Ms", String(duration));
+  response.headers.set("Cache-Control", "no-store");
   return response;
 }
 
 function failedSaveResponse(startedAt: number, error?: string, status = 500) {
   return timedJson({ error: error ?? "We could not save this information yet. Please check your connection and try again." }, startedAt, { status });
+}
+
+function revalidateProfessionalIdentityReview() {
+  [
+    "/professional-identity",
+    "/professional-identity/review",
+    "/professional-identity/cv",
+    "/professional-identity/cover-letter",
+    "/professional-identity/linkedin",
+    "/professional-identity/documents",
+    "/discovery/results",
+    "/roadmap",
+    "/roadmap/career-plan",
+    "/employment-center",
+    "/opportunities",
+    "/applications",
+    "/interview"
+  ].forEach((path) => revalidatePath(path));
 }
 
 export async function PATCH(request: Request) {
@@ -69,7 +91,15 @@ export async function PATCH(request: Request) {
       mode: "completion",
       reason: "Professional Identity setup completed"
     });
-    return timedJson({ ok: true, redirectTo: result.redirectTo }, startedAt);
+    revalidateProfessionalIdentityReview();
+    const { profile, discovery } = await loadProfessionalIdentitySources(supabase, user.id);
+    const routeDecision = resolvePathzyNextRoute({
+      authenticated: true,
+      profile,
+      discovery,
+      user
+    });
+    return timedJson({ ok: true, redirectTo: routeDecision.destination ?? result.redirectTo }, startedAt);
   }
 
   const section = payload?.section ?? "";
@@ -81,12 +111,14 @@ export async function PATCH(request: Request) {
   if (section === "readiness_check") {
     const result = await saveEmploymentReadiness(supabase, user.id, payload?.values);
     if (!result.ok) return failedSaveResponse(startedAt, result.error);
+    revalidateProfessionalIdentityReview();
     return timedJson(result, startedAt);
   }
 
   if (section === "onboarding_progress") {
     const result = await saveProfessionalIdentityOnboardingProgress(supabase, user.id, payload?.values);
     if (!result.ok) return failedSaveResponse(startedAt, result.error);
+    revalidateProfessionalIdentityReview();
     return timedJson(result, startedAt);
   }
 
@@ -105,5 +137,6 @@ export async function PATCH(request: Request) {
     reason: `Professional Identity ${section} updated`
   });
 
+  revalidateProfessionalIdentityReview();
   return timedJson({ ok: true, section, redirectTo: "/professional-identity" }, startedAt);
 }

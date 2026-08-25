@@ -5,8 +5,10 @@ import { requireAuthenticatedUser } from "@/lib/supabase/server";
 
 export default async function RecruiterMessagePage({ searchParams }: { searchParams?: Promise<{ role?: string; company?: string }> }) {
   const { user, supabase } = await requireAuthenticatedUser("/professional-identity/recruiter-message");
-  const unlocked = await canCurrentUserUseProfessionalIdentityTools(supabase, user.id);
-  const canExport = await canCurrentUserExportProfessionalDocuments(supabase, user.id);
+  const [unlocked, canExport] = await Promise.all([
+    canCurrentUserUseProfessionalIdentityTools(supabase, user.id),
+    canCurrentUserExportProfessionalDocuments(supabase, user.id)
+  ]);
   const params = searchParams ? await searchParams : {};
 
   return (

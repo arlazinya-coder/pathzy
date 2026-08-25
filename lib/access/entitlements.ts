@@ -110,7 +110,7 @@ export function canAccessFeature(entitlements: UserEntitlements | null | undefin
   if (!entitlements) return false;
   if (entitlements.isAdmin || entitlements.isFounder) return true;
   if (feature === "admin_beta_management") return false;
-  if (feature === "professional_identity" || feature === "document_preview" || feature === "document_upload" || feature === "application_tracker" || feature === "opportunities") return true;
+  if (feature === "professional_identity" || feature === "document_preview" || feature === "document_upload" || feature === "document_export" || feature === "application_tracker" || feature === "opportunities") return true;
   if (entitlements.status !== "active") return false;
   if (entitlements.isBetaFull || entitlements.isTrial || entitlements.isPaid) return true;
   return false;

@@ -62,6 +62,7 @@ export type ProfessionalIdentityInputs = {
     premium_status?: string | null;
     linkedin_url?: string | null;
     portfolio_url?: string | null;
+    updated_at?: string | null;
   } | null;
   discoveryAnswers: Record<string, unknown> | null;
   roadmap: GeneratedRoadmap | null;
@@ -77,8 +78,16 @@ export type GenerateOptions = {
   company?: string;
   role?: string;
   jobDescription?: string;
-  tone?: string;
+  keyRequirements?: string;
+  keyResponsibilities?: string;
+  qualifications?: string;
+  experienceRequirements?: string;
+  companyLocation?: string;
   recruiterName?: string;
+  referenceNumber?: string;
+  closingDate?: string;
+  jobUrl?: string;
+  tone?: string;
   platform?: string;
   applicationDate?: string;
   oldCvText?: string;

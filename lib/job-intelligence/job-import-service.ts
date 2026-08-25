@@ -434,6 +434,7 @@ export async function createJobImport(supabase: Supabase, userId: string, input:
       rawText: input.rawText,
       details: input.details,
       sourceLabel: "PATHZY opportunity",
+      sourceUrl: input.sourceUrl,
       opportunityId: input.opportunityId
     });
     return persistJobImport(supabase, userId, { status: "review_required", sourceType: "existing_opportunity", rawText: input.rawText, inspection });

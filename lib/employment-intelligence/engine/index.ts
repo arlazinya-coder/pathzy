@@ -9,6 +9,7 @@ export { identifyStrengths } from "./identify-strengths";
 export { evaluatePathways, indicateJobLevels, toPathwayRecommendations } from "./evaluate-pathways";
 export { selectSupportIntensity } from "./select-support-intensity";
 export { buildEmploymentExplanations } from "./build-explanations";
+export { buildOpportunityMatcherContract, buildSkillIntelligence, classifyCandidateContext, deriveCareerDirections, explainOpportunityMatch } from "./build-shared-intelligence";
 export { generateEmploymentIntelligence, generateEmploymentIntelligenceWithTrace } from "./generate-employment-intelligence";
 export { phase3bEmploymentIntelligenceFixtures } from "./fixtures";
 export * from "../actions";

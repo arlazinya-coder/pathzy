@@ -274,6 +274,16 @@ function identityStarted(profile: ProfileSnapshot | null, discovery?: DiscoveryS
   );
 }
 
+function setupOnboardingCompleted(profile: ProfileSnapshot | null, discovery?: DiscoverySnapshot | null) {
+  return Boolean(
+    profile?.onboarding_completed ||
+      discovery?.answers?.setup_finished ||
+      discovery?.answers?.setup_completed ||
+      onboardingStateAtLeast(discovery, "setup_completed") ||
+      onboardingStateAtLeast(discovery, "diagnosis_completed")
+  );
+}
+
 export function firstIncompleteProfessionalIdentitySection(profile: ProfileSnapshot | null, user?: UserEmailSnapshot | null, discovery?: DiscoverySnapshot | null): ProfessionalIdentityResumeSection | null {
   const missing = professionalIdentityRequiredChecks(profile, discovery, user).find((item) => !item.complete);
   if (missing) return missing.section;
@@ -299,6 +309,8 @@ export function resolvePathzyOnboardingState(input: {
   diagnosisComplete?: boolean | null;
 }): PathzyOnboardingState {
   if (!input.authenticated) return "unauthenticated";
+
+  if (setupOnboardingCompleted(input.profile ?? null, input.discovery)) return "home_ready";
 
   if (!input.profile?.onboarding_completed && !welcomeCompleted(input.profile ?? null, input.discovery)) {
     return "welcome_pending";
@@ -425,6 +437,7 @@ export function safePostAuthDestination(target?: string | null, fallback = appRo
   const normalized = normalizeInternalPath(target);
   if (!normalized) return fallback;
   const pathname = pathnameFor(normalized);
+  if (pathname === appRoutes.home) return fallback;
   if (!pathname || protectedAuthDestinations.has(pathname) || isAuthRoute(pathname)) return fallback;
   return normalized;
 }

@@ -6,6 +6,7 @@ import { determineNextBestActions, generateCareerPlan } from "../actions";
 import { confidenceFromSignals } from "./calculate-confidence";
 import { assessEmploymentEvidence } from "./assess-evidence";
 import { assessReadinessDimensions, summarizeOverallReadiness } from "./assess-readiness";
+import { buildOpportunityMatcherContract, buildSkillIntelligence, classifyCandidateContext, deriveCareerDirections } from "./build-shared-intelligence";
 import { buildEmploymentExplanations } from "./build-explanations";
 import { detectEmploymentBarriers } from "./detect-barriers";
 import { detectMissingInformation } from "./detect-missing-information";
@@ -62,6 +63,9 @@ export function generateEmploymentIntelligenceWithTrace(input: EmploymentIntelli
   const strengths = identifyStrengths(normalized.input, evidenceSummary);
   const pathwayEvaluations = evaluatePathways({ input: normalized.input, barriers, strengths, missing: missingInformation });
   const jobLevelIndications = indicateJobLevels(normalized.input, evidenceSummary);
+  const candidateContext = classifyCandidateContext(normalized.input, evidenceSummary);
+  const careerDirection = deriveCareerDirections(normalized.input, strengths, pathwayEvaluations, evidenceSummary);
+  const skillIntelligence = buildSkillIntelligence(normalized.input, evidenceSummary);
   const supportIntensity = selectSupportIntensity(normalized.input, barriers, missingInformation);
   const readinessDimensions = assessReadinessDimensions({ signals, missing: missingInformation, barriers, evidenceSummary, engineVersion, assessedAt: context.assessedAt });
   const overallReadiness = summarizeOverallReadiness({
@@ -84,6 +88,12 @@ export function generateEmploymentIntelligenceWithTrace(input: EmploymentIntelli
     supportIntensity
   };
   const suitableJobLevels = jobLevelIndications.map((item) => item.level);
+  const opportunityMatcherContract = buildOpportunityMatcherContract({
+    candidateContext,
+    careerDirection,
+    skillIntelligence,
+    suitableJobLevels
+  });
   overallReadiness.suitableJobLevels = suitableJobLevels;
   const actionContext = {
     userId: normalized.input.userId,
@@ -121,6 +131,10 @@ export function generateEmploymentIntelligenceWithTrace(input: EmploymentIntelli
       effectiveDate: normalized.input.countryContext.effectiveDate,
       dataFreshness: normalized.input.countryContext.dataFreshness
     },
+    candidateContext,
+    careerDirection,
+    skillIntelligence,
+    opportunityMatcherContract,
     readinessDimensions,
     overallReadiness,
     strengths: evidenceSummary.strongestSupportedAssets,

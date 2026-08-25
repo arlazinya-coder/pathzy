@@ -1,8 +1,67 @@
 import type { DiscoveryAnswers } from "@/lib/discovery/types";
 import type { GeneratedRoadmap } from "@/lib/discovery/types";
-import type { Opportunity, OpportunityAction, OpportunityStats, PersonalizedOpportunity } from "@/lib/opportunities/types";
+import type { Opportunity, OpportunityAction, OpportunityMatchExplanation, OpportunityStats, PersonalizedOpportunity } from "@/lib/opportunities/types";
 
-export const opportunityCatalog: Opportunity[] = [
+type LegacyOpportunity = Omit<
+  Opportunity,
+  | "source"
+  | "externalId"
+  | "sourceUrl"
+  | "applicationUrl"
+  | "employer"
+  | "employerLogo"
+  | "location"
+  | "remoteType"
+  | "employmentType"
+  | "salaryMin"
+  | "salaryMax"
+  | "salaryCurrency"
+  | "postedAt"
+  | "closingAt"
+  | "lastVerifiedAt"
+  | "responsibilities"
+  | "requirements"
+  | "requiredSkills"
+  | "preferredSkills"
+  | "requiredEducation"
+  | "preferredEducation"
+  | "requiredExperience"
+  | "preferredExperience"
+  | "licences"
+  | "certifications"
+  | "languages"
+  | "workAuthorizationRequirement"
+  | "status"
+>;
+
+const legacyVerifiedAt = "2026-07-01T00:00:00.000Z";
+
+function legacyOpportunityToOpportunity(opportunity: LegacyOpportunity): Opportunity {
+  return {
+    ...opportunity,
+    source: "pathzy_static_catalog",
+    externalId: opportunity.id,
+    employer: opportunity.provider,
+    location: opportunity.country,
+    remoteType: opportunity.mode === "Remote" || opportunity.mode === "Online" ? "REMOTE" : opportunity.mode === "Hybrid" ? "HYBRID" : "ON_SITE",
+    employmentType: opportunity.mode,
+    applicationUrl: "",
+    sourceUrl: "",
+    status: opportunity.deadline === "Rolling" || opportunity.deadline === "Self-paced" || opportunity.deadline === "Monthly review" ? "UNKNOWN" : "ACTIVE",
+    lastVerifiedAt: legacyVerifiedAt,
+    responsibilities: [],
+    requirements: opportunity.skillTags,
+    requiredSkills: opportunity.skillTags,
+    preferredSkills: [],
+    requiredEducation: [],
+    preferredEducation: [],
+    licences: [],
+    certifications: [],
+    languages: []
+  };
+}
+
+const legacyOpportunityCatalog: LegacyOpportunity[] = [
   {
     id: "ux-junior-product-designer-remote",
     title: "Junior Product Designer Talent Pool",
@@ -155,12 +214,24 @@ export const opportunityCatalog: Opportunity[] = [
   }
 ];
 
+export const opportunityCatalog: Opportunity[] = legacyOpportunityCatalog.map(legacyOpportunityToOpportunity);
+
 const blankAction = (opportunityId: string): OpportunityAction => ({
   opportunity_id: opportunityId,
   saved: false,
   applied: false,
   completed: false,
   hidden: false
+});
+
+const blankMatch = (fit: number, reasons: string[]): OpportunityMatchExplanation => ({
+  suitabilityScore: fit,
+  suitabilityLabel: fit >= 75 ? "STRONG_MATCH" : fit >= 60 ? "GOOD_MATCH" : fit >= 42 ? "POSSIBLE_MATCH" : "STRETCH_OPPORTUNITY",
+  eligibilityStatus: "UNKNOWN",
+  reasons,
+  gaps: [],
+  unknowns: ["PATHZY needs verified job-source details before making eligibility claims."],
+  recommendation: fit >= 60 ? "APPLY_AFTER_CHECKING" : "PREPARE_FIRST"
 });
 
 function words(value: unknown) {
@@ -232,7 +303,8 @@ export function personalizeOpportunities({
         ...opportunity,
         fit: Math.min(98, fit),
         reasons,
-        action: actionMap.get(opportunity.id) ?? blankAction(opportunity.id)
+        action: actionMap.get(opportunity.id) ?? blankAction(opportunity.id),
+        match: blankMatch(Math.min(98, fit), reasons)
       };
     })
     .filter((opportunity) => !opportunity.action.hidden)

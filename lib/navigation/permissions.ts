@@ -1,4 +1,5 @@
 import { isPaidMembership, membershipForAccess, type MembershipLevel, type NavigationIdentity, type UserRole } from "./roles";
+import { canDownloadCoreDocument } from "@/lib/access/core-document-download-access";
 import { canAccessFeature, type AccessLevel } from "@/lib/access/entitlements";
 
 export type PermissionContext = Omit<Partial<NavigationIdentity>, "membership"> & {
@@ -67,7 +68,7 @@ export function canUseProfessionalIdentity(context: PermissionContext | null | u
 }
 
 export function canExportProfessionalDocuments(context: PermissionContext | null | undefined) {
-  return hasPremiumAccess(context);
+  return canDownloadCoreDocument(context);
 }
 
 export function canUsePremiumTemplates(context: PermissionContext | null | undefined) {

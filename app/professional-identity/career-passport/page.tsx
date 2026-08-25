@@ -5,9 +5,11 @@ import { requireAuthenticatedUser } from "@/lib/supabase/server";
 
 export default async function CareerPassportPage() {
   const { user, supabase } = await requireAuthenticatedUser("/professional-identity/career-passport");
-  const unlocked = await canCurrentUserUseProfessionalIdentityTools(supabase, user.id);
-  const canExport = await canCurrentUserExportProfessionalDocuments(supabase, user.id);
-  const context = await getProfessionalIdentityContext(supabase, user.id);
+  const [unlocked, canExport, context] = await Promise.all([
+    canCurrentUserUseProfessionalIdentityTools(supabase, user.id),
+    canCurrentUserExportProfessionalDocuments(supabase, user.id),
+    getProfessionalIdentityContext(supabase, user.id)
+  ]);
   const hasCv = Boolean(context.identity.cv_status !== "not_started");
 
   return (

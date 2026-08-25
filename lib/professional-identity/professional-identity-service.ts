@@ -1,14 +1,23 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { cvModelFromUnknown, normalizeCoverLetterTemplate, normalizeCvModelForExport, serializeCoverLetterData, serializeCvModel } from "@/components/professional-identity/document-downloads";
+import { normalizeCoverLetterTemplate, normalizeCvModelForExport, serializeCoverLetterData, serializeCvModel } from "@/components/professional-identity/document-downloads";
 import type { CoverLetterData, CvModel } from "@/components/professional-identity/document-downloads";
-import type { DiscoveryAnswers, GeneratedRoadmap } from "@/lib/discovery/types";
-import { canAccessFeature, getUserEntitlements, userCanAccessFeature } from "@/lib/access/entitlements";
+import type { GeneratedRoadmap } from "@/lib/discovery/types";
+import { canAccessFeature, userCanAccessFeature } from "@/lib/access/entitlements";
 import { canExportProfessionalDocuments } from "@/lib/navigation/permissions";
 import { getBrainContextForAI } from "@/lib/pathzy-brain/brain-service";
 import { createCanonicalCvDocument, legacyCvCompatibilityMetadata, type CanonicalCvDocumentResult } from "@/lib/professional-documents";
 import { documentTemplateGallery, normalizeDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
 import type { PremiumDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
 import type { ImportedCvResult } from "@/lib/professional-identity/cv-import";
+import {
+  coverLetterDataFromProfessionalIdentity,
+  type CoverLetterJobContext
+} from "@/lib/professional-identity/professional-identity-cover-letter-model";
+import {
+  linkedinProfileModelFromProfessionalIdentity,
+  serializeLinkedInProfileModel
+} from "@/lib/professional-identity/professional-identity-linkedin-model";
+import { professionalIdentityValuesFromSources } from "@/lib/professional-identity/professional-identity-completion";
 import type {
   GenerateOptions,
   GeneratedProfessionalDocument,
@@ -109,15 +118,8 @@ export async function canCurrentUserUseProfessionalIdentityTools(supabase: Supab
 }
 
 export async function canCurrentUserExportProfessionalDocuments(supabase: Supabase, userId: string) {
-  if (!userId) return false;
-  const entitlements = await getUserEntitlements(supabase, userId);
-  return canExportProfessionalDocuments({
-    isAuthenticated: true,
-    accessLevel: entitlements.accessLevel,
-    entitlementStatus: entitlements.status,
-    isFounder: entitlements.isFounder,
-    isAdmin: entitlements.isAdmin
-  });
+  void supabase;
+  return canExportProfessionalDocuments({ isAuthenticated: Boolean(userId) });
 }
 
 function firstString(value: unknown, fallback = "Not provided") {
@@ -146,12 +148,6 @@ function userName(inputs: ProfessionalIdentityInputs) {
 
 function cvCandidateName(inputs: ProfessionalIdentityInputs) {
   return professionalizeUserInput(inputs.profile?.full_name) || "";
-}
-
-function honestExperienceNote(language: ProfessionalLanguage) {
-  return language === "french"
-    ? "PATHZY ne doit pas inventer d'experience, de formation, de certificats ou de references. Remplacez les sections vides par vos informations reelles."
-    : "PATHZY will not invent experience, education, certificates, or references. Replace empty sections with your real information.";
 }
 
 async function saveUnifiedDocument(
@@ -198,7 +194,7 @@ async function saveUnifiedDocument(
 
 async function getInputs(supabase: Supabase, userId: string): Promise<ProfessionalIdentityInputs> {
   const [{ data: profile }, { data: discovery }, brainContext] = await Promise.all([
-    supabase.from("user_profiles").select("full_name,email,phone,country,city,age,education,current_status,employment_status,founder,premium,career_goal,linkedin_url,portfolio_url,field_of_study,highest_qualification,language").or(`user_id.eq.${userId},id.eq.${userId}`).maybeSingle(),
+    supabase.from("user_profiles").select("full_name,email,phone,country,city,age,education,current_status,employment_status,founder,premium,career_goal,linkedin_url,portfolio_url,field_of_study,highest_qualification,language,updated_at").or(`user_id.eq.${userId},id.eq.${userId}`).maybeSingle(),
     supabase
       .from("discovery_responses")
       .select("answers,generated_result")
@@ -321,53 +317,6 @@ async function refreshIdentity(supabase: Supabase, userId: string) {
   return getOrCreateProfessionalIdentity(supabase, userId);
 }
 
-async function getLatestCvModel(supabase: Supabase, userId: string) {
-  const { data: unified } = await supabase
-    .from("user_documents")
-    .select("content_json,content_text")
-    .eq("user_id", userId)
-    .eq("document_type", "cv")
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (unified) return cvModelFromUnknown((unified.content_json as Record<string, unknown> | null)?.cvModel, unified.content_text ?? "");
-
-  const { data: legacy } = await supabase
-    .from("cv_documents")
-    .select("content")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  return legacy?.content ? cvModelFromUnknown(null, legacy.content) : null;
-}
-
-function firstClean(values: string[]) {
-  return values.map((value) => professionalizeUserInput(value)).find(Boolean) ?? "";
-}
-
-function coverLetterCvFacts(cv: CvModel | null, fallbackSkills: string[]) {
-  if (!cv) {
-    return {
-      targetRole: "",
-      skills: fallbackSkills.slice(0, 4),
-      education: "",
-      project: "",
-      experience: ""
-    };
-  }
-
-  return {
-    targetRole: professionalizeUserInput(cv.targetRole),
-    skills: Array.from(new Set([...cv.coreSkills, ...cv.technicalSkills, ...cv.professionalSkills, ...fallbackSkills].map(professionalizeUserInput).filter(Boolean))).slice(0, 5),
-    education: firstClean(cv.education.map((item) => [item.qualification, item.fieldOfStudy, item.institution].filter(Boolean).join(" in "))),
-    project: firstClean(cv.projects.map((item) => [item.projectName, item.description || item.impact].filter(Boolean).join(": "))),
-    experience: firstClean(cv.professionalExperience.map((item) => [item.role, item.company, item.achievements[0]].filter(Boolean).join(" at ")))
-  };
-}
-
 function cvPurposeFromType(value: string | undefined) {
   const lower = (value ?? "").toLowerCase();
   if (lower.includes("graduate") || lower.includes("intern") || lower.includes("entry")) return "early_career";
@@ -391,10 +340,13 @@ function jobDescriptionFocus(value?: string) {
   return matches[0] ?? "understanding the role requirements and contributing with care";
 }
 
-function toneAdjective(tone: string) {
-  if (/warm/i.test(tone)) return "thoughtful";
-  if (/confident/i.test(tone)) return "confident";
-  return "professional";
+function listFromGenerateOption(value?: string) {
+  return prepareForProfessionalDocument(value || "")
+    .professional
+    .split(/\r?\n|;|,/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 8);
 }
 
 export async function generateCV(supabase: Supabase, userId: string, options: GenerateOptions = {}): Promise<GeneratedProfessionalDocument> {
@@ -491,7 +443,7 @@ export async function createImportedCvDraft(
   imported: ImportedCvResult,
   templateNameInput?: string
 ): Promise<GeneratedProfessionalDocument> {
-  const templateName = normalizeTemplate(templateNameInput ?? "Modern ATS");
+  const templateName = normalizeTemplate(templateNameInput ?? "PATHZY Signature Professional");
   const cvModel = normalizeCvModelForExport(imported.cvModel);
   const content = serializeCvModel(cvModel);
   const now = new Date().toISOString();
@@ -605,99 +557,105 @@ export async function createImportedCvDraft(
 }
 
 export async function generateCoverLetter(supabase: Supabase, userId: string, options: GenerateOptions = {}): Promise<GeneratedProfessionalDocument> {
-  const [inputs, latestCv] = await Promise.all([getInputs(supabase, userId), getLatestCvModel(supabase, userId)]);
-  const language = normalizeLanguage(options.language ?? inputs.brain?.language);
-  const templateName = normalizeCoverLetterTemplate(options.templateName);
-  const company = prepareForProfessionalDocument(options.company || "the company").professional;
-  const role = prepareForProfessionalDocument(options.role || careerGoal(inputs)).professional;
-  const tone = prepareForProfessionalDocument(options.tone || "professional").professional.toLowerCase();
-  const fallbackSkills = collectSkills(inputs).slice(0, 5);
-  const cvFacts = coverLetterCvFacts(latestCv, fallbackSkills);
-  const skills = cvFacts.skills.length ? cvFacts.skills.join(", ") : "practical communication, reliability, and willingness to learn";
-  const candidateName = cvCandidateName(inputs);
-  const goal = cvFacts.targetRole || careerGoal(inputs);
-  const jobFocus = jobDescriptionFocus(options.jobDescription);
-  const jobAlignment = jobFocus
-    ? language === "french"
-      ? `D'apres l'offre, je comprends que ce poste demande ${jobFocus}.`
-      : `From the job description, I understand that this role needs ${jobFocus}.`
-    : language === "french"
-      ? "Je comprends que ce poste demande de la fiabilite, de l'attention aux besoins de l'equipe et une envie d'apprendre."
-      : "I understand this role calls for reliability, attention to team needs, and a willingness to learn.";
-  const proof = cvFacts.experience || cvFacts.project || cvFacts.education;
-  const proofSentence = proof
-    ? language === "french"
-      ? `Mon parcours montre deja une base pertinente: ${proof}.`
-      : `My background already gives me a relevant foundation: ${proof}.`
-    : language === "french"
-      ? "Lorsque mon experience directe est encore limitee, je compense par une preparation serieuse, une communication claire et une volonte de progresser rapidement."
-      : "Where my direct experience is still developing, I bring careful preparation, clear communication, and a genuine commitment to grow quickly.";
-  const professionalTone = toneAdjective(tone);
-  const coverLetterData: CoverLetterData = {
-    fullName: candidateName,
-    professionalTitle: goal,
-    phone: professionalizeUserInput(inputs.profile?.phone),
-    email: professionalizeUserInput(inputs.profile?.email),
-    linkedIn: professionalizeUserInput(inputs.profile?.linkedin_url),
-    city: professionalizeUserInput(inputs.profile?.city),
-    country: professionalizeUserInput(inputs.profile?.country),
-    companyName: company,
-    hiringManager: "",
-    jobTitle: role,
-    companyAddress: "",
-    date: new Date().toLocaleDateString("en-ZA", { year: "numeric", month: "long", day: "numeric" }),
-    subject: language === "french" ? `Candidature - ${role}` : `Application for ${role}`,
-    greeting: language === "french" ? "Bonjour," : "Dear Hiring Manager,",
-    openingParagraph: language === "french"
-      ? `Je vous presente ma candidature pour le poste de ${role} chez ${company}. Mon objectif professionnel est de progresser vers ${goal}, avec une base pratique en ${skills}.`
-      : `I am applying for the ${role} role at ${company}. My professional goal is to grow toward ${goal}, with a practical foundation in ${skills}.`,
-    motivationParagraph: language === "french"
-      ? `${jobAlignment} Cette opportunite correspond a mon parcours actuel et a ma volonte de contribuer de maniere serieuse, utile et progressive.`
-      : `${jobAlignment} This opportunity fits my current growth path and gives me a clear way to contribute with care, consistency, and useful work.`,
-    evidenceParagraph: language === "french"
-      ? `${proofSentence} Je peux apporter une attitude ${professionalTone}, de la fiabilite, une communication claire et une volonte d'apprendre rapidement sans pretendre a une experience que je n'ai pas encore.`
-      : `${proofSentence} I can bring a ${professionalTone} attitude, reliability, clear communication, and a commitment to learn quickly without overstating experience I have not yet built.`,
-    companyAlignmentParagraph: language === "french"
-      ? `Je souhaite rejoindre ${company} parce que ce role me permettrait de mettre mes competences en pratique tout en continuant a developper une contribution professionnelle mesurable.`
-      : `I am interested in ${company} because this role would allow me to apply my strengths while continuing to build measurable professional contribution.`,
-    bodyParagraphs: [],
-    closingParagraph: language === "french"
-      ? "Merci pour votre temps et votre consideration. Je serais heureux d'echanger sur ma candidature."
-      : "Thank you for your time and consideration. I would welcome the opportunity to discuss my application.",
-    closingPhrase: language === "french" ? "Cordialement," : "Kind regards,",
-    signature: candidateName,
-    tone,
-    designSystem: templateName
-  };
-  const content = serializeCoverLetterData(coverLetterData);
-  const title = `${templateName} ${role} cover letter`;
-
-  const { data } = await supabase.from("cover_letters").insert({ user_id: userId, language, title, company, role, content, status: "draft" }).select("id").maybeSingle();
-  await refreshIdentity(supabase, userId);
-
-  return saveUnifiedDocument(supabase, userId, { id: data?.id, tool: "cover-letter", title, content, contentJson: { coverLetterData } }, templateName, { company, role });
-}
-
-export async function generateLinkedInProfile(supabase: Supabase, userId: string, options: GenerateOptions = {}): Promise<GeneratedProfessionalDocument> {
   const inputs = await getInputs(supabase, userId);
   const language = normalizeLanguage(options.language ?? inputs.brain?.language);
-  const skills = collectSkills(inputs).slice(0, 12);
-  const goal = prepareForProfessionalDocument(careerGoal(inputs)).professional;
-  const headline = language === "french" ? `${goal} | Jeune talent en developpement | ${skills.slice(0, 3).join(" + ")}` : `${goal} | Early-career talent | ${skills.slice(0, 3).join(" + ")}`;
-  const about =
-    language === "french"
-      ? `Je construis mon parcours vers ${goal}. Je developpe mes competences, mon portfolio et ma preparation professionnelle avec PATHZY. Je recherche des opportunites ou je peux apprendre, contribuer et progresser avec integrite.`
-      : `I am building my path toward ${goal}. I am developing practical skills, portfolio proof, and employment readiness with PATHZY. I am looking for opportunities where I can learn, contribute, and grow with integrity.`;
-  const experienceSummary = language === "french" ? "Ajoutez uniquement vos experiences reelles, projets, benevolat ou responsabilites." : "Add only real experience, projects, volunteering, or leadership responsibilities.";
-  const content = `${headline}\n\nABOUT\n${about}\n\nSKILLS\n${skills.map((skill) => `- ${skill}`).join("\n") || "- Add verified skills"}\n\nEXPERIENCE SUMMARY\n${experienceSummary}\n\nFEATURED SECTION IDEAS\n- Portfolio project\n- CV\n- Certificate you completed\n- Short case study\n\nPROFILE CHECKLIST\n- Professional photo\n- Clear headline\n- Honest About section\n- Skills aligned to your target role\n- Featured proof of work\n\nTrust note: PATHZY does not log into LinkedIn. You copy and apply suggestions yourself.`;
+  const templateName = normalizeCoverLetterTemplate(options.templateName ?? "PATHZY Signature Letter");
+  const company = prepareForProfessionalDocument(options.company || "").professional;
+  const role = prepareForProfessionalDocument(options.role || "").professional;
+  const tone = prepareForProfessionalDocument(options.tone || "professional").professional.toLowerCase();
+  if (!company || !role) {
+    throw new Error("A job title and company name are required before PATHZY can generate a tailored cover letter.");
+  }
+  const descriptionFocus = jobDescriptionFocus(options.jobDescription);
+  const requirements = listFromGenerateOption(options.keyRequirements);
+  const responsibilities = listFromGenerateOption(options.keyResponsibilities);
+  const qualifications = listFromGenerateOption(options.qualifications);
+  const jobContext: CoverLetterJobContext = {
+    source: options.jobDescription ? "pasted_job_description" : "manual",
+    company,
+    role,
+    jobDescription: prepareForProfessionalDocument(options.jobDescription || "").professional,
+    location: prepareForProfessionalDocument(options.companyLocation || "").professional,
+    hiringManager: prepareForProfessionalDocument(options.recruiterName || "").professional,
+    referenceNumber: prepareForProfessionalDocument(options.referenceNumber || "").professional,
+    closingDate: prepareForProfessionalDocument(options.closingDate || "").professional,
+    url: prepareForProfessionalDocument(options.jobUrl || "").professional,
+    requirements: requirements.length ? requirements : descriptionFocus ? [descriptionFocus] : [],
+    responsibilities,
+    qualifications,
+    experienceRequirements: prepareForProfessionalDocument(options.experienceRequirements || "").professional
+  };
+  const identityValues = professionalIdentityValuesFromSources(inputs.profile, { answers: inputs.discoveryAnswers }, null);
+  const coverLetterData: CoverLetterData = coverLetterDataFromProfessionalIdentity(identityValues, jobContext, { templateName, language, tone });
+  const content = serializeCoverLetterData(coverLetterData);
+  const title = `${templateName} ${coverLetterData.jobTitle} cover letter`;
 
-  const { data } = await supabase.from("linkedin_profiles").insert({ user_id: userId, language, headline, about, skills, experience_summary: experienceSummary, optimization_score: Math.min(100, 62 + skills.length * 3) }).select("id").maybeSingle();
+  const { data } = await supabase.from("cover_letters").insert({ user_id: userId, language, title, company: coverLetterData.companyName, role: coverLetterData.jobTitle, content, status: "draft" }).select("id").maybeSingle();
   await refreshIdentity(supabase, userId);
 
   return saveUnifiedDocument(
     supabase,
     userId,
-    { id: data?.id, tool: "linkedin", title: "LinkedIn profile optimization", content, score: Math.min(100, 62 + skills.length * 3), fields: { headline, about, skills, experienceSummary } },
+    {
+      id: data?.id,
+      tool: "cover-letter",
+      title,
+      content,
+      contentJson: {
+        source: "professional_identity_and_job_context",
+        coverLetterData,
+        coverLetterVersion: {
+          designSystem: coverLetterData.designSystem,
+          versionName: title,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          professionalIdentitySource: "canonical_professional_identity",
+          jobContext,
+          manualOverride: false,
+          status: "up_to_date"
+        }
+      }
+    },
+    templateName,
+    { company: coverLetterData.companyName, role: coverLetterData.jobTitle }
+  );
+}
+
+export async function generateLinkedInProfile(supabase: Supabase, userId: string, options: GenerateOptions = {}): Promise<GeneratedProfessionalDocument> {
+  const inputs = await getInputs(supabase, userId);
+  const language = normalizeLanguage(options.language ?? inputs.brain?.language);
+  const identityValues = professionalIdentityValuesFromSources(inputs.profile, { answers: inputs.discoveryAnswers }, null);
+  const model = linkedinProfileModelFromProfessionalIdentity(identityValues, { language, profileUpdatedAt: inputs.profile?.updated_at ?? null });
+  const content = serializeLinkedInProfileModel(model);
+  const score = Math.round((model.completeness.completedChecks / model.completeness.totalChecks) * 100);
+
+  const experienceSummary = model.experience.map((item) => item.sourceText).join("\n");
+  const { data } = await supabase.from("linkedin_profiles").insert({ user_id: userId, language, headline: model.headline, about: model.about, skills: model.skills, experience_summary: experienceSummary, optimization_score: score }).select("id").maybeSingle();
+  await refreshIdentity(supabase, userId);
+
+  return saveUnifiedDocument(
+    supabase,
+    userId,
+    {
+      id: data?.id,
+      tool: "linkedin",
+      title: "LinkedIn profile optimization",
+      content,
+      score,
+      fields: { headline: model.headline, about: model.about, skills: model.skills, experienceSummary },
+      contentJson: {
+        source: "professional_identity",
+        linkedinProfileModel: model,
+        linkedInVersion: {
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          professionalIdentitySource: "canonical_professional_identity",
+          professionalIdentityUpdatedAt: inputs.profile?.updated_at ?? null,
+          manualOverride: false,
+          status: model.profileOptimization.status
+        }
+      }
+    },
     null
   );
 }

@@ -1,4 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { unstable_noStore as noStore } from "next/cache";
 import {
   calculateProfessionalIdentityCompletion,
   professionalIdentityRequiredChecksFromValues,
@@ -90,6 +91,7 @@ export async function getProfessionalIdentityReadModel(
   supabase: SupabaseClient,
   user: Pick<User, "id" | "email">
 ): Promise<ProfessionalIdentityReadModel> {
+  noStore();
   const { profile, discovery } = await loadProfessionalIdentitySources(supabase, user.id);
   const values = professionalIdentityValuesFromSources(profile, discovery, user);
   return {

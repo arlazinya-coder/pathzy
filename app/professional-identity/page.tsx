@@ -9,14 +9,63 @@ import { pathzyPhase2T, pathzyT, professionalIdentityImportanceLabel, profession
 import { appRoutes, routeBuilders, type ProfessionalIdentityOnboardingStage } from "@/lib/navigation/routes";
 import { professionalPhotoStorageContract } from "@/lib/professional-identity/professional-photo";
 import { currentSituationDisplayLabel } from "@/lib/professional-identity/current-situation";
+import { experienceEntryDateLabel, normalizeProfessionalIdentityExperienceEntries, type ProfessionalIdentityExperienceEntry } from "@/lib/professional-identity/professional-identity-experience";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
 
 type SummaryStatus = "Required" | "Recommended" | "Optional";
 const professionalIdentityIntroStages: ProfessionalIdentityOnboardingStage[] = ["welcome", "interfaceLanguage", "documentLanguage", "careerCoach", "professionalIdentityIntroduction"];
 
-function displayValue(value: string | string[]) {
-  const values = Array.isArray(value) ? value.map((item) => item.trim()).filter(Boolean) : [value.trim()].filter(Boolean);
-  return values.length ? values.join(", ") : "";
+function displayValue(value: unknown) {
+  if (Array.isArray(value)) {
+    const values = value.map((item) => typeof item === "string" ? item.trim() : JSON.stringify(item)).filter(Boolean);
+    return values.length ? values.join(", ") : "";
+  }
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function experienceDisplayTitle(entry: ProfessionalIdentityExperienceEntry) {
+  return [entry.role, entry.company].filter(Boolean).join(" - ");
+}
+
+function renderReviewValue(section: { editSection: string; value: unknown }, interfaceLanguage: "en" | "fr") {
+  if (section.editSection === "experience") {
+    const entries = normalizeProfessionalIdentityExperienceEntries(section.value);
+    if (!entries.length) return null;
+    return (
+      <div className="mt-3 grid gap-3">
+        {entries.map((entry, index) => {
+          const dates = experienceEntryDateLabel(entry);
+          return (
+            <div key={entry.id || `${entry.role}-${index}`} className="rounded-[18px] border border-[#e5e7eb] bg-[#f9fafb] p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#6B7280]">{interfaceLanguage === "fr" ? "Experience" : "Experience"} {index + 1}</p>
+              <p className="mt-2 text-base font-semibold text-[#111827]">{experienceDisplayTitle(entry) || entry.role || entry.company}</p>
+              {dates ? <p className="mt-1 text-sm font-semibold text-[#6B7280]">{dates}</p> : null}
+              {entry.location ? <p className="mt-1 text-sm text-[#6B7280]">{entry.location}</p> : null}
+              {entry.description ? <p className="mt-2 text-sm leading-6 text-[#6B7280]">{entry.description}</p> : null}
+              {entry.achievements.length ? (
+                <ul className="mt-2 grid gap-1 text-sm leading-6 text-[#6B7280]">
+                  {entry.achievements.map((achievement) => <li key={achievement}>{achievement}</li>)}
+                </ul>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  if (Array.isArray(section.value)) {
+    const values = section.value.map((item) => typeof item === "string" ? item.trim() : "").filter(Boolean);
+    if (!values.length) return null;
+    return (
+      <div className="mt-3 grid gap-2">
+        {values.map((item, index) => (
+          <p key={`${item}-${index}`} className="rounded-[16px] border border-[#e5e7eb] bg-[#f9fafb] px-4 py-3 text-sm leading-6 text-[#6B7280]">{item}</p>
+        ))}
+      </div>
+    );
+  }
+  const value = displayValue(section.value);
+  return value ? <p className="mt-2 text-sm leading-6 text-[#6B7280]">{value}</p> : null;
 }
 
 function initialsFor(name: string, email?: string | null) {
@@ -74,7 +123,7 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
     }
   }
   const showReview = !params.section && params.review === "1";
-  const reviewSections: Array<{ label: string; status: SummaryStatus; value: string | string[]; editSection: string }> = [
+  const reviewSections: Array<{ label: string; status: SummaryStatus; value: unknown; editSection: string }> = [
     { label: sectionName("profile", "Profile"), status: "Required", value: currentSituationDisplayLabel(interfaceLanguage, professionalIdentityValues.current_status) || professionalIdentityValues.current_status || "", editSection: "profile" },
     { label: sectionName("photo", "Photo"), status: "Optional", value: professionalIdentityValues.profilePhoto ?? "", editSection: "photo" },
     { label: sectionName("personal_information", "Personal Information"), status: "Required", value: [professionalIdentityValues.full_name, professionalIdentityValues.email, professionalIdentityValues.phone, professionalIdentityValues.current_status].filter(Boolean).join(" - "), editSection: "personal_information" },
@@ -155,7 +204,10 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
     "identity_not_started",
     "identity_in_progress",
     "identity_review_pending",
-    "identity_finish_pending"
+    "identity_finish_pending",
+    "diagnosis_pending",
+    "diagnosis_complete",
+    "home_ready"
   ]);
   if (setupComplete && requestedStage) {
     redirect(appRoutes.professionalIdentity);
@@ -239,7 +291,7 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
                           {value ? statusLabel(section.status) : `${statusLabel(section.status)} ${phase2T("identity.review.missing")}`}
                         </span>
                       </div>
-                      <p className="mt-2 text-sm leading-6 text-[#6B7280]">{value || (section.status === "Required" ? phase2T("identity.review.addRequired") : phase2T("identity.review.improveLater"))}</p>
+                      {value ? renderReviewValue(section, interfaceLanguage) : <p className="mt-2 text-sm leading-6 text-[#6B7280]">{section.status === "Required" ? phase2T("identity.review.addRequired") : phase2T("identity.review.improveLater")}</p>}
                     </div>
                     <Link href={professionalIdentitySectionHref(section.editSection as never, "review")} aria-label={`${phase2T("identity.review.editSection")}: ${section.label}`} className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-[#d1d5db] bg-white px-4 py-2 text-sm font-bold text-[#374151] transition hover:border-[#2563EB] hover:text-[#2563EB]">
                       {phase2T("identity.review.editSection")}
