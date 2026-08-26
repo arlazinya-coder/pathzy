@@ -576,7 +576,7 @@ export function ProfileActionEditor({
               : t("onboarding.save.ready");
   const saveStatusClasses =
     autosaveState === "dirty"
-      ? "bg-[#eff6ff] text-[#1d4ed8]"
+      ? "bg-[rgba(217,58,70,.12)] text-[var(--brand-primary)]"
       : autosaveState === "saving" || autosaveState === "retrying" || autosaveState === "still-saving"
         ? "bg-[#fffbeb] text-[#92400e]"
         : autosaveState === "error"
@@ -969,13 +969,13 @@ export function ProfileActionEditor({
               <img src={photoPreviewUrl} alt={pathzyPhase2T(activeLanguage, "identity.photo.previewAlt")} className="h-full max-h-80 w-full object-cover" />
             ) : (
               <div className="p-6 text-center">
-                <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[#eff6ff] text-2xl font-semibold text-[#2563EB]">PH</div>
+                <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[rgba(217,58,70,.12)] text-2xl font-semibold text-[var(--brand-primary)]">PH</div>
                 <p className="mt-4 text-lg font-semibold text-[#111827]">{pathzyPhase2T(activeLanguage, "identity.photo.emptyTitle")}</p>
                 <p className="mt-2 text-sm leading-6 text-[#6B7280]">{pathzyPhase2T(activeLanguage, "identity.photo.emptyBody")}</p>
               </div>
             )}
           </div>
-          <p aria-live="polite" className={`mt-3 rounded-[18px] px-4 py-3 text-sm font-semibold ${photoStatus === "error" ? "bg-[#fef2f2] text-[#b91c1c]" : "bg-[#eff6ff] text-[#1e3a8a]"}`}>
+          <p aria-live="polite" className={`mt-3 rounded-[18px] px-4 py-3 text-sm font-semibold ${photoStatus === "error" ? "bg-[#fef2f2] text-[#b91c1c]" : "bg-[rgba(217,58,70,.12)] text-[#7f1d1d]"}`}>
             {statusText}
           </p>
         </div>
@@ -1001,10 +1001,10 @@ export function ProfileActionEditor({
               }}
             />
             <div className="mt-4 flex flex-wrap gap-3">
-              <label htmlFor={photoInputId} className={`inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full bg-[#2563EB] px-5 py-3 text-sm font-bold text-white shadow-[0_16px_34px_rgba(37,99,235,.18)] ${photoBusy ? "pointer-events-none opacity-60" : "hover:bg-[#1D4ED8]"}`}>
+              <label htmlFor={photoInputId} className={`inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full bg-[var(--brand-primary)] px-5 py-3 text-sm font-bold text-white shadow-[0_16px_34px_rgba(217,58,70,.18)] ${photoBusy ? "pointer-events-none opacity-60" : "hover:bg-[var(--brand-primary-hover)]"}`}>
                 {currentPhoto ? pathzyPhase2T(activeLanguage, "identity.photo.replace") : pathzyPhase2T(activeLanguage, "identity.photo.add")}
               </label>
-              <label htmlFor={photoInputId} className={`inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full border border-[#d1d5db] bg-white px-5 py-3 text-sm font-bold text-[#374151] ${photoBusy ? "pointer-events-none opacity-60" : "hover:border-[#2563EB] hover:text-[#2563EB]"}`}>
+              <label htmlFor={photoInputId} className={`inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full border border-[#d1d5db] bg-white px-5 py-3 text-sm font-bold text-[#374151] ${photoBusy ? "pointer-events-none opacity-60" : "hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)]"}`}>
                 {pathzyPhase2T(activeLanguage, "identity.photo.chooseDevice")}
               </label>
               {photoStatus === "error" && lastPhotoFile ? (
@@ -1041,7 +1041,7 @@ export function ProfileActionEditor({
               </div>
 
               <div className="rounded-[24px] border border-[#e5e7eb] bg-white p-4">
-                <button type="button" onClick={() => setShowCropControls((visible) => !visible)} className="rounded-full border border-[#d1d5db] bg-white px-5 py-3 text-sm font-bold text-[#374151] hover:border-[#2563EB] hover:text-[#2563EB]">
+                <button type="button" onClick={() => setShowCropControls((visible) => !visible)} className="rounded-full border border-[#d1d5db] bg-white px-5 py-3 text-sm font-bold text-[#374151] hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)]">
                   {pathzyPhase2T(activeLanguage, "identity.photo.crop")}
                 </button>
                 {showCropControls ? (
@@ -1170,7 +1170,7 @@ export function ProfileActionEditor({
         )) : (
           <p className="rounded-[20px] border border-dashed border-[#d1d5db] bg-[#f9fafb] p-4 text-sm leading-6 text-[#6B7280]">{pathzyPhase2T(activeLanguage, "identity.ui.emptyList")}</p>
         )}
-        <button type="button" onClick={() => addListItem(key)} className="w-fit rounded-full border border-[#d1d5db] bg-white px-5 py-3 text-sm font-bold text-[#374151] transition hover:border-[#2563EB] hover:text-[#2563EB]">{pathzyPhase2T(activeLanguage, "identity.ui.addItem")}</button>
+        <button type="button" onClick={() => addListItem(key)} className="w-fit rounded-full border border-[#d1d5db] bg-white px-5 py-3 text-sm font-bold text-[#374151] transition hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)]">{pathzyPhase2T(activeLanguage, "identity.ui.addItem")}</button>
       </div>
     );
   }
@@ -1184,7 +1184,7 @@ export function ProfileActionEditor({
           {suggestions.map((skill) => {
             const selected = skills.map((item) => item.toLowerCase()).includes(skill.toLowerCase());
             return (
-              <button key={skill} type="button" onClick={() => updateValue("skills", (selected ? skills.filter((item) => item.toLowerCase() !== skill.toLowerCase()) : [...skills, skill]) as never)} className={`rounded-full border px-4 py-2 text-sm font-bold transition ${selected ? "border-[#2563EB] bg-[#eff6ff] text-[#2563EB]" : "border-[#e5e7eb] bg-white text-[#6B7280] hover:text-[#111827]"}`}>
+              <button key={skill} type="button" onClick={() => updateValue("skills", (selected ? skills.filter((item) => item.toLowerCase() !== skill.toLowerCase()) : [...skills, skill]) as never)} className={`rounded-full border px-4 py-2 text-sm font-bold transition ${selected ? "border-[var(--brand-primary)] bg-[rgba(217,58,70,.12)] text-[var(--brand-primary)]" : "border-[#e5e7eb] bg-white text-[#6B7280] hover:text-[#111827]"}`}>
                 {skill}
               </button>
             );
@@ -1283,17 +1283,17 @@ export function ProfileActionEditor({
       return (
         <div data-onboarding-stage={introLifecycleIndex + 1} className="overflow-hidden rounded-[34px] border border-[#1e293b] bg-[#07111f] text-white shadow-[0_28px_80px_rgba(2,6,23,.28)]">
           <div className="relative grid gap-7 p-5 transition-all duration-300 md:p-8 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <div aria-hidden="true" className="absolute right-0 top-0 h-56 w-56 rounded-full bg-[#2563EB]/20 blur-3xl" />
+            <div aria-hidden="true" className="absolute right-0 top-0 h-56 w-56 rounded-full bg-[rgba(217,58,70,.18)] blur-3xl" />
             <div aria-hidden="true" className="absolute bottom-0 left-10 h-40 w-40 rounded-full bg-[var(--pathzy-red)]/15 blur-3xl" />
             <div className="relative">
               <div className="mb-5 flex flex-wrap items-center gap-3">
-                <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-[#bfdbfe]">
+                <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-secondary)]">
                   {introProgressLabel}
                 </span>
               </div>
               <p className="text-sm font-bold uppercase tracking-[0.16em] text-[var(--pathzy-red)]">{pathzyPhase2T(activeLanguage, "identity.ui.setupEyebrow")}</p>
               <h2 className="mt-4 max-w-3xl text-3xl font-semibold leading-tight text-white md:text-4xl">{introTitle}</h2>
-              <p className="mt-4 max-w-2xl text-base leading-7 text-[#dbeafe] md:text-lg">{introBody}</p>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--text-secondary)] md:text-lg">{introBody}</p>
               {introStage === "welcome" ? <p className="mt-4 max-w-2xl text-base leading-7 text-white/78">{t("onboarding.welcome.subheadline")}</p> : null}
               {introStage === "welcome" ? (
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -1306,20 +1306,20 @@ export function ProfileActionEditor({
               ) : null}
               {introStage === "interfaceLanguage" ? (
                 <div className="mt-6 rounded-[24px] border border-white/10 bg-white/[0.08] p-4">
-                  <p className="mb-4 text-sm font-semibold leading-6 text-[#dbeafe]">{t("onboarding.interface.explanation")}</p>
+                  <p className="mb-4 text-sm font-semibold leading-6 text-[var(--text-secondary)]">{t("onboarding.interface.explanation")}</p>
                   {renderField({ name: "interface_language", label: "Interface language" })}
                 </div>
               ) : null}
               {introStage === "documentLanguage" ? (
                 <div className="mt-6 rounded-[24px] border border-white/10 bg-white/[0.08] p-4">
-                  <p className="mb-4 text-sm font-semibold leading-6 text-[#dbeafe]">{t("onboarding.document.explanation")}</p>
+                  <p className="mb-4 text-sm font-semibold leading-6 text-[var(--text-secondary)]">{t("onboarding.document.explanation")}</p>
                   {renderField({ name: "professional_document_language", label: "Professional document language" })}
                 </div>
               ) : null}
               {introStage === "careerCoach" ? (
                 <div className="mt-6 rounded-[24px] border border-white/10 bg-white/[0.08] p-5">
                   <p className="text-base font-semibold leading-7 text-white">{t("onboarding.coach.pause")}</p>
-                  <p className="mt-3 text-sm font-semibold leading-6 text-[#dbeafe]">{t("onboarding.coach.support")}</p>
+                  <p className="mt-3 text-sm font-semibold leading-6 text-[var(--text-secondary)]">{t("onboarding.coach.support")}</p>
                 </div>
               ) : null}
               {introStage === "professionalIdentityIntroduction" ? (
@@ -1346,7 +1346,7 @@ export function ProfileActionEditor({
             <div className="relative min-h-[240px] overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.08] p-5">
               <div aria-hidden="true" className="absolute -right-8 -top-8 h-32 w-32 rounded-full border border-[#60a5fa]/45" />
               <div aria-hidden="true" className="absolute -bottom-10 left-8 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
-              <p className="relative text-xs font-bold uppercase tracking-[0.16em] text-[#93c5fd]">{illustrationTitle}</p>
+              <p className="pathzy-eyebrow-accent relative text-xs font-bold uppercase tracking-[0.16em]">{illustrationTitle}</p>
               <div className="relative mt-6 grid gap-3">
                 {illustrationItems.map((item, index) => (
                   <div key={item} className="flex items-center gap-3 rounded-[22px] border border-white/10 bg-white/10 p-3">
@@ -1356,7 +1356,7 @@ export function ProfileActionEditor({
                 ))}
               </div>
               <div className="relative mt-6 rounded-[22px] border border-white/10 bg-[#0f172a]/75 p-4">
-                <p className="text-sm font-semibold leading-6 text-[#dbeafe]">
+                <p className="text-sm font-semibold leading-6 text-[var(--text-secondary)]">
                   {introStage === "welcome"
                     ? pathzyPhase2T(activeLanguage, "identity.ui.foundationValue")
                     : introStage === "professionalIdentityIntroduction"
@@ -1372,7 +1372,7 @@ export function ProfileActionEditor({
     if (!activeStep) {
       return (
         <div className="rounded-[30px] border border-[#e5e7eb] bg-white p-6 shadow-[0_18px_55px_rgba(17,24,39,.08)] md:p-8">
-          <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#2563EB]">{t("onboarding.welcome.title")}</p>
+          <p className="text-sm font-bold uppercase tracking-[0.16em] text-[var(--brand-primary)]">{t("onboarding.welcome.title")}</p>
           <h2 className="mt-4 text-4xl font-semibold leading-tight tracking-[-0.03em] text-[#111827] md:text-5xl">{t("identity.page.title")}</h2>
           <p className="mt-4 max-w-2xl text-lg leading-8 text-[#6B7280]">{t("identity.page.body")}</p>
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -1386,7 +1386,7 @@ export function ProfileActionEditor({
             </div>
           </div>
           <p className="mt-5 max-w-2xl text-sm leading-6 text-[#6B7280]">{t("onboarding.welcome.reassurance")}</p>
-          <button type="button" onClick={() => goNext()} className="mt-7 rounded-full bg-[#2563EB] px-7 py-4 text-sm font-bold text-white shadow-[0_16px_34px_rgba(37,99,235,.22)] transition hover:bg-[#1D4ED8]">{pathzyPhase2T(activeLanguage, "identity.ui.begin")}</button>
+          <button type="button" onClick={() => goNext()} className="mt-7 rounded-full bg-[var(--brand-primary)] px-7 py-4 text-sm font-bold text-white shadow-[0_16px_34px_rgba(217,58,70,.22)] transition hover:bg-[var(--brand-primary-hover)]">{pathzyPhase2T(activeLanguage, "identity.ui.begin")}</button>
         </div>
       );
     }
@@ -1395,14 +1395,14 @@ export function ProfileActionEditor({
       <div className="rounded-[30px] border border-[#e5e7eb] bg-white p-5 shadow-[0_18px_55px_rgba(17,24,39,.08)] md:p-7">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#2563EB]">{pathzyPhase2T(activeLanguage, "identity.ui.foundationValue")}</p>
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-[var(--brand-primary)]">{pathzyPhase2T(activeLanguage, "identity.ui.foundationValue")}</p>
             <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.02em] text-[#111827] md:text-4xl">{sectionTitle(activeStep)}</h2>
             <p className="mt-3 max-w-2xl text-base leading-7 text-[#6B7280]">{stepDescription(activeStep)}</p>
           </div>
-          <span className="w-fit rounded-full border border-[#dbeafe] bg-[#eff6ff] px-4 py-2 text-xs font-bold text-[#2563EB]">{importanceLabel(activeStep.importance)}</span>
+          <span className="w-fit rounded-full border border-[rgba(217,58,70,.22)] bg-[rgba(217,58,70,.1)] px-4 py-2 text-xs font-bold text-[var(--brand-primary)]">{importanceLabel(activeStep.importance)}</span>
         </div>
 
-        <div className="mt-5 rounded-[22px] border border-[#dbeafe] bg-[#eff6ff] p-4 text-sm font-semibold leading-6 text-[#1e3a8a]">{stepGuidance(activeStep)}</div>
+        <div className="mt-5 rounded-[22px] border border-[rgba(217,58,70,.22)] bg-[rgba(217,58,70,.1)] p-4 text-sm font-semibold leading-6 text-[#7f1d1d]">{stepGuidance(activeStep)}</div>
 
         <div className="mt-6">
           {activeStep.kind === "photo" ? (
@@ -1419,14 +1419,14 @@ export function ProfileActionEditor({
         </div>
 
         {activeIndex === journeySteps.length - 1 ? (
-          <div className={`mt-6 rounded-[24px] border p-5 ${requiredComplete ? "border-[#bfdbfe] bg-[#eff6ff]" : "border-[#fde68a] bg-[#fffbeb]"}`}>
-            <p className={`text-sm font-bold uppercase tracking-[0.14em] ${requiredComplete ? "text-[#2563EB]" : "text-[#92400e]"}`}>{requiredComplete ? pathzyPhase2T(activeLanguage, "identity.ui.readyForReview") : pathzyPhase2T(activeLanguage, "identity.ui.requiredDetailsNeeded")}</p>
+          <div className={`mt-6 rounded-[24px] border p-5 ${requiredComplete ? "border-[rgba(217,58,70,.22)] bg-[rgba(217,58,70,.1)]" : "border-[#fde68a] bg-[#fffbeb]"}`}>
+            <p className={`text-sm font-bold uppercase tracking-[0.14em] ${requiredComplete ? "text-[var(--brand-primary)]" : "text-[#92400e]"}`}>{requiredComplete ? pathzyPhase2T(activeLanguage, "identity.ui.readyForReview") : pathzyPhase2T(activeLanguage, "identity.ui.requiredDetailsNeeded")}</p>
             <h3 className="mt-2 text-2xl font-semibold text-[#111827]">{requiredComplete ? pathzyPhase2T(activeLanguage, "identity.ui.reviewBeforeHome") : pathzyPhase2T(activeLanguage, "identity.ui.finishRequired")}</h3>
             <p className="mt-2 text-sm leading-6 text-[#6B7280]">
               {requiredComplete ? pathzyPhase2T(activeLanguage, "identity.ui.reviewExplanation") : pathzyPhase2T(activeLanguage, "identity.ui.requiredSectionsExplanation")}
             </p>
             {requiredComplete ? (
-              <button type="button" onClick={openReview} className="mt-4 inline-flex rounded-full bg-[#2563EB] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#1D4ED8]">{t("onboarding.review")}</button>
+              <button type="button" onClick={openReview} className="mt-4 inline-flex rounded-full bg-[var(--brand-primary)] px-6 py-3 text-sm font-bold text-white transition hover:bg-[var(--brand-primary-hover)]">{t("onboarding.review")}</button>
             ) : (
               <div className="mt-4 grid gap-3" aria-live="polite">
                 <p className="text-sm font-bold text-[#92400e]">{pathzyPhase2T(activeLanguage, "identity.ui.youStillNeed")}</p>
@@ -1466,7 +1466,7 @@ export function ProfileActionEditor({
       <div className="mb-5 rounded-[26px] border border-[#e5e7eb] bg-white p-4 shadow-[0_14px_40px_rgba(17,24,39,.06)] md:p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#2563EB]">{pathzyPhase2T(activeLanguage, "identity.ui.foundationValue")}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--brand-primary)]">{pathzyPhase2T(activeLanguage, "identity.ui.foundationValue")}</p>
             <p className="mt-1 text-sm font-semibold text-[#6B7280]">
               {introStage === "identity" ? formatPathzyStepCount(activeLanguage, activeIndex + 1, journeySteps.length) : formatPathzyStepCount(activeLanguage, introShellStep, introShellTotal)} · {requiredComplete ? t("onboarding.shell.requiredComplete") : t("onboarding.shell.requiredProgress")}
             </p>
@@ -1483,7 +1483,7 @@ export function ProfileActionEditor({
           </div>
         </div>
         <div className="mt-4 h-3 overflow-hidden rounded-full bg-[#e5e7eb]" role="progressbar" aria-label={pathzyPhase2T(activeLanguage, "identity.ui.progressAria")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={shellProgress}>
-          <div className="h-full rounded-full bg-[#2563EB] transition-all" style={{ width: `${shellProgress}%` }} />
+          <div className="h-full rounded-full bg-[var(--brand-primary)] transition-all" style={{ width: `${shellProgress}%` }} />
         </div>
         <p aria-live="polite" className="mt-3 min-h-5 text-sm font-semibold text-[#6B7280]">{message || "\u00A0"}</p>
       </div>
@@ -1590,15 +1590,15 @@ export function ProfessionalIdentityReviewActions({
         {status === "saving" ? pathzyPhase2T(language, "identity.finish.saving") : status === "error" ? message : setupComplete ? pathzyPhase2T(language, "identity.review.upToDate") : pathzyPhase2T(language, "identity.finish.saved")}
       </div>
       <div className="flex flex-col gap-3 sm:flex-row">
-        <Link href={editHref} className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#d1d5db] bg-white px-6 py-3 text-sm font-bold text-[#374151] transition hover:border-[#2563EB] hover:text-[#2563EB]">
+        <Link href={editHref} className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#d1d5db] bg-white px-6 py-3 text-sm font-bold text-[#374151] transition hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)]">
           {pathzyPhase2T(language, "identity.finish.edit")}
         </Link>
         {setupComplete ? (
-          <Link href={appRoutes.professionalIdentity} className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#2563EB] px-6 py-3 text-sm font-bold text-white shadow-[0_16px_34px_rgba(37,99,235,.22)] transition hover:bg-[#1D4ED8]">
+          <Link href={appRoutes.professionalIdentity} className="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--brand-primary)] px-6 py-3 text-sm font-bold text-white shadow-[0_16px_34px_rgba(217,58,70,.22)] transition hover:bg-[var(--brand-primary-hover)]">
             {pathzyPhase2T(language, "identity.review.returnToIdentity")}
           </Link>
         ) : requiredComplete ? (
-          <button type="button" onClick={finishSetup} disabled={status === "saving"} className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#2563EB] px-6 py-3 text-sm font-bold text-white shadow-[0_16px_34px_rgba(37,99,235,.22)] transition hover:bg-[#1D4ED8] disabled:cursor-not-allowed disabled:opacity-60">
+          <button type="button" onClick={finishSetup} disabled={status === "saving"} className="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--brand-primary)] px-6 py-3 text-sm font-bold text-white shadow-[0_16px_34px_rgba(217,58,70,.22)] transition hover:bg-[var(--brand-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60">
             {pathzyPhase2T(language, "identity.finish.submit")}
           </button>
         ) : null}

@@ -8,6 +8,7 @@ import {
 import { canCurrentUserExportProfessionalDocuments, canCurrentUserUseProfessionalIdentityTools } from "@/lib/professional-identity/professional-identity-service";
 import { getProfessionalIdentityReadModelSafe } from "@/lib/professional-identity/professional-identity-read-service";
 import type { GeneratedProfessionalDocument } from "@/lib/professional-identity/professional-identity-types";
+import { loadSavedProfessionalDocument } from "@/lib/professional-identity/saved-professional-documents";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
 
 type CoverLetterSearchParams = {
@@ -39,31 +40,6 @@ function jsonList(value: unknown) {
 
 function latestDate(...values: unknown[]) {
   return values.map(cleanText).filter(Boolean).sort().at(-1) ?? null;
-}
-
-async function loadExistingCoverLetterDocument(
-  supabase: Awaited<ReturnType<typeof requireAuthenticatedUser>>["supabase"],
-  userId: string,
-  documentId?: string
-): Promise<GeneratedProfessionalDocument | null> {
-  if (!documentId) return null;
-  const { data, error } = await supabase
-    .from("user_documents")
-    .select("id,document_title,content_text,content_json,template_name,updated_at,created_at")
-    .eq("user_id", userId)
-    .eq("id", documentId)
-    .maybeSingle();
-  if (error || !data) return null;
-  return {
-    id: data.id,
-    tool: "cover-letter",
-    title: data.document_title ?? "Cover Letter",
-    content: data.content_text ?? "",
-    contentJson: data.content_json ?? null,
-    template_name: data.template_name ?? null,
-    updated_at: data.updated_at ?? data.created_at ?? null,
-    created_at: data.created_at ?? null
-  };
 }
 
 async function loadJobUnderstandingContext(
@@ -179,16 +155,72 @@ async function resolveCoverLetterJobContext(
   return { source: "missing" };
 }
 
+function hasExplicitCoverLetterContext(params: CoverLetterSearchParams) {
+  return Boolean(params.documentId || params.role || params.company || params.jobDescription || params.applicationId || params.jobId);
+}
+
+function savedJobContextFromDocument(document: GeneratedProfessionalDocument | null): CoverLetterJobContext | null {
+  const contentJson = document?.contentJson;
+  if (!contentJson || typeof contentJson !== "object") return null;
+  const version = contentJson.coverLetterVersion && typeof contentJson.coverLetterVersion === "object" ? contentJson.coverLetterVersion as Record<string, unknown> : {};
+  const versionContext = version.jobContext && typeof version.jobContext === "object" ? version.jobContext as Record<string, unknown> : null;
+  if (versionContext) {
+    return {
+      source: versionContext.source === "application" ? "application" : versionContext.source === "saved_job" ? "saved_job" : versionContext.source === "pasted_job_description" ? "pasted_job_description" : "manual",
+      jobId: cleanText(versionContext.jobId),
+      applicationId: cleanText(versionContext.applicationId),
+      company: cleanText(versionContext.company),
+      role: cleanText(versionContext.role),
+      jobDescription: cleanText(versionContext.jobDescription),
+      location: cleanText(versionContext.location),
+      employmentType: cleanText(versionContext.employmentType),
+      workArrangement: cleanText(versionContext.workArrangement),
+      hiringManager: cleanText(versionContext.hiringManager),
+      applicationInstructions: cleanText(versionContext.applicationInstructions),
+      requirements: jsonList(versionContext.requirements),
+      responsibilities: jsonList(versionContext.responsibilities),
+      qualifications: jsonList(versionContext.qualifications),
+      experienceRequirements: cleanText(versionContext.experienceRequirements),
+      referenceNumber: cleanText(versionContext.referenceNumber),
+      closingDate: cleanText(versionContext.closingDate),
+      url: cleanText(versionContext.url),
+      updatedAt: cleanText(versionContext.updatedAt) || (document.updated_at ?? null)
+    };
+  }
+  const data = contentJson.coverLetterData && typeof contentJson.coverLetterData === "object" ? contentJson.coverLetterData as Record<string, unknown> : null;
+  if (!data) return null;
+  const company = cleanText(data.companyName);
+  const role = cleanText(data.jobTitle);
+  if (!company && !role) return null;
+  return {
+    source: "manual",
+    company,
+    role,
+    jobDescription: [data.roleMotivationParagraph, data.evidenceParagraph, data.companyAlignmentParagraph].map(cleanText).filter(Boolean).join("\n\n"),
+    location: cleanText(data.companyAddress),
+    hiringManager: cleanText(data.hiringManager),
+    updatedAt: document.updated_at ?? null
+  };
+}
+
 export default async function CoverLetterPage({ searchParams }: { searchParams?: Promise<CoverLetterSearchParams> }) {
   const { user, supabase } = await requireAuthenticatedUser("/professional-identity/cover-letter");
   const params = searchParams ? await searchParams : {};
-  const [unlocked, canExport, identity, jobContext, savedDocument] = await Promise.all([
+  const explicitContext = hasExplicitCoverLetterContext(params);
+  const [unlocked, canExport, identity, urlJobContext, savedDocument] = await Promise.all([
     canCurrentUserUseProfessionalIdentityTools(supabase, user.id),
     canCurrentUserExportProfessionalDocuments(supabase, user.id),
     getProfessionalIdentityReadModelSafe(supabase, user, "cover letter professional identity"),
     resolveCoverLetterJobContext(supabase, user.id, params),
-    loadExistingCoverLetterDocument(supabase, user.id, params.documentId)
+    params.documentId || !explicitContext
+      ? loadSavedProfessionalDocument(supabase, user.id, {
+          tool: "cover-letter",
+          documentId: params.documentId
+        })
+      : Promise.resolve(null)
   ]);
+  const savedJobContext = savedJobContextFromDocument(savedDocument);
+  const jobContext = explicitContext && urlJobContext.source !== "missing" ? urlJobContext : savedJobContext ?? urlJobContext;
   const initialDocument = savedDocument ?? professionalIdentityCoverLetterDocument(identity.values, jobContext, {
     templateName: "PATHZY Signature Letter",
     lastUpdated: identity.profile?.updated_at ?? null,

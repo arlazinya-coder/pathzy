@@ -4,6 +4,21 @@ export type PremiumDocumentTemplate = string;
 
 export type AtsTemplateClassification = "ATS HIGH" | "ATS BALANCED" | "VISUAL / RECRUITER-FIRST";
 
+export type DocumentTemplatePalette = {
+  id: string;
+  name: string;
+  description: string;
+  paper: string;
+  surface: string;
+  sidebar: string;
+  accent: string;
+  ink: string;
+  muted: string;
+  line: string;
+  hero: string;
+  heroMuted: string;
+};
+
 export type DocumentTemplateLayout =
   | "signature"
   | "single"
@@ -31,6 +46,7 @@ export type DocumentTemplateMetadata = {
     accent: string;
     layout: DocumentTemplateLayout;
   };
+  palettes: [DocumentTemplatePalette, DocumentTemplatePalette, DocumentTemplatePalette, DocumentTemplatePalette];
   photoCapability: ProfessionalPhotoTemplateCapability;
 };
 
@@ -39,7 +55,72 @@ const optionalPhoto: ProfessionalPhotoTemplateCapability = { photoMode: "optiona
 const portraitPhoto: ProfessionalPhotoTemplateCapability = { photoMode: "optional", supportedAspects: ["portrait", "circle-safe"], fallbackLayout: "balanced-header" };
 const creativePhoto: ProfessionalPhotoTemplateCapability = { photoMode: "recommended", supportedAspects: ["portrait", "square", "circle-safe"], fallbackLayout: "balanced-header" };
 
-export const MAX_TEMPLATE_VARIANTS_PER_DESIGN = 2;
+export const MAX_TEMPLATE_VARIANTS_PER_DESIGN = 1;
+
+const familyPaletteDirections: Record<string, Array<Omit<DocumentTemplatePalette, "id">>> = {
+  Executive: [
+    { name: "Midnight Brass", description: "Deep executive authority with ivory paper and muted brass detail.", paper: "#fffdfa", surface: "#fbf6ed", sidebar: "#f2eadc", accent: "#b0893f", ink: "#191714", muted: "#625b51", line: "#dfd1bb", hero: "#fffdfa", heroMuted: "#f2e6d2" },
+    { name: "Oxblood Charcoal", description: "Charcoal structure with restrained oxblood emphasis.", paper: "#fffdf8", surface: "#f6f1ea", sidebar: "#eee5dc", accent: "#7f1d1d", ink: "#171717", muted: "#645b57", line: "#ded2c9", hero: "#fffaf0", heroMuted: "#edd9cf" },
+    { name: "Graphite Champagne", description: "Graphite hierarchy with warm champagne rules.", paper: "#ffffff", surface: "#f8f5ee", sidebar: "#efe9dc", accent: "#a68a5b", ink: "#18181b", muted: "#5f5b53", line: "#d8ccba", hero: "#fffdfa", heroMuted: "#efe5d1" },
+    { name: "Forest Copper", description: "Deep forest structure with copper leadership detail.", paper: "#fffdf7", surface: "#f5f2e8", sidebar: "#e9e2d2", accent: "#8a4b23", ink: "#151713", muted: "#5d6057", line: "#d8cbb5", hero: "#fffaf1", heroMuted: "#eadcc5" }
+  ],
+  Technical: [
+    { name: "Ink Teal", description: "Precise technical contrast with a controlled teal signal.", paper: "#ffffff", surface: "#f7faf9", sidebar: "#eef7f5", accent: "#0f766e", ink: "#111827", muted: "#4b5563", line: "#cfe3df", hero: "#f8fffd", heroMuted: "#d7f0ec" },
+    { name: "Graphite Circuit", description: "Graphite text with quiet system-blue grey structure.", paper: "#ffffff", surface: "#f8fafc", sidebar: "#eef2f7", accent: "#334155", ink: "#111827", muted: "#475569", line: "#d7dee8", hero: "#f8fafc", heroMuted: "#dbe3ee" },
+    { name: "Forest Console", description: "Dark forest accent with readable warm white paper.", paper: "#fffefa", surface: "#f4f7f2", sidebar: "#ebf2e8", accent: "#166534", ink: "#111827", muted: "#4b5a4b", line: "#d5e3d1", hero: "#fafff7", heroMuted: "#dbead5" },
+    { name: "Oxide Grid", description: "Warm technical palette with oxide accent and precise neutral lines.", paper: "#fffdfa", surface: "#f7f4ef", sidebar: "#eee7de", accent: "#9a3412", ink: "#111827", muted: "#57534e", line: "#ded4c8", hero: "#fff9f1", heroMuted: "#eadccc" }
+  ],
+  Creative: [
+    { name: "Editorial Copper", description: "Warm editorial palette with copper accents and premium paper.", paper: "#fffaf4", surface: "#fff3e8", sidebar: "#f7e4d6", accent: "#9a3412", ink: "#241c18", muted: "#6b5e55", line: "#ebd1bf", hero: "#fff8f0", heroMuted: "#f4dccb" },
+    { name: "Plum Studio", description: "Muted plum for distinctive creative profiles without novelty colour.", paper: "#fffdfa", surface: "#f7f1f6", sidebar: "#efe3ee", accent: "#6b214f", ink: "#201923", muted: "#675c67", line: "#dfccd9", hero: "#fff6fb", heroMuted: "#ead5e4" },
+    { name: "Charcoal Vermilion", description: "Strong charcoal with restrained red-orange editorial energy.", paper: "#ffffff", surface: "#fff7f2", sidebar: "#f4e6dd", accent: "#b23a24", ink: "#1c1917", muted: "#625750", line: "#e1cfc4", hero: "#fffaf6", heroMuted: "#edd8ce" },
+    { name: "Ink Gallery", description: "Gallery-ready ink and parchment system with controlled burgundy detail.", paper: "#fffdf8", surface: "#f4eee5", sidebar: "#eadfcc", accent: "#7f1d1d", ink: "#1f1b18", muted: "#665d55", line: "#dccbb7", hero: "#fff8ef", heroMuted: "#ead8c2" }
+  ],
+  Graduate: [
+    { name: "Fresh Burgundy", description: "Approachable early-career structure with confident PATHZY burgundy.", paper: "#ffffff", surface: "#fffafa", sidebar: "#f8eded", accent: "#7f1d1d", ink: "#111827", muted: "#5f6368", line: "#ead1d1", hero: "#fffafa", heroMuted: "#edd6d6" },
+    { name: "Clear Slate", description: "Clean graduate readability with calm slate accents.", paper: "#ffffff", surface: "#f8fafc", sidebar: "#eef2f7", accent: "#475569", ink: "#111827", muted: "#4b5563", line: "#d8dee8", hero: "#f8fafc", heroMuted: "#dce3ee" },
+    { name: "Warm Scholar", description: "Warm ivory tone that keeps limited experience credible and polished.", paper: "#fffdf8", surface: "#faf4ea", sidebar: "#f1e7d8", accent: "#a16207", ink: "#171717", muted: "#655d52", line: "#dfd0bc", hero: "#fff8ef", heroMuted: "#ecd9c1" },
+    { name: "Ink Starter", description: "Confident entry-level contrast with soft paper and readable ink.", paper: "#fffdfa", surface: "#f5f2ed", sidebar: "#eae3d8", accent: "#1f2937", ink: "#111827", muted: "#5d6269", line: "#d8d0c5", hero: "#fffaf2", heroMuted: "#e9ddcc" }
+  ],
+  Formal: [
+    { name: "Institutional Navy", description: "Formal ink-navy palette for conservative professional review.", paper: "#ffffff", surface: "#f8fafc", sidebar: "#f1f5f9", accent: "#1f2937", ink: "#111827", muted: "#4b5563", line: "#d9dee8", hero: "#f8fafc", heroMuted: "#dce2ec" },
+    { name: "Stone Burgundy", description: "Warm institutional surface with restrained burgundy hierarchy.", paper: "#fffdfa", surface: "#f7f3ee", sidebar: "#eee7df", accent: "#7f1d1d", ink: "#171717", muted: "#5f5a54", line: "#ded3c8", hero: "#fffaf4", heroMuted: "#eadbd0" },
+    { name: "Government Slate", description: "Public-sector conservative contrast with dependable slate rules.", paper: "#ffffff", surface: "#f7f8f6", sidebar: "#edf0eb", accent: "#475569", ink: "#111827", muted: "#525b64", line: "#d7ddd7", hero: "#f8fafc", heroMuted: "#dce3e6" },
+    { name: "Ivory Seal", description: "Institutional ivory with seal-like burgundy authority and gentle rules.", paper: "#fffdf7", surface: "#f5f0e7", sidebar: "#ebe2d4", accent: "#8f2525", ink: "#171717", muted: "#625b53", line: "#dacdbb", hero: "#fff7ee", heroMuted: "#ead8c0" }
+  ],
+  Operational: [
+    { name: "Practical Charcoal", description: "Direct, durable palette for operational and service roles.", paper: "#ffffff", surface: "#f8f8f6", sidebar: "#eeeeea", accent: "#374151", ink: "#111827", muted: "#4b5563", line: "#d9d9d4", hero: "#f8f8f6", heroMuted: "#deded8" },
+    { name: "Worksite Forest", description: "Reliable forest accent with strong printed readability.", paper: "#ffffff", surface: "#f6faf5", sidebar: "#eaf3e7", accent: "#166534", ink: "#111827", muted: "#4b5b4d", line: "#d3e2cf", hero: "#f9fff7", heroMuted: "#dcebd7" },
+    { name: "Service Burgundy", description: "Confident service-role palette with controlled burgundy emphasis.", paper: "#fffefa", surface: "#fff5f2", sidebar: "#f4e5df", accent: "#8f2525", ink: "#171717", muted: "#605856", line: "#e1ccc6", hero: "#fff8f5", heroMuted: "#ead5cf" },
+    { name: "Industrial Bronze", description: "Grounded operational palette with bronze accent and practical contrast.", paper: "#fffdf8", surface: "#f5f1e9", sidebar: "#ebe3d6", accent: "#92400e", ink: "#171717", muted: "#5f5b52", line: "#d9ccb9", hero: "#fff8ef", heroMuted: "#ead8c0" }
+  ]
+};
+
+function paletteFamilyKey(family: string, layout: DocumentTemplateLayout) {
+  if (/executive|leadership|finance/i.test(family) || layout === "executive") return "Executive";
+  if (/technical|engineering|data|science|cyber/i.test(family) || layout === "technical") return "Technical";
+  if (/creative|marketing|portfolio|editorial/i.test(family) || layout === "creative") return "Creative";
+  if (/graduate|emerging|internship|career change|skills/i.test(family) || layout === "graduate") return "Graduate";
+  if (/public|academic|legal|health|international|government/i.test(family) || layout === "international" || layout === "healthcare") return "Formal";
+  if (/retail|service|trade|facilities|operations|hospitality|logistics|security/i.test(family)) return "Operational";
+  return "Formal";
+}
+
+function slug(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function curateTemplatePalettes(name: string, family: string, background: string, accent: string, layout: DocumentTemplateLayout): [DocumentTemplatePalette, DocumentTemplatePalette, DocumentTemplatePalette, DocumentTemplatePalette] {
+  const direction = familyPaletteDirections[paletteFamilyKey(family, layout)] ?? familyPaletteDirections.Formal;
+  return direction.map((palette, index) => ({
+    ...palette,
+    id: `${slug(name)}-${slug(palette.name)}`,
+    accent: index === 0 ? accent : palette.accent,
+    paper: index === 0 ? background : palette.paper,
+    surface: index === 0 ? background : palette.surface,
+    sidebar: index === 0 ? background : palette.sidebar
+  })) as [DocumentTemplatePalette, DocumentTemplatePalette, DocumentTemplatePalette, DocumentTemplatePalette];
+}
 
 function template(
   name: PremiumDocumentTemplate,
@@ -65,11 +146,12 @@ function template(
     atsCharacteristic,
     recruiterCharacteristic,
     thumbnail: { background, accent, layout },
+    palettes: curateTemplatePalettes(name, family, background, accent, layout),
     photoCapability
   };
 }
 
-export const documentTemplateGallery: DocumentTemplateMetadata[] = [
+const archivedDocumentTemplateGallery: DocumentTemplateMetadata[] = [
   template("PATHZY Signature Professional", "Modern Professional", "Reference PATHZY CV architecture with structured experience, disciplined A4 flow, and recruiter-ready hierarchy.", "General professional applications, imported CV repair, recruiter review", "ATS BALANCED", "Structured ATS", "Signature Professional", "#fffdfa", "#1f2937", "signature", noPhoto),
   template("Executive Black", "Executive", "High-contrast executive layout with refined spacing and boardroom-level hierarchy.", "Senior professionals, managers, founders, consultants", "ATS BALANCED", "Executive Layout", "Leadership Focused", "#111111", "#c9a35b", "executive", portraitPhoto),
   template("Modern ATS", "ATS Essential", "Clean one-column structure optimized for ATS parsing and recruiter scanning.", "Online applications, corporate roles, high-volume hiring", "ATS HIGH", "Single-Column ATS", "Fast Scanner Friendly", "#ffffff", "#1f2937", "single", noPhoto),
@@ -202,6 +284,66 @@ export const documentTemplateGallery: DocumentTemplateMetadata[] = [
   template("Contemporary Neutral", "Modern Professional", "Premium neutral CV with quiet spacing, balanced section flow, and strong readability across professions.", "General applications, professional services, career changes", "ATS BALANCED", "Neutral ATS", "Broadly Recruiter Ready", "#fffdf8", "#57534e", "enterprise", optionalPhoto)
 ];
 
+export const documentTemplateGallery: DocumentTemplateMetadata[] = [
+  template("Meridian Executive", "Executive & Leadership", "Executive header, high-level proof blocks, and restrained leadership hierarchy for senior profiles.", "Executives, founders, senior managers", "ATS BALANCED", "Executive structured", "Leadership presence", "#fffdfa", "#b0893f", "executive", portraitPhoto),
+  template("Summit Leadership", "Executive & Leadership", "Leadership-first composition that foregrounds scope, teams, and outcomes before supporting detail.", "Directors, heads of function, programme leads", "ATS BALANCED", "Leadership balanced", "Scope focused", "#fffaf2", "#7f1d1d", "executive", portraitPhoto),
+  template("Regent Boardroom", "Executive & Leadership", "Governance-oriented layout with formal authority, board-level spacing, and compact credentials.", "Board, advisory, trustee and governance roles", "ATS BALANCED", "Board structure", "Governance focused", "#fbf7ef", "#7c5c20", "executive", portraitPhoto),
+  template("Keystone Director", "Executive & Leadership", "Consulting-density executive CV with operating scope and evidence-led achievements.", "Directors, transformation leads, consultants", "ATS BALANCED", "Compact leadership", "Evidence led", "#fffdfa", "#8a5a1f", "consulting", noPhoto),
+  template("Atlas Executive", "Executive & Leadership", "Enterprise leadership system with strong profile band, readable proof, and disciplined spacing.", "Senior professionals with broad operational scope", "ATS BALANCED", "Enterprise executive", "Strategic scanner", "#f8fafc", "#7f1d1d", "enterprise", optionalPhoto),
+  template("Vanguard Leadership", "Executive & Leadership", "Bold leadership hierarchy with a strong title zone and measured recruiter-first rhythm.", "Senior managers, commercial leaders, founders", "VISUAL / RECRUITER-FIRST", "Visual leadership", "Premium authority", "#fff7ed", "#9a3412", "executive", portraitPhoto),
+  template("Sterling Principal", "Executive & Leadership", "Mature professional layout balancing expertise, scope, and credibility for principal-level roles.", "Principals, senior specialists, practice leads", "ATS BALANCED", "Principal balanced", "Mature hierarchy", "#fffdf8", "#57534e", "enterprise", optionalPhoto),
+  template("Northstar Executive", "Executive & Leadership", "International executive composition with location, languages, leadership, and global context visible.", "International executives and relocation-ready leaders", "ATS BALANCED", "Global executive", "International readability", "#ffffff", "#1f2937", "international", portraitPhoto),
+
+  template("Atlas Professional", "Corporate & Professional", "PATHZY's reference professional CV with clean hierarchy, structured experience, and durable A4 flow.", "General professional applications and imported CV repair", "ATS BALANCED", "Structured ATS", "Signature professional", "#fffdfa", "#1f2937", "signature", noPhoto),
+  template("Regent Corporate", "Corporate & Professional", "Corporate enterprise layout with formal section rhythm and clear evidence ordering.", "Enterprise, administration, operations and finance", "ATS BALANCED", "Corporate balanced", "Enterprise ready", "#f8fafc", "#334155", "enterprise", optionalPhoto),
+  template("Harbor Professional", "Corporate & Professional", "Modern sidebar composition that keeps contact, skills, and credentials tidy without crowding experience.", "Professional services, operations, HR and support roles", "ATS BALANCED", "Sidebar balanced", "Recruiter readable", "#ffffff", "#7f1d1d", "sidebar", optionalPhoto),
+  template("Keystone Corporate", "Corporate & Professional", "Conservative business layout with compact headings, balanced whitespace, and predictable scanning.", "Finance, HR, legal support and office roles", "ATS BALANCED", "Classic corporate", "Traditional clarity", "#ffffff", "#1f2937", "enterprise", noPhoto),
+  template("Meridian Professional", "Corporate & Professional", "Warm professional layout with approachable hierarchy for service and people-facing careers.", "Customer-facing, support, people and coordination roles", "ATS BALANCED", "Modern balanced", "Approachable polish", "#fffaf4", "#a16207", "sidebar", optionalPhoto),
+  template("Forge Consultant", "Corporate & Professional", "Evidence-first consultant layout with sharp section rules and concise proof blocks.", "Consulting, strategy, analysis and advisory roles", "ATS BALANCED", "Consulting ATS", "Evidence focused", "#fffdfa", "#7f1d1d", "consulting", noPhoto),
+  template("Crest Professional", "Corporate & Professional", "Quiet premium structure for broad professional use, with skills and history in clear proportion.", "General professional roles and career progression", "ATS BALANCED", "Neutral ATS", "Broadly recruiter-ready", "#fffdf8", "#57534e", "enterprise", optionalPhoto),
+  template("Stonebridge Corporate", "Corporate & Professional", "Formal international corporate CV with conservative spacing and globally familiar reading order.", "Corporate, NGO, public-sector and international applications", "ATS HIGH", "International format", "Conservative layout", "#ffffff", "#334155", "international", noPhoto),
+
+  template("Vanguard ATS", "ATS & Minimal", "Strict parser-friendly single-column CV with plain headings and no decorative sidebar.", "Job boards, enterprise ATS and government portals", "ATS HIGH", "Single-column ATS", "Parser safe", "#ffffff", "#111827", "single", noPhoto),
+  template("Clarity ATS", "ATS & Minimal", "Clean ATS layout with enough visual polish for recruiter scanning while staying machine-readable.", "Online applications and high-volume hiring", "ATS HIGH", "Clean ATS", "Fast scanner friendly", "#ffffff", "#1f2937", "single", noPhoto),
+  template("Plainspoken Minimal", "ATS & Minimal", "Minimal one-column CV with honest spacing and no visual noise.", "Conservative employers and simple applications", "ATS HIGH", "Minimal single column", "No-nonsense scan", "#ffffff", "#27272a", "single", noPhoto),
+  template("Ledger Minimal", "ATS & Minimal", "Dense minimal layout for longer histories and credential-rich profiles.", "Experienced candidates and two-page CVs", "ATS HIGH", "Dense ATS", "Space efficient", "#ffffff", "#3f3f46", "single", noPhoto),
+  template("Signal ATS", "ATS & Minimal", "Technical-safe ATS layout that keeps tools, projects, and experience in predictable order.", "Software, IT, data and technical support", "ATS HIGH", "Technical ATS", "Stack readable", "#ffffff", "#0f766e", "single", noPhoto),
+  template("Linear Minimal", "ATS & Minimal", "Linear chronology-led CV for straightforward applications and reliable parsing.", "General applications, admin, operations and early career", "ATS HIGH", "Linear ATS", "Chronology clear", "#ffffff", "#475569", "single", noPhoto),
+  template("Civic ATS", "ATS & Minimal", "Formal public-sector ATS layout with credentials, eligibility, and experience in conservative order.", "Public sector, compliance, education and legal support", "ATS HIGH", "Formal ATS", "Institutional clarity", "#ffffff", "#1f2937", "international", noPhoto),
+  template("Essential One Page", "ATS & Minimal", "Compact one-page-biased template for short profiles without shrinking text dangerously.", "Graduates, concise professional profiles and direct applications", "ATS HIGH", "Compact ATS", "One-page ready", "#ffffff", "#7f1d1d", "single", noPhoto),
+
+  template("Horizon Technical", "Technical / IT / Engineering", "Technical layout with skills architecture, project proof, and structured experience blocks.", "Engineering, software, data and technical support", "ATS BALANCED", "Technical ATS", "Project focused", "#f8fafc", "#0f766e", "technical", noPhoto),
+  template("Nexus Engineer", "Technical / IT / Engineering", "Engineering blueprint layout with systems, projects, tools, and outcomes clearly separated.", "Engineers, architects and technical specialists", "ATS BALANCED", "Project ATS", "Engineering proof", "#f8fafc", "#334155", "technical", noPhoto),
+  template("Circuit Systems", "Technical / IT / Engineering", "Systems-focused CV that elevates platforms, infrastructure, and operating evidence.", "Systems engineers, IT support and infrastructure roles", "ATS BALANCED", "Systems balanced", "Systems proof", "#f8fafc", "#0f766e", "technical", noPhoto),
+  template("Gridline Technical", "Technical / IT / Engineering", "Grid-structured technical CV for candidates with stack-heavy evidence and projects.", "Developers, analysts and product engineers", "ATS BALANCED", "Engineering ATS", "Stack and project proof", "#f8fafc", "#155e75", "technical", noPhoto),
+  template("Infrastructure Engineer", "Technical / IT / Engineering", "Operational technical layout for support, networks, platforms, and delivery reliability.", "Infrastructure, service desk, support and operations roles", "ATS BALANCED", "Infrastructure ATS", "Operational proof", "#ffffff", "#334155", "technical", noPhoto),
+  template("Product Systems", "Technical / IT / Engineering", "Product-and-delivery layout with outcomes, projects, stakeholders, and technical capability prioritized.", "Product managers, delivery leads and technical consultants", "ATS BALANCED", "Product balanced", "Outcome focused", "#f8fafc", "#7f1d1d", "consulting", noPhoto),
+  template("Data Platform", "Technical / IT / Engineering", "Data-focused CV with analytics, tools, projects, and measurable evidence near the top.", "Data analysts, BI, research and analytics roles", "ATS BALANCED", "Data ATS", "Analytics focused", "#f8fafc", "#164e63", "technical", noPhoto),
+
+  template("Lumina Graduate", "Graduate / Early Career", "Education-first graduate CV that elevates projects, skills, and potential without exaggeration.", "Graduates, internships and first professional roles", "ATS BALANCED", "Graduate balanced", "Potential focused", "#fffafa", "#7f1d1d", "graduate", optionalPhoto),
+  template("Launch Graduate", "Graduate / Early Career", "Fresh early-career layout that brings practical exposure, availability, and learning evidence forward.", "Internships, learnerships and apprenticeships", "ATS HIGH", "Internship ATS", "Entry-level scan", "#ffffff", "#7f1d1d", "graduate", noPhoto),
+  template("First Step Professional", "Graduate / Early Career", "First-job CV that turns education, volunteering, interests, and transferable strengths into credible proof.", "No formal experience and school leavers", "ATS HIGH", "Starter ATS", "Potential clear", "#ffffff", "#7f1d1d", "single", noPhoto),
+  template("Emerging Talent", "Graduate / Early Career", "Supportive early-career design with credible hierarchy for limited formal experience.", "Career starters, graduates and junior professionals", "ATS BALANCED", "Emerging talent", "Potential focused", "#fff7ed", "#9a3412", "graduate", optionalPhoto),
+  template("Scholar Entry", "Graduate / Early Career", "Academic-leaning graduate layout with education, modules, projects, and awards up front.", "Students, graduates and academic internships", "ATS BALANCED", "Education first", "Scholar profile", "#fffdf8", "#a16207", "graduate", optionalPhoto),
+  template("Campus Portfolio", "Graduate / Early Career", "Portfolio-aware graduate layout for projects, links, activities, and proof of initiative.", "Students with projects, portfolios and campus leadership", "VISUAL / RECRUITER-FIRST", "Portfolio friendly", "Project proof", "#fff7ed", "#9a3412", "creative", creativePhoto),
+
+  template("Atelier Portfolio", "Creative / Product / Marketing", "Editorial creative CV with portfolio rhythm, strong section contrast, and recruiter-readable proof.", "Design, content, product and portfolio-led careers", "VISUAL / RECRUITER-FIRST", "Portfolio friendly", "Creative impact", "#fff7ed", "#9a3412", "creative", creativePhoto),
+  template("Studio Product", "Creative / Product / Marketing", "Product-minded layout balancing portfolio evidence, outcomes, tools, and delivery context.", "Product, UX, delivery and creative technology roles", "VISUAL / RECRUITER-FIRST", "Product portfolio", "Project narrative", "#fffaf4", "#7c2d12", "creative", creativePhoto),
+  template("Brand Strategist", "Creative / Product / Marketing", "Marketing strategy CV with campaigns, audience insight, and performance evidence structured clearly.", "Marketing, brand, communications and growth roles", "ATS BALANCED", "Marketing balanced", "Campaign proof", "#fff7ed", "#9a3412", "creative", creativePhoto),
+  template("Editorial Creative", "Creative / Product / Marketing", "Asymmetric editorial layout for writers, strategists, and communications professionals.", "Writers, strategists, communications and policy roles", "VISUAL / RECRUITER-FIRST", "Editorial visual", "Narrative premium", "#fffaf4", "#7c2d12", "creative", creativePhoto),
+  template("Campaign Portfolio", "Creative / Product / Marketing", "Campaign-led CV that makes projects, outputs, and audience impact easy to scan.", "Campaign, social, content and portfolio roles", "VISUAL / RECRUITER-FIRST", "Campaign portfolio", "Brand story", "#fffaf4", "#7f1d1d", "creative", creativePhoto),
+
+  template("Keystone Public Service", "Academic / Public Sector / Healthcare", "Public-service CV with eligibility, credentials, service delivery, and community outcomes presented clearly.", "Government, municipal, NGO and public administration", "ATS BALANCED", "Public service", "Service readable", "#ffffff", "#475569", "international", optionalPhoto),
+  template("Academic Dossier", "Academic / Public Sector / Healthcare", "Academic-adjacent CV with education, publications, research projects, and credentials organized cleanly.", "Researchers, lecturers and postgraduate applications", "ATS BALANCED", "Academic balanced", "Research focused", "#ffffff", "#4b5563", "international", noPhoto),
+  template("Clinical Professional", "Academic / Public Sector / Healthcare", "Credential-led clinical layout with registration, training, and clinical evidence near the top.", "Healthcare, care work and clinical support", "ATS BALANCED", "Credential ATS", "Clinical readability", "#f4faf7", "#0f766e", "healthcare", optionalPhoto),
+  template("Research Fellow", "Academic / Public Sector / Healthcare", "Research technician layout with protocols, data, projects, and technical skills clearly separated.", "Research technicians, lab assistants and scientific roles", "ATS BALANCED", "Research ATS", "Technical evidence", "#f8fafc", "#155e75", "technical", noPhoto),
+
+  template("Nexus International", "International / NGO / Career Change", "Globally familiar CV layout with languages, location, mobility, and international readability.", "International applications, NGOs, relocation and remote roles", "ATS BALANCED", "Language friendly", "Global mobility", "#ffffff", "#334155", "international", portraitPhoto),
+  template("Global Impact", "International / NGO / Career Change", "Mission-oriented international CV with public value, projects, languages, and field context.", "NGOs, development, social impact and public-interest roles", "ATS BALANCED", "Global balanced", "Mission focused", "#f8fafc", "#166534", "international", optionalPhoto),
+  template("Bridge Career Change", "International / NGO / Career Change", "Career-change layout that foregrounds transferable evidence and honest target-role alignment.", "Career changers, returners and cross-industry moves", "ATS BALANCED", "Transferable ATS", "Bridge narrative", "#fffaf4", "#a16207", "sidebar", optionalPhoto),
+  template("Mission Portfolio", "International / NGO / Career Change", "Portfolio-style mission CV balancing projects, volunteering, languages, and professional proof.", "Community, NGO, portfolio and purpose-led applications", "VISUAL / RECRUITER-FIRST", "Mission portfolio", "Service proof", "#f8fafc", "#166534", "creative", optionalPhoto)
+];
+
 export function templateVariantCounts(templates: DocumentTemplateMetadata[] = documentTemplateGallery) {
   return templates.reduce<Record<string, number>>((counts, item) => {
     counts[item.designKey] = (counts[item.designKey] ?? 0) + 1;
@@ -222,23 +364,58 @@ validateTemplateVariantLimit();
 export const cvTemplateNames = documentTemplateGallery.map((template) => template.name) as PremiumDocumentTemplate[];
 
 export const legacyTemplateAliases: Record<string, PremiumDocumentTemplate> = {
-  "ATS Friendly": "Modern ATS",
-  "Modern Blue": "Google Style",
-  "Professional Green": "Healthcare Professional",
-  "Graduate Fresh": "Graduate Elite",
-  "Executive Premium": "Executive Black",
-  "Technical Engineer": "Engineering",
-  "Signature Professional": "PATHZY Signature Professional"
+  "ATS Friendly": "Clarity ATS",
+  "Modern Blue": "Harbor Professional",
+  "Professional Green": "Clinical Professional",
+  "Graduate Fresh": "Lumina Graduate",
+  "Executive Premium": "Meridian Executive",
+  "Technical Engineer": "Horizon Technical",
+  "Signature Professional": "Atlas Professional",
+  "PATHZY Signature Professional": "Atlas Professional",
+  "Executive Black": "Meridian Executive",
+  "Modern ATS": "Clarity ATS",
+  "Google Style": "Horizon Technical",
+  "Microsoft Professional": "Regent Corporate",
+  "Deloitte Consulting": "Forge Consultant",
+  "Creative Premium": "Atelier Portfolio",
+  "Healthcare Professional": "Clinical Professional",
+  "Graduate Elite": "Lumina Graduate",
+  "Engineering": "Horizon Technical",
+  "International Standard": "Nexus International"
 };
 
+function legacyTemplateFallback(value: string): PremiumDocumentTemplate | undefined {
+  const archived = archivedDocumentTemplateGallery.find((template) => template.name === value);
+  if (!archived) return undefined;
+  if (archived.atsClassification === "ATS HIGH" || /ATS|minimal/i.test(archived.family)) return "Vanguard ATS";
+  if (/executive|leadership|finance/i.test(archived.family) || archived.thumbnail.layout === "executive") return "Meridian Executive";
+  if (/technical|engineering|data|science|cyber/i.test(archived.family) || archived.thumbnail.layout === "technical") return "Horizon Technical";
+  if (/graduate|emerging|internship|career change|skills/i.test(archived.family) || archived.thumbnail.layout === "graduate") return "Lumina Graduate";
+  if (/creative|marketing|portfolio|editorial/i.test(archived.family) || archived.thumbnail.layout === "creative") return "Atelier Portfolio";
+  if (/public|academic|legal|health|international|government|community/i.test(archived.family) || archived.thumbnail.layout === "international" || archived.thumbnail.layout === "healthcare") return "Nexus International";
+  return "Atlas Professional";
+}
+
 export function normalizeDocumentTemplate(value: unknown): PremiumDocumentTemplate {
-  if (typeof value !== "string") return "PATHZY Signature Professional";
+  if (typeof value !== "string") return "Atlas Professional";
   const trimmed = value.trim();
   if (cvTemplateNames.includes(trimmed)) return trimmed;
-  return legacyTemplateAliases[trimmed] ?? "PATHZY Signature Professional";
+  return legacyTemplateAliases[trimmed] ?? legacyTemplateFallback(trimmed) ?? "Atlas Professional";
 }
 
 export function templateMetadata(name: unknown) {
   const normalized = normalizeDocumentTemplate(name);
   return documentTemplateGallery.find((template) => template.name === normalized) ?? documentTemplateGallery[0];
+}
+
+export function normalizeDocumentTemplatePalette(templateName: unknown, value: unknown) {
+  const metadata = templateMetadata(templateName);
+  if (typeof value === "string" && metadata.palettes.some((palette) => palette.id === value.trim())) return value.trim();
+  return metadata.palettes[0].id;
+}
+
+export function templatePaletteMetadata(templateName: unknown, value: unknown) {
+  const metadata = templateMetadata(templateName);
+  const normalized = normalizeDocumentTemplatePalette(metadata.name, value);
+  return metadata.palettes.find((palette) => palette.id === normalized) ?? metadata.palettes[0];
 }

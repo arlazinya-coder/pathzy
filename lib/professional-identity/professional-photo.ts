@@ -1,3 +1,5 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 export const PROFESSIONAL_PHOTO_ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
 export type ProfessionalPhotoMimeType = (typeof PROFESSIONAL_PHOTO_ALLOWED_MIME_TYPES)[number];
@@ -179,6 +181,35 @@ export function professionalPhotoAssetFromUnknown(value: unknown): CanonicalProf
     cvUsageAllowed: source.cvUsageAllowed === true,
     publicSharingAllowed: source.publicSharingAllowed === true
   };
+}
+
+export function getCurrentProfessionalPhoto(value: unknown): CanonicalProfessionalPhotoAsset | null {
+  const asset = professionalPhotoAssetFromUnknown(value);
+  if (!asset || asset.photoStatus !== "ready" || !asset.storagePath || isTemporaryProfessionalPhotoUrl(asset.storagePath)) return null;
+  return asset;
+}
+
+export async function createCurrentProfessionalPhotoView(
+  supabase: Pick<SupabaseClient, "storage">,
+  value: unknown,
+  options: { userId?: string | null; expiresIn?: number } = {}
+): Promise<ProfessionalPhotoAssetView | null> {
+  const asset = getCurrentProfessionalPhoto(value);
+  if (!asset) return null;
+  if (options.userId && asset.userId !== options.userId) return null;
+  const { data, error } = await supabase.storage
+    .from(professionalPhotoStorageContract.bucketName)
+    .createSignedUrl(asset.storagePath, options.expiresIn ?? 600);
+  if (error || !data?.signedUrl) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[professional-photo] canonical photo signed-url unavailable", {
+        code: typeof error === "object" && error && "name" in error ? error.name : "unknown",
+        message: error instanceof Error ? error.message : "Unable to create signed URL."
+      });
+    }
+    return { ...asset, signedUrl: null };
+  }
+  return { ...asset, signedUrl: data.signedUrl };
 }
 
 export function pngDimensions(bytes: Uint8Array) {

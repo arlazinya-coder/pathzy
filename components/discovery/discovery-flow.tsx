@@ -213,7 +213,7 @@ export function DiscoveryFlow() {
                       key={option.code}
                       type="button"
                       onClick={() => toggleMulti(option.code)}
-                      className={`rounded-[18px] border px-4 py-3 text-left text-sm font-extrabold transition ${selected ? "border-blue-300 bg-blue-400/18 text-white" : "border-white/10 bg-white/7 text-white/76 hover:bg-white/12"}`}
+                      className={`rounded-[18px] border px-4 py-3 text-left text-sm font-extrabold transition ${selected ? "border-[rgba(217,58,70,.55)] bg-[rgba(217,58,70,.18)] text-white" : "border-white/10 bg-white/7 text-white/76 hover:bg-white/12"}`}
                       aria-pressed={selected}
                     >
                       {optionLabel(option, activeLanguage)}
@@ -230,7 +230,7 @@ export function DiscoveryFlow() {
                       key={option.code}
                       type="button"
                       onClick={() => setCurrentValue(option.code)}
-                      className={`rounded-[18px] border px-4 py-3 text-left text-sm font-extrabold transition ${selected ? "border-blue-300 bg-blue-400/18 text-white" : "border-white/10 bg-white/7 text-white/76 hover:bg-white/12"}`}
+                      className={`rounded-[18px] border px-4 py-3 text-left text-sm font-extrabold transition ${selected ? "border-[rgba(217,58,70,.55)] bg-[rgba(217,58,70,.18)] text-white" : "border-white/10 bg-white/7 text-white/76 hover:bg-white/12"}`}
                       aria-pressed={selected}
                     >
                       {optionLabel(option, activeLanguage)}

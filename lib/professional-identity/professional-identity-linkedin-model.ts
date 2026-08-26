@@ -1,7 +1,7 @@
 import { appRoutes, routeBuilders } from "@/lib/navigation/routes";
 import type { ProfessionalIdentitySectionId } from "@/lib/canonical-profile/canonical-professional-identity.model";
 import type { GeneratedProfessionalDocument, ProfessionalLanguage } from "@/lib/professional-identity/professional-identity-types";
-import { experienceEntryDateLabel, experienceEntryToText, normalizeProfessionalIdentityExperienceEntries, type ProfessionalIdentityExperienceEntry } from "@/lib/professional-identity/professional-identity-experience";
+import { experienceEntryDateLabel, experienceEntryToText, selectCanonicalProfessionalIdentityExperiences, type ProfessionalIdentityExperienceEntry } from "@/lib/professional-identity/professional-identity-experience";
 import {
   normalizeProfessionalIdentityCompletionValues,
   professionalIdentityRequiredChecksFromValues,
@@ -341,7 +341,7 @@ export function professionalIdentityHasLinkedInSeedData(values: ProfessionalIden
       identity.career_goal ||
       identity.professional_summary ||
       cleanList(identity.skills).length ||
-      normalizeProfessionalIdentityExperienceEntries(identity.experience).length ||
+      selectCanonicalProfessionalIdentityExperiences(identity.experience).length ||
       cleanList(identity.education).length ||
       cleanList(identity.projects).length
   );
@@ -356,7 +356,7 @@ export function linkedinProfileModelFromProfessionalIdentity(
   const targetRole = cleanText(identity.career_goal) || (language === "french" ? "direction professionnelle en construction" : "career direction in progress");
   const skills = cleanList(identity.skills).slice(0, 18);
   const topSkills = skills.slice(0, 4);
-  const experienceSource = normalizeProfessionalIdentityExperienceEntries(identity.experience)
+  const experienceSource = selectCanonicalProfessionalIdentityExperiences(identity.experience)
     .filter((item) => !isPlaceholderRecord(experienceEntryToText(item)))
     .slice(0, 6);
   const experience = experienceSource.map(linkedInExperienceFromIdentityEntry);

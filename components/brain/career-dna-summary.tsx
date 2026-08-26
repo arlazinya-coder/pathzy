@@ -9,7 +9,7 @@ export function CareerDnaSummary({ careerDna }: { careerDna: ReadinessResult["ca
           <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-white/42">Career DNA</p>
           <h2 className="mt-2 text-2xl font-black">{careerDna.strongestCareerDirection}</h2>
         </div>
-        <span className="rounded-full bg-[#39d98a]/15 px-3 py-1 text-xs font-extrabold text-[#9df0c4]">{careerDna.confidenceLevel}</span>
+        <span className="rounded-full bg-[color-mix(in_srgb,var(--status-success)_14%,transparent)] px-3 py-1 text-xs font-extrabold text-[var(--status-success)]">{careerDna.confidenceLevel}</span>
       </div>
       <div className="mt-5 grid gap-3">
         <div className="rounded-[18px] border border-white/10 bg-white/7 p-4">

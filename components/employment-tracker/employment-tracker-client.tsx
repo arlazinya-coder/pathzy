@@ -515,7 +515,7 @@ export function EmploymentTrackerClient({
 
       <div className="grid gap-5">
         <Card>
-          {celebration ? <p className="mb-4 rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{celebration}</p> : null}
+          {celebration ? <p className="pathzy-status-success mb-4 rounded-[16px] border px-4 py-3 text-sm font-bold">{celebration}</p> : null}
           <div className="grid gap-3 sm:grid-cols-4">
             <div><p className="text-sm text-white/48">Active applications</p><strong className="text-3xl font-black">{summary.activeApplications}</strong></div>
             <div><p className="text-sm text-white/48">Follow-ups due</p><strong className="text-3xl font-black">{summary.followUpsDue}</strong></div>
@@ -608,7 +608,7 @@ export function EmploymentTrackerClient({
                       <div className="mt-3 flex flex-wrap gap-2">
                         <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/66">{statusLabel(application.status)}</span>
                         {application.source ? <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/50">{application.source}</span> : null}
-                        <span className="rounded-full bg-[#5B8CFF]/14 px-3 py-1 text-xs font-extrabold text-[#c7d6ff]">{countApplicationDocuments(application)} document{countApplicationDocuments(application) === 1 ? "" : "s"}</span>
+                        <span className="rounded-full bg-[color-mix(in_srgb,var(--brand-primary)_12%,transparent)] px-3 py-1 text-xs font-extrabold text-[var(--pathzy-red-dark)]">{countApplicationDocuments(application)} document{countApplicationDocuments(application) === 1 ? "" : "s"}</span>
                       </div>
                       <div className="mt-3 grid gap-2 text-xs font-bold text-white/42 sm:grid-cols-2">
                         {application.planned_application_date ? <p>Prepared: {dateOnly(application.planned_application_date)}</p> : null}
@@ -623,7 +623,7 @@ export function EmploymentTrackerClient({
                       <p className="mt-3 rounded-[14px] border border-white/10 bg-black/14 p-3 text-sm font-bold text-white/68">
                         Next Action: {getApplicationNextAction(application)}
                       </p>
-                      {application.job_match_analysis_id ? <p className="mt-2 text-xs font-bold text-[#c7d6ff]/72">Match summary linked from Job Intelligence.</p> : null}
+                      {application.job_match_analysis_id ? <p className="mt-2 text-xs font-bold text-[var(--text-secondary)]">Match summary linked from Job Intelligence.</p> : null}
                       {application.contacts_json?.length ? (
                         <div className="mt-3 rounded-[14px] border border-white/10 bg-white/5 p-3 text-sm text-white/58">
                           <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">Contacts</p>
@@ -731,7 +731,7 @@ function CareerAnalyticsDashboard({
     <Card>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#aac1ff]">Career Analytics</p>
+          <p className="pathzy-eyebrow-accent text-xs font-extrabold uppercase tracking-[0.14em]">Career Analytics</p>
           <h2 className="mt-2 text-2xl font-black">Private job-search signals you can act on.</h2>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-white/58">
             PATHZY uses your tracker, match analyses, and document metadata to show early patterns. Unknown outcomes are not treated as rejection.
@@ -770,7 +770,7 @@ function CareerAnalyticsDashboard({
           <div key={metric.label} className="rounded-[16px] border border-white/10 bg-black/14 p-3">
             <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-white/42">{metric.label}</p>
             <strong className="mt-2 block text-xl font-black">{metric.value}</strong>
-            <p className={`mt-2 text-xs font-bold ${metric.state === "known" ? "text-[#b9f8d5]" : metric.state === "early_signal" ? "text-[#ffe2a3]" : "text-white/42"}`}>{metric.state === "early_signal" ? "Early Signal" : metric.state === "insufficient_data" ? "Not Enough Data Yet" : "Known"}</p>
+            <p className={`mt-2 text-xs font-bold ${metric.state === "known" ? "text-[var(--status-success)]" : metric.state === "early_signal" ? "text-[var(--status-warning)]" : "text-white/42"}`}>{metric.state === "early_signal" ? "Early Signal" : metric.state === "insufficient_data" ? "Not Enough Data Yet" : "Known"}</p>
           </div>
         ))}
       </div>
@@ -786,7 +786,7 @@ function CareerAnalyticsDashboard({
                   <span>{analytics.funnel[key]}</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                  <div className="h-full rounded-full bg-[#5B8CFF]" style={{ width: `${Math.max(4, (analytics.funnel[key] / maxFunnel) * 100)}%` }} />
+                  <div className="h-full rounded-full bg-[var(--brand-primary)]" style={{ width: `${Math.max(4, (analytics.funnel[key] / maxFunnel) * 100)}%` }} />
                 </div>
               </div>
             ))}
@@ -829,7 +829,7 @@ function CareerAnalyticsDashboard({
             {analytics.recurringGaps.length ? analytics.recurringGaps.slice(0, 5).map((gap) => (
               <div key={`${gap.category}-${gap.label}`} className="rounded-[14px] bg-black/14 p-3">
                 <p className="text-sm font-black">{gap.label}</p>
-                <p className="mt-1 text-xs font-bold text-[#ffe2a3]">{gap.category.replace(/_/g, " ")} - seen {gap.count} time{gap.count === 1 ? "" : "s"}</p>
+                <p className="mt-1 text-xs font-bold text-[var(--status-warning)]">{gap.category.replace(/_/g, " ")} - seen {gap.count} time{gap.count === 1 ? "" : "s"}</p>
                 <p className="mt-2 text-xs leading-5 text-white/46">{gap.action}</p>
               </div>
             )) : <EmptyAnalyticsState />}
@@ -922,14 +922,14 @@ function FollowUpWorkspace({
   }
 
   return (
-    <div className="mt-3 rounded-[16px] border border-[#7C5CFF]/22 bg-[#7C5CFF]/8 p-3">
+    <div className="pathzy-status-info mt-3 rounded-[16px] border p-3">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#d7ccff]">Follow-Up</p>
+          <p className="pathzy-eyebrow-accent text-xs font-extrabold uppercase tracking-[0.14em]">Follow-Up</p>
           <h4 className="mt-1 text-base font-black">{due ? "Follow-Up Due" : activeFollowUps.length ? "Draft ready" : "Prepare a follow-up"}</h4>
           <p className="mt-2 text-sm leading-6 text-white/56">PATHZY can prepare a concise message and timing suggestion. Nothing is sent automatically.</p>
         </div>
-        <span className={`w-fit rounded-full px-3 py-1 text-xs font-extrabold ${due ? "bg-[#FFD166]/15 text-[#ffe2a3]" : "bg-white/10 text-white/58"}`}>
+        <span className={`w-fit rounded-full px-3 py-1 text-xs font-extrabold ${due ? "bg-[color-mix(in_srgb,var(--status-warning)_16%,transparent)] text-[var(--status-warning)]" : "bg-white/10 text-white/58"}`}>
           {application.follow_up_state || (due ? "due" : "user approval required")}
         </span>
       </div>
@@ -963,7 +963,7 @@ function FollowUpWorkspace({
                 <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/58">{followUp.recipient_json?.label ?? "Recipient not set"}</span>
               </div>
               {!followUp.recipient_json?.known ? (
-                <p className="rounded-[12px] border border-[#FFD166]/24 bg-[#FFD166]/10 p-2 text-xs font-bold text-[#ffe2a3]">Add a known contact before recording this follow-up as sent.</p>
+                <p className="pathzy-status-warning rounded-[12px] border p-2 text-xs font-bold">Add a known contact before recording this follow-up as sent.</p>
               ) : null}
               <p className="text-xs leading-5 text-white/42">{followUp.timing_reason}</p>
               <label className="label">Subject<input className="field" name="subject" defaultValue={followUp.subject} /></label>
@@ -972,7 +972,7 @@ function FollowUpWorkspace({
               <div className="flex flex-wrap gap-2">
                 <button disabled={busy} className="rounded-full blue-purple px-4 py-2 text-xs font-extrabold text-white disabled:opacity-50">Save Draft</button>
                 <button type="button" disabled={busy || followUp.status === "sent"} onClick={() => onUpdate(followUp, { approve: true })} className="rounded-full bg-white/10 px-4 py-2 text-xs font-extrabold text-white/68 disabled:opacity-50">Approve</button>
-                <button type="button" disabled={busy || !canRecordSent} onClick={() => onUpdate(followUp, { markSent: true })} className="rounded-full bg-[#39d98a]/14 px-4 py-2 text-xs font-extrabold text-[#b9f8d5] disabled:opacity-50">Mark as Sent</button>
+                <button type="button" disabled={busy || !canRecordSent} onClick={() => onUpdate(followUp, { markSent: true })} className="rounded-full bg-[color-mix(in_srgb,var(--status-success)_14%,transparent)] px-4 py-2 text-xs font-extrabold text-[var(--status-success)] disabled:opacity-50">Mark as Sent</button>
                 <button type="button" disabled={busy || followUp.status === "sent"} onClick={() => onUpdate(followUp, { dismiss: true })} className="rounded-full bg-white/10 px-4 py-2 text-xs font-extrabold text-white/58 disabled:opacity-50">Dismiss</button>
               </div>
             </form>
@@ -1012,20 +1012,20 @@ function SmartApplicationWorkspace({
   }
 
   return (
-    <div className="mt-4 grid gap-4 rounded-[20px] border border-[#5B8CFF]/24 bg-[#5B8CFF]/8 p-4">
+    <div className="pathzy-status-info mt-4 grid gap-4 rounded-[20px] border p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#aac1ff]">Application Workspace</p>
+          <p className="pathzy-eyebrow-accent text-xs font-extrabold uppercase tracking-[0.14em]">Application Workspace</p>
           <h4 className="mt-2 text-lg font-black">Application Package</h4>
           <p className="mt-2 text-sm leading-6 text-white/58">Review your job match, targeted documents, supporting files, and checklist before you apply. PATHZY does not submit anything automatically.</p>
         </div>
-        <span className={`w-fit rounded-full px-3 py-1 text-xs font-extrabold ${application.status === "ready_to_apply" ? "bg-[#39d98a]/18 text-[#b9f8d5]" : "bg-[#FFD166]/15 text-[#ffe2a3]"}`}>
+        <span className={`w-fit rounded-full px-3 py-1 text-xs font-extrabold ${application.status === "ready_to_apply" ? "bg-[color-mix(in_srgb,var(--status-success)_16%,transparent)] text-[var(--status-success)]" : "bg-[color-mix(in_srgb,var(--status-warning)_16%,transparent)] text-[var(--status-warning)]"}`}>
           {application.status === "ready_to_apply" ? "Ready to Apply" : "Review Required"}
         </span>
       </div>
 
       {application.stale_state === "stale" ? (
-        <div className="rounded-[16px] border border-[#FFD166]/30 bg-[#FFD166]/10 p-3 text-sm font-bold text-[#ffe2a3]">
+        <div className="pathzy-status-warning rounded-[16px] border p-3 text-sm font-bold">
           This workspace may be stale because the profile, job, or match changed. Refresh before applying.
         </div>
       ) : null}
@@ -1105,7 +1105,7 @@ function SmartApplicationWorkspace({
             <div key={item.id} className="grid gap-2 rounded-[14px] bg-white/7 p-3 text-sm md:grid-cols-[1fr_.35fr_.35fr]">
               <span className="font-bold text-white/76">{item.label}</span>
               <span className="text-white/50">{item.required ? "Required" : "Optional"}</span>
-              <span className={item.state === "complete" ? "text-[#b9f8d5]" : item.state === "blocked" ? "text-[#ffc5c5]" : "text-[#ffe2a3]"}>{statusLabel(item.state)}</span>
+              <span className={item.state === "complete" ? "text-[var(--status-success)]" : item.state === "blocked" ? "text-[#ffc5c5]" : "text-[var(--status-warning)]"}>{statusLabel(item.state)}</span>
               <p className="text-xs leading-5 text-white/42 md:col-span-3">{item.reason}</p>
             </div>
           ))}
@@ -1120,7 +1120,7 @@ function SmartApplicationWorkspace({
             {(application.status_history_json ?? []).slice(-3).map((item) => <li key={`${item.at}-${item.event}`}>{new Date(item.at).toLocaleString()} · {item.note}</li>)}
           </ul>
         </div>
-        <button disabled={busy} onClick={() => onApproval("packageApproved", !approvals.packageApproved)} className="rounded-full bg-[#39d98a] px-5 py-3 text-sm font-extrabold text-[#062615] disabled:opacity-60">
+        <button disabled={busy} onClick={() => onApproval("packageApproved", !approvals.packageApproved)} className="rounded-full bg-[var(--brand-primary)] px-5 py-3 text-sm font-extrabold text-white disabled:opacity-60">
           {approvals.packageApproved ? "Package approved" : "Approve Package"}
         </button>
       </div>

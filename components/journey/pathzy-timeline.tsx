@@ -45,8 +45,8 @@ export function PathzyTimeline({
         </div>
 
         <div className="grid gap-4">
-          <div className="rounded-[22px] border border-[#5B8CFF]/35 bg-[#5B8CFF]/12 p-5">
-            <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#c7d6ff]/72">Today&apos;s step</p>
+          <div className="pathzy-status-info rounded-[22px] border p-5">
+            <p className="pathzy-eyebrow-accent text-xs font-extrabold uppercase tracking-[0.14em]">Today&apos;s step</p>
             <h3 className="mt-2 text-2xl font-black">{current.title}</h3>
             <p className="mt-2 leading-7 text-white/62">{descriptions[current.key] ?? current.why}</p>
             <div className="mt-4">

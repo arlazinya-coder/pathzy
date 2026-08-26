@@ -57,7 +57,7 @@ export function LanguageSettingsForm({ initialLanguage }: { initialLanguage?: st
             disabled={saving}
             onClick={() => void saveLanguage(value as SupportedLanguageCode)}
             className={`rounded-full border px-4 py-3 text-sm font-extrabold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-              language === value ? "border-[#5B8CFF]/70 bg-[#5B8CFF]/18 text-white" : "border-white/10 bg-white/7 text-white/68 hover:bg-white/10"
+              language === value ? "border-[rgba(217,58,70,.7)] bg-[rgba(217,58,70,.18)] text-white" : "border-white/10 bg-white/7 text-white/68 hover:bg-white/10"
             }`}
           >
             {label}

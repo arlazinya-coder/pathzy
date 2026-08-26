@@ -7,7 +7,8 @@ import {
 import { appRoutes, routeBuilders } from "@/lib/navigation/routes";
 import type { ProfessionalIdentitySectionId } from "@/lib/canonical-profile/canonical-professional-identity.model";
 import type { GeneratedProfessionalDocument, ProfessionalLanguage } from "@/lib/professional-identity/professional-identity-types";
-import { experienceEntryEvidenceText, normalizeProfessionalIdentityExperienceEntries } from "@/lib/professional-identity/professional-identity-experience";
+import { selectCanonicalProfessionalIdentityExperiences } from "@/lib/professional-identity/professional-identity-experience";
+import { selectCoverLetterEvidence, validateCoverLetterDraftQuality } from "@/lib/professional-identity/cover-letter-intelligence";
 import {
   normalizeProfessionalIdentityCompletionValues,
   professionalIdentityRequiredChecksFromValues,
@@ -110,49 +111,52 @@ function firstAvailable(...values: unknown[]) {
   return "";
 }
 
-function compactJobDetails(jobContext: CoverLetterJobContext) {
-  const requirements = cleanList(jobContext.requirements).slice(0, 4);
-  const responsibilities = cleanList(jobContext.responsibilities).slice(0, 3);
-  const descriptionSignals = cleanText(jobContext.jobDescription)
-    .split(/[.;\n]/)
-    .map((item) => cleanText(item))
-    .filter((item) => item.length >= 18)
-    .slice(0, 3);
-  return {
-    requirements,
-    responsibilities,
-    focus: [...requirements, ...responsibilities, ...descriptionSignals].slice(0, 4)
-  };
-}
-
 function hasJobContext(jobContext: CoverLetterJobContext) {
   return Boolean(cleanText(jobContext.company) && cleanText(jobContext.role));
-}
-
-function strongestEvidence(values: ProfessionalIdentityCompletionValues, jobContext: CoverLetterJobContext) {
-  const identity = normalizeProfessionalIdentityCompletionValues(values);
-  const jobTerms = compactJobDetails(jobContext).focus.join(" ").toLowerCase();
-  const skills = cleanList(identity.skills);
-  const relevantSkills = skills
-    .filter((skill) => jobTerms && jobTerms.includes(skill.toLowerCase()))
-    .concat(skills)
-    .filter((skill, index, items) => items.findIndex((candidate) => candidate.toLowerCase() === skill.toLowerCase()) === index)
-    .slice(0, 4);
-  return {
-    skills: relevantSkills,
-    experience: normalizeProfessionalIdentityExperienceEntries(identity.experience).map(experienceEntryEvidenceText).slice(0, 2),
-    projects: cleanList(identity.projects).slice(0, 2),
-    achievements: cleanList(identity.achievements).slice(0, 2),
-    education: cleanList(identity.education).slice(0, 2),
-    certificates: [...cleanList(identity.certificates), ...cleanList(identity.licences)].slice(0, 2),
-    languages: cleanList(identity.languages).slice(0, 3)
-  };
 }
 
 function documentLanguage(values: ProfessionalIdentityCompletionValues, requested?: ProfessionalLanguage): ProfessionalLanguage {
   if (requested === "french") return "french";
   if (requested === "english") return "english";
   return values.professional_document_language === "french" ? "french" : "english";
+}
+
+function shortProfessionalPositioning(identity: ProfessionalIdentityCompletionValues, role: string, language: ProfessionalLanguage) {
+  const careerGoal = cleanText(identity.career_goal);
+  const skills = cleanList(identity.skills).slice(0, 2);
+  if (careerGoal && careerGoal.toLowerCase() !== role.toLowerCase()) {
+    return language === "french"
+      ? `mon objectif professionnel vers ${careerGoal}`
+      : `my career direction toward ${careerGoal}`;
+  }
+  if (skills.length) {
+    return language === "french"
+      ? `mes competences confirmees en ${joinHuman(skills)}`
+      : `my confirmed strengths in ${joinHuman(skills)}`;
+  }
+  return language === "french" ? "mon profil professionnel confirme" : "my confirmed professional profile";
+}
+
+function evidenceSentence(items: string[], language: ProfessionalLanguage) {
+  const clean = cleanList(items).slice(0, 4);
+  if (!clean.length) {
+    return language === "french"
+      ? "Je resterai factuel sur les elements deja confirmes dans mon profil et je n'affirmerai pas une experience non verifiee."
+      : "I will stay factual about the evidence already confirmed in my profile and will not claim unsupported experience.";
+  }
+  return clean.map(sentence).join(" ");
+}
+
+function skillsSentence(skills: string[], language: ProfessionalLanguage) {
+  const clean = cleanList(skills).slice(0, 5);
+  if (!clean.length) {
+    return language === "french"
+      ? "Mon profil montre aussi une capacite d'apprentissage et une approche organisee."
+      : "My profile also shows a capacity to learn and an organized approach.";
+  }
+  return language === "french"
+    ? `Les competences les plus utiles pour cette candidature sont ${joinHuman(clean)}.`
+    : `The most useful skills for this application are ${joinHuman(clean)}.`;
 }
 
 export function coverLetterProfessionalIdentityHrefForSection(section: ProfessionalIdentityCompletionSectionKey) {
@@ -168,7 +172,7 @@ export function professionalIdentityHasCoverLetterSeedData(values: ProfessionalI
       identity.career_goal ||
       identity.professional_summary ||
       cleanList(identity.education).length ||
-      normalizeProfessionalIdentityExperienceEntries(identity.experience).length ||
+      selectCanonicalProfessionalIdentityExperiences(identity.experience).length ||
       cleanList(identity.skills).length ||
       cleanList(identity.projects).length
   );
@@ -216,27 +220,15 @@ export function coverLetterDataFromProfessionalIdentity(
   const role = firstAvailable(jobContext.role, identity.career_goal, language === "french" ? "ce poste" : "this role");
   const candidateName = firstAvailable(identity.full_name, language === "french" ? "Candidat" : "Candidate");
   const title = firstAvailable(identity.career_goal, role);
-  const evidence = strongestEvidence(identity, jobContext);
-  const jobDetails = compactJobDetails(jobContext);
-  const strongestSkills = evidence.skills.length
-    ? joinHuman(evidence.skills)
-    : language === "french"
-      ? "des competences confirmees et une capacite d'apprentissage"
-      : "confirmed skills and a capacity to learn";
-  const proofItems = [
-    ...evidence.experience,
-    ...evidence.projects,
-    ...evidence.achievements,
-    ...evidence.education,
-    ...evidence.certificates
-  ].slice(0, 3);
-  const proof = proofItems.length ? proofItems.map(sentence).join(" ") : "";
-  const jobFocus = jobDetails.focus.length ? joinHuman(jobDetails.focus.map((item) => item.toLowerCase())) : "";
-  const summary = cleanText(identity.professional_summary);
+  const intelligence = selectCoverLetterEvidence(identity, jobContext, { language });
+  const selectedEvidence = intelligence.selectedEvidence.map((item) => item.presentation);
+  const jobFocus = intelligence.jobAnalysis.employerPriorities[0] || intelligence.selectedMotivation;
+  const responsibilityFocus = intelligence.jobAnalysis.responsibilities[0]?.text;
+  const positioning = shortProfessionalPositioning(identity, role, language);
   const tone = cleanText(options.tone) || "professional";
   const date = new Date().toLocaleDateString(language === "french" ? "fr-FR" : "en-ZA", { year: "numeric", month: "long", day: "numeric" });
 
-  return normalizeCoverLetterDataForExport({
+  const coverLetterData = normalizeCoverLetterDataForExport({
     fullName: candidateName,
     professionalTitle: title,
     phone: cleanText(identity.phone),
@@ -258,34 +250,39 @@ export function coverLetterDataFromProfessionalIdentity(
         ? "Bonjour,"
         : "Dear Hiring Manager,",
     openingParagraph: language === "french"
-      ? `Je vous presente ma candidature pour le poste de ${role} chez ${company}. ${summary ? sentence(summary) : `Mon objectif professionnel est de progresser vers ${title}.`}`
-      : `I am applying for the ${role} role at ${company}. ${summary ? sentence(summary) : `My professional direction is focused on ${title}.`}`,
+      ? `Je vous presente ma candidature pour le poste de ${role} chez ${company}, avec ${positioning}.`
+      : `I am applying for the ${role} role at ${company}, bringing ${positioning}.`,
     motivationParagraph: language === "french"
       ? jobFocus
-        ? `Ce poste m'interesse parce qu'il demande ${jobFocus}, ce qui correspond a mon parcours actuel et aux points forts confirmes dans mon profil professionnel.`
+        ? `Ce poste m'interesse parce qu'il demande ${jobFocus.toLowerCase()}, et ma candidature se concentre sur les preuves confirmees les plus utiles pour ce besoin.`
         : `Ce poste m'interesse parce qu'il correspond a mon objectif professionnel et me permettrait de contribuer de maniere utile et fiable.`
       : jobFocus
-        ? `This opportunity interests me because it calls for ${jobFocus}, which aligns with the confirmed strengths in my professional background.`
+        ? `This opportunity interests me because it calls for ${jobFocus.toLowerCase()}, and my application is focused on the strongest confirmed evidence for that need.`
         : `This opportunity interests me because it aligns with my career direction and would let me contribute with reliable, useful work.`,
     evidenceParagraph: language === "french"
-      ? proof
-        ? `Mes elements les plus pertinents incluent ${strongestSkills}. ${proof}`
-        : `Mes elements les plus pertinents incluent ${strongestSkills}. Je prefere rester factuel plutot que d'affirmer une experience que mon parcours ne confirme pas encore.`
-      : proof
-        ? `My strongest relevant evidence includes ${strongestSkills}. ${proof}`
-        : `My strongest relevant evidence includes ${strongestSkills}. I would rather stay factual than claim experience my background has not yet confirmed.`,
+      ? `${skillsSentence(intelligence.selectedSkills, language)} ${evidenceSentence(selectedEvidence, language)}`
+      : `${skillsSentence(intelligence.selectedSkills, language)} ${evidenceSentence(selectedEvidence, language)}`,
     companyAlignmentParagraph: language === "french"
-      ? `Je souhaite apporter une contribution serieuse a ${company}, avec une approche honnete, organisee et adaptee aux besoins reels du poste.`
-      : `I would like to contribute to ${company} with an honest, organized approach shaped around the real needs of this role.`,
+      ? responsibilityFocus
+        ? `Je souhaite contribuer a ${company} avec une approche serieuse et organisee, adaptee aux responsabilites du poste comme ${responsibilityFocus.toLowerCase()}.`
+        : `Je souhaite apporter une contribution serieuse a ${company}, avec une approche honnete, organisee et adaptee aux besoins reels du poste.`
+      : responsibilityFocus
+        ? `I would like to contribute to ${company} with an honest, organized approach shaped around responsibilities such as ${responsibilityFocus.toLowerCase()}.`
+        : `I would like to contribute to ${company} with an honest, organized approach shaped around the real needs of this role.`,
     bodyParagraphs: [],
     closingParagraph: language === "french"
-      ? "Merci pour votre temps et votre consideration. Je serais heureux d'echanger sur ma candidature et sur la facon dont mon profil peut soutenir vos priorites."
-      : "Thank you for your time and consideration. I would welcome the opportunity to discuss my application and how my profile can support your priorities.",
+      ? "Merci pour votre temps et votre consideration. Je serais heureux d'echanger sur ma candidature."
+      : "Thank you for your time and consideration. I would welcome the opportunity to discuss my application.",
     closingPhrase: language === "french" ? "Cordialement," : "Kind regards,",
     signature: candidateName,
     tone,
     designSystem: templateName
   });
+  const quality = validateCoverLetterDraftQuality(coverLetterData, intelligence);
+  if (!quality.valid && process.env.NODE_ENV !== "production") {
+    console.warn("[cover-letter-intelligence] draft quality warnings", { warnings: quality.warnings });
+  }
+  return coverLetterData;
 }
 
 export function professionalIdentityCoverLetterDocument(
@@ -295,6 +292,8 @@ export function professionalIdentityCoverLetterDocument(
 ): GeneratedProfessionalDocument | null {
   if (!professionalIdentityHasCoverLetterSeedData(values) || !hasJobContext(jobContext)) return null;
   const coverLetterData = coverLetterDataFromProfessionalIdentity(values, jobContext, options);
+  const coverLetterIntelligence = selectCoverLetterEvidence(normalizeProfessionalIdentityCompletionValues(values), jobContext, { language: documentLanguage(normalizeProfessionalIdentityCompletionValues(values), options.language) });
+  const coverLetterQuality = validateCoverLetterDraftQuality(coverLetterData, coverLetterIntelligence);
   const now = options.lastUpdated ?? new Date().toISOString();
   const company = cleanText(coverLetterData.companyName);
   const role = cleanText(coverLetterData.jobTitle);
@@ -318,8 +317,22 @@ export function professionalIdentityCoverLetterDocument(
         lastDownloadedAt: null,
         professionalIdentitySource: "canonical_professional_identity",
         jobContext,
+        intelligence: {
+          strategyVersion: "pathzy-cover-letter-evidence-selection-v1",
+          jobAnalysis: coverLetterIntelligence.jobAnalysis,
+          selectedEvidence: coverLetterIntelligence.selectedEvidence.map((item) => ({
+            id: item.id,
+            type: item.type,
+            label: item.label,
+            matchedKeywords: item.matchedKeywords,
+            score: item.score
+          })),
+          selectedSkills: coverLetterIntelligence.selectedSkills,
+          trace: coverLetterIntelligence.trace,
+          qualityWarnings: coverLetterQuality.warnings
+        },
         manualOverride: false,
-        status: "up_to_date"
+        status: coverLetterQuality.valid ? "up_to_date" : "ready_with_warnings"
       }
     }
   };

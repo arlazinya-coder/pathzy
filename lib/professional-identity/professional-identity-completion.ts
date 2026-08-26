@@ -1,7 +1,7 @@
 import { professionalPhotoAssetFromUnknown, type CanonicalProfessionalPhotoAsset } from "@/lib/professional-identity/professional-photo";
 import { normalizeCurrentSituation } from "@/lib/professional-identity/current-situation";
 import { normalizeLanguageCode, normalizeProfessionalDocumentLanguageChoice } from "@/lib/language/language-preferences";
-import { experienceEntryToText, normalizeProfessionalIdentityExperienceEntries, type ProfessionalIdentityExperienceEntry } from "@/lib/professional-identity/professional-identity-experience";
+import { experienceEntryToText, selectCanonicalProfessionalIdentityExperiences, type ProfessionalIdentityExperienceEntry } from "@/lib/professional-identity/professional-identity-experience";
 
 export type ProfessionalIdentityCompletionSectionKey =
   | "profile"
@@ -156,11 +156,12 @@ function firstList(...values: unknown[]) {
 }
 
 function firstExperienceList(...values: unknown[]) {
-  for (const value of values) {
-    const list = normalizeProfessionalIdentityExperienceEntries(value);
-    if (list.length) return list;
-  }
-  return [];
+  return selectCanonicalProfessionalIdentityExperiences({
+    experienceEntries: values[0],
+    experience: values[1],
+    experienceHistory: values[2],
+    personalBackground: values[3]
+  });
 }
 
 function answerText(discovery: { answers?: Record<string, unknown> | null } | null | undefined, key: string) {
@@ -190,7 +191,7 @@ export function normalizeProfessionalIdentityCompletionValues(values: Profession
     professional_summary: textValue(values.professional_summary),
     education: canonicalListValue(values.education),
     field_of_study: textValue(values.field_of_study),
-    experience: normalizeProfessionalIdentityExperienceEntries(values.experience),
+    experience: selectCanonicalProfessionalIdentityExperiences(values.experience),
     skills: canonicalListValue(values.skills),
     projects: canonicalListValue(values.projects),
     achievements: canonicalListValue(values.achievements),
@@ -238,7 +239,7 @@ export function professionalIdentityValuesFromSources(
     professional_summary: answerText(discovery, "professional_summary"),
     education: firstList(answers.education_history, profile?.education, profile?.highest_qualification),
     field_of_study: textValue(profile?.field_of_study),
-    experience: firstExperienceList(answers.experience_entries, answers.experience_history, answers.personal_background),
+    experience: firstExperienceList(answers.experience_entries, answers.experience, answers.experience_history, answers.personal_background),
     skills: answerList(discovery, "skills"),
     projects: firstList(answers.projects_history, answers.interests),
     achievements: firstList(answers.achievements_list, answers.achievements),

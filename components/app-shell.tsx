@@ -56,8 +56,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <PathzyLanguageProvider initialLanguage={interfaceLanguage}>
-    <div className="pathzy-auth-shell">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[var(--pathzy-navy)]/92 backdrop-blur-2xl">
+    <div className="pathzy-page-shell pathzy-auth-shell">
+      <header className="sticky top-0 z-40 border-b border-[var(--border-default)] bg-[color-mix(in_srgb,var(--background-elevated)_92%,transparent)] backdrop-blur-2xl">
         <nav className="container flex min-h-20 items-center justify-between gap-4">
           <Link href={user ? appRoutes.roadmap : appRoutes.home} className="flex items-center gap-3 text-lg font-black tracking-tight text-white">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[var(--pathzy-red)] text-white shadow-[0_14px_34px_rgba(217,58,70,.22)]">
@@ -81,7 +81,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
               <>
                 <LanguageSelector initialLanguage={profileLanguage} />
                 {entitlements?.badge === "FOUNDING TESTER" ? (
-                  <span className="hidden rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#2563EB] md:inline-flex" title={entitlements.message ?? undefined}>
+                  <span className="hidden rounded-full border border-[rgba(217,58,70,.28)] bg-[rgba(217,58,70,.12)] px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-[var(--pathzy-ivory)] md:inline-flex" title={entitlements.message ?? undefined}>
                     FOUNDING TESTER
                   </span>
                 ) : null}
@@ -106,9 +106,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             )}
           </div>
         </nav>
-        {mobileNavigation.length ? <div className="container flex gap-2 overflow-x-auto pb-3 lg:hidden">
+        {mobileNavigation.length ? <div className="container flex flex-wrap gap-2 pb-3 lg:hidden">
           {mobileNavigation.map((item) => (
-            <Link key={`${item.href}-${item.label}`} href={item.href} className="whitespace-nowrap rounded-full border border-white/12 bg-white/8 px-3 py-2 text-xs font-semibold text-white/72 shadow-sm">
+            <Link key={`${item.href}-${item.label}`} href={item.href} className="min-h-10 min-w-0 rounded-full border border-white/12 bg-white/8 px-3 py-2 text-xs font-semibold leading-5 text-white/72 shadow-sm [overflow-wrap:anywhere]">
               {pathzyNavigationLabel(interfaceLanguage, item.label)}
             </Link>
           ))}
@@ -119,10 +119,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <footer className="container border-t border-white/10 py-8 text-center text-sm text-white/58">
         <p>PATHZY is The Employment Support System. From Potential to Employment.</p>
         <div className="mt-4 flex flex-wrap justify-center gap-4">
-          <Link href="/privacy" className="hover:text-[#111827]">Privacy</Link>
-          <Link href="/terms" className="hover:text-[#111827]">Terms</Link>
-          <Link href="/contact" className="hover:text-[#111827]">Contact</Link>
-          <Link href="/disclaimer" className="hover:text-[#111827]">Disclaimer</Link>
+          <Link href="/privacy" className="hover:text-[var(--pathzy-ivory)]">Privacy</Link>
+          <Link href="/terms" className="hover:text-[var(--pathzy-ivory)]">Terms</Link>
+          <Link href="/contact" className="hover:text-[var(--pathzy-ivory)]">Contact</Link>
+          <Link href="/disclaimer" className="hover:text-[var(--pathzy-ivory)]">Disclaimer</Link>
         </div>
       </footer>
     </div>

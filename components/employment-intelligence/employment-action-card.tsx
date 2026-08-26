@@ -57,7 +57,7 @@ export function EmploymentActionCard({
       </div>
       <div className="mt-5 flex flex-col gap-3 border-t border-white/10 pt-4">
         <div className="rounded-2xl border border-white/10 bg-white/8 p-3">
-          <p className="text-sm font-extrabold text-[#93c5fd] [overflow-wrap:anywhere]">{t.why}</p>
+          <p className="text-sm font-extrabold text-[var(--brand-primary)] [overflow-wrap:anywhere]">{t.why}</p>
           <p className="mt-1 text-sm leading-6 text-white/66 [overflow-wrap:anywhere]">{action.whySentence}</p>
         </div>
         <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto] sm:items-center">

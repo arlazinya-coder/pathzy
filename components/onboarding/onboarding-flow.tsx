@@ -334,7 +334,7 @@ export function OnboardingFlow({ initialProfile }: { initialProfile?: InitialPro
     <Card className="mx-auto max-w-5xl overflow-hidden">
       <div className="grid gap-8 lg:grid-cols-[0.9fr_1.25fr]">
         <aside className="rounded-[28px] border border-white/10 bg-[#071126]/70 p-5 md:p-6">
-          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#9df0c4]">Professional Identity</p>
+          <p className="pathzy-eyebrow-accent text-xs font-extrabold uppercase tracking-[0.18em]">Professional Identity</p>
           <h2 className="mt-4 text-3xl font-black leading-tight md:text-4xl">Let&apos;s build the foundation first.</h2>
           <p className="mt-4 text-base font-bold leading-7 text-white/60">
             One focused step at a time. PATHZY saves your progress as you go, then opens the Employment Operating System when this setup is complete.
@@ -351,7 +351,7 @@ export function OnboardingFlow({ initialProfile }: { initialProfile?: InitialPro
               const isCurrent = index === step;
               const isDone = index < step;
               return (
-                <div key={item} className={`rounded-[16px] border px-3 py-3 text-sm font-extrabold ${isCurrent ? "border-[#8fb0ff]/45 bg-[#5B8CFF]/16 text-white" : isDone ? "border-[#9df0c4]/25 bg-[#9df0c4]/10 text-[#d8ffe6]" : "border-white/8 bg-white/5 text-white/38"}`}>
+                <div key={item} className={`rounded-[16px] border px-3 py-3 text-sm font-extrabold ${isCurrent ? "border-[rgba(217,58,70,.45)] bg-[rgba(217,58,70,.16)] text-white" : isDone ? "pathzy-status-success" : "border-white/8 bg-white/5 text-white/38"}`}>
                   <span className="mr-2">{isDone ? "Done" : isCurrent ? "Now" : "Next"}</span>
                   {item}
                 </div>
@@ -365,7 +365,7 @@ export function OnboardingFlow({ initialProfile }: { initialProfile?: InitialPro
             <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-white/42">{activeStep.eyebrow}</p>
             <h3 className="mt-3 text-3xl font-black leading-tight">{activeStep.title}</h3>
             <p className="mt-3 text-base font-bold leading-7 text-white/62">{activeStep.body}</p>
-            <p className="mt-5 rounded-[18px] border border-[#8fb0ff]/20 bg-[#5B8CFF]/10 p-4 text-sm font-bold leading-6 text-[#dce6ff]">{activeStep.helper}</p>
+            <p className="pathzy-status-info mt-5 rounded-[18px] border p-4 text-sm font-bold leading-6">{activeStep.helper}</p>
           </div>
 
           <div className="rounded-[28px] border border-white/10 bg-[#080f22]/80 p-5 md:p-7">
@@ -375,7 +375,7 @@ export function OnboardingFlow({ initialProfile }: { initialProfile?: InitialPro
               ["english", "English"],
               ["french", "Français"]
             ].map(([value, label]) => (
-              <button key={value} type="button" onClick={() => setValue("language", value as "english" | "french")} className={`rounded-[22px] border p-5 text-left transition ${values.language === value ? "border-[#5B8CFF]/70 bg-[#5B8CFF]/18 text-white shadow-[0_18px_45px_rgba(91,140,255,.18)]" : "border-white/10 bg-white/7 text-white/68 hover:bg-white/10"}`}>
+              <button key={value} type="button" onClick={() => setValue("language", value as "english" | "french")} className={`rounded-[22px] border p-5 text-left transition ${values.language === value ? "border-[rgba(217,58,70,.7)] bg-[rgba(217,58,70,.18)] text-white shadow-[0_18px_45px_rgba(217,58,70,.16)]" : "border-white/10 bg-white/7 text-white/68 hover:bg-white/10"}`}>
                 <span className="block text-xl font-black">{label}</span>
                 <span className="mt-2 block text-sm font-bold text-white/50">Use {label} for your PATHZY guidance.</span>
               </button>
@@ -393,7 +393,7 @@ export function OnboardingFlow({ initialProfile }: { initialProfile?: InitialPro
               ["career_changer", "Career changer"],
               ["employed", "Already employed"]
             ].map(([value, label]) => (
-              <button key={value} type="button" onClick={() => setValue("current_status", value)} className={`rounded-[20px] border p-4 text-left font-black transition ${values.current_status === value ? "border-[#5B8CFF]/70 bg-[#5B8CFF]/18 text-white shadow-[0_18px_45px_rgba(91,140,255,.14)]" : "border-white/10 bg-white/7 text-white/68 hover:bg-white/10"}`}>
+              <button key={value} type="button" onClick={() => setValue("current_status", value)} className={`rounded-[20px] border p-4 text-left font-black transition ${values.current_status === value ? "border-[rgba(217,58,70,.7)] bg-[rgba(217,58,70,.18)] text-white shadow-[0_18px_45px_rgba(217,58,70,.14)]" : "border-white/10 bg-white/7 text-white/68 hover:bg-white/10"}`}>
                 {label}
               </button>
             ))}
@@ -434,7 +434,7 @@ export function OnboardingFlow({ initialProfile }: { initialProfile?: InitialPro
             <label className="label">Graduation year<input className="field" value={values.graduation_year} onChange={(event) => setValue("graduation_year", event.target.value)} placeholder="Optional" /></label>
             <label className="flex items-center justify-between gap-4 rounded-[18px] border border-white/10 bg-white/7 p-4 font-bold text-white/74 md:col-span-2">
               Currently studying
-              <input type="checkbox" checked={values.currently_studying} onChange={(event) => setValue("currently_studying", event.target.checked)} className="h-5 w-5 accent-[#5B8CFF]" />
+              <input type="checkbox" checked={values.currently_studying} onChange={(event) => setValue("currently_studying", event.target.checked)} className="h-5 w-5 accent-[var(--brand-primary)]" />
             </label>
           </div>
         ) : null}
@@ -456,7 +456,7 @@ export function OnboardingFlow({ initialProfile }: { initialProfile?: InitialPro
 
         {step === 5 ? (
           <div className="grid gap-4">
-            <div className="rounded-[20px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 p-4">
+            <div className="pathzy-status-info rounded-[20px] border p-4">
               <p className="text-lg font-black text-white">You are almost done. Click Finish onboarding to continue.</p>
               <p className="mt-2 text-sm font-bold leading-6 text-white/62">Choose only what is true for you today. You do not need to have everything ready.</p>
             </div>
@@ -472,7 +472,7 @@ export function OnboardingFlow({ initialProfile }: { initialProfile?: InitialPro
             ].map(([key, label]) => (
               <label key={key} className="flex items-center justify-between gap-4 rounded-[18px] border border-white/10 bg-white/7 p-4 font-bold text-white/74">
                 {label}
-                <input type="checkbox" checked={Boolean(values[key as keyof OnboardingState])} onChange={(event) => setValue(key as keyof OnboardingState, event.target.checked as never)} className="h-5 w-5 accent-[#5B8CFF]" />
+                <input type="checkbox" checked={Boolean(values[key as keyof OnboardingState])} onChange={(event) => setValue(key as keyof OnboardingState, event.target.checked as never)} className="h-5 w-5 accent-[var(--brand-primary)]" />
               </label>
             ))}
             </div>

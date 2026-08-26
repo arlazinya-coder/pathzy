@@ -1,366 +1,478 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui";
-import { cvModelFromUnknown, downloadBlob, normalizeCvModelForExport, pathzyFilename, renderCvHtmlFromModel, simplePdfDocument, simplePdfDocumentFromModel } from "@/components/professional-identity/document-downloads";
-import { documentTemplateGallery, normalizeDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
+import {
+  coverLetterDataFromUnknown,
+  coverLetterPdfFilename,
+  cvModelFromUnknown,
+  downloadBlob,
+  pathzyFilename,
+  simplePdfDocument,
+  simpleCoverLetterPdfDocument,
+  simplePdfDocumentFromModel
+} from "@/components/professional-identity/document-downloads";
+import {
+  vaultCategoryLabels,
+  vaultDocumentTypeForCategory,
+  vaultDocumentTypeLabels,
+  vaultDocumentStorageContract,
+  isVaultStorageErrorCode,
+  type VaultDocumentCategory,
+  type VaultDocumentRecord
+} from "@/lib/professional-identity/document-vault";
 import { currentCoreDocumentDownloadAccess } from "@/lib/access/core-document-download-access";
 
-type DocumentTool = "cv" | "cover-letter" | "linkedin" | "recruiter-message" | "follow-up" | "career-passport" | "uploaded-document" | "supporting-document";
+const categoryOrder: VaultDocumentCategory[] = ["all", "cvs", "cover_letters", "certificates", "qualifications", "licences", "references", "portfolio", "other"];
+const uploadCategories: Exclude<VaultDocumentCategory, "all">[] = ["other", "certificates", "qualifications", "licences", "references", "portfolio", "cvs", "cover_letters"];
 
-type SavedDocument = {
-  id: string;
-  tool: DocumentTool;
-  title: string;
-  content: string;
-  contentJson?: Record<string, unknown> | null;
-  template_name?: string | null;
-  status?: string | null;
-  version_number?: number | null;
-  last_downloaded_at?: string | null;
-  created_at?: string;
-  updated_at?: string;
-};
+function formatDate(value: string | null) {
+  if (!value) return "Not dated";
+  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(value));
+}
 
-const cvDesignSystems = documentTemplateGallery.map((template) => template.name);
+function formatFileSize(bytes: number | null) {
+  if (!bytes) return "";
+  if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
-type CvVersionMetadata = {
-  designSystem: string;
-  versionName: string;
-  createdAt: string;
-  updatedAt: string;
-  lastDownloadedAt: string | null;
-};
+function documentFormat(document: VaultDocumentRecord) {
+  if (document.documentType === "cv") return "CV";
+  if (document.documentType === "cover_letter") return "Cover Letter";
+  if (document.fileType?.includes("pdf")) return "PDF";
+  if (document.fileType?.includes("wordprocessingml")) return "DOCX";
+  if (document.fileType?.startsWith("image/")) return document.fileType.endsWith("png") ? "PNG" : "JPG";
+  if (document.fileType === "text/plain") return "TXT";
+  return vaultDocumentTypeLabels[document.documentType];
+}
 
-function cvVersionFromDocument(document: SavedDocument | null): CvVersionMetadata {
-  const raw = document?.contentJson?.cvVersion;
-  const source = raw && typeof raw === "object" ? raw as Partial<CvVersionMetadata> : {};
-  const now = new Date().toISOString();
-  const designSystem = normalizeDocumentTemplate(typeof source.designSystem === "string" && source.designSystem.trim()
-    ? source.designSystem
-    : document?.template_name || "Modern ATS");
+function uploadSuccessMessage(category: Exclude<VaultDocumentCategory, "all">, replacing: boolean) {
+  if (replacing) return "Document replaced.";
+  const label = vaultCategoryLabels[category].replace(/s$/, "").replace("Portfolio & Evidence", "Portfolio evidence");
+  return `${label} uploaded.`;
+}
+
+function savedCvPaletteId(document: VaultDocumentRecord) {
+  const version = document.contentJson?.cvVersion;
+  if (!version || typeof version !== "object" || !("paletteId" in version)) return undefined;
+  const paletteId = (version as { paletteId?: unknown }).paletteId;
+  return typeof paletteId === "string" && paletteId.trim() ? paletteId.trim() : undefined;
+}
+
+function emptyStateForCategory(category: VaultDocumentCategory) {
+  if (category === "all") {
+    return {
+      title: "No documents yet.",
+      body: "Upload an employment document or save a CV or Cover Letter from PATHZY.",
+      action: "Upload document"
+    };
+  }
+  const label = vaultCategoryLabels[category].toLowerCase();
   return {
-    designSystem,
-    versionName: typeof source.versionName === "string" && source.versionName.trim() ? source.versionName : document?.title || `${designSystem} CV`,
-    createdAt: typeof source.createdAt === "string" && source.createdAt ? source.createdAt : document?.created_at || now,
-    updatedAt: typeof source.updatedAt === "string" && source.updatedAt ? source.updatedAt : document?.updated_at || now,
-    lastDownloadedAt: typeof source.lastDownloadedAt === "string" && source.lastDownloadedAt ? source.lastDownloadedAt : document?.last_downloaded_at || null
+    title: `No ${label} yet.`,
+    body: `Upload ${label} you may need for applications.`,
+    action: `Upload ${vaultCategoryLabels[category].replace(/s$/, "").toLowerCase()}`
   };
 }
 
-const labels: Record<DocumentTool, string> = {
-  cv: "CV",
-  "cover-letter": "Cover Letter",
-  linkedin: "LinkedIn Profile",
-  "recruiter-message": "Recruiter Message",
-  "follow-up": "Follow-up Email",
-  "career-passport": "Career Passport",
-  "uploaded-document": "Uploaded Document",
-  "supporting-document": "Supporting Document"
-};
+function openHrefForDocument(document: VaultDocumentRecord) {
+  if (document.documentType === "cv") return `/professional-identity/cv?documentId=${encodeURIComponent(document.id)}`;
+  if (document.documentType === "cover_letter") return `/professional-identity/cover-letter?documentId=${encodeURIComponent(document.id)}`;
+  return "";
+}
 
-export function MyDocumentsClient({ initialDocuments, canExport = false }: { initialDocuments: SavedDocument[]; canExport?: boolean }) {
-  const [documents, setDocuments] = useState(initialDocuments);
-  const [selectedId, setSelectedId] = useState(initialDocuments[0]?.id ?? "");
-  const [error, setError] = useState("");
+function dedupeDocuments(documents: VaultDocumentRecord[]) {
+  const seen = new Set<string>();
+  return documents.filter((document) => {
+    const key = document.storagePath
+      ? `file:${document.storagePath}`
+      : `generated:${document.documentType}:${document.id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export function MyDocumentsClient({ initialDocuments, canExport = false }: { initialDocuments: VaultDocumentRecord[]; canExport?: boolean }) {
+  const [documents, setDocuments] = useState(() => dedupeDocuments(initialDocuments));
+  const [selectedCategory, setSelectedCategory] = useState<VaultDocumentCategory>("all");
+  const [uploadCategory, setUploadCategory] = useState<Exclude<VaultDocumentCategory, "all">>("other");
+  const [uploading, setUploading] = useState(false);
+  const [renamingId, setRenamingId] = useState("");
+  const [renameValue, setRenameValue] = useState("");
+  const [busyId, setBusyId] = useState("");
   const [notice, setNotice] = useState("");
-  const [downloadState, setDownloadState] = useState<"idle" | "preparing" | "downloading" | "error">("idle");
-  const [saving, setSaving] = useState(false);
-  const [dirty, setDirty] = useState(false);
-  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const selected = useMemo(() => documents.find((document) => document.id === selectedId) ?? documents[0] ?? null, [documents, selectedId]);
-  const selectedCvModel = useMemo(() => selected?.tool === "cv" ? cvModelFromUnknown(selected.contentJson?.cvModel, selected.content) : null, [selected]);
-  const selectedCvVersion = useMemo(() => selected?.tool === "cv" ? cvVersionFromDocument(selected) : null, [selected]);
+  const [error, setError] = useState("");
+  const [errorCode, setErrorCode] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const pendingUploadCategoryRef = useRef<Exclude<VaultDocumentCategory, "all"> | null>(null);
+  const replaceInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const coreDownloadsAllowed = currentCoreDocumentDownloadAccess === "allowed";
-  const downloadBusy = downloadState === "preparing" || downloadState === "downloading";
+  const storageServiceUnavailable = isVaultStorageErrorCode(errorCode);
 
-  const grouped = useMemo(() => {
-    const categories = ["cv", "cover-letter", "linkedin", "recruiter-message", "follow-up", "career-passport", "uploaded-document", "supporting-document"] as const;
-    return categories.map((category) => ({ category, documents: documents.filter((document) => document.tool === category) })).filter((group) => group.documents.length);
+  const visibleDocuments = useMemo(
+    () => documents.filter((document) => selectedCategory === "all" || document.category === selectedCategory),
+    [documents, selectedCategory]
+  );
+  const counts = useMemo(() => {
+    const result: Record<VaultDocumentCategory, number> = {
+      all: documents.length,
+      cvs: 0,
+      cover_letters: 0,
+      certificates: 0,
+      qualifications: 0,
+      licences: 0,
+      references: 0,
+      portfolio: 0,
+      other: 0
+    };
+    for (const document of documents) result[document.category] += 1;
+    return result;
   }, [documents]);
 
-  useEffect(() => {
-    function warnBeforeLeave(event: BeforeUnloadEvent) {
-      if (!dirty) return;
-      event.preventDefault();
-      event.returnValue = "";
-    }
-
-    window.addEventListener("beforeunload", warnBeforeLeave);
-    return () => window.removeEventListener("beforeunload", warnBeforeLeave);
-  }, [dirty]);
-
-  async function copyText() {
-    if (!selected) return;
-    await navigator.clipboard.writeText(selected.content);
-    setNotice("Copied.");
+  function upsertDocument(document: VaultDocumentRecord) {
+    setDocuments((current) => dedupeDocuments([document, ...current.filter((item) => item.id !== document.id)]));
   }
 
-  async function savePatch(patch: Partial<SavedDocument>) {
-    if (!selected) return;
+  async function readApiJson(response: Response) {
+    try {
+      return await response.json() as { error?: string; code?: string; document?: VaultDocumentRecord; signedUrl?: string | null };
+    } catch {
+      return {};
+    }
+  }
+
+  async function uploadFile(file: File, options?: { replaceDocumentId?: string; category?: Exclude<VaultDocumentCategory, "all"> }) {
+    setUploading(!options?.replaceDocumentId);
+    setBusyId(options?.replaceDocumentId ?? "");
     setError("");
+    setErrorCode("");
     setNotice("");
-    const next = { ...selected, ...patch };
-    setDocuments((current) => current.map((document) => (document.id === selected.id ? next : document)));
-    setDirty(true);
-    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-    autosaveTimer.current = setTimeout(() => {
-      void persistPatch(next);
-    }, 700);
-  }
+    const category = options?.category ?? uploadCategory;
+    const formData = new FormData();
+    formData.set("file", file);
+    formData.set("category", category);
+    formData.set("documentType", vaultDocumentTypeForCategory(category));
+    formData.set("title", file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "));
+    if (options?.replaceDocumentId) formData.set("replaceDocumentId", options.replaceDocumentId);
 
-  async function saveCvVersionPatch(versionPatch: Partial<CvVersionMetadata>) {
-    if (!selected || !selectedCvModel || selected.tool !== "cv") return;
-    const version = { ...cvVersionFromDocument(selected), ...versionPatch, updatedAt: new Date().toISOString() };
-    const title = version.versionName;
-    const contentJson = {
-      ...(selected.contentJson ?? {}),
-      cvModel: normalizeCvModelForExport(selectedCvModel),
-      cvVersion: version
-    };
-    const next = { ...selected, title, template_name: version.designSystem, contentJson };
-    setDocuments((current) => current.map((document) => (document.id === selected.id ? next : document)));
-    setDirty(true);
-    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-    autosaveTimer.current = setTimeout(() => {
-      void persistCvVersionPatch(next);
-    }, 700);
-  }
-
-  async function persistCvVersionPatch(next: SavedDocument) {
-    setSaving(true);
     try {
-      const response = await fetch("/api/professional-identity", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: next.id,
-          tool: next.tool,
-          title: next.title,
-          content: next.content,
-          contentJson: next.contentJson,
-          templateName: next.template_name
-        })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "Could not save CV version.");
-      setNotice("Saved.");
-      setDirty(false);
+      const response = await fetch("/api/professional-identity/documents", { method: "POST", body: formData });
+      const data = await readApiJson(response);
+      if (!response.ok) {
+        setErrorCode(data.code ?? "");
+        throw new Error(data.error ?? "We couldn't upload your document. Please try again.");
+      }
+      if (data.document) upsertDocument(data.document);
+      setNotice(uploadSuccessMessage(category, Boolean(options?.replaceDocumentId)));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not save CV version.");
+      setError(caught instanceof Error ? caught.message : "We couldn't upload your document. Please try again.");
     } finally {
-      setSaving(false);
+      setUploading(false);
+      setBusyId("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      const replaceInput = options?.replaceDocumentId ? replaceInputRefs.current[options.replaceDocumentId] : null;
+      if (replaceInput) replaceInput.value = "";
     }
   }
 
-  async function persistPatch(next: SavedDocument) {
-    setSaving(true);
+  async function openUploadedDocument(document: VaultDocumentRecord, download = false) {
+    setBusyId(document.id);
+    setError("");
+    setErrorCode("");
     try {
-      const response = await fetch("/api/professional-identity", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: next.id, tool: next.tool, title: next.title, content: next.content })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "Could not save document.");
-      setNotice("Saved.");
-      setDirty(false);
+      const response = await fetch(`/api/professional-identity/documents?id=${encodeURIComponent(document.id)}`);
+      const data = await readApiJson(response);
+      if (!response.ok) {
+        setErrorCode(data.code ?? "");
+        throw new Error(data.error ?? "Could not open document.");
+      }
+      if (!data.signedUrl) throw new Error("This document does not have a stored file preview yet.");
+      const anchor = window.document.createElement("a");
+      anchor.href = data.signedUrl;
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+      if (download) anchor.download = document.fileName ?? document.title;
+      anchor.click();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not save document.");
+      setError(caught instanceof Error ? caught.message : "Could not open document.");
     } finally {
-      setSaving(false);
+      setBusyId("");
     }
   }
 
-  async function duplicateDocument() {
-    if (!selected) return;
-    setError("");
-    const version = selected.tool === "cv" ? cvVersionFromDocument(selected) : null;
-    const title = `${version?.versionName ?? selected.title} copy`;
-    const now = new Date().toISOString();
-    const contentJson = selected.tool === "cv" && selectedCvModel && version
-      ? {
-          ...(selected.contentJson ?? {}),
-          cvModel: normalizeCvModelForExport(selectedCvModel),
-          cvVersion: { ...version, versionName: title, createdAt: now, updatedAt: now, lastDownloadedAt: null }
-        }
-      : selected.contentJson;
-    try {
-      const response = await fetch("/api/professional-identity", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: selected.id, tool: selected.tool, title, duplicate: true, templateName: selected.template_name, contentJson })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "Could not duplicate document.");
-      const copy = { ...selected, id: data.document.id, title, contentJson: data.document.content_json ?? contentJson, template_name: data.document.template_name ?? selected.template_name, created_at: data.document.created_at, updated_at: data.document.updated_at, last_downloaded_at: null };
-      setDocuments((current) => [copy, ...current]);
-      setSelectedId(copy.id);
-      setNotice("Duplicated.");
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not duplicate document.");
-    }
-  }
-
-  async function deleteDocument() {
-    if (!selected) return;
-    setError("");
-    try {
-      const response = await fetch(`/api/professional-identity?id=${encodeURIComponent(selected.id)}&tool=${encodeURIComponent(selected.tool)}`, { method: "DELETE" });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "Could not delete document.");
-      const remaining = documents.filter((document) => document.id !== selected.id);
-      setDocuments(remaining);
-      setSelectedId(remaining[0]?.id ?? "");
-      setNotice("Deleted.");
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not delete document.");
-    }
-  }
-
-  async function markDownloaded() {
-    if (!selected) return;
-    const downloadedAt = new Date().toISOString();
-    const contentJson = selected.tool === "cv" && selectedCvModel
-      ? {
-          ...(selected.contentJson ?? {}),
-          cvModel: normalizeCvModelForExport(selectedCvModel),
-          cvVersion: { ...cvVersionFromDocument(selected), lastDownloadedAt: downloadedAt, updatedAt: downloadedAt }
-        }
-      : undefined;
-    await fetch("/api/professional-identity", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: selected.id, tool: selected.tool, downloaded: true, contentJson })
-    });
-    if (selected.tool === "cv" && contentJson) {
-      setDocuments((current) => current.map((document) => document.id === selected.id ? { ...document, contentJson, last_downloaded_at: downloadedAt } : document));
-    }
-  }
-
-  async function downloadPdf() {
-    if (downloadBusy) return;
-    if (!selected) return;
-    if (dirty || saving) {
-      setError("Please wait for your document to save before downloading.");
-      return;
-    }
+  async function downloadGeneratedDocument(document: VaultDocumentRecord) {
     if (!canExport && !coreDownloadsAllowed) {
       setError("PATHZY could not confirm your download access. Please refresh and try again.");
       return;
     }
-    setDownloadState("preparing");
-    setNotice("");
+    setBusyId(document.id);
     setError("");
+    setErrorCode("");
     try {
-      setDownloadState("downloading");
-      const designSystem = selected.tool === "cv" ? cvVersionFromDocument(selected).designSystem : selected.template_name ?? undefined;
-      const pdf = selected.tool === "cv" && selectedCvModel ? simplePdfDocumentFromModel(selected.title, selectedCvModel, designSystem) : simplePdfDocument(selected.title, selected.content, selected.template_name ?? undefined);
-      downloadBlob(pathzyFilename(selected.tool === "cv" ? "CV" : "Document", selected.title, "pdf"), "application/pdf", pdf);
-      await markDownloaded();
+      const coverLetterData = document.documentType === "cover_letter"
+        ? coverLetterDataFromUnknown(document.contentJson?.coverLetterData, document.content)
+        : null;
+      const pdf = document.documentType === "cv"
+        ? simplePdfDocumentFromModel(document.title, cvModelFromUnknown(document.contentJson?.cvModel, document.content), document.templateName ?? undefined, undefined, savedCvPaletteId(document))
+        : coverLetterData
+          ? simpleCoverLetterPdfDocument(coverLetterData)
+          : simplePdfDocument(document.title, document.content, document.templateName ?? undefined);
+      downloadBlob(coverLetterData ? coverLetterPdfFilename(coverLetterData) : pathzyFilename(document.documentType === "cv" ? "CV" : "Document", document.title, "pdf"), "application/pdf", pdf);
       setNotice("Your file has downloaded to your browser's Downloads folder.");
-      setDownloadState("idle");
     } catch {
-      setDownloadState("error");
       setError("Download failed. Your document is still saved. Please try again.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function saveDocumentPatch(document: VaultDocumentRecord, patch: { title?: string; category?: VaultDocumentCategory }) {
+    setBusyId(document.id);
+    setError("");
+    setErrorCode("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/professional-identity/documents", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: document.id, ...patch })
+      });
+      const data = await readApiJson(response);
+      if (!response.ok) throw new Error(data.error ?? "Could not save document.");
+      if (data.document) upsertDocument(data.document);
+      setRenamingId("");
+      setNotice("Document updated.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not save document.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function deleteDocument(document: VaultDocumentRecord) {
+    if (!window.confirm(`Delete ${document.title}?`)) return;
+    setBusyId(document.id);
+    setError("");
+    setErrorCode("");
+    try {
+      const response = await fetch(`/api/professional-identity/documents?id=${encodeURIComponent(document.id)}`, { method: "DELETE" });
+      const data = await readApiJson(response);
+      if (!response.ok) throw new Error(data.error ?? "Could not delete document.");
+      setDocuments((current) => current.filter((item) => item.id !== document.id));
+      setNotice("Document deleted.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not delete document.");
+    } finally {
+      setBusyId("");
     }
   }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[.38fr_1fr]">
-      <Card className="h-fit">
-        <h2 className="text-2xl font-black">Saved documents</h2>
-        <p className="mt-3 text-sm leading-6 text-white/58">CVs, cover letters, LinkedIn drafts, outreach messages, follow-ups, and Career Passport summaries.</p>
-        <div className="mt-5 grid gap-3">
-          {grouped.map((group) => (
-            <div key={group.category}>
-              <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.14em] text-white/36">{labels[group.category]}</p>
-              <div className="grid gap-2">
-                {group.documents.map((document) => (
-                  <button key={document.id} onClick={() => setSelectedId(document.id)} className={`rounded-[18px] border p-4 text-left transition ${selected?.id === document.id ? "border-[#5B8CFF]/50 bg-[#5B8CFF]/12" : "border-white/10 bg-white/7 hover:bg-white/10"}`}>
-                    <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">{document.status ?? "draft"}</span>
-                    <strong className="mt-2 block">{document.title}</strong>
-                    {document.template_name ? <span className="mt-1 block text-xs text-white/44">{document.template_name}</span> : null}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-          {!documents.length ? (
-            <div className="rounded-[22px] border border-dashed border-white/14 bg-white/5 p-6 text-center text-white/58">
-              No saved documents yet. Generate your first CV or cover letter to begin.
-            </div>
-          ) : null}
+    <div className="grid gap-6">
+      <Card>
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.14em] text-[#7f1d1d]">Employment File Vault</p>
+            <h2 className="mt-2 text-3xl font-black text-[#1f1613]">Your application documents</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#5d5550]">
+              Store CVs, cover letters, certificates, qualifications, licences, references and supporting files. Editing stays in the original PATHZY workspace.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <select
+              className="min-h-12 rounded-full border border-[#ded6ce] bg-[#fffaf4] px-4 text-sm font-bold text-[#2b211d] outline-none"
+              value={uploadCategory}
+              onChange={(event) => setUploadCategory(event.target.value as Exclude<VaultDocumentCategory, "all">)}
+              aria-label="Upload category"
+            >
+              {uploadCategories.map((category) => (
+                <option key={category} value={category}>{vaultCategoryLabels[category]}</option>
+              ))}
+            </select>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/png,image/jpeg"
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                const category = pendingUploadCategoryRef.current ?? uploadCategory;
+                pendingUploadCategoryRef.current = null;
+                if (file) void uploadFile(file, { category });
+              }}
+            />
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => {
+                pendingUploadCategoryRef.current = uploadCategory;
+                fileInputRef.current?.click();
+              }}
+              className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#d93a46] px-6 py-3 text-sm font-black text-white shadow-[0_18px_40px_rgba(127,29,29,.2)] transition hover:bg-[#b91c1c] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {uploading ? "Uploading..." : "Upload document"}
+            </button>
+          </div>
         </div>
+        <p className="mt-4 text-xs font-semibold text-[#766b63]">
+          Supported files: PDF, DOCX, TXT, PNG and JPG/JPEG up to {Math.round(vaultDocumentStorageContract.maxFileSizeBytes / (1024 * 1024))}MB.
+        </p>
+        {notice ? <p className="mt-4 rounded-[16px] border border-[#bbf7d0] bg-[#f0fdf4] px-4 py-3 text-sm font-bold text-[#166534]">{notice}</p> : null}
+        {error ? <p className="mt-4 rounded-[16px] border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm font-bold text-[#991b1b]">{error}</p> : null}
       </Card>
 
-      <Card>
-        {selected ? (
-          <>
-            <label className="label">
-              Document title
-              <input className="field" value={selected.title} onChange={(event) => savePatch({ title: event.target.value })} />
-            </label>
-            {error ? <p className="mt-4 rounded-[16px] border border-[#ff6b6b]/30 bg-[#ff6b6b]/10 px-4 py-3 text-sm text-[#ffc5c5]">{error}</p> : null}
-            {notice || saving ? <p className="mt-4 rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{saving ? "Saving..." : notice}</p> : null}
-            <div className="mt-4 grid gap-3 rounded-[18px] border border-white/10 bg-white/6 p-4 text-sm text-white/58 sm:grid-cols-3">
-              <span>Status: {selected.status ?? "draft"}</span>
-              <span>Template: {selected.template_name ?? "None"}</span>
-              <span>Version: {selected.version_number ?? 1}</span>
-            </div>
-            {selected.tool === "cv" && selectedCvModel ? (
-              <>
-                <div className="mt-5 rounded-[20px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 p-4">
-                  <div className="grid gap-3 lg:grid-cols-[1.2fr_.9fr]">
-                    <label className="label">
-                      CV version name
-                      <input className="field" value={selectedCvVersion?.versionName ?? selected.title} onChange={(event) => saveCvVersionPatch({ versionName: event.target.value })} />
-                    </label>
-                    <label className="label">
-                      Design system
-                      <select className="field" value={selectedCvVersion?.designSystem ?? normalizeDocumentTemplate(selected.template_name)} onChange={(event) => saveCvVersionPatch({ designSystem: normalizeDocumentTemplate(event.target.value) })}>
-                        {cvDesignSystems.map((template) => (
-                          <option key={template} value={template}>{template}</option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  <div className="mt-3 grid gap-2 text-xs font-bold text-[#c7d6ff]/80 sm:grid-cols-3">
-                    <span>Design version: {selectedCvVersion?.versionName ?? selected.title}</span>
-                    <span>Content source: one CV model</span>
-                    <span>Last downloaded: {selectedCvVersion?.lastDownloadedAt ? new Date(selectedCvVersion.lastDownloadedAt).toLocaleDateString() : "Not yet"}</span>
-                  </div>
-                </div>
-                <div className="mt-5 overflow-hidden rounded-[22px] bg-white p-2 text-black">
-                  <div dangerouslySetInnerHTML={{ __html: renderCvHtmlFromModel(selectedCvModel, selectedCvVersion?.designSystem ?? selected.template_name ?? undefined) }} />
-                </div>
-              </>
-            ) : null}
-            {selected.tool === "cv" ? (
-              <div className="mt-5 rounded-[18px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 p-4">
-                <p className="text-sm font-bold leading-6 text-[#c7d6ff]">CVs use the structured CV Builder so preview and PDF stay identical.</p>
-                <Link href="/professional-identity/cv" className="mt-3 inline-flex rounded-full blue-purple px-5 py-3 text-sm font-extrabold text-white">Edit in CV Builder</Link>
-              </div>
-            ) : (
-              <textarea className="mt-5 min-h-[420px] w-full resize-y rounded-[22px] border border-white/10 bg-[#050816]/70 p-5 text-sm leading-7 text-white/76 outline-none focus:border-[#5B8CFF]/50" value={selected.content} onChange={(event) => savePatch({ content: event.target.value })} />
-            )}
-            <div className="mt-4 flex flex-wrap gap-3">
-              <button onClick={copyText} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82">Copy</button>
-              <button onClick={downloadPdf} disabled={downloadBusy} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">{downloadBusy ? "Preparing..." : "Download PDF"}</button>
-              <button onClick={duplicateDocument} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82">Duplicate</button>
-              <button onClick={deleteDocument} className="rounded-full border border-[#ff6b6b]/25 bg-[#ff6b6b]/10 px-5 py-3 text-sm font-extrabold text-[#ffc5c5]">Delete</button>
-            </div>
-          </>
-        ) : (
-          <div className="grid min-h-[420px] place-items-center text-center">
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible" aria-label="Document categories">
+        {categoryOrder.map((category) => (
+          <button
+            key={category}
+            type="button"
+            onClick={() => setSelectedCategory(category)}
+            className={`shrink-0 rounded-full border px-4 py-2 text-sm font-black transition ${
+              selectedCategory === category
+                ? "border-[#7f1d1d] bg-[#7f1d1d] text-white"
+                : "border-[#ded6ce] bg-[#fffaf4] text-[#3b312d] hover:border-[#7f1d1d]"
+            }`}
+          >
+            {vaultCategoryLabels[category]} <span className="ml-1 opacity-70">{counts[category]}</span>
+          </button>
+        ))}
+      </div>
+
+      {storageServiceUnavailable && !visibleDocuments.length ? (
+        <Card>
+          <div className="grid min-h-[220px] place-items-center text-center">
             <div>
-              <h2 className="text-2xl font-black">Your document library is ready.</h2>
-              <p className="mt-3 max-w-md text-white/58">Generate a CV, cover letter, LinkedIn profile, recruiter message, follow-up email, or Career Passport to see it here.</p>
+              <h2 className="text-2xl font-black text-[#1f1613]">Document upload is temporarily unavailable.</h2>
+              <p className="mt-3 max-w-md text-sm leading-6 text-[#6b5f57]">
+                Your saved documents are safe. Please try again soon.
+              </p>
             </div>
           </div>
-        )}
-      </Card>
+        </Card>
+      ) : visibleDocuments.length ? (
+        <div className="grid gap-3">
+          {visibleDocuments.map((document) => {
+            const openHref = openHrefForDocument(document);
+            const isBusy = busyId === document.id;
+            return (
+              <article key={document.id} className="rounded-[28px] border border-[#ded6ce] bg-[#fffaf4] p-4 shadow-[0_18px_46px_rgba(31,22,19,.08)]">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-[#f4e9dd] px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-[#7f1d1d]">{vaultCategoryLabels[document.category]}</span>
+                      <span className="rounded-full border border-[#e7ddd2] px-3 py-1 text-xs font-bold text-[#6b5f57]">{documentFormat(document)}</span>
+                      <span className="rounded-full border border-[#e7ddd2] px-3 py-1 text-xs font-bold text-[#6b5f57]">{document.source === "pathzy" ? "PATHZY" : "Uploaded"}</span>
+                      {document.status !== "draft" ? <span className="rounded-full border border-[#e7ddd2] px-3 py-1 text-xs font-bold text-[#6b5f57]">{document.status === "final" ? "Final" : "Archived"}</span> : null}
+                    </div>
+                    {renamingId === document.id ? (
+                      <div className="mt-3 flex max-w-xl flex-col gap-2 sm:flex-row">
+                        <input
+                          className="min-h-11 flex-1 rounded-full border border-[#ded6ce] bg-white px-4 text-sm font-bold text-[#1f1613] outline-none focus:border-[#7f1d1d]"
+                          value={renameValue}
+                          onChange={(event) => setRenameValue(event.target.value)}
+                          aria-label="Document name"
+                        />
+                        <button type="button" className="rounded-full bg-[#7f1d1d] px-4 py-2 text-sm font-black text-white" onClick={() => saveDocumentPatch(document, { title: renameValue })}>Save</button>
+                        <button type="button" className="rounded-full border border-[#ded6ce] px-4 py-2 text-sm font-black text-[#3b312d]" onClick={() => setRenamingId("")}>Cancel</button>
+                      </div>
+                    ) : (
+                      <h3 className="mt-3 truncate text-xl font-black text-[#1f1613]">{document.title}</h3>
+                    )}
+                    <p className="mt-2 text-sm text-[#6b5f57]">
+                      Updated {formatDate(document.updatedAt)}{document.fileName ? ` · ${document.fileName}` : ""}{formatFileSize(document.fileSize) ? ` · ${formatFileSize(document.fileSize)}` : ""}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {openHref ? (
+                      <Link href={openHref} className="rounded-full bg-[#d93a46] px-4 py-2 text-sm font-black text-white transition hover:bg-[#b91c1c]">Open</Link>
+                    ) : (
+                      <button type="button" disabled={isBusy} onClick={() => openUploadedDocument(document)} className="rounded-full bg-[#d93a46] px-4 py-2 text-sm font-black text-white transition hover:bg-[#b91c1c] disabled:opacity-60">Open</button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => document.source === "pathzy" ? downloadGeneratedDocument(document) : openUploadedDocument(document, true)}
+                      className="rounded-full border border-[#ded6ce] bg-white px-4 py-2 text-sm font-black text-[#2b211d] transition hover:border-[#7f1d1d] disabled:opacity-60"
+                    >
+                      {isBusy ? "Working..." : "Download"}
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-full border border-[#ded6ce] bg-white px-4 py-2 text-sm font-black text-[#2b211d] transition hover:border-[#7f1d1d]"
+                      onClick={() => {
+                        setRenamingId(document.id);
+                        setRenameValue(document.title);
+                      }}
+                    >
+                      Rename
+                    </button>
+                    {document.source === "uploaded" ? (
+                      <>
+                        <select
+                          className="min-h-10 rounded-full border border-[#ded6ce] bg-white px-3 text-sm font-bold text-[#2b211d]"
+                          value={document.category}
+                          onChange={(event) => saveDocumentPatch(document, { category: event.target.value as VaultDocumentCategory })}
+                          aria-label={`Move ${document.title}`}
+                        >
+                          {uploadCategories.map((category) => (
+                            <option key={category} value={category}>{vaultCategoryLabels[category]}</option>
+                          ))}
+                        </select>
+                        <input
+                          ref={(node) => {
+                            replaceInputRefs.current[document.id] = node;
+                          }}
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/png,image/jpeg"
+                          onChange={(event) => {
+                            const file = event.currentTarget.files?.[0];
+                            if (file) void uploadFile(file, { replaceDocumentId: document.id, category: document.category });
+                          }}
+                        />
+                        <button type="button" disabled={isBusy} onClick={() => replaceInputRefs.current[document.id]?.click()} className="rounded-full border border-[#ded6ce] bg-white px-4 py-2 text-sm font-black text-[#2b211d] transition hover:border-[#7f1d1d] disabled:opacity-60">Replace</button>
+                      </>
+                    ) : null}
+                    <button type="button" disabled={isBusy} onClick={() => deleteDocument(document)} className="rounded-full border border-[#fecaca] bg-[#fff1f2] px-4 py-2 text-sm font-black text-[#991b1b] transition hover:border-[#b91c1c] disabled:opacity-60">Delete</button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <Card>
+          <div className="grid min-h-[260px] place-items-center text-center">
+            <div>
+              {(() => {
+                const empty = emptyStateForCategory(selectedCategory);
+                return (
+                  <>
+                    <h2 className="text-2xl font-black text-[#1f1613]">{empty.title}</h2>
+                    <p className="mt-3 max-w-md text-sm leading-6 text-[#6b5f57]">{empty.body}</p>
+                    <button
+                      type="button"
+                      disabled={uploading}
+                      onClick={() => {
+                        pendingUploadCategoryRef.current = selectedCategory === "all" ? uploadCategory : selectedCategory;
+                        if (selectedCategory !== "all") setUploadCategory(selectedCategory);
+                        fileInputRef.current?.click();
+                      }}
+                      className="mt-5 inline-flex min-h-11 items-center justify-center rounded-full bg-[#d93a46] px-5 py-2.5 text-sm font-black text-white shadow-[0_14px_32px_rgba(127,29,29,.18)] transition hover:bg-[#b91c1c] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {uploading ? "Uploading..." : empty.action}
+                    </button>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

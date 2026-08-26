@@ -38,8 +38,8 @@ export default async function FoundingMembersPage() {
       </PageHeader>
 
       {hasFounderAccess && membership ? (
-        <Card className="mb-6 border-[#39d98a]/30 bg-[#39d98a]/10">
-          <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-[#9df0c4]/70">Your launch membership</p>
+        <Card className="pathzy-status-success mb-6 border">
+          <p className="text-sm font-extrabold uppercase tracking-[0.14em]">Your launch membership</p>
           <h2 className="mt-2 text-3xl font-black">{membership.label}</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <div className="rounded-[18px] border border-white/10 bg-white/7 p-4"><p className="text-xs text-white/42">Phase</p><strong>{phaseLabel(membership.badge)}</strong></div>
@@ -56,7 +56,7 @@ export default async function FoundingMembersPage() {
         <Card className="relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(57,217,138,.20),transparent_22rem)]" />
           <div className="relative">
-            <span className="rounded-full bg-[#39d98a]/15 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-[#9df0c4]">Founding Testers</span>
+            <span className="rounded-full bg-[color-mix(in_srgb,var(--status-success)_14%,transparent)] px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-[var(--status-success)]">Founding Testers</span>
             <h2 className="mt-5 text-4xl font-black">{stats.foundingTestersRemaining} Founder spots remaining</h2>
             <p className="mt-3 text-white/62">20 total beta Founder places. {stats.foundingTestersClaimed} claimed.</p>
             <div className="mt-5"><ProgressBar value={progress} /></div>

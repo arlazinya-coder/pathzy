@@ -19,12 +19,12 @@ export function CanonicalProfileOverview({ summary }: { summary: CanonicalProfil
             PATHZY now keeps confirmed career information in one evidence-backed profile. Your CV, cover letter, LinkedIn content, applications, and career guidance can all read from the same source as this foundation grows.
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
-            <span className="rounded-full border border-[#74d4ff]/30 bg-[#74d4ff]/10 px-3 py-1 text-xs font-extrabold text-[#bdefff]">{readinessLabel(summary.readiness)}</span>
+            <span className="rounded-full border border-[color-mix(in_srgb,var(--brand-primary)_22%,transparent)] bg-[color-mix(in_srgb,var(--brand-primary)_10%,transparent)] px-3 py-1 text-xs font-extrabold text-[var(--pathzy-red-dark)]">{readinessLabel(summary.readiness)}</span>
             <span className="rounded-full border border-white/10 bg-white/7 px-3 py-1 text-xs font-extrabold text-white/60">Version {summary.version}</span>
             {summary.reviewNeededCount ? (
-              <span className="rounded-full border border-[#f8c45d]/30 bg-[#f8c45d]/10 px-3 py-1 text-xs font-extrabold text-[#ffe2a8]">{summary.reviewNeededCount} item{summary.reviewNeededCount === 1 ? "" : "s"} to review</span>
+              <span className="rounded-full border border-[color-mix(in_srgb,var(--status-warning)_24%,transparent)] bg-[color-mix(in_srgb,var(--status-warning)_10%,transparent)] px-3 py-1 text-xs font-extrabold text-[var(--status-warning)]">{summary.reviewNeededCount} item{summary.reviewNeededCount === 1 ? "" : "s"} to review</span>
             ) : (
-              <span className="rounded-full border border-[#9df0c4]/30 bg-[#9df0c4]/10 px-3 py-1 text-xs font-extrabold text-[#c8ffde]">No review alerts</span>
+              <span className="rounded-full border border-[color-mix(in_srgb,var(--status-success)_24%,transparent)] bg-[color-mix(in_srgb,var(--status-success)_10%,transparent)] px-3 py-1 text-xs font-extrabold text-[var(--status-success)]">No review alerts</span>
             )}
           </div>
         </div>
@@ -55,4 +55,3 @@ export function CanonicalProfileOverview({ summary }: { summary: CanonicalProfil
     </Card>
   );
 }
-

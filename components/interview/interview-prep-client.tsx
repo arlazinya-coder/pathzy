@@ -57,7 +57,7 @@ function QuestionCard({
     <article className="rounded-[20px] border border-white/10 bg-white/7 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#c7d6ff]/70">{label(question.category)}</p>
+          <p className="pathzy-eyebrow-accent text-xs font-extrabold uppercase tracking-[0.14em]">{label(question.category)}</p>
           <h3 className="mt-2 text-lg font-black">{question.question}</h3>
         </div>
         <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/58">{label(question.source)}</span>
@@ -82,7 +82,7 @@ function QuestionCard({
         <p className="mt-2 text-sm leading-6 text-white/60">{question.answerStructure.join(" -> ")}</p>
       </div>
       {feedback ? (
-        <div className="mt-4 rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-3 text-sm leading-6 text-[#b9f8d5]">
+        <div className="pathzy-status-success mt-4 rounded-[16px] border p-3 text-sm leading-6">
           <strong>Feedback:</strong> Relevance {feedback.relevance}/100, clarity {feedback.clarity}/100, evidence use {feedback.evidenceUse}/100.
           {feedback.unsupportedClaims.length ? <span className="block text-[#ffc5c5]">Review: {feedback.unsupportedClaims.join(" ")}</span> : null}
         </div>
@@ -115,8 +115,8 @@ function GapResponses({ gaps }: { gaps: GapResponse[] }) {
   return (
     <div className="grid gap-3">
       {gaps.map((gap) => (
-        <article key={gap.id} className="rounded-[18px] border border-[#FFD166]/25 bg-[#FFD166]/8 p-4">
-          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#ffe2a3]/70">{label(gap.type)}</p>
+        <article key={gap.id} className="pathzy-status-warning rounded-[18px] border p-4">
+          <p className="text-xs font-extrabold uppercase tracking-[0.14em]">{label(gap.type)}</p>
           <h3 className="mt-2 text-lg font-black">{gap.gap}</h3>
           <p className="mt-2 text-sm leading-6 text-white/62">{gap.honestPositioning}</p>
           <p className="mt-3 text-xs font-bold text-white/42">Avoid: {gap.claimsToAvoid.join("; ")}</p>
@@ -268,7 +268,7 @@ export function InterviewPrepClient({ applications }: { applications: Applicatio
                 </select>
               </label>
               {selectedApplication && !selectedApplication.job_match_analysis_id ? (
-                <p className="rounded-[16px] border border-[#FFD166]/30 bg-[#FFD166]/10 p-3 text-sm font-bold text-[#ffe2a3]">This application needs Job Intelligence before PATHZY can create evidence-grounded interview prep.</p>
+              <p className="pathzy-status-warning rounded-[16px] border p-3 text-sm font-bold">This application needs Job Intelligence before PATHZY can create evidence-grounded interview prep.</p>
               ) : null}
               <button disabled={busy === "generate" || !selectedApplication?.job_match_analysis_id} className="rounded-full blue-purple px-6 py-3 text-sm font-extrabold text-white disabled:opacity-50">
                 {busy === "generate" ? "Preparing" : "Create Interview Prep"}

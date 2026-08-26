@@ -440,7 +440,7 @@ export function OpportunitiesHub({
       <Card>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#FFD166]">Jobs</p>
+            <p className="pathzy-eyebrow-accent text-xs font-extrabold uppercase tracking-[0.16em]">Jobs</p>
             <h2 className="mt-2 text-3xl font-black">Real opportunities that fit your Professional Identity.</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-white/58">
               PATHZY shows real provider listings only, then explains suitability and eligibility separately before you decide what to do next. PATHZY never substitutes fake vacancies.
@@ -449,8 +449,8 @@ export function OpportunitiesHub({
           {providerStatus ? (
             <div className={`rounded-[18px] border px-4 py-3 text-sm leading-6 ${
               providerStatus.status === "available"
-                ? "border-[#39d98a]/25 bg-[#39d98a]/10 text-[#b9f8d5]"
-                : "border-[#FFD166]/25 bg-[#FFD166]/10 text-[#ffe2a3]"
+                ? "pathzy-status-success"
+                : "pathzy-status-warning"
             }`}>
               <strong className="block text-xs uppercase tracking-[0.14em]">
                 {providerStatus.status === "available" ? "Provider connected" : providerStatus.status.replaceAll("_", " ")}
@@ -468,7 +468,7 @@ export function OpportunitiesHub({
               onClick={() => setActiveTab(tab.id)}
               className={`rounded-full border px-4 py-2 text-sm font-extrabold transition ${
                 activeTab === tab.id
-                  ? "border-[#FFD166]/50 bg-[#FFD166] text-[#241707]"
+                  ? "border-[rgba(217,58,70,.55)] bg-[var(--brand-primary)] text-white"
                   : "border-white/10 bg-white/7 text-white/66 hover:bg-white/10"
               }`}
             >
@@ -490,8 +490,8 @@ export function OpportunitiesHub({
           <ProgressBar value={stats.progress} />
         </div>
 
-        {error ? <p className="mt-4 rounded-[16px] border border-[#ff6b6b]/30 bg-[#ff6b6b]/10 px-4 py-3 text-sm text-[#ffc5c5]">{error}</p> : null}
-        {success ? <p className="mt-4 rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{success}</p> : null}
+        {error ? <p className="pathzy-status-danger mt-4 rounded-[16px] border px-4 py-3 text-sm">{error}</p> : null}
+        {success ? <p className="pathzy-status-success mt-4 rounded-[16px] border px-4 py-3 text-sm font-bold">{success}</p> : null}
 
         <div className="mt-6 grid gap-4">
           {visibleOpportunities.map((opportunity) => {
@@ -501,7 +501,7 @@ export function OpportunitiesHub({
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap gap-2">
-                      <span className="rounded-full bg-[#FFD166]/15 px-3 py-1 text-xs font-extrabold text-[#ffe2a3]">Live {opportunity.source} listing</span>
+                      <span className="rounded-full border border-[rgba(217,58,70,.22)] bg-[rgba(217,58,70,.1)] px-3 py-1 text-xs font-extrabold text-[var(--text-secondary)]">Live {opportunity.source} listing</span>
                       <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/60">{opportunity.remoteType.replaceAll("_", "-")}</span>
                       <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/60">{opportunity.employmentType}</span>
                     </div>
@@ -510,7 +510,7 @@ export function OpportunitiesHub({
                     <p className="mt-1 text-xs font-bold text-white/38">Posted: {displayDate(opportunity.postedAt)} · Closing: {displayDate(opportunity.closingAt)}</p>
                   </div>
                   <div className="flex flex-col gap-2 md:items-end">
-                    <span className="w-fit rounded-full bg-[#FFD166] px-4 py-2 text-sm font-extrabold text-[#241707]">{matchLabel(opportunity.match.suitabilityLabel)}</span>
+                    <span className="w-fit rounded-full bg-[var(--brand-primary)] px-4 py-2 text-sm font-extrabold text-white">{matchLabel(opportunity.match.suitabilityLabel)}</span>
                     <span className="w-fit rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/68">Eligibility: {eligibilityLabel(opportunity.match.eligibilityStatus)}</span>
                   </div>
                 </div>
@@ -568,14 +568,14 @@ export function OpportunitiesHub({
                   <button type="button" onClick={() => setExpandedId(expanded ? "" : opportunity.id)} className="rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/70 transition hover:bg-white/14">
                     {expanded ? "Hide details" : "View Job"}
                   </button>
-                  <button disabled={busyId === opportunity.id} onClick={() => updateAction(opportunity, { saved: !opportunity.action.saved })} className={`rounded-full px-4 py-2 text-sm font-extrabold ${opportunity.action.saved ? "bg-[#39d98a]/18 text-[#9df0c4]" : "bg-white/10 text-white/68"}`}>
+                  <button disabled={busyId === opportunity.id} onClick={() => updateAction(opportunity, { saved: !opportunity.action.saved })} className={`rounded-full px-4 py-2 text-sm font-extrabold ${opportunity.action.saved ? "pathzy-status-success border" : "bg-white/10 text-white/68"}`}>
                     {opportunity.action.saved ? "Saved" : "Save"}
                   </button>
-                  <button disabled={preparingId === opportunity.id || busyId === opportunity.id} onClick={() => prepareApplication(opportunity)} className="rounded-full bg-[#FFD166] px-4 py-2 text-sm font-extrabold text-[#241707] transition hover:bg-[#ffe19a] disabled:cursor-not-allowed disabled:opacity-60">
+                  <button disabled={preparingId === opportunity.id || busyId === opportunity.id} onClick={() => prepareApplication(opportunity)} className="pathzy-control-primary px-4 py-2 text-sm font-extrabold transition disabled:cursor-not-allowed disabled:opacity-60">
                     {preparingId === opportunity.id ? "Preparing..." : "Prepare Application"}
                   </button>
                   <Link href={opportunity.applicationUrl} target="_blank" rel="noreferrer" className="rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/68 transition hover:bg-white/14">Apply on source site</Link>
-                  <button disabled={busyId === opportunity.id} onClick={() => updateAction(opportunity, { saved: true, applied: !opportunity.action.applied })} className={`rounded-full px-4 py-2 text-sm font-extrabold ${opportunity.action.applied ? "bg-[#5B8CFF]/22 text-[#c7d6ff]" : "bg-white/10 text-white/68"}`}>
+                  <button disabled={busyId === opportunity.id} onClick={() => updateAction(opportunity, { saved: true, applied: !opportunity.action.applied })} className={`rounded-full px-4 py-2 text-sm font-extrabold ${opportunity.action.applied ? "pathzy-status-info border" : "bg-white/10 text-white/68"}`}>
                     {opportunity.action.applied ? "Applied" : "Mark as Applied"}
                   </button>
                   {opportunity.action.applied ? (
@@ -686,7 +686,7 @@ function FieldInput({
         value={value ?? ""}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-[16px] border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold text-white outline-none transition placeholder:text-white/30 focus:border-[#5B8CFF]/60"
+        className="w-full rounded-[16px] border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold text-white outline-none transition placeholder:text-white/30 focus:border-[rgba(217,58,70,.6)]"
       />
     </label>
   );
@@ -744,10 +744,10 @@ function JobImportCard({
   ];
 
   return (
-    <section className="mb-5 rounded-[24px] border border-[#5B8CFF]/20 bg-[#5B8CFF]/8 p-4 md:p-5" aria-labelledby="job-import-title">
+    <section className="pathzy-status-info mb-5 rounded-[24px] border p-4 md:p-5" aria-labelledby="job-import-title">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#aac1ff]">Job Import</p>
+          <p className="pathzy-eyebrow-accent text-xs font-extrabold uppercase tracking-[0.14em]">Job Import</p>
           <h2 id="job-import-title" className="mt-2 text-2xl font-black">Inspect a job advert</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-white/60">
             Paste or upload a job advert. PATHZY will extract the job basics first, then you can review them before matching your profile in the next step.
@@ -762,7 +762,7 @@ function JobImportCard({
             key={item.id}
             type="button"
             onClick={() => setMode(item.id)}
-            className={`rounded-full px-4 py-2 text-sm font-extrabold transition ${mode === item.id ? "bg-[#5B8CFF] text-white" : "bg-white/10 text-white/64 hover:bg-white/14"}`}
+            className={`rounded-full px-4 py-2 text-sm font-extrabold transition ${mode === item.id ? "bg-[var(--brand-primary)] text-white" : "bg-white/10 text-white/64 hover:bg-white/14"}`}
             aria-pressed={mode === item.id}
           >
             {item.label}
@@ -779,7 +779,7 @@ function JobImportCard({
               onChange={(event) => setJobText(event.target.value)}
               placeholder="Paste the full job description, responsibilities, requirements, closing date and application instructions."
               rows={8}
-              className="w-full rounded-[18px] border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold leading-6 text-white outline-none transition placeholder:text-white/30 focus:border-[#5B8CFF]/60"
+              className="w-full rounded-[18px] border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold leading-6 text-white outline-none transition placeholder:text-white/30 focus:border-[rgba(217,58,70,.6)]"
             />
           </label>
         ) : null}
@@ -796,11 +796,11 @@ function JobImportCard({
             </div>
             <label className="grid gap-2 text-sm font-bold text-white/68">
               Responsibilities
-              <textarea value={manualResponsibilities} onChange={(event) => setManualResponsibilities(event.target.value)} rows={4} className="w-full rounded-[18px] border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold leading-6 text-white outline-none focus:border-[#5B8CFF]/60" />
+              <textarea value={manualResponsibilities} onChange={(event) => setManualResponsibilities(event.target.value)} rows={4} className="w-full rounded-[18px] border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold leading-6 text-white outline-none focus:border-[rgba(217,58,70,.6)]" />
             </label>
             <label className="grid gap-2 text-sm font-bold text-white/68">
               Candidate requirements
-              <textarea value={manualRequirements} onChange={(event) => setManualRequirements(event.target.value)} rows={4} className="w-full rounded-[18px] border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold leading-6 text-white outline-none focus:border-[#5B8CFF]/60" />
+              <textarea value={manualRequirements} onChange={(event) => setManualRequirements(event.target.value)} rows={4} className="w-full rounded-[18px] border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold leading-6 text-white outline-none focus:border-[rgba(217,58,70,.6)]" />
             </label>
           </div>
         ) : null}
@@ -828,7 +828,7 @@ function JobImportCard({
           type="button"
           disabled={isBusy}
           onClick={onSubmit}
-          className="rounded-full bg-[#5B8CFF] px-5 py-3 text-sm font-extrabold text-white transition hover:bg-[#7aa3ff] disabled:cursor-not-allowed disabled:opacity-60"
+          className="pathzy-control-primary px-5 py-3 text-sm font-extrabold transition disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isBusy ? "Inspecting job..." : "Inspect Job"}
         </button>
@@ -836,7 +836,7 @@ function JobImportCard({
       </div>
 
       {message ? (
-        <p className={`mt-4 rounded-[16px] border px-4 py-3 text-sm font-bold ${status === "failed" ? "border-[#ff6b6b]/30 bg-[#ff6b6b]/10 text-[#ffc5c5]" : status === "warning" ? "border-[#FFD166]/30 bg-[#FFD166]/10 text-[#ffe2a3]" : "border-[#39d98a]/25 bg-[#39d98a]/10 text-[#b9f8d5]"}`}>
+        <p className={`mt-4 rounded-[16px] border px-4 py-3 text-sm font-bold ${status === "failed" ? "pathzy-status-danger" : status === "warning" ? "pathzy-status-warning" : "pathzy-status-success"}`}>
           {message}
         </p>
       ) : null}
@@ -883,7 +883,7 @@ function JobImportCard({
               type="button"
               onClick={onMarkReady}
               disabled={isBusy || jobImport.status === "ocr_required"}
-              className="rounded-full bg-[#39d98a] px-5 py-3 text-sm font-extrabold text-[#062615] transition hover:bg-[#66e6a6] disabled:cursor-not-allowed disabled:opacity-60"
+              className="pathzy-control-primary px-5 py-3 text-sm font-extrabold transition disabled:cursor-not-allowed disabled:opacity-60"
             >
               {status === "ready" ? "Saved for Matching" : "Save Job Review"}
             </button>
@@ -973,10 +973,10 @@ function JobUnderstandingReview({
   const activeResponsibilities = understanding?.responsibilities.filter((item) => item.userStatus !== "removed") ?? [];
 
   return (
-    <section className="mb-5 rounded-[24px] border border-[#39d98a]/20 bg-[#39d98a]/8 p-4 md:p-5" aria-labelledby="job-analysis-title">
+    <section className="pathzy-status-info mb-5 rounded-[24px] border p-4 md:p-5" aria-labelledby="job-analysis-title">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#9df0c4]">Job Analysis</p>
+          <p className="pathzy-eyebrow-accent text-xs font-extrabold uppercase tracking-[0.14em]">Job Analysis</p>
           <h2 id="job-analysis-title" className="mt-2 text-2xl font-black">Review the job analysis</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-white/60">
             PATHZY has not matched this job to your profile yet. First, confirm what the job asks for so the next step stays truthful.
@@ -995,7 +995,7 @@ function JobUnderstandingReview({
             type="button"
             disabled={isBusy || !canCreate}
             onClick={onCreate}
-            className="rounded-full bg-[#39d98a] px-5 py-3 text-sm font-extrabold text-[#062615] transition hover:bg-[#66e6a6] disabled:cursor-not-allowed disabled:opacity-60"
+            className="pathzy-control-primary px-5 py-3 text-sm font-extrabold transition disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isBusy ? "Analysing job..." : "Review Analysis"}
           </button>
@@ -1030,7 +1030,7 @@ function JobUnderstandingReview({
                       value={responsibility.text}
                       onChange={(event) => updateResponsibility(responsibility.id, { text: event.target.value })}
                       rows={3}
-                      className="w-full rounded-[14px] border border-white/10 bg-black/18 px-3 py-2 text-sm font-semibold leading-6 text-white outline-none focus:border-[#5B8CFF]/60"
+                      className="w-full rounded-[14px] border border-white/10 bg-black/18 px-3 py-2 text-sm font-semibold leading-6 text-white outline-none focus:border-[rgba(217,58,70,.6)]"
                     />
                     <p className="mt-2 text-xs leading-5 text-white/42">Evidence: {responsibility.evidence.originalWording}</p>
                     <button type="button" onClick={() => removeResponsibility(responsibility.id)} className="mt-2 rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/56">Remove</button>
@@ -1052,7 +1052,7 @@ function JobUnderstandingReview({
                       value={requirement.sourceText}
                       onChange={(event) => updateRequirement(requirement.id, { sourceText: event.target.value, normalizedConcept: event.target.value })}
                       rows={2}
-                      className="w-full rounded-[14px] border border-white/10 bg-black/18 px-3 py-2 text-sm font-semibold leading-6 text-white outline-none focus:border-[#5B8CFF]/60"
+                      className="w-full rounded-[14px] border border-white/10 bg-black/18 px-3 py-2 text-sm font-semibold leading-6 text-white outline-none focus:border-[rgba(217,58,70,.6)]"
                     />
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       <label className="grid gap-1 text-xs font-bold text-white/50">
@@ -1112,7 +1112,7 @@ function JobUnderstandingReview({
               type="button"
               disabled={isBusy}
               onClick={() => onConfirm(understanding)}
-              className="rounded-full bg-[#39d98a] px-5 py-3 text-sm font-extrabold text-[#062615] transition hover:bg-[#66e6a6] disabled:cursor-not-allowed disabled:opacity-60"
+              className="pathzy-control-primary px-5 py-3 text-sm font-extrabold transition disabled:cursor-not-allowed disabled:opacity-60"
             >
               {status === "confirmed" ? "Analysis Confirmed" : "Confirm Job Analysis"}
             </button>
@@ -1122,7 +1122,7 @@ function JobUnderstandingReview({
       )}
 
       {message ? (
-        <p className={`mt-4 rounded-[16px] border px-4 py-3 text-sm font-bold ${status === "failed" ? "border-[#ff6b6b]/30 bg-[#ff6b6b]/10 text-[#ffc5c5]" : "border-[#39d98a]/25 bg-[#39d98a]/10 text-[#b9f8d5]"}`}>
+        <p className={`mt-4 rounded-[16px] border px-4 py-3 text-sm font-bold ${status === "failed" ? "pathzy-status-danger" : "pathzy-status-success"}`}>
           {message}
         </p>
       ) : null}
@@ -1180,10 +1180,10 @@ function ProfileJobMatchReview({
   if (understanding?.status !== "confirmed" && !analysis) return null;
   const isBusy = status === "processing";
   return (
-    <section className="mb-5 rounded-[24px] border border-[#FFD166]/20 bg-[#FFD166]/8 p-4 md:p-5" aria-labelledby="profile-job-match-title">
+    <section className="pathzy-status-info mb-5 rounded-[24px] border p-4 md:p-5" aria-labelledby="profile-job-match-title">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#ffe2a3]">Job Match</p>
+          <p className="pathzy-eyebrow-accent text-xs font-extrabold uppercase tracking-[0.14em]">Job Match</p>
           <h2 id="profile-job-match-title" className="mt-2 text-2xl font-black">Compare this job with your Professional Identity</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-white/60">
             PATHZY checks confirmed evidence against each requirement. Gaps and unknowns are kept separate, and your profile is not changed automatically.
@@ -1202,7 +1202,7 @@ function ProfileJobMatchReview({
             type="button"
             disabled={isBusy}
             onClick={onCreate}
-            className="rounded-full bg-[#FFD166] px-5 py-3 text-sm font-extrabold text-[#261b04] transition hover:bg-[#ffe19a] disabled:cursor-not-allowed disabled:opacity-60"
+            className="pathzy-control-primary px-5 py-3 text-sm font-extrabold transition disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isBusy ? "Matching job..." : "Create Job Match"}
           </button>
@@ -1211,9 +1211,9 @@ function ProfileJobMatchReview({
       ) : (
         <div className="mt-5 grid gap-4">
           {analysis.freshness?.stale ? (
-            <div className="rounded-[18px] border border-[#FFD166]/30 bg-[#FFD166]/10 p-4">
-              <p className="text-sm font-extrabold text-[#ffe2a3]">{analysis.freshness.reason ?? "This match may be stale."}</p>
-              <button type="button" onClick={onRefresh} disabled={isBusy} className="mt-3 rounded-full bg-[#FFD166] px-4 py-2 text-sm font-extrabold text-[#261b04] disabled:opacity-60">Refresh analysis</button>
+            <div className="pathzy-status-warning rounded-[18px] border p-4">
+              <p className="text-sm font-extrabold">{analysis.freshness.reason ?? "This match may be stale."}</p>
+              <button type="button" onClick={onRefresh} disabled={isBusy} className="pathzy-control-primary mt-3 px-4 py-2 text-sm font-extrabold disabled:opacity-60">Refresh analysis</button>
             </div>
           ) : null}
 
@@ -1297,7 +1297,7 @@ function ProfileJobMatchReview({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Link href={analysis.targetedCvRoute} className="rounded-full bg-[#FFD166] px-5 py-3 text-sm font-extrabold text-[#261b04] transition hover:bg-[#ffe19a]">
+            <Link href={analysis.targetedCvRoute} className="pathzy-control-primary px-5 py-3 text-sm font-extrabold transition">
               Prepare Targeted Application
             </Link>
             <button type="button" disabled={isBusy} onClick={onRefresh} className="rounded-full bg-white/10 px-5 py-3 text-sm font-extrabold text-white/64 transition hover:bg-white/14 disabled:opacity-60">
@@ -1309,7 +1309,7 @@ function ProfileJobMatchReview({
       )}
 
       {message ? (
-        <p className={`mt-4 rounded-[16px] border px-4 py-3 text-sm font-bold ${status === "failed" ? "border-[#ff6b6b]/30 bg-[#ff6b6b]/10 text-[#ffc5c5]" : "border-[#39d98a]/25 bg-[#39d98a]/10 text-[#b9f8d5]"}`}>
+        <p className={`mt-4 rounded-[16px] border px-4 py-3 text-sm font-bold ${status === "failed" ? "pathzy-status-danger" : "pathzy-status-success"}`}>
           {message}
         </p>
       ) : null}
@@ -1369,10 +1369,10 @@ function TargetedDocumentsReview({
   const copy = targetedDocumentsCopy.en;
   const isBusy = status === "processing";
   return (
-    <section className="mb-5 rounded-[24px] border border-[#5B8CFF]/24 bg-[#5B8CFF]/10 p-4 md:p-5" aria-labelledby="targeted-documents-title">
+    <section className="pathzy-status-info mb-5 rounded-[24px] border p-4 md:p-5" aria-labelledby="targeted-documents-title">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#aac1ff]">{copy.title}</p>
+          <p className="pathzy-eyebrow-accent text-xs font-extrabold uppercase tracking-[0.14em]">{copy.title}</p>
           <h2 id="targeted-documents-title" className="mt-2 text-2xl font-black">Create truthful documents for this job</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-white/60">
             PATHZY selects confirmed evidence from your Professional Identity and this job match. Targeting means better positioning, not invented experience.
@@ -1391,7 +1391,7 @@ function TargetedDocumentsReview({
               type="button"
               disabled={isBusy}
               onClick={onCreate}
-              className="rounded-full bg-[#5B8CFF] px-5 py-3 text-sm font-extrabold text-white transition hover:bg-[#7aa3ff] disabled:cursor-not-allowed disabled:opacity-60"
+              className="pathzy-control-primary px-5 py-3 text-sm font-extrabold transition disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isBusy ? "Preparing documents..." : copy.prepare}
             </button>
@@ -1401,7 +1401,7 @@ function TargetedDocumentsReview({
       ) : (
         <div className="mt-5 grid gap-4">
           {packageData.freshness.stale ? (
-            <div className="rounded-[18px] border border-[#FFD166]/30 bg-[#FFD166]/10 p-4 text-sm font-bold text-[#ffe2a3]">
+            <div className="pathzy-status-warning rounded-[18px] border p-4 text-sm font-bold">
               This targeted package may be stale. Create a refreshed version instead of silently rewriting these documents.
             </div>
           ) : null}
@@ -1440,7 +1440,7 @@ function TargetedDocumentsReview({
                       <span className="w-fit rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/60">{approvalLabel(document.approvalState)}</span>
                     </div>
                     {document.warnings.length ? (
-                      <ul className="mt-2 grid gap-1 text-xs leading-5 text-[#ffe2a3]">
+                      <ul className="mt-2 grid gap-1 text-xs leading-5 text-[var(--text-secondary)]">
                         {document.warnings.slice(0, 2).map((warning) => <li key={warning}>- {warning}</li>)}
                       </ul>
                     ) : null}
@@ -1450,7 +1450,7 @@ function TargetedDocumentsReview({
                           Open editor
                         </Link>
                       ) : null}
-                      <button type="button" disabled={isBusy} onClick={() => onApprove(document.professionalDocumentId)} className="rounded-full bg-[#39d98a] px-4 py-2 text-xs font-extrabold text-[#062615] disabled:opacity-60">
+                      <button type="button" disabled={isBusy} onClick={() => onApprove(document.professionalDocumentId)} className="pathzy-control-primary px-4 py-2 text-xs font-extrabold disabled:opacity-60">
                         Approve
                       </button>
                       <button type="button" disabled={isBusy} onClick={() => onRequestChanges(document.professionalDocumentId)} className="rounded-full bg-white/10 px-4 py-2 text-xs font-extrabold text-white/62 disabled:opacity-60">
@@ -1464,7 +1464,7 @@ function TargetedDocumentsReview({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" disabled={smartApplicationStatus === "processing"} onClick={onPrepareApplication} className="rounded-full bg-[#39d98a] px-5 py-3 text-sm font-extrabold text-[#062615] transition hover:bg-[#66e6a6] disabled:opacity-60">
+            <button type="button" disabled={smartApplicationStatus === "processing"} onClick={onPrepareApplication} className="pathzy-control-primary px-5 py-3 text-sm font-extrabold transition disabled:opacity-60">
               {smartApplicationStatus === "processing" ? "Preparing application..." : "Prepare Application"}
             </button>
             <button type="button" disabled={isBusy} onClick={onCreate} className="rounded-full bg-white/10 px-5 py-3 text-sm font-extrabold text-white/64 transition hover:bg-white/14 disabled:opacity-60">
@@ -1476,10 +1476,10 @@ function TargetedDocumentsReview({
             <span className="rounded-full bg-white/10 px-4 py-3 text-sm font-bold text-white/54">No application is sent automatically.</span>
           </div>
           {smartApplication ? (
-            <div className="rounded-[18px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-4">
-              <p className="text-sm font-extrabold text-[#b9f8d5]">Application Workspace is ready.</p>
+            <div className="pathzy-status-success rounded-[18px] border p-4">
+              <p className="text-sm font-extrabold">Application Workspace is ready.</p>
               <p className="mt-1 text-sm leading-6 text-white/60">Review the package checklist, approve documents, and mark as applied only after you submit externally.</p>
-              <Link href={`${appRoutes.applications}?applicationId=${encodeURIComponent(smartApplication.id)}`} className="mt-3 inline-flex rounded-full bg-[#39d98a] px-4 py-2 text-sm font-extrabold text-[#062615]">
+              <Link href={`${appRoutes.applications}?applicationId=${encodeURIComponent(smartApplication.id)}`} className="pathzy-control-primary mt-3 inline-flex px-4 py-2 text-sm font-extrabold">
                 Open Application Workspace
               </Link>
             </div>
@@ -1488,12 +1488,12 @@ function TargetedDocumentsReview({
       )}
 
       {message ? (
-        <p className={`mt-4 rounded-[16px] border px-4 py-3 text-sm font-bold ${status === "failed" ? "border-[#ff6b6b]/30 bg-[#ff6b6b]/10 text-[#ffc5c5]" : "border-[#39d98a]/25 bg-[#39d98a]/10 text-[#b9f8d5]"}`}>
+        <p className={`mt-4 rounded-[16px] border px-4 py-3 text-sm font-bold ${status === "failed" ? "pathzy-status-danger" : "pathzy-status-success"}`}>
           {message}
         </p>
       ) : null}
       {smartApplicationMessage ? (
-        <p className={`mt-4 rounded-[16px] border px-4 py-3 text-sm font-bold ${smartApplicationStatus === "failed" ? "border-[#ff6b6b]/30 bg-[#ff6b6b]/10 text-[#ffc5c5]" : "border-[#39d98a]/25 bg-[#39d98a]/10 text-[#b9f8d5]"}`}>
+        <p className={`mt-4 rounded-[16px] border px-4 py-3 text-sm font-bold ${smartApplicationStatus === "failed" ? "pathzy-status-danger" : "pathzy-status-success"}`}>
           {smartApplicationMessage}
         </p>
       ) : null}
@@ -1504,10 +1504,10 @@ function TargetedDocumentsReview({
 function JobIntelligencePanel({ analysis }: { analysis: JobMatchAnalysis }) {
   const copy = jobIntelligenceCopy[analysis.job.language];
   return (
-    <div className="mt-4 rounded-[20px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 p-4">
+    <div className="pathzy-status-info mt-4 rounded-[20px] border p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#aac1ff]">{copy.title}</p>
+          <p className="pathzy-eyebrow-accent text-xs font-extrabold uppercase tracking-[0.14em]">{copy.title}</p>
           <h4 className="mt-2 text-lg font-black text-white">{analysis.headline}</h4>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-white/62">{copy.subtitle}</p>
         </div>
@@ -1535,7 +1535,7 @@ function JobIntelligencePanel({ analysis }: { analysis: JobMatchAnalysis }) {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <Link href={analysis.nextActions[1]?.route ?? "/professional-identity/cv"} className="rounded-full bg-[#5B8CFF] px-4 py-2 text-sm font-extrabold text-white transition hover:bg-[#7aa3ff]">
+        <Link href={analysis.nextActions[1]?.route ?? "/professional-identity/cv"} className="pathzy-control-primary px-4 py-2 text-sm font-extrabold transition">
           {copy.prepareCv}
         </Link>
         <span className="rounded-full bg-white/10 px-4 py-2 text-sm font-bold text-white/58">User reviews before applying</span>

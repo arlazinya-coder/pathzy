@@ -13,8 +13,8 @@ export function DocumentReasoningSummary({ reasoning }: { reasoning: ReasoningRu
     ["Confidence", percent(reasoning.confidence)]
   ];
   return (
-    <section className="mt-4 rounded-[18px] border border-[#5B8CFF]/20 bg-[#5B8CFF]/10 p-4" aria-label="Career information check summary">
-      <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#c7d6ff]/78">Career Information Check</p>
+    <section className="pathzy-status-info mt-4 rounded-[18px] border p-4" aria-label="Career information check summary">
+      <p className="pathzy-eyebrow-accent text-xs font-extrabold uppercase tracking-[0.14em]">Career Information Check</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {rows.map(([label, value]) => (
           <div key={label} className="rounded-[14px] border border-white/10 bg-white/7 p-3">

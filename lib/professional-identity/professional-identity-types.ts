@@ -75,6 +75,7 @@ export type GenerateOptions = {
   language?: ProfessionalLanguage;
   cvType?: string;
   templateName?: string;
+  templatePalette?: string;
   company?: string;
   role?: string;
   jobDescription?: string;
@@ -100,6 +101,7 @@ export type GeneratedProfessionalDocument = {
   content: string;
   contentJson?: Record<string, unknown> | null;
   template_name?: string | null;
+  status?: string | null;
   version_number?: number | null;
   created_at?: string | null;
   updated_at?: string | null;

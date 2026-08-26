@@ -33,6 +33,27 @@ const documentTables: Record<GeneratableTool, { table: string; contentColumn: st
 
 const friendlyError = "We could not complete this action yet. Your progress is safe. Please try again.";
 
+function cleanSavedGeneratedDocumentTitle(tool: Tool, title: string) {
+  const cleaned = title
+    .replace(/\bPATHZY Signature\b/gi, "")
+    .replace(/\bDRAFT\b|\bDOWNLOADED\b/gi, "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+-\s+/g, " - ")
+    .trim();
+
+  if (tool === "cv") {
+    const base = cleaned.replace(/^cv\s+/i, "").replace(/\s*[-–—]?\s*(cv|resume)$/i, "").trim();
+    return base ? `${base} — CV` : "Professional CV";
+  }
+
+  if (tool === "cover-letter") {
+    const base = cleaned.replace(/^letter\s+/i, "").replace(/\s*[-–—]?\s*cover\s+letter$/i, "").trim();
+    return base ? `${base} — Cover Letter` : "Cover Letter";
+  }
+
+  return cleaned || tool.replace(/-/g, " ");
+}
+
 const toolToUserDocumentType: Record<Tool, UserDocumentType> = {
   cv: "cv",
   "cover-letter": "cover_letter",
@@ -120,6 +141,13 @@ export async function POST(request: Request) {
     tool?: Tool;
     options?: GenerateOptions;
     replaceDocumentId?: string;
+    persistDocument?: {
+      title?: string;
+      content?: string;
+      contentJson?: Record<string, unknown> | null;
+      templateName?: string | null;
+      status?: "draft" | "ready" | "archived";
+    };
     upload?: {
       documentType?: UserDocumentType;
       title?: string;
@@ -127,7 +155,7 @@ export async function POST(request: Request) {
       fileName?: string;
       fileType?: string;
       fileSize?: number;
-  status?: "draft" | "ready" | "downloaded" | "archived";
+  status?: "draft" | "ready" | "archived";
   content_json?: Record<string, unknown> | null;
   };
   };
@@ -145,6 +173,85 @@ export async function POST(request: Request) {
       plan: "starter",
       limit: 0
     });
+  }
+
+  if (body.persistDocument) {
+    if (tool === "uploaded-document" || tool === "supporting-document") {
+      return NextResponse.json({ error: "Use the upload flow for uploaded documents." }, { status: 400 });
+    }
+    const title = cleanSavedGeneratedDocumentTitle(tool, body.persistDocument.title?.trim() ?? "");
+    if (!title) return NextResponse.json({ error: "Document title is required." }, { status: 400 });
+    try {
+      const documentType = toolToUserDocumentType[tool];
+      const contentJson = {
+        tool,
+        ...(body.persistDocument.contentJson ?? {})
+      };
+      const write = tool === "cv" || tool === "cover-letter"
+        ? await supabase
+            .from("user_documents")
+            .select("id,version_number")
+            .eq("user_id", user.id)
+            .eq("document_type", documentType)
+            .neq("status", "archived")
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        : { data: null, error: null };
+      if (write.error) throw write.error;
+
+      const existingId = write.data?.id;
+      const persisted = existingId
+        ? supabase
+            .from("user_documents")
+            .update({
+              document_title: title,
+              template_name: body.persistDocument.templateName ?? null,
+              content_text: body.persistDocument.content ?? "",
+              content_json: contentJson,
+              status: body.persistDocument.status ?? "draft",
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", existingId)
+            .eq("user_id", user.id)
+            .select("*")
+            .single()
+        : supabase
+            .from("user_documents")
+            .insert({
+              user_id: user.id,
+              document_type: documentType,
+              document_title: title,
+              template_name: body.persistDocument.templateName ?? null,
+              content_text: body.persistDocument.content ?? "",
+              content_json: contentJson,
+              status: body.persistDocument.status ?? "draft",
+              version_number: 1
+            })
+            .select("*")
+            .single();
+      const { data, error } = await persisted;
+      if (error) throw error;
+      return NextResponse.json({
+        document: {
+          id: data.id,
+          tool,
+          document_type: data.document_type,
+          title: data.document_title,
+          content: data.content_text ?? "",
+          contentJson: data.content_json ?? null,
+          template_name: data.template_name,
+          status: data.status,
+          version_number: data.version_number,
+          created_at: data.created_at,
+          updated_at: data.updated_at,
+          last_downloaded_at: data.last_downloaded_at
+        }
+      });
+    } catch (error) {
+      console.error("[professional-identity] document persist failed", error);
+      return NextResponse.json({ error: friendlyError }, { status: 500 });
+    }
   }
 
   if (tool === "uploaded-document" || tool === "supporting-document") {
@@ -374,7 +481,7 @@ export async function GET() {
 export async function PATCH(request: Request) {
   const auth = await requireUser();
   if ("error" in auth) return auth.error;
-  const body = (await request.json()) as { id?: string; tool?: Tool; title?: string; content?: string; contentJson?: Record<string, unknown> | null; templateName?: string; duplicate?: boolean; status?: "draft" | "ready" | "downloaded" | "archived"; downloaded?: boolean; updateLinkedVersions?: boolean };
+  const body = (await request.json()) as { id?: string; tool?: Tool; title?: string; content?: string; contentJson?: Record<string, unknown> | null; templateName?: string; duplicate?: boolean; status?: "draft" | "ready" | "archived"; updateLinkedVersions?: boolean };
   if (!body.id || !body.tool) return NextResponse.json({ error: "Document is required." }, { status: 400 });
 
   try {
@@ -420,11 +527,6 @@ export async function PATCH(request: Request) {
       if (typeof body.title === "string" && body.title.trim()) update.document_title = body.title.trim();
       if (typeof body.templateName === "string" && body.templateName.trim()) update.template_name = body.templateName.trim();
       if (body.status) update.status = body.status;
-      if (body.downloaded) {
-        update.status = "downloaded";
-        update.last_downloaded_at = new Date().toISOString();
-      }
-
       const { data, error } = await auth.supabase.from("user_documents").update(update).eq("id", body.id).eq("user_id", auth.user.id).select("*").single();
       if (error) throw error;
       if (body.updateLinkedVersions && body.tool === "cv" && body.contentJson?.cvModel && body.contentJson?.cvVersion) {

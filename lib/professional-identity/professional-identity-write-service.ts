@@ -6,7 +6,7 @@ import {
 } from "@/lib/readiness/employment-readiness-check";
 import { legacyLanguageValue, normalizeLanguageCode, normalizeProfessionalDocumentLanguageChoice } from "@/lib/language/language-preferences";
 import { normalizeCurrentSituation } from "@/lib/professional-identity/current-situation";
-import { experienceEntryToText, normalizeProfessionalIdentityExperienceEntries } from "@/lib/professional-identity/professional-identity-experience";
+import { experienceEntryToText, selectCanonicalProfessionalIdentityExperiences } from "@/lib/professional-identity/professional-identity-experience";
 import {
   professionalIdentityRequiredChecksFromValues,
   professionalIdentityValuesFromSources,
@@ -115,7 +115,7 @@ function listValue(values: CleanProfessionalIdentityValues, key: string) {
 }
 
 function experienceListValue(values: CleanProfessionalIdentityValues, key: string) {
-  return normalizeProfessionalIdentityExperienceEntries(values[key]);
+  return selectCanonicalProfessionalIdentityExperiences(values[key]);
 }
 
 function firstListItem(values: CleanProfessionalIdentityValues, key: string) {
@@ -209,6 +209,7 @@ export function discoveryPatchForProfessionalIdentitySection(section: string, va
   if (section === "experience") {
     const experienceEntries = experienceListValue(values, "experience");
     return {
+      experience: experienceEntries,
       experience_history: experienceEntries,
       experience_entries: experienceEntries,
       personal_background: ""

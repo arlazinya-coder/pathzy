@@ -43,8 +43,8 @@ export default async function SettingsPage() {
         <Card>
           <h2 className="mb-5 text-2xl font-black">Founder Premium</h2>
           <div className="mb-6 grid gap-3">
-            <div className="rounded-[18px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#9df0c4]/70">Badge</p>
+            <div className="pathzy-status-success rounded-[18px] border p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.12em]">Badge</p>
               <strong className="mt-2 block">{membership.label}</strong>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -73,7 +73,7 @@ export default async function SettingsPage() {
             {settings.map((item) => (
               <label key={item} className="flex items-center justify-between gap-4 rounded-[18px] border border-white/10 bg-white/7 p-4 font-bold text-white/74">
                 {item}
-                <input type="checkbox" defaultChecked className="h-5 w-5 accent-[#5B8CFF]" />
+                <input type="checkbox" defaultChecked className="h-5 w-5 accent-[var(--brand-primary)]" />
               </label>
             ))}
           </div>

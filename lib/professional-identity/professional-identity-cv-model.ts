@@ -2,7 +2,7 @@ import { normalizeCvModelForExport, serializeCvModel, type CvModel } from "@/com
 import { routeBuilders, appRoutes } from "@/lib/navigation/routes";
 import type { ProfessionalIdentitySectionId } from "@/lib/canonical-profile/canonical-professional-identity.model";
 import type { GeneratedProfessionalDocument } from "@/lib/professional-identity/professional-identity-types";
-import { normalizeProfessionalIdentityExperienceEntries } from "@/lib/professional-identity/professional-identity-experience";
+import { selectCanonicalProfessionalIdentityExperiences } from "@/lib/professional-identity/professional-identity-experience";
 import {
   normalizeProfessionalIdentityCompletionValues,
   professionalIdentityRequiredChecksFromValues,
@@ -78,7 +78,7 @@ export function professionalIdentityHrefForCvSection(sectionTitle: string) {
 export function cvModelFromProfessionalIdentity(values: ProfessionalIdentityCompletionValues): CvModel {
   const identity = normalizeProfessionalIdentityCompletionValues(values);
   const profileLinks = [identity.portfolio_url, identity.website_url, identity.behance_url, identity.github_url].filter(Boolean) as string[];
-  const experienceEntries = normalizeProfessionalIdentityExperienceEntries(identity.experience);
+  const experienceEntries = selectCanonicalProfessionalIdentityExperiences(identity.experience);
   return normalizeCvModelForExport({
     fullName: identity.full_name ?? "",
     targetRole: identity.career_goal ?? "",
@@ -150,7 +150,7 @@ export function professionalIdentityHasCvSeedData(values: ProfessionalIdentityCo
       identity.career_goal ||
       identity.professional_summary ||
       cleanList(identity.education).length ||
-      normalizeProfessionalIdentityExperienceEntries(identity.experience).length ||
+      selectCanonicalProfessionalIdentityExperiences(identity.experience).length ||
       cleanList(identity.skills).length ||
       cleanList(identity.projects).length
   );

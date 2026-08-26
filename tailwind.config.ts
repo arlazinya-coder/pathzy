@@ -8,8 +8,12 @@ const config: Config = {
         pathzy: {
           bg: "#050816",
           panel: "#0B1020",
-          blue: "#5B8CFF",
-          purple: "#7B5CFF"
+          red: "#D93A46",
+          redDark: "#A92130",
+          ivory: "#F7F5F1",
+          navy: "#0C1628",
+          blue: "#D93A46",
+          purple: "#A92130"
         }
       },
       borderRadius: {

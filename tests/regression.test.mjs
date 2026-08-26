@@ -67,16 +67,19 @@ const roadmapPage = readFileSync("app/roadmap/page.tsx", "utf8");
 const professionalIdentityPage = readFileSync("app/professional-identity/page.tsx", "utf8");
 const professionalIdentityReviewRoute = readFileSync("app/professional-identity/review/page.tsx", "utf8");
 const professionalIdentitySectionRoute = readFileSync("app/professional-identity/section/[sectionId]/page.tsx", "utf8");
+const professionalIdentityApi = readFileSync("app/api/professional-identity/route.ts", "utf8");
 const profileActionEditor = readFileSync("components/professional-identity/profile-action-editor.tsx", "utf8");
 const professionalPhotoApi = readFileSync("app/api/professional-identity/photo/route.ts", "utf8");
 const professionalIdentityCompletion = readFileSync("lib/professional-identity/professional-identity-completion.ts", "utf8");
 const professionalIdentityExperience = readFileSync("lib/professional-identity/professional-identity-experience.ts", "utf8");
 const professionalIdentityCvModel = readFileSync("lib/professional-identity/professional-identity-cv-model.ts", "utf8");
+const coverLetterIntelligence = readFileSync("lib/professional-identity/cover-letter-intelligence.ts", "utf8");
 const professionalIdentityReadService = readFileSync("lib/professional-identity/professional-identity-read-service.ts", "utf8");
 const professionalIdentityDiscoveryCompatibility = readFileSync("lib/professional-identity/professional-identity-discovery-compatibility.ts", "utf8");
 const professionalIdentityAutosave = readFileSync("lib/professional-identity/use-professional-identity-autosave.ts", "utf8");
 const professionalIdentityWriteService = readFileSync("lib/professional-identity/professional-identity-write-service.ts", "utf8");
 const professionalIdentitySync = readFileSync("lib/professional-identity/professional-identity-sync.ts", "utf8");
+const savedProfessionalDocuments = readFileSync("lib/professional-identity/saved-professional-documents.ts", "utf8");
 const currentSituationContract = readFileSync("lib/professional-identity/current-situation.ts", "utf8");
 const cvConfiguration = readFileSync("lib/professional-documents/cv-configuration.ts", "utf8");
 const employmentIntelligenceDomainIndex = readFileSync("lib/employment-intelligence/domain/index.ts", "utf8");
@@ -211,7 +214,19 @@ const generateRoadmapApi = readFileSync("app/api/generate-roadmap/route.ts", "ut
 const professionalCvPage = readFileSync("app/professional-identity/cv/page.tsx", "utf8");
 const professionalCoverLetterPage = readFileSync("app/professional-identity/cover-letter/page.tsx", "utf8");
 const professionalLinkedInPage = readFileSync("app/professional-identity/linkedin/page.tsx", "utf8");
+const professionalCareerPassportPage = readFileSync("app/professional-identity/career-passport/page.tsx", "utf8");
 const applicationsPage = readFileSync("app/applications/page.tsx", "utf8");
+const missionSystem = readFileSync("components/missions/mission-system.tsx", "utf8");
+const documentWorkspaceStatusSurfaces = [
+  "components/documents/DocumentInspectionStatus.tsx",
+  "components/documents/DocumentInspectionSummary.tsx",
+  "components/documents/DocumentVisualReadingStatus.tsx",
+  "components/documents/DocumentVisualReadingSummary.tsx",
+  "components/documents/DocumentSemanticUnderstandingStatus.tsx",
+  "components/documents/DocumentSemanticUnderstandingSummary.tsx",
+  "components/documents/DocumentReasoningSummary.tsx",
+  "components/auth/auth-notice.tsx"
+].map((filePath) => readFileSync(filePath, "utf8")).join("\n");
 const skillsPage = readFileSync("app/skills/page.tsx", "utf8");
 const billingPage = readFileSync("app/billing/page.tsx", "utf8");
 const settingsPage = readFileSync("app/settings/page.tsx", "utf8");
@@ -225,10 +240,15 @@ const documentTemplateEngine = readFileSync("lib/professional-identity/document-
 const professionalPhotoContract = readFileSync("lib/professional-identity/professional-photo.ts", "utf8");
 const documentDownloads = readFileSync("components/professional-identity/document-downloads.ts", "utf8");
 const professionalIdentityTool = readFileSync("components/professional-identity/professional-identity-tool.tsx", "utf8");
+const professionalPhotoAvatar = readFileSync("components/professional-identity/professional-photo-avatar.tsx", "utf8");
+const careerPassportProjection = readFileSync("lib/professional-identity/career-passport-projection.ts", "utf8");
 const professionalIdentityCoverLetterModel = readFileSync("lib/professional-identity/professional-identity-cover-letter-model.ts", "utf8");
 const professionalIdentityLinkedInModel = readFileSync("lib/professional-identity/professional-identity-linkedin-model.ts", "utf8");
 const templateMiniPreview = readFileSync("components/professional-identity/template-mini-preview.tsx", "utf8");
+const myDocumentsPage = readFileSync("app/professional-identity/documents/page.tsx", "utf8");
 const myDocumentsClient = readFileSync("components/professional-identity/my-documents-client.tsx", "utf8");
+const documentVaultContract = readFileSync("lib/professional-identity/document-vault.ts", "utf8");
+const documentVaultApi = readFileSync("app/api/professional-identity/documents/route.ts", "utf8");
 const cvBuilderPage = readFileSync("app/cv-builder/page.tsx", "utf8");
 const supabaseServer = readFileSync("lib/supabase/server.ts", "utf8");
 const floatingMentorButton = readFileSync("components/mentor/floating-mentor-button.tsx", "utf8");
@@ -294,6 +314,7 @@ const canonicalProfileVersioning = readFileSync("lib/canonical-profile/canonical
 const canonicalProfileIndex = readFileSync("lib/canonical-profile/index.ts", "utf8");
 const canonicalPhase2aMigration = readFileSync("supabase/migrations/20260718210000_phase_2a_canonical_profile_foundation_scaffold.sql", "utf8");
 const professionalPhotoStorageMigration = readFileSync("supabase/migrations/20260803120000_create_professional_photo_storage.sql", "utf8");
+const employmentDocumentStorageMigration = readFileSync("supabase/migrations/20260805120000_create_employment_document_storage.sql", "utf8");
 const professionalDocumentTypes = readFileSync("lib/professional-documents/professional-document.types.ts", "utf8");
 const professionalDocumentService = readFileSync("lib/professional-documents/professional-document-service.ts", "utf8");
 const professionalDocumentAdapter = readFileSync("lib/professional-documents/cv-content-adapter.ts", "utf8");
@@ -427,7 +448,12 @@ const professionalIdentityCompletionRuntime = loadProductionTsModule("lib/profes
 const professionalIdentityExperienceRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-experience.ts");
 const professionalIdentityCvModelRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-cv-model.ts");
 const professionalIdentityCoverLetterModelRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-cover-letter-model.ts");
+const coverLetterIntelligenceRuntime = loadProductionTsModule("lib/professional-identity/cover-letter-intelligence.ts");
+const professionalPhotoRuntime = loadProductionTsModule("lib/professional-identity/professional-photo.ts");
+const documentVaultRuntime = loadProductionTsModule("lib/professional-identity/document-vault.ts");
+const careerPassportProjectionRuntime = loadProductionTsModule("lib/professional-identity/career-passport-projection.ts");
 const professionalIdentityLinkedInModelRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-linkedin-model.ts");
+const documentTemplateEngineRuntime = loadProductionTsModule("lib/professional-identity/document-template-engine.ts");
 const documentDownloadsRuntime = loadProductionTsModule("components/professional-identity/document-downloads.ts");
 const professionalIdentityWriteRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-write-service.ts");
 const employmentIntelligenceDomainRuntime = loadProductionTsModule("lib/employment-intelligence/domain/index.ts");
@@ -1034,6 +1060,34 @@ assert.equal(normalizedExperienceEntries.length, 2, "Two Professional Identity e
 assert.equal(normalizedExperienceEntries.map((entry) => entry.role).join(" -> "), "Founder & Product Owner -> Co-founder & Marketing Lead", "Experience ordering must be preserved.");
 assert.equal(normalizedExperienceEntries.map((entry) => entry.company).join(" -> "), "PATHZY -> AVOLITO Beverages", "Each experience company must stay attached to the correct role.");
 assert.equal(normalizedExperienceEntries.map((entry) => professionalIdentityExperienceRuntime.experienceEntryDateLabel(entry)).join(" -> "), "2025 - Present -> 2026 - Present", "Each experience date range must stay attached to the correct role.");
+const canonicalExperienceSelectorFixture = professionalIdentityExperienceRuntime.selectCanonicalProfessionalIdentityExperiences({
+  experience_entries: twoExperienceFixture,
+  experience_history: ["Legacy Experience | Old Company | 2024 - 2025 | This old value must not win."],
+  personal_background: "Legacy Experience | Old Company | 2024 - 2025 | This old value must not win."
+});
+assert.equal(canonicalExperienceSelectorFixture.length, 2, "The shared canonical Experience selector must prefer structured experience_entries over legacy text fields.");
+assert.equal(canonicalExperienceSelectorFixture.some((entry) => /Legacy Experience|Old Company/.test(JSON.stringify(entry))), false, "Legacy Experience compatibility fields must not override structured canonical Experience records.");
+const canonicalExperienceSelectorWithLegacyExperienceAlias = professionalIdentityExperienceRuntime.selectCanonicalProfessionalIdentityExperiences({
+  experience: [
+    "Co-founder & Marketing Lead - AVOLITO Beverages - 2026 - Present - Co-founder & Marketing Lead AVOLITO Beverages 2026 - Present Coordinating launch planning, brand messaging and early marketing operations."
+  ],
+  experience_entries: [
+    {
+      id: "exp-avolito-marketing",
+      role: "Co-founder & Marketing Lead",
+      company: "AVOLITO Beverages",
+      location: "Johannesburg",
+      startDate: "2026",
+      endDate: "Present",
+      description: "Coordinating launch planning, brand messaging and early marketing operations.",
+      achievements: []
+    }
+  ],
+  experience_history: ["Co-founder & Marketing Lead | AVOLITO Beverages | 2026 - Present | This legacy text must not win."]
+});
+assert.equal(canonicalExperienceSelectorWithLegacyExperienceAlias.length, 1, "A stale legacy experience alias must not override canonical structured experience_entries.");
+assert.equal(canonicalExperienceSelectorWithLegacyExperienceAlias[0].description, "Coordinating launch planning, brand messaging and early marketing operations.", "The canonical selector must return the clean structured AVOLITO description, not the legacy grey duplicate text.");
+assert.equal((JSON.stringify(canonicalExperienceSelectorWithLegacyExperienceAlias).match(/Co-founder & Marketing Lead/g) ?? []).length, 1, "The legacy experience alias must not put the AVOLITO role into both role and description.");
 const duplicateLegacyExperienceFixture = professionalIdentityExperienceRuntime.normalizeProfessionalIdentityExperienceEntries([
   {
     id: "exp-pathzy-founder",
@@ -1064,6 +1118,92 @@ assert.equal(duplicateLegacyExperienceFixture.length, 2, "Legacy composite sourc
 assert.equal(duplicateLegacyExperienceFixture[0].description, "Building an employment operating system for guided career support.", "Professional Identity Review must not show a second grey duplicate paragraph from structured Experience 1.");
 assert.deepEqual(Array.from(duplicateLegacyExperienceFixture[0].achievements), ["Designed the Professional Identity workflow."], "Composite legacy achievements must be removed while genuine achievements remain.");
 assert.equal(duplicateLegacyExperienceFixture[1].description, "Coordinating launch planning, brand messaging and early marketing operations.", "A raw legacy record may fill missing description without duplicating role/company/dates.");
+const avolitoGreyDuplicateFixture = professionalIdentityExperienceRuntime.selectCanonicalProfessionalIdentityExperiences([
+  {
+    id: "exp-avolito-marketing",
+    role: "Co-founder & Marketing Lead",
+    company: "AVOLITO Beverages",
+    location: "Johannesburg",
+    startDate: "2026",
+    endDate: "Present",
+    description: "Co-founder & Marketing Lead AVOLITO Beverages 2026 – Present Coordinating launch planning, brand messaging and early marketing operations.",
+    achievements: []
+  }
+]);
+assert.equal(avolitoGreyDuplicateFixture.length, 1, "One saved AVOLITO Experience must remain one canonical record.");
+assert.equal(avolitoGreyDuplicateFixture[0].description, "Coordinating launch planning, brand messaging and early marketing operations.", "The grey Review description must not repeat role, company or dates from the same structured AVOLITO Experience.");
+assert.equal((JSON.stringify(avolitoGreyDuplicateFixture).match(/Co-founder & Marketing Lead/g) ?? []).length, 1, "The AVOLITO role must appear only in the canonical role field, not again inside description.");
+assert.equal((JSON.stringify(avolitoGreyDuplicateFixture).match(/AVOLITO Beverages/g) ?? []).length, 1, "The AVOLITO company must appear only in the canonical company field, not again inside description.");
+const punctuationLightLegacyExperienceFixture = professionalIdentityExperienceRuntime.normalizeProfessionalIdentityExperienceEntries([
+  {
+    id: "exp-pathzy-founder",
+    role: "Founder & Product Owner",
+    company: "PATHZY",
+    location: "Johannesburg",
+    startDate: "2025",
+    endDate: "Present",
+    description: "Founder & Product Owner - PATHZY 2025 – Present – Building an employment operating system for guided career support.",
+    achievements: []
+  }
+]);
+assert.equal(punctuationLightLegacyExperienceFixture.length, 1, "One canonical Experience with a punctuation-light legacy description must remain one Experience record.");
+assert.equal(punctuationLightLegacyExperienceFixture[0].description, "Building an employment operating system for guided career support.", "Legacy Experience descriptions with loose spacing or en dashes must not render role/company/dates again in the grey body copy.");
+assert.equal((JSON.stringify(punctuationLightLegacyExperienceFixture).match(/Founder & Product Owner/g) ?? []).length, 1, "The canonical Experience role must appear once in normalized output, not again inside description.");
+const punctuationLightIdentityValues = professionalIdentityCompletionRuntime.normalizeProfessionalIdentityCompletionValues({
+  ...professionalIdentityCvValues,
+  experience: punctuationLightLegacyExperienceFixture
+});
+const punctuationLightCvModel = professionalIdentityCvModelRuntime.cvModelFromProfessionalIdentity(punctuationLightIdentityValues);
+assert.equal(punctuationLightCvModel.professionalExperience.length, 1, "CV must receive one Experience record from a punctuation-light legacy duplicate.");
+assert.equal((JSON.stringify(punctuationLightCvModel.professionalExperience).match(/Founder & Product Owner/g) ?? []).length, 1, "CV must not receive a second legacy Experience role inside the description.");
+const punctuationLightLinkedInProjection = professionalIdentityLinkedInModelRuntime.linkedinProfileModelFromProfessionalIdentity(punctuationLightIdentityValues, { language: "english" });
+assert.equal(punctuationLightLinkedInProjection.experience.length, 1, "LinkedIn must receive one Experience record from a punctuation-light legacy duplicate.");
+assert.equal(punctuationLightLinkedInProjection.experience[0].description.includes("Founder & Product Owner"), false, "LinkedIn must not receive a second legacy Experience role inside the description.");
+assert.equal(punctuationLightLinkedInProjection.experience[0].description.includes("PATHZY 2025"), false, "LinkedIn must not receive second legacy Experience metadata inside the description.");
+const punctuationLightCoverLetterEvidence = coverLetterIntelligenceRuntime.selectCoverLetterEvidence(punctuationLightIdentityValues, { role: "Product Lead", company: "Example Employer", source: "manual" });
+const punctuationLightExperienceEvidence = punctuationLightCoverLetterEvidence.selectedEvidence.filter((item) => item.type === "experience");
+assert.equal(punctuationLightExperienceEvidence.length, 1, "Cover Letter intelligence must receive each punctuation-light Experience once.");
+assert.equal(punctuationLightExperienceEvidence[0].sourceText.includes("Founder & Product Owner"), true, "Cover Letter intelligence must preserve the canonical structured Experience label.");
+assert.equal(punctuationLightExperienceEvidence[0].sourceText.includes("PATHZY 2025"), false, "Cover Letter intelligence must not receive a legacy duplicate Experience sentence as source text.");
+const duplicateLegacyShadowRecordFixture = professionalIdentityExperienceRuntime.normalizeProfessionalIdentityExperienceEntries([
+  {
+    id: "exp-pathzy-founder",
+    role: "Founder & Product Owner",
+    company: "PATHZY",
+    location: "Johannesburg",
+    startDate: "2025",
+    endDate: "Present",
+    description: "Building an employment operating system for guided career support.",
+    achievements: []
+  },
+  "Founder & Product Owner - PATHZY - Johannesburg - 2025 - Present - Building an employment operating system for guided career support."
+]);
+assert.equal(duplicateLegacyShadowRecordFixture.length, 1, "A legacy composite shadow record must merge into the canonical structured Experience entry.");
+assert.equal(duplicateLegacyShadowRecordFixture[0].description, "Building an employment operating system for guided career support.", "Merged legacy Experience must keep one clean description rather than a second combined paragraph.");
+const similarRolesAtSameEmployerFixture = professionalIdentityExperienceRuntime.normalizeProfessionalIdentityExperienceEntries([
+  {
+    id: "exp-pathzy-product",
+    role: "Founder & Product Owner",
+    company: "PATHZY",
+    location: "Johannesburg",
+    startDate: "2025",
+    endDate: "Present",
+    description: "Leading product strategy and Professional Identity design.",
+    achievements: []
+  },
+  {
+    id: "exp-pathzy-operations",
+    role: "Operations Lead",
+    company: "PATHZY",
+    location: "Johannesburg",
+    startDate: "2025",
+    endDate: "Present",
+    description: "Coordinating delivery operations and release planning.",
+    achievements: []
+  }
+]);
+assert.equal(similarRolesAtSameEmployerFixture.length, 2, "Similar roles at the same employer must remain separate canonical Experience records.");
+assert.equal(similarRolesAtSameEmployerFixture.map((entry) => entry.role).join(" -> "), "Founder & Product Owner -> Operations Lead", "Distinct Experience role ordering must be preserved after deduplication.");
 const staleLegacyAfterSaveValues = professionalIdentityCompletionRuntime.professionalIdentityValuesFromSources(
   completeIdentityProfile,
   {
@@ -1081,13 +1221,14 @@ const staleLegacyAfterSaveValues = professionalIdentityCompletionRuntime.profess
           achievements: ["Improved source-of-truth persistence."]
         }
       ],
+      experience: ["Old Product Assistant | Legacy Company | 2024 - 2025 | This stale experience alias should not render after save."],
       experience_history: ["Old Product Assistant | Legacy Company | 2024 - 2025 | This value should not render after save."],
       personal_background: "Old Product Assistant | Legacy Company | 2024 - 2025 | This value should not render after save."
     }
   },
   { email: "nicka@example.com" }
 );
-const savedExperienceEntries = professionalIdentityExperienceRuntime.normalizeProfessionalIdentityExperienceEntries(staleLegacyAfterSaveValues.experience);
+const savedExperienceEntries = professionalIdentityExperienceRuntime.selectCanonicalProfessionalIdentityExperiences(staleLegacyAfterSaveValues.experience);
 assert.equal(savedExperienceEntries.length, 1, "After saving edited Experience, Review must read the latest canonical entry rather than old legacy fields.");
 assert.equal(savedExperienceEntries[0].role, "Updated Product Lead", "Review must show the new saved Experience value immediately.");
 assert.equal(savedExperienceEntries.some((entry) => /Old Product Assistant|Legacy Company/.test(JSON.stringify(entry))), false, "Review must not render stale pre-edit Experience values after save.");
@@ -1098,8 +1239,43 @@ assert.doesNotMatch(staleLegacyCvHtml, /Old Product Assistant|Legacy Company/, "
 const staleLegacyLinkedIn = professionalIdentityLinkedInModelRuntime.linkedinProfileModelFromProfessionalIdentity(staleLegacyAfterSaveValues, { language: "english" });
 assert.equal(staleLegacyLinkedIn.experience[0]?.role, "Updated Product Lead", "LinkedIn projection must show the new saved Experience value after returnTo navigation.");
 assert.equal(staleLegacyLinkedIn.experience.some((entry) => /Old Product Assistant|Legacy Company/.test(JSON.stringify(entry))), false, "LinkedIn projection must not show stale pre-edit Experience values after save.");
+const staleLegacyCoverLetterEvidence = coverLetterIntelligenceRuntime.selectCoverLetterEvidence(staleLegacyAfterSaveValues, { role: "Product Lead", company: "Example Employer", source: "manual", requirements: ["Professional Identity persistence"] });
+const staleLegacyCoverLetterExperience = staleLegacyCoverLetterEvidence.selectedEvidence.filter((item) => item.type === "experience");
+assert.equal(staleLegacyCoverLetterExperience.length, 1, "Evidence / Why Me must receive the newly saved Experience once after reload.");
+assert.match(staleLegacyCoverLetterExperience[0].label, /Updated Product Lead[\s\S]*New PATHZY Studio/, "Evidence / Why Me must use the new canonical Experience label after save.");
+assert.doesNotMatch(JSON.stringify(staleLegacyCoverLetterEvidence), /Old Product Assistant|Legacy Company/, "Evidence / Why Me must not receive stale legacy Experience aliases after save.");
+const staleLegacyCoverLetterData = professionalIdentityCoverLetterModelRuntime.coverLetterDataFromProfessionalIdentity(staleLegacyAfterSaveValues, { role: "Product Lead", company: "Example Employer", source: "manual", requirements: ["Professional Identity persistence"] }, { language: "english", templateName: "PATHZY Signature Letter" });
+assert.match(staleLegacyCoverLetterData.evidenceParagraph, /Updated Product Lead[\s\S]*New PATHZY Studio|New PATHZY Studio[\s\S]*Updated Product Lead/, "Cover Letter Evidence / Why Me paragraph must mention the new canonical Experience once.");
+assert.doesNotMatch(staleLegacyCoverLetterData.evidenceParagraph, /Old Product Assistant|Legacy Company/, "Cover Letter Evidence / Why Me paragraph must not include stale legacy Experience text.");
+assert.equal((staleLegacyCoverLetterData.evidenceParagraph.match(/Updated Product Lead/g) ?? []).length, 1, "Cover Letter Evidence / Why Me must not duplicate the newly saved role.");
+const staleLegacyCoverLetterDocument = professionalIdentityCoverLetterModelRuntime.professionalIdentityCoverLetterDocument(staleLegacyAfterSaveValues, { role: "Product Lead", company: "Example Employer", source: "manual", requirements: ["Professional Identity persistence"] }, { language: "english", templateName: "PATHZY Signature Letter", lastUpdated: "2026-08-26T00:00:00.000Z" });
+assert.equal(staleLegacyCoverLetterDocument?.contentJson?.coverLetterVersion?.intelligence?.selectedEvidence?.filter((item) => item.type === "experience").length, 1, "Cover Letter generation payload must carry the selected Experience evidence once.");
+assert.doesNotMatch(JSON.stringify(staleLegacyCoverLetterDocument?.contentJson), /Old Product Assistant|Legacy Company/, "Cover Letter generation payload must not carry stale legacy Experience text.");
+const avolitoIdentityValues = professionalIdentityCompletionRuntime.normalizeProfessionalIdentityCompletionValues({
+  ...professionalIdentityCvValues,
+  experience: avolitoGreyDuplicateFixture,
+  skills: ["Launch planning", "Marketing coordination"],
+  projects: [],
+  achievements: []
+});
+const avolitoCvModel = professionalIdentityCvModelRuntime.cvModelFromProfessionalIdentity(avolitoIdentityValues);
+assert.equal(avolitoCvModel.professionalExperience.length, 1, "CV must receive the AVOLITO Experience once after canonical normalization.");
+assert.equal(avolitoCvModel.professionalExperience[0].role, "Co-founder & Marketing Lead", "CV must preserve the AVOLITO role as a structured field.");
+assert.equal(avolitoCvModel.professionalExperience[0].company, "AVOLITO Beverages", "CV must preserve the AVOLITO company as a structured field.");
+assert.equal(avolitoCvModel.professionalExperience[0].achievements[0].includes("Co-founder & Marketing Lead"), false, "CV body evidence must not repeat the AVOLITO role after source normalization.");
+assert.equal(avolitoCvModel.professionalExperience[0].achievements[0].includes("AVOLITO Beverages 2026"), false, "CV body evidence must not repeat the AVOLITO company/date composite after source normalization.");
+const avolitoLinkedInProjection = professionalIdentityLinkedInModelRuntime.linkedinProfileModelFromProfessionalIdentity(avolitoIdentityValues, { language: "english" });
+assert.equal(avolitoLinkedInProjection.experience.length, 1, "LinkedIn must receive the AVOLITO Experience once after canonical normalization.");
+assert.equal(avolitoLinkedInProjection.experience[0].description.includes("Co-founder & Marketing Lead"), false, "LinkedIn description must not repeat the AVOLITO role after source normalization.");
+assert.equal(avolitoLinkedInProjection.experience[0].description.includes("AVOLITO Beverages 2026"), false, "LinkedIn description must not repeat the AVOLITO company/date composite after source normalization.");
+const avolitoCoverLetterEvidence = coverLetterIntelligenceRuntime.selectCoverLetterEvidence(avolitoIdentityValues, { role: "Marketing Coordinator", company: "Example Employer", source: "manual" });
+const avolitoExperienceEvidence = avolitoCoverLetterEvidence.selectedEvidence.filter((item) => item.type === "experience");
+assert.equal(avolitoExperienceEvidence.length, 1, "Cover Letter intelligence must receive the AVOLITO Experience once.");
+assert.equal(avolitoExperienceEvidence[0].sourceText.includes("Co-founder & Marketing Lead"), true, "Cover Letter intelligence must keep the canonical AVOLITO role label.");
+assert.equal(avolitoExperienceEvidence[0].sourceText.includes("AVOLITO Beverages 2026"), false, "Cover Letter intelligence must not receive a legacy AVOLITO composite sentence as source text.");
 assert.match(professionalIdentityExperience, /export type ProfessionalIdentityExperienceEntry = \{[\s\S]*role: string;[\s\S]*company: string;[\s\S]*description: string;[\s\S]*achievements: string\[\]/, "Professional Identity must define a structured shared ExperienceEntry contract.");
-assert.match(professionalIdentityPage, /function renderReviewValue[\s\S]*normalizeProfessionalIdentityExperienceEntries\(section\.value\)[\s\S]*experienceEntryDateLabel\(entry\)[\s\S]*Experience[\s\S]*index \+ 1/, "Review My Information must render Professional Identity experience as separate entries instead of one joined paragraph.");
+assert.match(professionalIdentityExperience, /export function selectCanonicalProfessionalIdentityExperiences/, "Professional Identity must expose one shared canonical Experience selector for Review, documents and intelligence.");
+assert.match(professionalIdentityPage, /function renderReviewValue[\s\S]*selectCanonicalProfessionalIdentityExperiences\(section\.value\)[\s\S]*experienceEntryDateLabel\(entry\)[\s\S]*Experience[\s\S]*index \+ 1/, "Review My Information must render Professional Identity experience through the shared canonical selector instead of one joined paragraph.");
 const structuredCvModel = professionalIdentityCvModelRuntime.cvModelFromProfessionalIdentity(structuredIdentityValues);
 assert.equal(structuredCvModel.professionalExperience.length, 2, "Two Professional Identity experiences must become two CV experience records.");
 assert.equal(structuredCvModel.professionalExperience.map((entry) => entry.role).join(" -> "), "Founder & Product Owner -> Co-founder & Marketing Lead", "CV experience ordering must be preserved.");
@@ -1804,10 +1980,10 @@ assert.match(professionalCoverLetterPage, /title="My Cover Letter"/, "Cover Lett
 assert.match(professionalIdentityTool, /function renderCvDocumentBar[\s\S]*MY CV[\s\S]*Professional CV/, "My CV must introduce the document through the compact document studio bar.");
 assert.doesNotMatch(professionalCvPage, /professionalIdentityHref|ButtonLink href=\{professionalIdentityHref\}>Professional Identity<\/ButtonLink>|Synced with Professional Identity\./, "My CV page must not render the old persistent Professional Identity status/action card.");
 assert.match(professionalIdentityTool, /Your CV is ready[\s\S]*Create your cover letter[\s\S]*PATHZY_ROUTES\.COVER_LETTER/, "My CV must show one consolidated cover-letter next-step card after the document studio.");
-assert.match(professionalIdentityTool, /function renderCoverLetterDocumentBar[\s\S]*MY COVER LETTER[\s\S]*Status: \{statusLabel\}/, "My Cover Letter must show status in the shared document studio bar.");
+assert.match(professionalIdentityTool, /function renderCoverLetterDocumentBar[\s\S]*MY COVER LETTER[\s\S]*statusLabel[\s\S]*✓ Saved/, "My Cover Letter must show a compact saved/status state in the workspace controls.");
 assert.match(professionalCoverLetterPage, /getProfessionalIdentityReadModelSafe\(supabase, user, "cover letter professional identity"\)/, "My Cover Letter page must read the canonical Professional Identity model before creating a letter.");
 assert.match(professionalCoverLetterPage, /resolveCoverLetterJobContext\(supabase, user\.id, params\)/, "My Cover Letter page must resolve saved-job, application, pasted, or manual job context.");
-assert.match(professionalCoverLetterPage, /loadExistingCoverLetterDocument\(supabase, user\.id, params\.documentId\)/, "My Cover Letter page must preserve existing cover-letter documents opened by documentId.");
+assert.match(professionalCoverLetterPage, /loadSavedProfessionalDocument\(supabase, user\.id,[\s\S]*tool: "cover-letter"/, "My Cover Letter page must load persisted owned cover-letter documents from the shared saved-document loader.");
 assert.match(professionalCoverLetterPage, /professionalIdentityCoverLetterDocument\(identity\.values, jobContext/, "My Cover Letter page must seed new letters from Professional Identity plus job context.");
 assert.match(professionalCoverLetterPage, /coverLetterSyncStatus=\{coverLetterSyncStatus\}/, "My Cover Letter page must pass source-of-truth sync status into the shared document workspace.");
 assert.match(professionalIdentityTool, /Your cover letter is ready[\s\S]*Prepare for interview[\s\S]*PATHZY_ROUTES\.INTERVIEW_PREPARATION/, "My Cover Letter next step must live below the document studio and guide users toward interview preparation.");
@@ -1821,9 +1997,9 @@ assert.doesNotMatch(myCvHeaderBlock, /Professional Identity<\/ButtonLink>|Edit P
 assert.doesNotMatch(myCvHeaderBlock, /Build your professional CV|prepare the first draft|Edit CV/, "The My CV header area must not use the old draft-first CV copy.");
 const coverLetterToolIndex = professionalCoverLetterPage.indexOf("<ProfessionalIdentityTool");
 const coverLetterDocumentBarIndex = professionalIdentityTool.indexOf("renderCoverLetterDocumentBar()");
-const coverLetterCorrectionIndex = professionalIdentityTool.indexOf("renderCoverLetterIdentityCorrectionCard()", coverLetterDocumentBarIndex);
-assert.ok(coverLetterToolIndex > -1 && coverLetterDocumentBarIndex > -1 && coverLetterCorrectionIndex > coverLetterDocumentBarIndex, "My Cover Letter route must mount the shared workspace, whose document bar and correction strip own the visible header flow.");
-assert.match(professionalIdentityTool, /function renderCoverLetterDocumentBar[\s\S]*Edit Information[\s\S]*Change Job/, "The My Cover Letter document bar must provide clear Professional Identity and Job Context navigation.");
+const coverLetterWorkspaceIndex = professionalIdentityTool.indexOf('data-cover-letter-workspace-layout="compact-controls-large-preview"', coverLetterDocumentBarIndex);
+assert.ok(coverLetterToolIndex > -1 && coverLetterDocumentBarIndex > -1 && coverLetterWorkspaceIndex > coverLetterDocumentBarIndex, "My Cover Letter route must mount the shared workspace with compact controls and a dominant preview area.");
+assert.match(professionalIdentityTool, /function renderCoverLetterDocumentBar[\s\S]*Update information[\s\S]*Change Job[\s\S]*Change design/, "The My Cover Letter document bar must provide compact Professional Identity, Job Context, and design navigation.");
 assert.match(settingsPage, />My CV<\/ButtonLink>/, "Settings shortcut must use the My CV label.");
 assert.match(navigation, /"My CV"/, "Shared user-facing product data must use the My CV label.");
 assert.doesNotMatch(`${professionalIdentityPage}\n${professionalCvPage}\n${settingsPage}\n${navigation}\n${readFileSync("app/qa-pathzy-journey/page.tsx", "utf8")}`, /Create My CV/, "Relevant user-facing CV workspace labels must not say Create My CV.");
@@ -1938,7 +2114,8 @@ assert.match(profileActionEditor, /photoNavigationBlocked[\s\S]*photoBusy[\s\S]*
 assert.match(profileActionEditor, /goNext\(\{ allowPhotoError: true \}\)/, "Professional Photo optional skip must advance through the same journey flow without treating a failed upload as saved.");
 assert.match(profileActionEditor, /identity\.photo\.continueWithout/, "Professional Photo failure state must expose an explicit optional continue-without-photo action.");
 assert.match(profileActionEditor, /event\.currentTarget[\s\S]*uploadPhotoFile\(file\)\.finally[\s\S]*input\.value = ""/, "Professional Photo input must clear after an attempt so users can retry the same file.");
-assert.match(professionalIdentityPage, /let editorInitialValues = professionalIdentityValues as Partial<ProfessionalIdentityValues>[\s\S]*createSignedUrl\(professionalPhotoAsset\.storagePath, 600\)[\s\S]*professional_photo_asset:\s*\{[\s\S]*\.\.\.professionalPhotoAsset[\s\S]*signedUrl: professionalPhotoSignedUrl[\s\S]*\}/, "Professional Identity must regenerate a private signed photo URL for editor initial values after refresh or login without persisting the URL.");
+assert.match(professionalIdentityPage, /createCurrentProfessionalPhotoView\(supabase, professionalIdentityValues\.professional_photo_asset,[\s\S]*userId: user\.id[\s\S]*professional_photo_asset: professionalPhotoView/, "Professional Identity must regenerate a private signed photo URL through the shared canonical photo selector after refresh or login without persisting the URL.");
+assert.match(professionalIdentityPage, /<ProfessionalPhotoAvatar[\s\S]*photo=\{professionalPhotoView\}[\s\S]*fallback=\{initialsFor\(profile\?\.full_name \?\? "", user\.email\)\}/, "Professional Identity profile previews must render the saved canonical photo through the shared Professional Photo avatar.");
 assert.match(professionalPhotoApi, /formData\.get\("photo"\)[\s\S]*supabase\.storage[\s\S]*upload\(storagePath[\s\S]*saveMergedDiscoveryAnswers/, "Professional Photo API must upload binary storage first and then persist Professional Identity metadata.");
 assert.match(professionalPhotoApi, /createSignedUrl\(asset\.storagePath/, "Professional Photo API must return owner-scoped signed URLs for private photo previews.");
 assert.match(professionalPhotoApi, /function storageFailureCode[\s\S]*storage_bucket_missing[\s\S]*storage_permission_denied[\s\S]*storage_unavailable/, "Professional Photo API must classify storage failures without exposing credentials.");
@@ -1947,8 +2124,130 @@ assert.match(professionalPhotoApi, /remove\(\[storagePath\]\)/, "Professional Ph
 assert.match(professionalPhotoApi, /export async function DELETE[\s\S]*profile_photo: ""[\s\S]*professional_photo_asset: null/, "Professional Photo API must support removing the canonical photo without deleting the user's Professional Identity.");
 assert.doesNotMatch(professionalPhotoApi, /service_role|data:image|base64/i, "Professional Photo API must not use service-role credentials, persisted base64 images, or data URLs.");
 assert.match(professionalIdentityWriteService, /\.\.\.\(\(target\?\.answers as Record<string, unknown> \| null\) \?\? \{\}\), \.\.\.answersPatch/, "Professional Identity section saves must merge into the existing identity answers so unrelated saves preserve durable photo metadata.");
-const canonicalPhotoNormalizer = professionalPhotoContract.slice(professionalPhotoContract.indexOf("export function professionalPhotoAssetFromUnknown"), professionalPhotoContract.indexOf("export function pngDimensions"));
+const canonicalPhotoNormalizer = professionalPhotoContract.slice(professionalPhotoContract.indexOf("export function professionalPhotoAssetFromUnknown"), professionalPhotoContract.indexOf("export function getCurrentProfessionalPhoto"));
 assert.doesNotMatch(canonicalPhotoNormalizer, /signedUrl/, "Canonical Professional Photo normalization must not persist private signed URLs.");
+assert.match(professionalPhotoContract, /export function getCurrentProfessionalPhoto[\s\S]*professionalPhotoAssetFromUnknown[\s\S]*photoStatus !== "ready"[\s\S]*return asset/, "Professional Photo must expose one canonical current-photo selector.");
+assert.match(professionalPhotoContract, /export async function createCurrentProfessionalPhotoView[\s\S]*getCurrentProfessionalPhoto[\s\S]*createSignedUrl\(asset\.storagePath[\s\S]*return \{ \.\.\.asset, signedUrl: data\.signedUrl \}/, "Professional Photo signed views must be derived from the canonical asset without storing signed URLs.");
+assert.match(professionalLinkedInPage, /createCurrentProfessionalPhotoView\(supabase, identity\.values\.professional_photo_asset,[\s\S]*userId: user\.id[\s\S]*canonicalProfessionalPhoto=\{canonicalProfessionalPhoto\}/, "LinkedIn must load the saved Professional Identity photo through the shared canonical photo selector.");
+assert.match(professionalIdentityTool, /canonicalProfessionalPhoto\?: ProfessionalPhotoAssetView \| null/, "Document Studio must accept the shared canonical Professional Photo view instead of creating a LinkedIn-specific photo field.");
+assert.match(professionalIdentityTool, /profilePhotoAvailable: source\.profilePhotoAvailable === true \|\| Boolean\(canonicalProfessionalPhoto\?\.storagePath && canonicalProfessionalPhoto\.photoStatus === "ready"\)/, "Saved LinkedIn documents must display the latest canonical Professional Identity photo availability.");
+assert.match(professionalPhotoAvatar, /export function ProfessionalPhotoAvatar[\s\S]*photo\?\.photoStatus === "ready"[\s\S]*photo\.signedUrl[\s\S]*onError=\{\(\) => setLoadFailed\(true\)\}[\s\S]*aria-label=\{fallbackLabel\}/, "Professional Photo downstream presentation must use one shared avatar component with broken-image fallback.");
+assert.match(professionalIdentityTool, /<ProfessionalPhotoAvatar[\s\S]*photo=\{canonicalProfessionalPhoto\}[\s\S]*alt=\{`\$\{model\?\.fullName \|\| "Professional"\} professional profile photo`\}/, "LinkedIn preview must render the saved canonical photo through the shared Professional Photo avatar.");
+assert.doesNotMatch(professionalIdentityTool, /\? "Photo" :/, "LinkedIn preview must not render the literal Photo placeholder when a saved Professional Identity photo exists.");
+assert.match(professionalCvPage, /createCurrentProfessionalPhotoView\(supabase, identityReadModel\.values\.professional_photo_asset,[\s\S]*userId: user\.id[\s\S]*canonicalProfessionalPhoto=\{canonicalProfessionalPhoto\}/, "My CV must pass the saved Professional Identity photo into photo-enabled CV templates.");
+assert.match(professionalCareerPassportPage, /getProfessionalIdentityReadModelSafe\(supabase, user, "career passport professional identity"\)[\s\S]*createCurrentProfessionalPhotoView\(supabase, identityReadModel\.values\.professional_photo_asset,[\s\S]*<ProfessionalSnapshot projection=\{projection\} photoUrl=\{canonicalProfessionalPhoto\?\.signedUrl\}/, "Career Passport must use the saved Professional Identity photo and must not maintain a separate photo source.");
+assert.match(professionalCareerPassportPage, /ProfessionalSnapshot[\s\S]*Where I'm Going[\s\S]*<ReadinessSection[\s\S]*What Is Holding Me Back\?[\s\S]*What I Can Offer[\s\S]*My Strengths[\s\S]*<EvidenceSection[\s\S]*Achievements & Progress[\s\S]*Career Focus[\s\S]*Your Next Best Action[\s\S]*Career Passport updated:/, "Career Passport page must render the required living-progress sections in the locked order.");
+assert.doesNotMatch(professionalCareerPassportPage, /<ProfessionalIdentityTool|textarea|contentEditable|generateCareerPassportSummary/, "Career Passport must not be another document editor or generation workspace.");
+assert.match(careerPassportProjection, /function documentSignals/, "Career Passport must normalize saved PATHZY document progress before projection.");
+assert.match(careerPassportProjection, /export function buildCareerPassportProjection[\s\S]*normalizeProfessionalIdentityCompletionValues[\s\S]*selectCanonicalProfessionalIdentityExperiences/, "Career Passport must be a deterministic projection from canonical identity values and the shared Experience selector.");
+assert.match(careerPassportProjection, /firstMissingRequired[\s\S]*hasReadyCv[\s\S]*hasSupportingDocuments[\s\S]*evidenceStrengthReady[\s\S]*View opportunities/s, "Career Passport next-best-action priority must use one reusable ordered decision layer.");
+assert.match(documentDownloads, /function professionalPhotoForCvTemplate[\s\S]*templateMetadata\(templateName\)\.photoCapability[\s\S]*photoMode === "none"[\s\S]*photo\?\.photoStatus !== "ready"[\s\S]*return photo/, "CV renderer must use the canonical photo only for templates that support a photograph.");
+assert.match(documentDownloads, /kind: "image"[\s\S]*src: photo\.signedUrl[\s\S]*alt: "Professional profile photo"[\s\S]*objectPosition: professionalPhotoObjectPosition\(photo\)/, "Photo-enabled CV templates must render the saved Professional Identity photo as an image element with canonical crop metadata.");
+assert.match(professionalIdentityTool, /renderCvHtmlFromModel\(previewCvModel, templateName, activeCvSection, canonicalProfessionalPhoto, cvPaletteId\)/, "Designed CV Preview must pass the canonical Professional Identity photo and selected palette to the shared renderer.");
+assert.match(professionalIdentityTool, /simplePdfDocumentFromModel\(document\.title, normalizeCvModelForExport\(cvModel\), templateName, canonicalProfessionalPhoto, cvPaletteId\)/, "CV PDF export path must keep the canonical Professional Identity photo and selected palette contract aligned with the shared renderer.");
+const savedProfessionalPhotoFixture = {
+  photoAssetId: "photo-1",
+  userId: "user-1",
+  storagePath: "user-1/profile/photo-1.jpg",
+  originalFileName: "headshot.jpg",
+  mimeType: "image/jpeg",
+  fileSize: 128000,
+  width: 640,
+  height: 640,
+  photoStatus: "ready",
+  crop: null,
+  derivatives: [],
+  updatedAt: "2026-08-26T10:00:00.000Z",
+  photoConsent: true,
+  profileVisibility: "private",
+  cvUsageAllowed: true,
+  publicSharingAllowed: false
+};
+const changedProfessionalPhotoFixture = { ...savedProfessionalPhotoFixture, photoAssetId: "photo-2", storagePath: "user-1/profile/photo-2.jpg", updatedAt: "2026-08-26T11:00:00.000Z" };
+assert.equal(professionalPhotoRuntime.getCurrentProfessionalPhoto(savedProfessionalPhotoFixture)?.storagePath, "user-1/profile/photo-1.jpg", "Saved ready Professional Identity photo must be the canonical current photo.");
+assert.equal(professionalPhotoRuntime.getCurrentProfessionalPhoto({ ...savedProfessionalPhotoFixture, photoStatus: "pending_upload" }), null, "Pending local photo uploads must not be treated as the saved current photo.");
+assert.equal(professionalPhotoRuntime.getCurrentProfessionalPhoto({ ...savedProfessionalPhotoFixture, storagePath: "blob:http://localhost/photo" }), null, "Temporary browser photo URLs must never become the canonical current photo.");
+assert.equal(professionalPhotoRuntime.getCurrentProfessionalPhoto(changedProfessionalPhotoFixture)?.storagePath, "user-1/profile/photo-2.jpg", "A later saved Professional Identity photo must replace stale downstream photo state.");
+const careerPassportFixtureValues = {
+  full_name: "Nicka Candida",
+  city: "Johannesburg",
+  country: "South Africa",
+  career_goal: "IT Support",
+  current_status: "employed",
+  preferred_roles: ["Help Desk Support", "Technical Support"],
+  skills: ["Communication", "Microsoft Excel", "IT Support", "Communication", "Customer Service"],
+  education: ["BTech Information & Communication Technology"],
+  projects: ["PATHZY employment-support technology platform"],
+  achievements: [],
+  certificates: [],
+  experience: [
+    { id: "exp-1", role: "Founder & Product Owner", company: "PATHZY", location: "Johannesburg", startDate: "2025", endDate: "Present", description: "Building employment-support technology.", achievements: [] },
+    { id: "exp-2", role: "Co-founder & Marketing Lead", company: "AVOLITO Beverages", location: "Johannesburg", startDate: "2026", endDate: "Present", description: "Leading brand and marketing activity.", achievements: [] }
+  ],
+  professional_photo_asset: savedProfessionalPhotoFixture
+};
+const careerPassportCompleteChecks = {
+  percentage: 100,
+  requiredChecks: [
+    { section: "career_goal", label: "Career Goal", complete: true, missingFields: [] },
+    { section: "skills", label: "Skills", complete: true, missingFields: [] },
+    { section: "availability", label: "Availability", complete: true, missingFields: [] }
+  ]
+};
+const careerPassportWithoutDocuments = careerPassportProjectionRuntime.buildCareerPassportProjection({
+  values: careerPassportFixtureValues,
+  completion: careerPassportCompleteChecks,
+  documents: [],
+  updatedAt: "2026-08-26T10:00:00.000Z"
+});
+assert.equal(careerPassportWithoutDocuments.snapshot.name, "Nicka Candida", "Career Passport must use current canonical Professional Identity data.");
+assert.equal(careerPassportWithoutDocuments.snapshot.careerDirection, "IT Support", "Career Passport snapshot must use the canonical target direction.");
+assert.equal(careerPassportWithoutDocuments.updatedAt, "2026-08-26T10:00:00.000Z", "Career Passport must expose a derived update timestamp without implying manual editing.");
+assert.equal(JSON.stringify(careerPassportWithoutDocuments.evidence.experience.map((entry) => entry.role)), JSON.stringify(["Founder & Product Owner", "Co-founder & Marketing Lead"]), "Career Passport must preserve separate canonical experience evidence without duplication.");
+assert.equal(careerPassportWithoutDocuments.evidence.experience.some((entry) => "description" in entry), false, "Career Passport evidence must not reproduce full experience descriptions.");
+assert.equal(JSON.stringify(careerPassportWithoutDocuments.offer.coreSkills), JSON.stringify(["IT Support", "Communication", "Microsoft Excel", "Customer Service"]), "Career Passport must curate and dedupe core skills instead of dumping repeated profile skills.");
+assert.equal(careerPassportWithoutDocuments.nextBestAction.title, "Prepare your professional CV.", "Career Passport must return one highest-priority next action when CV readiness is missing.");
+assert.equal(Array.isArray(careerPassportWithoutDocuments.nextBestAction), false, "Career Passport next-best-action engine must not return competing primary actions.");
+const careerPassportWithCv = careerPassportProjectionRuntime.buildCareerPassportProjection({
+  values: careerPassportFixtureValues,
+  completion: careerPassportCompleteChecks,
+  documents: [{ documentType: "cv", status: "ready", updatedAt: "2026-08-26T10:30:00.000Z" }],
+  updatedAt: "2026-08-26T10:30:00.000Z"
+});
+assert.equal(careerPassportWithCv.readiness.find((item) => item.label === "CV")?.status, "Ready", "Creating a CV must update Career Passport CV readiness.");
+assert.equal(careerPassportWithCv.nextBestAction.title, "Add supporting documents.", "After CV readiness, missing supporting documents should become the next useful action.");
+const careerPassportWithSupport = careerPassportProjectionRuntime.buildCareerPassportProjection({
+  values: careerPassportFixtureValues,
+  completion: careerPassportCompleteChecks,
+  documents: [
+    { documentType: "cv", status: "ready", updatedAt: "2026-08-26T10:30:00.000Z" },
+    { documentType: "certificate", status: "ready", category: "certificates", updatedAt: "2026-08-26T11:00:00.000Z" }
+  ],
+  updatedAt: "2026-08-26T11:00:00.000Z"
+});
+assert.equal(careerPassportWithSupport.readiness.find((item) => item.label === "Supporting documents")?.status, "In progress", "Adding eligible supporting documents must update supporting-document readiness.");
+assert.equal(careerPassportWithSupport.milestones.find((item) => item.label === "Supporting documents added")?.complete, true, "Saved supporting progress must survive as document signals in the Passport projection.");
+const changedTargetPassport = careerPassportProjectionRuntime.buildCareerPassportProjection({
+  values: { ...careerPassportFixtureValues, career_goal: "Technical Support" },
+  completion: careerPassportCompleteChecks,
+  documents: [{ documentType: "cv", status: "ready" }],
+  updatedAt: "2026-08-26T12:00:00.000Z"
+});
+assert.equal(changedTargetPassport.careerFocus[0]?.title, "Technical Support", "Changing target role must change the Career Focus projection.");
+const incompleteCareerPassport = careerPassportProjectionRuntime.buildCareerPassportProjection({
+  values: { full_name: "New User", professional_photo_asset: savedProfessionalPhotoFixture },
+  completion: { percentage: 20, requiredChecks: [{ section: "career_goal", label: "Career Goal", complete: false, missingFields: ["Career goal"] }] },
+  documents: [],
+  updatedAt: null
+});
+assert.equal(incompleteCareerPassport.evidence.certificates[0], undefined, "Missing certificates must produce safe empty states rather than invented content.");
+assert.equal(incompleteCareerPassport.nextBestAction.title, "Complete Career Goal.", "Critical missing canonical information must outrank low-value actions.");
+assert.equal(professionalIdentityLinkedInModelRuntime.linkedinProfileModelFromProfessionalIdentity({ professional_photo_asset: savedProfessionalPhotoFixture }).profilePhotoAvailable, true, "LinkedIn projection must mark a saved Professional Identity photo as available.");
+assert.equal(professionalIdentityLinkedInModelRuntime.linkedinProfileModelFromProfessionalIdentity({ professional_photo_asset: null }).profilePhotoAvailable, false, "LinkedIn projection must show the no-photo state when no saved Professional Identity photo exists.");
+const photoEnabledCvHtml = documentDownloadsRuntime.renderCvHtmlFromModel({ ...professionalIdentityCvModelRuntime.cvModelFromProfessionalIdentity({ full_name: "Photo Candidate", career_goal: "Operations Lead", email: "photo@example.com" }) }, "Executive Black", undefined, { ...savedProfessionalPhotoFixture, signedUrl: "https://example.supabase.co/storage/v1/object/sign/professional-photos/user-1/profile/photo-1.jpg" });
+assert.match(photoEnabledCvHtml, /<img class="cv-el"[\s\S]*photo-1\.jpg[\s\S]*Professional profile photo/, "Photo-enabled CV templates must render the canonical Professional Identity photo.");
+const noPhotoCvHtml = documentDownloadsRuntime.renderCvHtmlFromModel(professionalIdentityCvModelRuntime.cvModelFromProfessionalIdentity({ full_name: "No Photo Template Candidate", career_goal: "Analyst", email: "nophoto@example.com" }), "Modern ATS", undefined, { ...savedProfessionalPhotoFixture, signedUrl: "https://example.supabase.co/storage/v1/object/sign/professional-photos/user-1/profile/photo-1.jpg" });
+assert.doesNotMatch(noPhotoCvHtml, /<img class="cv-el"[\s\S]*photo-1\.jpg/, "CV templates intentionally designed without a photograph must remain photo-free.");
 const phase2dJourneyStepsSource = profileActionEditor.slice(profileActionEditor.indexOf("const journeySteps"), profileActionEditor.indexOf("const sectionAliases"));
 assert.equal((phase2dJourneyStepsSource.match(/\{ key: "/g) ?? []).length, 23, "Phase 2D guided editor must contain exactly 23 Professional Identity sections.");
 assert.match(appShell, /<LanguageSelector initialLanguage=\{profileLanguage\} \/>/, "Authenticated shell must expose the permanent interface language selector.");
@@ -2113,12 +2412,58 @@ assert.doesNotMatch(employmentIntelligenceUiSource, /action\.expectedOutcome|act
 assert.match(employmentIntelligenceUiSource, /ProgressBar/, "Phase 3G intelligence UI must include accessible progress semantics.");
 assert.match(employmentIntelligenceUiSource, /credentials: "same-origin"[\s\S]*\/api\/employment-intelligence/, "Phase 3G client access must be authenticated and account-scoped through same-origin API calls.");
 assert.doesNotMatch(employmentIntelligenceUiSource, /generateEmploymentIntelligenceWithTrace|generateEmploymentIntelligence\(|selectNextBestAction|rankActions|salary estimate|live job matching|OpenAI|clientUserId|body\.userId/, "Phase 3G UI must not recalculate intelligence, add AI/live facts, or trust client user IDs.");
-assert.match(appGlobals, /\.pathzy-auth-shell \.surface \{[\s\S]*color: var\(--auth-text\)/, "Authenticated light cards must establish dark readable text at the card boundary.");
-assert.match(appGlobals, /\.pathzy-auth-shell \.surface \.text-white,[\s\S]*\.pathzy-auth-shell \.glass \.text-white[\s\S]*color: var\(--auth-text\) !important/, "Authenticated light cards must prevent white text from remaining on warm-white surfaces.");
-assert.match(appGlobals, /\.pathzy-auth-shell \.surface \[class\*="text-white\\\\\/"\],[\s\S]*color: var\(--auth-muted\) !important/, "Muted text on authenticated light cards must resolve to accessible muted charcoal instead of pale white.");
+assert.match(appGlobals, /\.pathzy-auth-shell \.surface,[\s\S]*\.pathzy-auth-shell \.glass,[\s\S]*\.pathzy-auth-shell \.pathzy-card \{[\s\S]*background: var\(--auth-card\)/, "Authenticated light cards must establish the readable warm-card boundary for shared Card surfaces.");
+assert.match(appGlobals, /\.pathzy-auth-shell \.surface \.text-white,[\s\S]*\.pathzy-auth-shell \.glass \.text-white,[\s\S]*\.pathzy-auth-shell \.pathzy-card \.text-white[\s\S]*color: var\(--auth-text\) !important/, "Authenticated light cards must prevent white text from remaining on warm-white surfaces.");
+assert.match(appGlobals, /\.pathzy-auth-shell \.surface \[class\*="text-white\\\\\/"\],[\s\S]*\.pathzy-auth-shell \.pathzy-card \[class\*="text-white\\\\\/"\][\s\S]*color: var\(--auth-muted\) !important/, "Muted text on authenticated light cards must resolve to accessible muted charcoal instead of pale white.");
 assert.match(appGlobals, /\.pathzy-auth-shell \.surface \[class\*="text-\[#f87171\]"\][\s\S]*color: var\(--pathzy-red-dark\) !important/, "Phase 3 accent text must use readable PATHZY red on authenticated light cards.");
-assert.match(appGlobals, /\.pathzy-auth-shell \.surface \[class\*="text-\[#93c5fd\]"\][\s\S]*color: var\(--auth-blue\) !important/, "Phase 3 link accent text must use readable blue on authenticated light cards.");
+assert.match(appGlobals, /\.pathzy-auth-shell \.surface \[class\*="text-\[#93c5fd\]"\][\s\S]*color: var\(--pathzy-red-dark\) !important/, "Phase 3 link accent text must use readable PATHZY red on authenticated light cards.");
 assert.match(appGlobals, /\.pathzy-auth-shell \.surface \.blue-purple[\s\S]*color: #ffffff !important/, "Primary buttons on authenticated light cards must keep visible white labels.");
+for (const tokenName of [
+  "--background-app",
+  "--background-elevated",
+  "--surface-dark",
+  "--surface-light",
+  "--surface-subtle",
+  "--text-primary",
+  "--text-secondary",
+  "--text-inverse",
+  "--border-default",
+  "--focus-ring",
+  "--brand-primary",
+  "--brand-primary-hover",
+  "--brand-primary-pressed",
+  "--status-success",
+  "--status-warning",
+  "--status-danger",
+  "--radius-card",
+  "--button-height",
+  "--input-height"
+]) {
+  assert.match(appGlobals, new RegExp(`${tokenName}:`), `Global PATHZY design tokens must define ${tokenName}.`);
+}
+assert.match(appGlobals, /\.blue-purple \{[\s\S]*var\(--brand-primary\)[\s\S]*var\(--brand-primary-hover\)/, "Legacy blue-purple product action class must resolve to the PATHZY red token system.");
+assert.match(appGlobals, /\[class\*="bg-\[#5B8CFF"\][\s\S]*background-color: var\(--brand-primary\) !important/, "Global visual guard must remap legacy hard-coded blue product backgrounds to PATHZY red.");
+assert.match(appShell, /pathzy-page-shell[\s\S]*bg-\[color-mix\(in_srgb,var\(--background-elevated\)_92%,transparent\)\]/, "Authenticated navigation must use the shared PATHZY shell tokens.");
+assert.doesNotMatch(appShell, /overflow-x-auto|whitespace-nowrap/, "Authenticated mobile navigation must wrap without clipped horizontal scrolling.");
+assert.doesNotMatch(appShell + "\n" + readFileSync("components/ui.tsx", "utf8"), /#5B8CFF|#7B5CFF|#2563EB|rgba\(91,140,255|rgba\(123,92,255|rgba\(123, 92, 255/, "Core shell and shared UI must not reintroduce the old blue/purple brand palette.");
+assert.match(appGlobals, /\.pathzy-control-primary[\s\S]*var\(--brand-primary\)/, "Workspace controls must include the shared primary PATHZY red utility.");
+assert.match(appGlobals, /\.pathzy-control-secondary/, "Workspace controls must include the shared secondary utility.");
+assert.match(appGlobals, /\.pathzy-status-info/, "Workspace status surfaces must include the shared information utility.");
+assert.match(appGlobals, /\.pathzy-status-warning/, "Workspace status surfaces must include the shared warning utility.");
+assert.doesNotMatch(
+  [
+    opportunitiesHub,
+    interviewPrepClient,
+    employmentTrackerClient,
+    missionSystem,
+    professionalIdentityTool,
+    documentWorkspaceStatusSurfaces
+  ].join("\n"),
+  /#5B8CFF|#7B5CFF|#7C5CFF|#9D5BFF|#2563EB|#93c5fd|#FFD166|#ffd166|#ffe2a3|#ffe7a3|#aac1ff|#39d98a|#9df0c4|#b9f8d5|#c7d6ff|#ded6ff|bg-blue|border-blue|text-blue/,
+  "Authenticated workspace components must use PATHZY tokens/classes instead of retired blue, purple, yellow or ad hoc success palettes."
+);
+assert.match(opportunitiesHub, /pathzy-control-primary[\s\S]*Inspect Job/, "Job Intelligence primary actions must use the shared PATHZY red control utility.");
+assert.match(opportunitiesHub, /pathzy-status-info[\s\S]*Job Import/, "Job Import workspace must use a shared neutral information surface instead of a page-specific blue theme.");
 assert.match(employmentIntelligenceUiSource, /mergeDuplicateEvidenceRecords[\s\S]*uniqueByCode[\s\S]*secondaryActions/, "Phase 3G view models must de-duplicate persisted strength, barrier, dimension and action collections before rendering.");
 assert.match(generateRoadmapApi, /recomputeEmploymentIntelligence[\s\S]*trigger: "diagnosis_completed"[\s\S]*redirectTo: appRoutes\.diagnosisResults/, "Diagnosis completion must persist Employment Intelligence through Phase 3F and route to Diagnosis Results.");
 for (const saveStatusCopy of [
@@ -2171,6 +2516,8 @@ assert.match(exportStandard, /The CV model is the single source of truth/, "Expo
 assert.match(exportStandard, /Premium visual quality is required, not optional\./, "Export standard must require premium visual quality.");
 assert.match(professionalIdentityCvModel, /export function cvModelFromProfessionalIdentity/, "CV workspace must use a reusable Professional Identity to CV model transformation layer.");
 assert.match(professionalCvPage, /getProfessionalIdentityReadModel\(supabase, user\)[\s\S]*professionalIdentityCvDocument\(identityReadModel\.values/, "My CV must read Professional Identity and create a synchronized CV document before the client renders.");
+assert.match(professionalCvPage, /loadSavedProfessionalDocument\(supabase, user\.id, \{ tool: "cv" \}\)[\s\S]*savedCvDocument \?\? generatedCvDocument/, "My CV must hydrate the latest saved CV artifact before falling back to a generated Professional Identity projection.");
+assert.match(savedProfessionalDocuments, /from\("user_documents"\)[\s\S]*\.eq\("user_id", userId\)[\s\S]*input\.documentId[\s\S]*\.eq\("id", input\.documentId\)/, "Saved professional document loading must always scope reads by authenticated user before document id.");
 assert.match(professionalCvPage, /initialDocument=\{initialCvDocument\}[\s\S]*cvSyncStatus=\{cvSyncStatus\}/, "My CV must pass the Professional Identity-derived CV model and sync status into the shared workspace.");
 assert.match(professionalIdentityCvModel, /languages: cleanList\(identity\.languages\)\.map\(splitLanguage\)/, "Professional Identity languages must map into the CV model through canonical values, not interface labels.");
 assert.match(professionalIdentityCvModel, /professionalIdentityHrefForCvSection[\s\S]*routeBuilders\.professionalIdentitySection/, "CV section edit actions must route to the matching Professional Identity section with return context.");
@@ -2184,10 +2531,46 @@ assert.match(professionalIdentityTool, /cvModel: normalizeCvModelForExport\(cvMo
 assert.match(professionalIdentityTool, /function duplicateCvVersion/, "CV Builder must let users duplicate a CV design version.");
 assert.match(professionalIdentityTool, /function renameCvVersion/, "CV Builder must let users rename a CV design version.");
 assert.match(professionalIdentityTool, /Presentation changes only\. Your canonical CV content stays the same\./, "CV Builder must explain that design changes do not erase content without showing technical version controls.");
-assert.match(myDocumentsClient, /function saveCvVersionPatch/, "My Documents must allow saved CV versions to be renamed or switched to another design.");
-assert.match(myDocumentsClient, /cvVersion: \{ \.\.\.version, versionName: title, createdAt: now, updatedAt: now, lastDownloadedAt: null \}/, "Duplicated CV documents must get fresh version metadata.");
-assert.match(myDocumentsClient, /renderCvHtmlFromModel\(selectedCvModel, selectedCvVersion\?\.designSystem/, "Saved CV preview must render from the selected version design metadata.");
-assert.match(myDocumentsClient, /lastDownloadedAt: downloadedAt/, "Downloaded CV versions must store lastDownloadedAt metadata.");
+assert.match(myDocumentsPage, /\.filter\(\(row\) => !isWorkflowDocumentType\(row\.document_type\)\)[\s\S]*vaultDocumentFromRow/, "My Documents must filter workflow text artifacts before rendering the employment file vault.");
+assert.doesNotMatch(myDocumentsPage, /linkedin_profiles|recruiter_messages|follow_up_emails|career_passport_summaries/, "My Documents must not fall back to legacy workflow text tables.");
+assert.match(documentVaultContract, /export type VaultDocumentType =[\s\S]*"cv"[\s\S]*"cover_letter"[\s\S]*"certificate"[\s\S]*"diploma"[\s\S]*"licence"[\s\S]*"reference"[\s\S]*"portfolio_file"[\s\S]*"id_work_document"/, "My Documents must model only real employment-supporting file/document types.");
+assert.match(documentVaultContract, /workflowDocumentTypes[\s\S]*"linkedin_profile"[\s\S]*"recruiter_message"[\s\S]*"follow_up_email"[\s\S]*"career_passport"[\s\S]*"application_email"[\s\S]*"linkedin_message"/, "My Documents must explicitly exclude workflow text artifacts from the vault.");
+assert.match(documentVaultContract, /vaultCategoryLabels[\s\S]*CVs[\s\S]*Cover Letters[\s\S]*Certificates[\s\S]*Qualifications[\s\S]*Licences[\s\S]*References[\s\S]*Portfolio & Evidence[\s\S]*Other Documents/, "My Documents must expose clear employment file-vault categories.");
+assert.match(myDocumentsClient, /Upload document[\s\S]*categoryOrder[\s\S]*visibleDocuments/, "My Documents must provide upload plus compact category filtering.");
+assert.doesNotMatch(myDocumentsClient, /<textarea|copyText|duplicateDocument|Document title[\s\S]*<input className="field"/, "My Documents must not be an in-place text editor or duplicate generator.");
+assert.match(documentVaultApi, /request\.formData\(\)[\s\S]*vaultDocumentStorageContract\.bucketName[\s\S]*\.upload\(storagePath, bytes/, "My Documents uploads must persist real files to the shared private employment document storage bucket.");
+assert.match(documentVaultApi, /\.from\("user_documents"\)[\s\S]*user_id: auth\.user\.id[\s\S]*content_json: contentJson[\s\S]*file_url: storagePath/, "My Documents uploads must create an owned user_documents metadata row with the canonical storage path.");
+assert.match(documentVaultApi, /const contentJson = \{[\s\S]*storage_path: storagePath[\s\S]*vault_category: vaultCategory[\s\S]*source: "my_documents_upload"/, "My Documents uploaded document metadata must retain the canonical storage path and selected category without storing a public URL.");
+assert.match(documentVaultApi, /\.eq\("id", id\)[\s\S]*\.eq\("user_id", auth\.user\.id\)/, "My Documents open/delete operations must scope reads by authenticated owner and document id.");
+assert.match(documentVaultApi, /createSignedUrl\(document\.storagePath, 300\)/, "My Documents Open must use short-lived signed URLs for private uploaded files.");
+assert.match(documentVaultApi, /replaceDocumentId[\s\S]*existingVaultDocument\.source !== "uploaded"[\s\S]*previousStoragePath[\s\S]*remove\(\[previousStoragePath\]\)/, "My Documents Replace must preserve metadata ownership and clean up the replaced storage object.");
+assert.match(documentVaultApi, /delete\(\)\.eq\("id", id\)\.eq\("user_id", auth\.user\.id\)[\s\S]*remove\(\[document\.storagePath\]\)/, "My Documents Delete must remove owned metadata and the underlying user file.");
+assert.match(documentVaultApi, /storageFailureDiagnostic[\s\S]*process\.env\.NODE_ENV !== "development"[\s\S]*diagnostic/, "My Documents storage diagnostics must be sanitized and development-only.");
+assert.match(documentVaultApi, /storageFailureResponse[\s\S]*console\.warn\("\[document-vault\] storage request failed"[\s\S]*vaultUploadErrorMessage\(code\)/, "My Documents storage failures must be logged safely without exposing infrastructure text to users.");
+assert.match(myDocumentsClient, /downloadGeneratedDocument[\s\S]*downloadBlob[\s\S]*setNotice\("Your file has downloaded to your browser's Downloads folder\."\)/, "Downloading a vault document must be an action and must not create another document record.");
+const myDocumentsGeneratedDownloadBlock = myDocumentsClient.slice(myDocumentsClient.indexOf("async function downloadGeneratedDocument"), myDocumentsClient.indexOf("async function saveDocumentPatch"));
+assert.doesNotMatch(myDocumentsGeneratedDownloadBlock, /fetch\(/, "Downloading a generated document from My Documents must not create, patch, or duplicate user_documents records.");
+assert.doesNotMatch(myDocumentsClient, /downloaded: true|status: "downloaded"|Duplicate/, "Downloaded must not be treated as a visible vault lifecycle status or duplicate document.");
+assert.match(myDocumentsClient, /coverLetterDataFromUnknown\(document\.contentJson\?\.coverLetterData, document\.content\)[\s\S]*simpleCoverLetterPdfDocument\(coverLetterData\)[\s\S]*coverLetterPdfFilename\(coverLetterData\)/, "Saved Cover Letter downloads from My Documents must use the structured coverLetterData renderer and filename.");
+assert.match(myDocumentsClient, /pendingUploadCategoryRef[\s\S]*uploadFile\(file, \{ category \}\)/, "My Documents upload handler must use the pending category captured before the file picker opens.");
+assert.match(myDocumentsClient, /selectedCategory === "all" \? uploadCategory : selectedCategory/, "Empty category upload CTAs must upload into the selected category instead of stale state.");
+assert.match(myDocumentsClient, /counts\[category\]/, "My Documents category counts must render from the current client document collection.");
+assert.match(myDocumentsClient, /storageServiceUnavailable && !visibleDocuments\.length[\s\S]*Document upload is temporarily unavailable/, "My Documents must not show the normal empty-vault state at the same time as a storage failure.");
+assert.doesNotMatch(myDocumentsClient, /Document storage is not ready yet|PATHZY storage is configured|Document storage permissions blocked/, "My Documents must not expose infrastructure storage language to normal users.");
+assert.match(myDocumentsClient, /sm:flex-wrap sm:overflow-visible/, "My Documents categories must wrap on larger screens instead of disappearing off-canvas.");
+assert.match(myDocumentsClient, /No documents yet\.[\s\S]*No \$\{label\} yet\./, "My Documents empty states must distinguish All Documents from category-specific empty states.");
+assert.equal(documentVaultRuntime.vaultDocumentFromRow({ id: "cv-1", document_type: "cv", document_title: "IT Support CV", status: "ready" })?.category, "cvs", "Saved CV documents must appear once under CVs.");
+assert.equal(documentVaultRuntime.vaultDocumentFromRow({ id: "letter-1", document_type: "cover_letter", document_title: "Maintenance & Support - Cover Letter", status: "ready" })?.category, "cover_letters", "Saved cover letters must appear once under Cover Letters.");
+assert.equal(documentVaultRuntime.vaultDocumentFromRow({ id: "cert-1", document_type: "certificate", document_title: "First Aid Certificate", status: "ready" })?.category, "certificates", "Uploaded certificates must appear under Certificates.");
+assert.equal(documentVaultRuntime.vaultDocumentFromRow({ id: "cover-upload-1", document_type: "supporting_document", document_title: "Cover Letter", status: "ready", content_json: { vault_category: "cover_letters" } })?.category, "cover_letters", "Uploaded supporting files must preserve the selected vault category.");
+assert.equal(documentVaultRuntime.vaultDocumentFromRow({ id: "linkedin-1", document_type: "linkedin_profile", document_title: "LinkedIn About", status: "draft" }), null, "LinkedIn drafts must not appear as My Documents vault items.");
+assert.equal(documentVaultRuntime.vaultDocumentFromRow({ id: "follow-1", document_type: "follow_up_email", document_title: "Follow up", status: "draft" }), null, "Follow-up text must not appear as My Documents vault items.");
+assert.equal(documentVaultRuntime.validateVaultUploadInput({ fileName: "certificate.pdf", mimeType: "application/pdf", sizeBytes: 1000 }).ok, true, "Vault upload validation must allow supported PDF files.");
+assert.equal(documentVaultRuntime.validateVaultUploadInput({ fileName: "script.exe", mimeType: "application/octet-stream", sizeBytes: 1000 }).ok, false, "Vault upload validation must reject unsupported formats.");
+assert.equal(documentVaultRuntime.validateVaultUploadInput({ fileName: "certificate.pdf", mimeType: "image/png", sizeBytes: 1000 }).ok, false, "Vault upload validation must reject extension/MIME mismatches server-side.");
+assert.equal(documentVaultRuntime.compactDocumentTitle("Letter IT support cover letter", "cover_letter"), "IT Support — Cover Letter", "Generated Cover Letter names must be compact and recruiter-readable.");
+assert.equal(documentVaultRuntime.compactDocumentTitle("IT Support CV", "cv"), "IT Support — CV", "Generated CV names must be compact and recruiter-readable.");
+assert.equal(documentVaultRuntime.vaultStoragePath("user-a", "doc-1", "Microsoft Azure Fundamentals Certificate.pdf"), "user-a/documents/doc-1/Microsoft-Azure-Fundamentals-Certificate.pdf", "Vault storage paths must remain user-scoped and deterministic.");
 assert.match(documentDownloads, /return \{ name: cv\.fullName, targetRole: cv\.targetRole, contact: contactLines\(cv\), sections \};/, "CV renderer must map fullName and targetRole to separate output fields.");
 assert.match(documentDownloads, /first\.elements\.push\(\{ kind: "text", x: 52, y: 42[\s\S]*text: cv\.name/, "Designed CV header must render the candidate name from fullName.");
 assert.match(documentDownloads, /if \(cv\.targetRole\) first\.elements\.push\(\{ kind: "text"[\s\S]*text: cv\.targetRole/, "Designed CV header must render targetRole as the header role line.");
@@ -2225,6 +2608,18 @@ assert.match(professionalIdentityTool, /const cvA4Page = \{ width: 794, height: 
 assert.match(professionalIdentityTool, /ResizeObserver\(calculateScale\)/, "CV preview must recalculate fit-page scaling when its viewport changes.");
 assert.match(professionalIdentityTool, /availableWidth \/ cvA4Page\.width[\s\S]*availableHeight \/ cvA4Page\.height/, "CV Fit Page must account for both preview width and height.");
 assert.match(professionalIdentityTool, /Fit Page[\s\S]*Fit Width[\s\S]*aria-label="Zoom Out"[\s\S]*aria-label="Zoom In"/, "CV preview must expose Fit Page, Fit Width, Zoom Out, and Zoom In controls.");
+assert.match(appGlobals, /--text-on-dark-primary:\s*#[0-9a-fA-F]{6};/, "The global design system must expose a primary readable text token for dark surfaces.");
+assert.match(appGlobals, /--control-text-dark-default:\s*#[0-9a-fA-F]{6};[\s\S]*--control-text-dark-active:\s*#[0-9a-fA-F]{6};[\s\S]*--control-text-dark-disabled:\s*#[0-9a-fA-F]{6};/, "Dark-surface controls must define readable default, active, and disabled foreground tokens.");
+assert.match(appGlobals, /\.pathzy-dark-control[\s\S]*color:\s*var\(--control-text-dark-default\)/, "Shared dark controls must use the readable dark-control default text token.");
+assert.match(appGlobals, /\.pathzy-dark-control-active,[\s\S]*\.pathzy-dark-control\[data-active="true"\][\s\S]*color:\s*var\(--control-text-dark-active\)/, "Shared active dark controls must use the active dark-control text token.");
+assert.match(appGlobals, /\.pathzy-dark-control:disabled,[\s\S]*\.pathzy-dark-control\[aria-disabled="true"\][\s\S]*opacity:\s*1;[\s\S]*color:\s*var\(--control-text-dark-disabled\)/, "Disabled dark controls must remain legible instead of becoming invisible through opacity.");
+assert.match(appGlobals, /\.pathzy-dark-control:focus-visible[\s\S]*outline:\s*2px solid var\(--control-dark-focus\)/, "Dark-surface controls must keep a visible keyboard focus state.");
+const cvPreviewToolbarBlock = professionalIdentityTool.slice(
+  professionalIdentityTool.indexOf("function renderCvPreviewToolbar()"),
+  professionalIdentityTool.indexOf("function renderCvPreviewViewer()"),
+);
+assert.match(cvPreviewToolbarBlock, /pathzy-dark-control-surface[\s\S]*Designed[\s\S]*Fit Page[\s\S]*Fit Width[\s\S]*pathzy-dark-control-indicator/, "CV preview toolbar controls must use the shared dark-surface control system.");
+assert.doesNotMatch(cvPreviewToolbarBlock, /text-white\/(?:5|6|7|8)|disabled:opacity/, "CV preview toolbar must not rely on low-opacity white text or opacity-disabled labels on a dark surface.");
 assert.doesNotMatch(professionalIdentityTool, /CvMobileWorkspaceTab|renderCvMobileTabs|Preview CV/, "CV workspace must use the natural Template Gallery -> full A4 Preview flow instead of the old edit/preview tab split.");
 assert.doesNotMatch(professionalIdentityTool, /tool === "cv" \? "Professional Identity source"|tool === "cv" \? "Edit Professional Identity"/, "The shared CV workspace branch must not render a persistent Professional Identity source/editor block.");
 assert.match(professionalIdentityTool, /const scaledWidth = cvA4Page\.width \* cvPreviewScale[\s\S]*style=\{\{ width: scaledWidth, height:/, "Mobile CV preview must reserve only the scaled A4 width and actual scaled page height to prevent horizontal overflow and blank canvas growth.");
@@ -2248,8 +2643,8 @@ assert.match(documentDownloads, /container-type:inline-size/, "A4 document pages
 assert.match(documentDownloads, /for \(const layoutPage of layout\.pages\)/, "PDF export must include every generated page.");
 assert.match(documentDownloads, /function roundedRectPath/, "PDF export must render rounded CV cards instead of flattening preview cards into plain rectangles.");
 assert.match(documentDownloads, /function circlePath/, "PDF export must render circular markers so the visual language matches preview.");
-assert.match(documentDownloads, /simplePdfDocumentFromModel[\s\S]*pdfFromLayout\(buildCvLayoutFromModel\(cv, templateName\)\)/, "PDF export must use the same CV layout renderer as preview.");
-assert.match(documentDownloads, /export function renderCvHtmlFromModel\(cv: CvModel, templateName\?: string, activeSection\?: string\)[\s\S]*buildCvLayoutFromModel\(cv, templateName, activeSection\)/, "Designed Preview must use the shared CV layout renderer.");
+assert.match(documentDownloads, /simplePdfDocumentFromModel[\s\S]*professionalPhoto\?: ProfessionalPhotoAssetView \| null, paletteId\?: string[\s\S]*pdfFromLayout\(buildCvLayoutFromModel\(cv, templateName, undefined, professionalPhoto, paletteId\)\)/, "PDF export must use the same photo-aware and palette-aware CV layout renderer as preview.");
+assert.match(documentDownloads, /export function renderCvHtmlFromModel\(cv: CvModel, templateName\?: string, activeSection\?: string, professionalPhoto\?: ProfessionalPhotoAssetView \| null, paletteId\?: string\)[\s\S]*buildCvLayoutFromModel\(cv, templateName, activeSection, professionalPhoto, paletteId\)/, "Designed Preview must use the shared photo-aware and palette-aware CV layout renderer.");
 assert.match(documentDownloads, /export function renderAtsCvHtmlFromModel\(cvInput: CvModel\)[\s\S]*cv\.fullName[\s\S]*cv\.targetRole[\s\S]*sections\.map/, "ATS Preview must keep header fields separate from semantic sections.");
 assert.match(documentDownloads, /pathzyEliteDesignSystem/, "CV renderer must use the shared PATHZY elite document design system.");
 assert.match(documentDownloads, /function buildSingleColumnCvLayout/, "ATS and International templates must have a true single-column A4 layout path.");
@@ -2259,17 +2654,87 @@ assert.match(documentDownloads, /rightRail = \["executive", "consulting", "engin
 assert.match(documentDownloads, /graduate: \["Professional Summary", "Education", "Projects", "Internships"/, "Graduate Elite must use an education-first document architecture after the Summary section.");
 assert.match(documentDownloads, /healthcare: \["Professional Summary", "Certifications", "Education", "Professional Experience"/, "Healthcare Professional must elevate credentials and education near the top after the Summary section.");
 assert.match(documentDownloads, /engineering: \["Professional Summary", "Projects", "Professional Experience"/, "Engineering must prioritize technical projects and experience after the Summary section.");
-const cvTemplateNames = [...documentTemplateEngine.matchAll(/template\("([^"]+)"/g)].map((match) => match[1]);
-assert.ok(cvTemplateNames.length >= 100, `PATHZY must publish at least 100 premium CV templates; found ${cvTemplateNames.length}.`);
-assert.equal(new Set(cvTemplateNames).size, cvTemplateNames.length, "Published CV template names must be unique.");
-for (const templateName of ["Executive Black", "Modern ATS", "Google Style", "Microsoft Professional", "Deloitte Consulting", "Creative Premium", "Healthcare Professional", "Graduate Elite", "Engineering", "International Standard"]) {
-  assert.ok(cvTemplateNames.includes(templateName), `${templateName} must remain registered in the reusable template engine.`);
-  assert.match(documentDownloads, new RegExp(`"${templateName}"[\\s\\S]*identity:`), `${templateName} must have its own design identity.`);
+const activeCvTemplateNames = documentTemplateEngineRuntime.documentTemplateGallery.map((template) => template.name);
+assert.equal(documentTemplateEngineRuntime.documentTemplateGallery.length, 50, "Runtime CV template gallery must expose exactly 50 active elite designs.");
+assert.equal(new Set(activeCvTemplateNames).size, activeCvTemplateNames.length, "Published active CV template names must be unique.");
+for (const template of documentTemplateEngineRuntime.documentTemplateGallery) {
+  assert.equal(template.palettes.length, 4, `${template.name} must expose exactly four curated palettes.`);
+  assert.equal(new Set(template.palettes.map((palette) => palette.id)).size, 4, `${template.name} palette ids must be unique.`);
+  assert.ok(template.palettes.every((palette) => palette.paper && palette.accent && palette.ink), `${template.name} palettes must include printable paper, accent, and ink colours.`);
 }
-for (const templateName of ["Administration Precision", "Sales Performance", "Project Manager", "Legal Counsel", "Accounting Professional", "Supply Chain", "Skilled Trades", "Teacher Portfolio", "Laboratory Scientist", "No Experience Starter"]) {
-  assert.ok(cvTemplateNames.includes(templateName), `${templateName} must be part of the additional 50-template CV expansion.`);
+assert.equal(
+  documentTemplateEngineRuntime.documentTemplateGallery.flatMap((template) => template.palettes).length,
+  200,
+  "50 CV designs must produce 200 palette variants without counting palettes as templates."
+);
+const requiredCvFamilyCounts = new Map([
+  ["Executive & Leadership", 8],
+  ["Corporate & Professional", 8],
+  ["ATS & Minimal", 8],
+  ["Technical / IT / Engineering", 7],
+  ["Graduate / Early Career", 6],
+  ["Creative / Product / Marketing", 5],
+  ["Academic / Public Sector / Healthcare", 4],
+  ["International / NGO / Career Change", 4]
+]);
+for (const [family, expectedCount] of requiredCvFamilyCounts) {
+  assert.equal(documentTemplateEngineRuntime.documentTemplateGallery.filter((template) => template.family === family).length, expectedCount, `${family} must publish ${expectedCount} active templates.`);
 }
-assert.match(documentTemplateEngine, /MAX_TEMPLATE_VARIANTS_PER_DESIGN = 2/, "CV template registry must cap published color variants at two per underlying design.");
+for (const retiredName of ["Google Style", "Microsoft Professional", "Deloitte Consulting"]) {
+  assert.ok(!activeCvTemplateNames.includes(retiredName), `${retiredName} must not appear in the active CV template gallery.`);
+}
+const paletteRenderTemplate = documentTemplateEngineRuntime.templateMetadata("Meridian Executive");
+const paletteRenderHtml = documentDownloadsRuntime.renderCvHtmlFromModel(
+  professionalIdentityCvModelRuntime.cvModelFromProfessionalIdentity({ full_name: "Palette Candidate", career_goal: "Operations Lead", email: "palette@example.com" }),
+  paletteRenderTemplate.name,
+  undefined,
+  null,
+  paletteRenderTemplate.palettes[1].id
+);
+assert.match(paletteRenderHtml, new RegExp(paletteRenderTemplate.palettes[1].accent.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), "Designed Preview must apply the selected CV palette accent.");
+const pdfColorToken = (hex, stroke = false) => {
+  const clean = hex.replace("#", "");
+  const values = [clean.slice(0, 2), clean.slice(2, 4), clean.slice(4, 6)].map((part) => (Number.parseInt(part, 16) / 255).toFixed(3));
+  return `${values.join(" ")} ${stroke ? "RG" : "rg"}`;
+};
+const paletteRenderPdf = documentDownloadsRuntime.simplePdfDocumentFromModel(
+  "Palette Candidate CV",
+  professionalIdentityCvModelRuntime.cvModelFromProfessionalIdentity({ full_name: "Palette Candidate", career_goal: "Operations Lead", email: "palette@example.com" }),
+  paletteRenderTemplate.name,
+  null,
+  paletteRenderTemplate.palettes[1].id
+);
+assert.ok(paletteRenderPdf.startsWith("%PDF-"), "CV export must generate a real PDF body.");
+assert.match(paletteRenderPdf, /\/Type \/Page\b/, "CV export must contain at least one PDF page.");
+assert.match(paletteRenderPdf, /Palette Candidate/, "CV export must contain the current candidate content.");
+assert.match(paletteRenderPdf, new RegExp(pdfColorToken(paletteRenderTemplate.palettes[1].accent).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), "PDF export must apply the selected CV palette accent.");
+for (const templateName of ["Meridian Executive", "Atlas Professional", "Vanguard ATS", "Regent Corporate", "Horizon Technical", "Lumina Graduate", "Atelier Portfolio", "Keystone Public Service", "Nexus International", "Bridge Career Change"]) {
+  assert.ok(activeCvTemplateNames.includes(templateName), `${templateName} must remain registered in the active reusable template engine.`);
+}
+for (const [legacyName, expectedName] of [
+  ["PATHZY Signature Professional", "Atlas Professional"],
+  ["Executive Black", "Meridian Executive"],
+  ["Modern ATS", "Clarity ATS"],
+  ["Google Style", "Horizon Technical"],
+  ["Microsoft Professional", "Regent Corporate"],
+  ["Deloitte Consulting", "Forge Consultant"],
+  ["Creative Premium", "Atelier Portfolio"],
+  ["Healthcare Professional", "Clinical Professional"],
+  ["Graduate Elite", "Lumina Graduate"],
+  ["Engineering", "Horizon Technical"],
+  ["International Standard", "Nexus International"]
+]) {
+  assert.equal(documentTemplateEngineRuntime.normalizeDocumentTemplate(legacyName), expectedName, `${legacyName} must normalize to the new active CV template library.`);
+}
+assert.match(documentTemplateEngine, /DocumentTemplatePalette[\s\S]*palettes: \[DocumentTemplatePalette, DocumentTemplatePalette, DocumentTemplatePalette, DocumentTemplatePalette\]/, "CV template registry must model exactly four palettes per template.");
+assert.match(documentTemplateEngine, /curateTemplatePalettes[\s\S]*id: `\$\{slug\(name\)\}-\$\{slug\(palette\.name\)\}`/, "CV palettes must be curated metadata on each template, not separate template entries.");
+assert.match(documentTemplateEngine, /normalizeDocumentTemplatePalette[\s\S]*templatePaletteMetadata/, "CV palette selection must have shared normalization and metadata lookup helpers.");
+assert.match(professionalIdentityTool, /paletteId: string[\s\S]*normalizeDocumentTemplatePalette/, "CV version metadata must persist the selected template palette.");
+assert.match(professionalIdentityTool, /templatePalette[\s\S]*setValues[\s\S]*templatePalette: version\.paletteId/, "CV workspace must hydrate the saved template palette after refresh or reload.");
+assert.match(professionalIdentityTool, /updateValue\("templatePalette", paletteId\)/, "CV palette swatches must update the same document presentation state as templates.");
+assert.match(documentDownloads, /overflow-wrap:anywhere/, "CV renderer must guard against long unbroken text escaping A4 containers.");
+assert.match(documentDownloads, /width - 62[\s\S]*cardHeight = Math\.max\(58/, "CV dynamic timeline cards must reserve safe width and height for long experience content.");
+assert.match(documentTemplateEngine, /MAX_TEMPLATE_VARIANTS_PER_DESIGN = 1/, "CV template registry must prevent duplicate active template entries for the same underlying design.");
 assert.match(documentTemplateEngine, /designKey[\s\S]*templateVariantCounts[\s\S]*validateTemplateVariantLimit\(\)/, "CV template metadata must track design families and enforce variant limits in the shared registry.");
 assert.match(documentTemplateEngine, /family[\s\S]*atsClassification[\s\S]*atsCharacteristic[\s\S]*recruiterCharacteristic[\s\S]*bestFor[\s\S]*thumbnail/, "Template gallery metadata must include families, honest ATS classifications, recruiter characteristics, best-for labels, and thumbnails.");
 for (const classification of ["ATS HIGH", "ATS BALANCED", "VISUAL / RECRUITER-FIRST"]) {
@@ -2309,12 +2774,37 @@ for (const policyName of [
   assert.match(professionalPhotoStorageMigration, new RegExp(policyName), `Professional Photo storage migration must include ${policyName}.`);
 }
 assert.match(professionalPhotoStorageMigration, /\(storage\.foldername\(name\)\)\[1\] = auth\.uid\(\)::text/g, "Professional Photo storage policies must scope objects by authenticated user folder.");
+for (const bucketSignature of [
+  "insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)",
+  "'employment-documents'",
+  "false",
+  "8388608",
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "image/png",
+  "image/jpeg",
+  "text/plain"
+]) {
+  assert.match(employmentDocumentStorageMigration, new RegExp(bucketSignature.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `Employment document storage migration must include ${bucketSignature}.`);
+}
+for (const policyName of [
+  "Users can read own employment documents",
+  "Users can upload own employment documents",
+  "Users can update own employment documents",
+  "Users can delete own employment documents"
+]) {
+  assert.match(employmentDocumentStorageMigration, new RegExp(policyName), `Employment document storage migration must include ${policyName}.`);
+}
+assert.match(employmentDocumentStorageMigration, /\(storage\.foldername\(name\)\)\[1\] = auth\.uid\(\)::text/g, "Employment document storage policies must scope objects by authenticated user folder.");
+assert.match(employmentDocumentStorageMigration, /drop constraint if exists user_documents_document_type_check[\s\S]*'licence'[\s\S]*'portfolio_file'[\s\S]*'id_work_document'/, "Employment document storage migration must repair the user_documents type constraint for every current vault document type.");
+assert.match(employmentDocumentStorageMigration, /user_documents_user_vault_category_idx[\s\S]*content_json ->> 'vault_category'/, "Employment document storage migration must add a category-aware index for the file vault.");
+assert.match(employmentDocumentStorageMigration, /employment_document_user_documents_contract[\s\S]*employment_document_vault_category_index/, "Employment document storage migration must verify the database document contract after applying.");
 assert.doesNotMatch(documentTemplateEngine, /atsRating|recruiterRating/, "Template gallery metadata must not use invented static ATS or recruiter percentage ratings.");
 assert.match(professionalIdentityService, /premiumDocumentTemplates = documentTemplateGallery/, "Professional Identity service must reuse the shared template gallery.");
 assert.match(professionalIdentityTool, /documentTemplateGallery\.map/, "CV Builder must render the shared visual template gallery.");
 assert.match(professionalIdentityTool, /Template gallery[\s\S]*Choose a recruiter-ready design/, "CV Builder must expose a visual template gallery.");
-assert.match(professionalIdentityTool, /cvTemplateFamily[\s\S]*cvTemplateAtsFilter[\s\S]*cvTemplateSearch/, "CV Builder must keep the 50+ template library compact with family, ATS, and search filtering.");
-assert.match(professionalIdentityTool, /recommendedDocumentTemplates[\s\S]*Browse all templates[\s\S]*cvTemplateBrowserOpen/, "CV Builder must show a compact selector and open the 100+ template gallery only on demand.");
+assert.match(professionalIdentityTool, /cvTemplateFamily[\s\S]*cvTemplateAtsFilter[\s\S]*cvTemplateSearch/, "CV Builder must keep the 50-template library compact with family, ATS, and search filtering.");
+assert.match(professionalIdentityTool, /recommendedDocumentTemplates[\s\S]*Browse all templates[\s\S]*cvTemplateBrowserOpen/, "CV Builder must show a compact selector and open the 50-design template gallery only on demand.");
 assert.match(professionalIdentityTool, /\[grid-template-columns:repeat\(auto-fit,minmax\(154px,1fr\)\)\]/, "CV Builder template browser must use a compact responsive metadata grid.");
 assert.match(professionalIdentityTool, /<TemplateMiniPreview template=\{template\} \/>/, "CV Builder template gallery must use the shared architecture mini preview component.");
 assert.match(templateMiniPreview, /cv-template-mini-preview/, "CV Builder template gallery must show lightweight mini document previews instead of abstract skeleton-only cards.");
@@ -2327,10 +2817,22 @@ assert.match(professionalIdentityTool, /template\.atsClassification[\s\S]*templa
 assert.doesNotMatch(professionalIdentityTool, /ATS \{template\.atsRating\}%|Recruiter \{template\.recruiterRating\}%/, "CV Builder template cards must not show fake ATS or recruiter percentages.");
 assert.match(professionalIdentityTool, /selectTemplate\(template\.name\)[\s\S]*setCvTemplateBrowserOpen\(false\)/, "Template cards must switch instantly, close the browser, and preserve the same CV model.");
 assert.match(professionalIdentityTool, /Presentation changes only\. Your canonical CV content stays the same\./, "CV Builder must explain that switching templates preserves data.");
-assert.match(professionalIdentityTool, /renderCvHtmlFromModel\(previewCvModel, templateName, activeCvSection\)/, "Designed Preview must render the selected template from the live canonical CV model.");
-assert.match(professionalIdentityTool, /simplePdfDocumentFromModel\(document\.title, cvModel, templateName\)/, "PDF export path must stay aligned to the selected template and canonical CV model.");
+assert.match(professionalIdentityTool, /renderCvHtmlFromModel\(previewCvModel, templateName, activeCvSection, canonicalProfessionalPhoto, cvPaletteId\)/, "Designed Preview must render the selected template and palette from the live canonical CV model and photo source.");
+assert.match(professionalIdentityTool, /simplePdfDocumentFromModel\(document\.title, normalizeCvModelForExport\(cvModel\), templateName, canonicalProfessionalPhoto, cvPaletteId\)/, "PDF export path must stay aligned to the selected template, palette, canonical CV model and photo source.");
+assert.match(professionalIdentityTool, /Save to My Documents/, "CV and Cover Letter workspaces must expose a clear Save to My Documents action.");
+assert.match(professionalIdentityTool, /function saveActionLabel\(\)[\s\S]*Save changes[\s\S]*✓ Saved[\s\S]*Save to My Documents/, "Document workspace save buttons must show Save to My Documents, Save changes, or Saved according to persistence state.");
 assert.match(professionalIdentityTool, /if \(exportLocked && !coreDownloadsAllowed\)/, "Current core document PDF downloads must bypass legacy pricing redirects.");
-assert.match(professionalIdentityTool, /downloadBusy[\s\S]*Preparing\.\.\.[\s\S]*Download PDF/, "PDF downloads must provide immediate progress feedback and prevent duplicate clicks.");
+assert.match(professionalIdentityTool, /downloadBusy[\s\S]*Preparing PDF\.\.\.[\s\S]*Download PDF/, "PDF downloads must provide immediate progress feedback and prevent duplicate clicks.");
+assert.match(professionalIdentityTool, /const canDownloadPdf = tool === "cv" \? Boolean\(cvModel\) : Boolean\(document\?\.content\)/, "CV PDF downloads must be enabled by the structured current CV model, not stale legacy content text.");
+assert.match(professionalIdentityTool, /tool !== "cv" && \(!document\.id \|\| hasUnsavedChanges \|\| saveState === "error" \|\| !saved\)/, "Non-CV PDF downloads must keep the saved-document gate while CV export remains an action on the current CV state.");
+assert.match(professionalIdentityTool, /disabled=\{!canDownloadPdf \|\| downloadBusy\}/, "Desktop and mobile PDF buttons must use the shared CV-aware download readiness guard.");
+assert.match(professionalIdentityTool, /setDownloadState\("preparing"\)[\s\S]*window\.requestAnimationFrame[\s\S]*setDownloadState\("downloading"\)/, "PDF download clicks must yield a paintable preparing state before synchronous PDF generation starts.");
+assert.match(professionalIdentityTool, /catch \(caught\)[\s\S]*console\.warn\("\[professional-identity\] PDF download failed"[\s\S]*We couldn't download your CV\. Please try again\.[\s\S]*We couldn't download your document\. Your document is still saved\. Please try again\./, "PDF export failures must produce controlled CV-specific and document-specific user-facing errors with a sanitized development diagnostic.");
+assert.doesNotMatch(professionalIdentityTool, /markDownloaded|downloaded: true|status: "downloaded"/, "Workspace PDF download must not mutate document records or create a Downloaded status.");
+assert.match(documentDownloads, /if \(blob\.size <= 0\)[\s\S]*Cannot download an empty file/, "Blob downloads must reject empty files instead of triggering a silent browser no-op.");
+assert.match(documentDownloads, /type === "application\/pdf"[\s\S]*!content\.startsWith\("%PDF-"\)[\s\S]*Generated PDF content is invalid/, "PDF downloads must validate generated PDF bytes before handing them to the browser.");
+assert.match(documentDownloads, /window\.setTimeout\(\(\) => \{[\s\S]*anchor\.remove\(\);[\s\S]*URL\.revokeObjectURL\(url\);[\s\S]*\}, 1000\)/, "Blob downloads must keep object URLs alive long enough for desktop and mobile browsers to start the download.");
+assert.doesNotMatch(documentDownloads, /anchor\.click\(\);\s*anchor\.remove\(\);\s*URL\.revokeObjectURL\(url\);/, "Blob downloads must not revoke the object URL synchronously after clicking the link.");
 assert.doesNotMatch(myDocumentsClient, /PremiumUpgradeCard[\s\S]*Upgrade to download/, "Saved core document downloads must not render an upgrade card.");
 assert.match(professionalIdentityTool, /Improve your CV/, "CV Builder must show Improve your CV recommendations instead of generic missing-field messages.");
 assert.match(professionalIdentityTool, /Add \{parsedCv\.missing\.join\(", "\)\.toLowerCase\(\)\}/, "CV recommendations must be based on the structured CV model gaps.");
@@ -2364,7 +2866,9 @@ assert.doesNotMatch(professionalIdentityTool, /overflow-x-auto[\s\S]{0,120}cvPri
 assert.match(professionalIdentityTool, /function renderSyncedMoreSections[\s\S]*cvMoreSections\.map\(\(title\) => renderSyncedCvSection\(title, cvSectionItems\(title\)/, "More must render optional sections as Professional Identity-synced summaries.");
 assert.doesNotMatch(professionalIdentityTool, /data-cv-editor-accordion="optional"|activeCvSection === title[\s\S]*setActiveCvSection\("More"\)/, "More must not keep the old duplicate optional-section editor.");
 assert.match(professionalIdentityTool, /renderSyncedHeaderSection[\s\S]*parsedCv\.fullName[\s\S]*parsedCv\.targetRole[\s\S]*parsedCv\.email[\s\S]*parsedCv\.phone[\s\S]*parsedCv\.city[\s\S]*parsedCv\.country[\s\S]*parsedCv\.linkedIn[\s\S]*parsedCv\.portfolio/, "Header summaries must preserve all Professional Identity-derived header fields.");
-assert.match(professionalIdentityTool, /tool === "cv" \|\| tool === "cover-letter" \? "grid gap-5"/, "CV and Cover Letter workspaces must use the same full-width document-studio flow.");
+assert.match(professionalIdentityTool, /tool === "cv" \|\| tool === "cover-letter" \? "grid gap-5"/, "CV and Cover Letter must stay in the shared document workspace shell.");
+assert.match(professionalIdentityTool, /lg:grid-cols-\[minmax\(280px,360px\)_minmax\(0,1fr\)\][\s\S]*data-cover-letter-workspace-layout="compact-controls-large-preview"/, "Cover Letter desktop layout must reserve a compact control rail and dominant preview column.");
+assert.match(professionalIdentityTool, /lg:sticky lg:top-24[\s\S]*data-cover-letter-compact-control-area="true"/, "Cover Letter desktop controls must stay compact and independent from the preview area.");
 assert.match(professionalIdentityTool, /renderCvTemplateGallery\(\)[\s\S]*<Card className="overflow-hidden border-\[#7f1d1d\]\/18/, "CV template selector must render before the full-width preview card.");
 assert.match(professionalIdentityTool, /data-cv-document-studio="true"/, "CV preview must render inside the dedicated document studio container.");
 assert.match(professionalIdentityTool, /renderCvPreviewViewer\(\)/, "CV A4 preview must render through the shared fit-page preview viewer.");
@@ -2384,13 +2888,14 @@ assert.match(professionalIdentityTool, /renderAtsCvHtmlFromModel\(previewCvModel
 assert.match(professionalIdentityTool, /function cvHealthScore\(cv: CvModel \| null\)/, "CV Builder must calculate a CV Health Score from structured CV data.");
 assert.match(professionalIdentityTool, /CV Health Score/, "CV Builder must display CV Health Score.");
 assert.match(professionalIdentityTool, /Improve your CV: \{recommendation\}/, "CV Health recommendations must be actionable Improve your CV messages.");
-assert.match(myDocumentsClient, /documentTemplateGallery\.map/, "My Documents must use the same template engine for saved CV versions.");
-assert.match(documentTemplateEngine, /legacyTemplateAliases[\s\S]*"ATS Friendly": "Modern ATS"/, "Legacy saved template names must normalize to canonical templates.");
-assert.match(documentDownloads, /resolveCvTemplateDesign\(templateName\)/, "Template choice must resolve to a real document design.");
+assert.match(myDocumentsClient, /openHrefForDocument[\s\S]*\/professional-identity\/cv\?documentId=[\s\S]*\/professional-identity\/cover-letter\?documentId=/, "My Documents must open PATHZY-generated documents in their original workspaces instead of editing them inside the vault.");
+assert.match(documentTemplateEngine, /legacyTemplateAliases[\s\S]*"ATS Friendly": "Clarity ATS"/, "Legacy saved template names must normalize to canonical templates.");
+assert.match(documentDownloads, /resolveCvTemplateDesign\(templateName, paletteId\)/, "Template and palette choice must resolve to a real document design.");
 assert.match(documentDownloads, /nameSize[\s\S]*roleSize[\s\S]*sectionTitleSize[\s\S]*bodySize[\s\S]*bodyLineHeight/, "Document design system must define a typography scale.");
 assert.match(documentDownloads, /headerHeight[\s\S]*sidebarWidth[\s\S]*columnGap[\s\S]*cardRadius[\s\S]*chipRadius/, "Document design system must define spacing and layout tokens.");
-assert.match(professionalIdentityTool, /simplePdfDocumentFromModel\(document\.title, cvModel, templateName\)/, "CV export must use the same structured model as preview.");
-assert.match(myDocumentsClient, /simplePdfDocumentFromModel\(selected\.title, selectedCvModel/, "Saved CV PDF export must use the structured CV model.");
+assert.match(professionalIdentityTool, /simplePdfDocumentFromModel\(document\.title, normalizeCvModelForExport\(cvModel\), templateName, canonicalProfessionalPhoto, cvPaletteId\)/, "CV export must use the same structured model, photo source, and palette as preview.");
+assert.match(myDocumentsClient, /function savedCvPaletteId\(document: VaultDocumentRecord\)[\s\S]*cvVersion[\s\S]*paletteId/, "My Documents must read the saved CV palette from version metadata.");
+assert.match(myDocumentsClient, /simplePdfDocumentFromModel\(document\.title, cvModelFromUnknown\(document\.contentJson\?\.cvModel, document\.content\), document\.templateName \?\? undefined, undefined, savedCvPaletteId\(document\)\)/, "Saved CV downloads from My Documents must use the structured CV model and preserved palette.");
 assert.doesNotMatch(`${professionalIdentityTool}\n${myDocumentsClient}\n${cvBuilderPage}`, /Download DOCX|downloadDocx|downloadWord|Download Text|text export|download text|download PDF, or download DOCX/i, "Normal user flow must not expose DOCX or text export.");
 assert.match(cvImportPipeline, /export function validateCvImportFile/, "CV import must validate files before extraction.");
 assert.match(cvImportPipeline, /application\/pdf/, "CV import must support PDF files.");
@@ -2906,10 +3411,31 @@ assert.match(documentDownloads, /export type CoverLetterData = \{[\s\S]*fullName
 for (const templateName of ["PATHZY Signature Letter", "Executive Black", "Modern ATS", "Google Style", "Microsoft Professional", "Deloitte Consulting", "Executive Signature", "Global Corporate", "Tech Minimal", "Creative Professional", "Graduate First Step"]) {
   assert.match(documentDownloads, new RegExp(`name: "${templateName}"`), `${templateName} must be registered in the cover letter template gallery.`);
 }
+for (const template of documentDownloadsRuntime.coverLetterTemplateGallery) {
+  assert.equal(template.palettes.length, 3, `${template.name} cover letter design must expose exactly three curated palettes.`);
+  assert.equal(new Set(template.palettes.map((palette) => palette.id)).size, 3, `${template.name} cover letter palette ids must be unique.`);
+  for (const palette of template.palettes) {
+    for (const token of ["pageBackground", "primaryText", "secondaryText", "headingText", "candidateNameText", "accent", "divider", "linkContactText"]) {
+      assert.match(palette[token], /^#[0-9a-f]{6}$/i, `${template.name} ${palette.name} must define semantic ${token}.`);
+    }
+    assert.ok(
+      documentDownloadsRuntime.coverLetterContrastRatio(palette.candidateNameText, palette.pageBackground) >= 4.5,
+      `${template.name} ${palette.name} candidate-name text must be readable on its page background.`
+    );
+    assert.ok(
+      documentDownloadsRuntime.coverLetterContrastRatio(palette.primaryText, palette.pageBackground) >= 4.5,
+      `${template.name} ${palette.name} body text must be readable on its page background.`
+    );
+  }
+}
+const coverLetterContrastFailures = documentDownloadsRuntime.coverLetterPaletteContrastChecks().filter((check) => !check.pass);
+assert.equal(coverLetterContrastFailures.length, 0, "Every Cover Letter template/palette semantic text token must pass WCAG AA contrast for preview and PDF rendering.");
 assert.match(documentDownloads, /if \(typeof value !== "string"\) return "PATHZY Signature Letter"/, "Cover Letter generation must default to the benchmark PATHZY Signature Letter template.");
 assert.match(documentDownloads, /export function serializeCoverLetterData/, "Cover Letter content text must serialize from coverLetterData.");
 assert.match(documentDownloads, /export function renderCoverLetterHtmlFromData/, "Cover Letter preview must render from coverLetterData.");
 assert.match(documentDownloads, /export function simpleCoverLetterPdfDocument[\s\S]*pdfFromLayout\(buildCoverLetterLayoutFromData\(data\)\)/, "Cover Letter PDF must export from the same coverLetterData renderer.");
+assert.match(documentDownloads, /coverLetterPremiumTemplateForPalette\(coverDesign, coverPalette\)/, "Cover Letter preview and PDF must use the semantic Cover Letter palette contract.");
+assert.match(documentDownloads, /candidateNameColor\(headerBackground\)/, "Cover Letter headers must resolve candidate-name text against the actual header background.");
 const coverLetterJobContext = {
   source: "pasted_job_description",
   company: "Avolito Beverages",
@@ -2935,13 +3461,110 @@ const signatureCoverLetterUserText = [
 ].join(" ");
 assert.doesNotMatch(signatureCoverLetterUserText, /PATHZY|salary|employment diagnosis|PATHZY score|work authorization|nationality/i, "Generated Cover Letter prose must exclude internal/private fields and product guidance.");
 assert.doesNotMatch(signatureCoverLetterData.greeting, /undefined|null|recruiter/i, "Cover Letter must not invent a recruiter name when none is known.");
+const supportOpportunityContext = {
+  source: "pasted_job_description",
+  company: "Metro Services",
+  role: "Maintenance Support Assistant",
+  location: "Johannesburg",
+  jobDescription: "Support maintenance requests, coordinate updates, communicate with customers, and troubleshoot basic service issues. Power BI is preferred.",
+  requirements: ["Customer support", "Maintenance coordination", "Basic troubleshooting"],
+  responsibilities: ["Coordinate maintenance requests", "Prepare service updates"],
+  qualifications: ["Matric or equivalent"],
+  hiringManager: ""
+};
+const supportLetterSelection = coverLetterIntelligenceRuntime.selectCoverLetterEvidence(structuredIdentityValues, supportOpportunityContext, { language: "english" });
+assert.ok(supportLetterSelection.jobAnalysis.mandatoryRequirements.length >= 3, "Cover Letter intelligence must analyze explicit job requirements before drafting.");
+assert.ok(supportLetterSelection.jobAnalysis.responsibilities.length >= 2, "Cover Letter intelligence must separate responsibilities from candidate requirements.");
+assert.ok(supportLetterSelection.selectedEvidence.length <= 4, "Cover Letter intelligence must select a small evidence budget instead of every profile fact.");
+assert.ok(supportLetterSelection.selectedSkills.length <= 5, "Cover Letter intelligence must select a bounded relevant skill list.");
+assert.equal(new Set(supportLetterSelection.selectedEvidence.map((item) => item.id)).size, supportLetterSelection.selectedEvidence.length, "Cover Letter evidence selection must deduplicate repeated evidence records.");
+const supportLetterData = professionalIdentityCoverLetterModelRuntime.coverLetterDataFromProfessionalIdentity(structuredIdentityValues, supportOpportunityContext, { templateName: "PATHZY Signature Letter", language: "english" });
+const supportLetterText = [
+  supportLetterData.openingParagraph,
+  supportLetterData.motivationParagraph,
+  supportLetterData.evidenceParagraph,
+  supportLetterData.companyAlignmentParagraph,
+  supportLetterData.closingParagraph,
+  ...supportLetterData.bodyParagraphs
+].join(" ");
+assert.ok(supportLetterText.split(/\s+/).filter(Boolean).length <= 430, "Cover Letter output must stay one-page-oriented instead of becoming a profile dump.");
+assert.doesNotMatch(supportLetterText, /Building an employment operating system for guided career support[\s\S]*Building an employment operating system for guided career support/i, "Cover Letter must not duplicate PATHZY Experience descriptions.");
+assert.doesNotMatch(supportLetterText, /Coordinating launch planning, brand messaging and early marketing operations[\s\S]*Coordinating launch planning, brand messaging and early marketing operations/i, "Cover Letter must not duplicate AVOLITO Experience descriptions.");
+assert.doesNotMatch(supportLetterText, /Founder & Product Owner[\s\S]*2025[\s\S]*Present[\s\S]*Building an employment operating system/i, "Cover Letter must not copy a complete CV-style Experience block.");
+assert.doesNotMatch(supportLetterData.evidenceParagraph, /Power BI/i, "Cover Letter evidence paragraph must not claim a missing required or preferred skill.");
+const noFormalExperienceValues = professionalIdentityCompletionRuntime.normalizeProfessionalIdentityCompletionValues({
+  full_name: "Amina Graduate",
+  career_goal: "IT Support Intern",
+  education: ["Diploma in Information Technology"],
+  experience: [],
+  skills: ["Communication", "Troubleshooting", "Customer service"],
+  projects: ["Built a help desk ticket tracker for class practice"]
+});
+const noFormalExperienceLetter = professionalIdentityCoverLetterModelRuntime.coverLetterDataFromProfessionalIdentity(noFormalExperienceValues, {
+  source: "manual",
+  company: "Support Desk Co",
+  role: "IT Support Intern",
+  requirements: ["Troubleshooting", "Customer service"],
+  responsibilities: ["Respond to support tickets"]
+}, { templateName: "PATHZY Signature Letter", language: "english" });
+assert.doesNotMatch(noFormalExperienceLetter.evidenceParagraph, /extensive professional|years of experience|previous employment/i, "Early-career Cover Letters must not fabricate formal experience.");
+assert.match(noFormalExperienceLetter.evidenceParagraph, /Troubleshooting|Customer service|help desk|Information Technology/i, "Early-career Cover Letters must use truthful education, project or skill evidence.");
+const careerChangeValues = professionalIdentityCompletionRuntime.normalizeProfessionalIdentityCompletionValues({
+  full_name: "Sam Careerchange",
+  career_goal: "Customer Support Advisor",
+  education: ["Certificate in Business Administration"],
+  experience: [{ id: "exp-admin", role: "Office Administrator", company: "Example Office", location: "", startDate: "2021", endDate: "2024", description: "Handled records, scheduling and daily communication.", achievements: ["Resolved client scheduling queries."] }],
+  skills: ["Communication", "Administration", "Customer service"]
+});
+const careerChangeLetter = professionalIdentityCoverLetterModelRuntime.coverLetterDataFromProfessionalIdentity(careerChangeValues, {
+  source: "manual",
+  company: "Client Help Ltd",
+  role: "Customer Support Advisor",
+  requirements: ["Customer communication", "Record keeping"],
+  responsibilities: ["Respond to customer queries"]
+}, { templateName: "PATHZY Signature Letter", language: "english" });
+assert.match(careerChangeLetter.evidenceParagraph, /Office Administrator|Communication|Customer service|client/i, "Career-change Cover Letters must select transferable evidence instead of dumping old-career history.");
+const alternateTemplateLetter = professionalIdentityCoverLetterModelRuntime.coverLetterDataFromProfessionalIdentity(structuredIdentityValues, supportOpportunityContext, { templateName: "Executive Black", language: "english" });
+assert.equal(alternateTemplateLetter.designSystem, "Executive Black", "Cover Letter template changes must alter presentation metadata.");
+assert.equal(alternateTemplateLetter.evidenceParagraph, supportLetterData.evidenceParagraph, "Cover Letter template changes must not regenerate or alter the selected content.");
+const supportLetterQuality = coverLetterIntelligenceRuntime.validateCoverLetterDraftQuality(supportLetterData, supportLetterSelection);
+assert.equal(supportLetterQuality.valid, true, "Cover Letter quality validation must pass a concise grounded one-page-oriented letter.");
 const signatureCoverLetterHtml = documentDownloadsRuntime.renderCoverLetterHtmlFromData(signatureCoverLetterData);
 const signatureCoverLetterPdf = documentDownloadsRuntime.simpleCoverLetterPdfDocument(signatureCoverLetterData);
 assert.match(signatureCoverLetterHtml, /data-pathzy-cover-letter-document-root="candidate-cover-letter-only"/, "Cover Letter preview must render inside an isolated candidate document root.");
 assert.equal((signatureCoverLetterHtml.match(/class="cv-render-page-frame"/g) ?? []).length, 1, "A normal one-page Signature Letter fixture must produce one real A4 page frame.");
 assert.match(signatureCoverLetterHtml, /Nicka Candida[\s\S]*Marketing Coordinator[\s\S]*Avolito Beverages[\s\S]*Kind regards/, "Cover Letter preview must render formal letter hierarchy from the normalized model.");
+assert.ok(signatureCoverLetterPdf.startsWith("%PDF-1.4"), "Cover Letter export must produce a real PDF payload.");
+assert.ok(signatureCoverLetterPdf.length > 1200, "Cover Letter export must produce a non-empty PDF payload.");
+assert.match(signatureCoverLetterPdf, /Nicka Candida[\s\S]*Marketing Coordinator[\s\S]*Avolito Beverages[\s\S]*Kind regards/, "Cover Letter PDF must contain the current saved candidate, role, company and closing content.");
 assert.doesNotMatch(signatureCoverLetterHtml, /Employment Center|Applications|Interview Preparation|Career Analytics|Settings|Logout|Your Mentor|EN\/FR/, "Application navigation must never render inside the candidate Cover Letter preview root.");
 assert.doesNotMatch(signatureCoverLetterPdf, /Employment Center|Applications|Interview Preparation|Career Analytics|Settings|Logout|Your Mentor|pricing/i, "Cover Letter PDF export must never contain application chrome or pricing redirects.");
+const longContactCoverLetterData = {
+  ...signatureCoverLetterData,
+  professionalTitle: "Maintenance & Support",
+  jobTitle: "Maintenance & Support",
+  companyName: "Avolito Beverages",
+  phone: "+27 72 123 4567",
+  email: "nicka.candida@example.com",
+  linkedIn: "https://www.linkedin.com/in/nicka-candida-maintenance-support-johannesburg-2026",
+  city: "Johannesburg",
+  country: "South Africa"
+};
+const longContactCoverLetterHtml = documentDownloadsRuntime.renderCoverLetterHtmlFromData(longContactCoverLetterData);
+const longContactCoverLetterPdf = documentDownloadsRuntime.simpleCoverLetterPdfDocument(longContactCoverLetterData);
+assert.match(documentDownloads, /function coverLetterContactGroups[\s\S]*data\.phone[\s\S]*data\.email[\s\S]*data\.linkedIn[\s\S]*data\.city, data\.country/, "Cover Letter preview and PDF must use grouped contact rows rather than one unbreakable contact line.");
+assert.doesNotMatch(documentDownloads, /coverLetterContactLines\(cover\)\.join\("  \|  "\)/, "Cover Letter header must not render phone, email, LinkedIn and location as one PDF text command.");
+assert.match(documentDownloads, /drawContactBlock[\s\S]*wrapText\(group, width, coverDesign\.contactSize\)[\s\S]*currentPage\.elements\.push\(\{ kind: "text"/, "Cover Letter contact layout must pre-wrap bounded text elements before preview or PDF rendering.");
+["Nicka Candida", "Maintenance &amp; Support", "Avolito Beverages", "+27 72 123 4567", "nicka.candida@example.com", "Johannesburg, South Africa"].forEach((field) => {
+  assert.match(longContactCoverLetterHtml, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `Designed Preview must show ${field} from the saved Cover Letter model.`);
+});
+assert.match(longContactCoverLetterHtml, /linkedin\.com\/in\/nicka-candida-maintenance-s[\s\S]*upport-johannesburg-2026/, "Designed Preview must show the long LinkedIn URL using safe wrapped text.");
+["+27 72 123 4567", "nicka.candida@example.com", "Johannesburg, South Africa"].forEach((field) => {
+  assert.match(longContactCoverLetterPdf, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `Cover Letter PDF must contain visible contact field ${field}.`);
+});
+assert.match(longContactCoverLetterPdf, /linkedin\.com\/in\/nicka-candida[\s\S]*maintenance-s[\s\S]*upport-johannesburg-2026/, "Cover Letter PDF must contain the safely wrapped long LinkedIn URL from the Designed Preview.");
+assert.doesNotMatch(longContactCoverLetterPdf, /\+27 72 123 4567  \|  nicka\.candida@example\.com  \|  https:\/\/www\.linkedin\.com\/in\/nicka-candida-maintenance-support-johannesburg-2026  \|  Johannesburg, South Africa/, "Cover Letter PDF must not emit the full long contact block as one unclipped horizontal text command.");
+assert.equal((longContactCoverLetterHtml.match(/class="cv-render-page-frame"/g) ?? []).length, (longContactCoverLetterPdf.match(/\/Type \/Page\b/g) ?? []).length, "Cover Letter Designed Preview and PDF export must agree on page count for the long-contact fixture.");
 const longSignatureCoverLetterHtml = documentDownloadsRuntime.renderCoverLetterHtmlFromData({
   ...signatureCoverLetterData,
   bodyParagraphs: Array.from({ length: 16 }, (_, index) => `Additional relevant paragraph ${index + 1} explaining confirmed application evidence, job context and professional fit without adding unsupported facts.`)
@@ -2957,11 +3580,16 @@ assert.match(documentDownloads, /headerStyle: "signature"/, "Executive Signature
 assert.match(documentDownloads, /headerStyle: "technical"/, "Tech Minimal cover letter must use a technical letter layout.");
 assert.match(documentDownloads, /headerStyle: "creative"/, "Creative Professional cover letter must use an editorial letter layout.");
 assert.match(documentDownloads, /const coverDesign = resolveCoverLetterDesign\(cover\.designSystem\)/, "Cover Letter layout must resolve the selected design system.");
-assert.match(documentDownloads, /premiumTemplate = resolveCvTemplateDesign\(coverDesign\.cvTemplate\)/, "Cover Letter rendering must use cover-letter design tokens without changing CV content.");
+assert.match(documentDownloads, /const coverPalette = coverLetterTemplatePalette\(cover\.designSystem\)[\s\S]*premiumTemplate = coverLetterPremiumTemplateForPalette\(coverDesign, coverPalette\)/, "Cover Letter rendering must use semantic cover-letter palette tokens without changing CV content.");
 assert.match(documentDownloads, /coverDesign\.paragraphSpacing/, "Cover Letter design systems must change section rhythm, not just color.");
 assert.match(documentDownloads, /coverDesign\.nameSize/, "Cover Letter design systems must change typography, not just color.");
 assert.match(documentDownloads, /coverDesign\.headerStyle === "executive"[\s\S]*premiumTemplate\.amber/, "Executive cover letter must include a distinct premium accent treatment.");
 assert.match(professionalIdentityCoverLetterModel, /export type CoverLetterJobContext/, "Cover Letter architecture must define a separate job/application context contract.");
+assert.match(coverLetterIntelligence, /export function analyzeCoverLetterJobContext/, "Cover Letter intelligence must analyze structured Job Context before drafting.");
+assert.match(coverLetterIntelligence, /export function selectCoverLetterEvidence/, "Cover Letter intelligence must select ranked Professional Identity evidence instead of dumping all profile data.");
+assert.match(coverLetterIntelligence, /selectedEvidence[\s\S]*slice\(0, 4\)/, "Cover Letter evidence selection must enforce a concise evidence budget.");
+assert.match(coverLetterIntelligence, /selectedSkills[\s\S]*slice\(0, 5\)/, "Cover Letter evidence selection must enforce a concise skill budget.");
+assert.match(coverLetterIntelligence, /trace:[\s\S]*requirement:[\s\S]*evidenceIds:/, "Cover Letter intelligence must retain internal requirement-to-evidence traceability.");
 assert.match(professionalIdentityCoverLetterModel, /export function coverLetterDataFromProfessionalIdentity/, "Cover Letter architecture must transform Professional Identity plus job context into the normalized letter model.");
 assert.match(professionalIdentityCoverLetterModel, /export function professionalIdentityCoverLetterDocument/, "Cover Letter architecture must create generated documents from the normalized model.");
 assert.match(professionalIdentityCoverLetterModel, /export function professionalIdentityCoverLetterSyncStatus/, "Cover Letter architecture must expose sync status instead of duplicating profile facts in the document editor.");
@@ -2976,6 +3604,11 @@ assert.doesNotMatch(coverLetterGeneration, /const role = prepareForProfessionalD
 assert.match(coverLetterGeneration, /const jobContext: CoverLetterJobContext = \{[\s\S]*source: options\.jobDescription \? "pasted_job_description" : "manual"/, "Cover Letter generation must separate job context from Professional Identity.");
 assert.match(coverLetterGeneration, /coverLetterDataFromProfessionalIdentity\(identityValues, jobContext, \{ templateName, language, tone \}\)/, "Cover Letter generation must create coverLetterData through the shared Professional Identity transformation layer.");
 assert.match(professionalIdentityService, /source: "professional_identity_and_job_context"[\s\S]*professionalIdentitySource: "canonical_professional_identity"[\s\S]*jobContext[\s\S]*manualOverride: false/, "Cover Letter save must persist source metadata, job context and manual override state.");
+assert.match(professionalIdentityCoverLetterModel, /intelligence:[\s\S]*strategyVersion: "pathzy-cover-letter-evidence-selection-v1"[\s\S]*jobAnalysis[\s\S]*selectedEvidence[\s\S]*trace[\s\S]*qualityWarnings/, "Generated Cover Letter documents must persist evidence-selection trace metadata separately from visual templates.");
+assert.match(professionalIdentityTool, /initialDocumentIsPersisted = Boolean\(initialDocument\?\.id[\s\S]*setSaved\(true\)/, "Document workspaces must only claim Saved after a persisted backend document id exists.");
+assert.match(professionalIdentityTool, /method: document\.id \? "PATCH" : "POST"[\s\S]*persistDocument:[\s\S]*contentJson[\s\S]*status: "draft"/, "Saving an unsaved generated document must create or update a durable user_documents artifact without regenerating or losing edits.");
+assert.match(professionalIdentityApi, /persistDocument[\s\S]*\.eq\("user_id", user\.id\)[\s\S]*\.eq\("document_type", documentType\)[\s\S]*existingId[\s\S]*\.update\(\{[\s\S]*\.insert\(\{[\s\S]*document_type: documentType/, "The Professional Identity API must update the existing owned CV or Cover Letter document before inserting a new user_documents row.");
+assert.doesNotMatch(professionalIdentityApi, /downloaded\?: boolean|if \(body\.downloaded\)|status = "downloaded"/, "The Professional Identity API must not treat PDF download as a document lifecycle mutation.");
 assert.doesNotMatch(coverLetterGeneration, /getLatestCvModel\(supabase, userId\)/, "Cover Letter generation must not use the latest CV as the factual source of truth.");
 assert.match(coverLetterGeneration, /jobDescriptionFocus\(options\.jobDescription\)/, "Cover Letter generation must use the job description to shape the letter.");
 assert.doesNotMatch(coverLetterGeneration, /PATHZY Professional Identity|profil PATHZY|will not invent|Template:|Add your full name/, "Generated cover letters must not contain internal source wording, template notes, or placeholders.");
@@ -2984,7 +3617,8 @@ assert.match(professionalIdentityTool, /initialCoverLetterData = useMemo/, "Cove
 assert.match(professionalIdentityTool, /renderCoverLetterHtmlFromData\(previewCoverLetterData\)/, "Cover Letter preview must use the debounced coverLetterData preview state.");
 assert.match(professionalIdentityTool, /simpleCoverLetterPdfDocument\(exportCoverLetterData\)/, "Cover Letter download must use cleaned coverLetterData.");
 assert.match(professionalIdentityTool, /coverLetterPdfFilename\(exportCoverLetterData\)/, "Cover Letter download must use the clean cover letter PDF filename.");
-assert.match(professionalIdentityTool, /const saveOk = await saveDocument\(true\);[\s\S]*if \(!saveOk\) \{[\s\S]*setDownloadState\("error"\);[\s\S]*return;[\s\S]*\}/, "Cover Letter download must not continue if saving the latest edits fails.");
+assert.doesNotMatch(professionalIdentityTool, /downloadPdf[\s\S]*saveDocument\(true\)/, "Cover Letter download must not auto-save or create document records; users must save explicitly before export.");
+assert.match(professionalIdentityTool, /downloadBlob\(tool === "cover-letter"[\s\S]*coverLetterPdfFilename\(exportCoverLetterData\)[\s\S]*"application\/pdf"[\s\S]*pdf\)/, "Cover Letter download must hand the current structured PDF payload directly to the browser download helper.");
 assert.doesNotMatch(professionalIdentityTool, /cover-letter[\s\S]{0,220}docx/i, "Cover Letter user flow must not expose DOCX export.");
 assert.match(professionalIdentityTool, /function updateCoverLetterDraft/, "Cover Letter editor must update coverLetterData as the source of truth.");
 assert.match(professionalIdentityTool, /manualOverride: Boolean\(existingVersion\.manualOverride\) \|\| manualOverride/, "Cover Letter manual edits must be protected as document-specific overrides.");
@@ -2998,15 +3632,16 @@ assert.match(professionalIdentityTool, /template_name: draft\.designSystem,[\s\S
 assert.doesNotMatch(professionalCoverLetterPage, /premiumDocumentTemplates|documentTemplateGallery\.map/, "Cover Letter page must not render the old borrowed CV template strip.");
 assert.match(professionalIdentityTool, /previewCoverLetterData/, "Cover Letter preview must use a stable debounced preview data state.");
 assert.match(professionalIdentityTool, /setTimeout\(\(\) => \{\s*setPreviewCoverLetterData\(coverLetterData\);\s*\}, 260\);/, "Cover Letter live preview must debounce updates to avoid shaking while typing.");
-assert.match(professionalIdentityTool, /tool === "cv" \|\| tool === "cover-letter" \? "grid gap-5"/, "Cover Letter workspace must use the same full-width document-studio flow as My CV.");
+assert.match(professionalIdentityTool, /data-cover-letter-workspace-layout="compact-controls-large-preview"[\s\S]*data-cover-letter-document-studio="true"/, "Cover Letter workspace must use a compact control area beside a large document studio preview.");
 assert.doesNotMatch(professionalIdentityTool, /tool === "cover-letter" \? "lg:col-span-1"|tool === "cover-letter" \? "grid gap-5 lg:grid-cols-4"/, "Cover Letter must not use the old narrow editor and preview column split.");
-assert.match(professionalIdentityTool, /function renderCoverLetterDocumentBar[\s\S]*MY COVER LETTER[\s\S]*Download PDF[\s\S]*Edit Information[\s\S]*Change Job[\s\S]*Preview/, "Cover Letter document bar must mirror My CV primary actions.");
+assert.doesNotMatch(professionalIdentityTool, /renderCoverLetterIdentityCorrectionCard|Your Cover Letter uses your Professional Identity as its source of truth/, "Cover Letter workspace must not render a large persistent Professional Identity source explanation block.");
+assert.match(professionalIdentityTool, /function renderCoverLetterDocumentBar[\s\S]*MY COVER LETTER[\s\S]*saveActionLabel\(\)[\s\S]*Download PDF[\s\S]*Update information[\s\S]*Change Job[\s\S]*Change design[\s\S]*Preview/, "Cover Letter document bar must group the primary actions in compact controls.");
 assert.match(professionalIdentityTool, /renderCoverLetterCompactStatus\(\)/, "Cover Letter editor must show Cover Letter Health in the structured editor.");
 assert.match(professionalIdentityTool, /Cover Letter Health/, "Cover Letter health label must be visible.");
 assert.match(professionalIdentityTool, /const \[coverLetterHealthExpanded, setCoverLetterHealthExpanded\] = useState\(false\)/, "Cover Letter Health disclosure must be collapsed by default.");
 assert.match(professionalIdentityTool, /aria-expanded=\{coverLetterHealthExpanded\}[\s\S]*aria-controls=\{panelId\}[\s\S]*setCoverLetterHealthExpanded/, "Cover Letter Health disclosure must use the existing accessible Expand/Collapse pattern.");
 assert.match(professionalIdentityTool, /Designed Preview shows the print-ready A4 cover letter that the PDF export uses\./, "Cover Letter preview must use the same preview explanation as My CV.");
-assert.match(professionalIdentityTool, /Download PDF[\s\S]*Edit Information[\s\S]*Change Job[\s\S]*Preview[\s\S]*Generate Cover Letter/, "Cover Letter workspace must expose PDF, edit information, change job, preview, and generation actions.");
+assert.match(professionalIdentityTool, /Download PDF[\s\S]*Update information[\s\S]*Change Job[\s\S]*Preview[\s\S]*Generate Cover Letter/, "Cover Letter workspace must expose PDF, update information, change job, preview, and generation actions.");
 assert.match(professionalIdentityTool, /function renderCoverLetterJobContextEntry[\s\S]*data-cover-letter-job-context-flow="true"/, "Cover Letter job context must be handled by one shared actionable flow.");
 assert.match(professionalIdentityTool, /Which opportunity are you applying for\?[\s\S]*Choose a saved job[\s\S]*Paste job description[\s\S]*Enter job details/, "Missing job context must show the user clear next-step options.");
 assert.match(professionalIdentityTool, /Job title \/ position[\s\S]*required[\s\S]*Company name[\s\S]*required/, "Manual Cover Letter job details must require only job title and company.");
@@ -3017,10 +3652,26 @@ assert.match(professionalIdentityTool, /onClick=\{\(\) => setCoverLetterJobConte
 assert.match(professionalCoverLetterPage, /name: "jobDescription"/, "Cover Letter route must still provide the optional job description input.");
 assert.match(professionalCoverLetterPage, /keyRequirements: \(jobContext\.requirements \?\? \[\]\)\.join\("\\n"\)[\s\S]*recruiterName: jobContext\.hiringManager \?\? ""[\s\S]*jobUrl: jobContext\.url \?\? ""/, "Cover Letter route must pass canonical Job Context details into the shared workspace.");
 assert.match(professionalIdentityTool, /renderCoverLetterJobAndEditorDisclosure\(\)[\s\S]*renderCoverLetterPreviewViewer\(\)/, "Cover Letter editor controls and real A4 preview must render in the same document studio.");
-assert.match(professionalIdentityTool, /function renderCoverLetterTemplateGallery\(\)[\s\S]*Browse all templates[\s\S]*coverLetterTemplateBrowserOpen/, "Cover Letter template gallery must use the compact selector and browser pattern like My CV.");
+assert.match(professionalIdentityTool, /function renderCoverLetterTemplateGallery\(\)[\s\S]*data-cover-letter-compact-design="true"[\s\S]*Change design[\s\S]*renderCoverLetterTemplateBrowserOverlay\(selectTemplate\)/, "Cover Letter template gallery must use a compact selected-design control and browser pattern.");
+assert.match(professionalIdentityTool, /import \{ createPortal \} from "react-dom"/, "Cover Letter template gallery overlay must portal to the document body instead of staying inside the sticky workspace stacking context.");
+assert.match(professionalIdentityTool, /function openCoverLetterTemplateBrowser[\s\S]*coverLetterTemplateBrowserReturnFocusRef[\s\S]*setCoverLetterTemplateBrowserOpen\(true\)/, "Opening Change Design must use one shared path that remembers focus before showing the gallery.");
+assert.match(professionalIdentityTool, /function closeCoverLetterTemplateBrowser[\s\S]*setCoverLetterTemplateBrowserOpen\(false\)[\s\S]*coverLetterTemplateBrowserReturnFocusRef\.current\?\.focus/, "Closing or selecting a Cover Letter template must remove the overlay and restore workspace focus.");
+assert.match(professionalIdentityTool, /function renderCoverLetterTemplateBrowserOverlay[\s\S]*createPortal\([\s\S]*data-cover-letter-template-browser-overlay="true"[\s\S]*data-overlay-layer="top"[\s\S]*document\.body/, "Cover Letter template gallery must render as the single top overlay above the preview workspace.");
+assert.match(professionalIdentityTool, /data-cover-letter-workspace-inert=\{coverLetterTemplateBrowserOpen \? "true" : "false"\}[\s\S]*aria-hidden=\{coverLetterTemplateBrowserOpen\}[\s\S]*inert=\{coverLetterTemplateBrowserOpen \? true : undefined\}/, "When the Cover Letter template gallery is open, the preview workspace behind it must be inert and unavailable for interaction.");
+assert.match(professionalIdentityTool, /document\.body\.style\.overflow = "hidden"[\s\S]*document\.body\.style\.overflow = previousOverflow/, "Cover Letter template gallery must lock and restore page scroll without leaving a stale backdrop state.");
+assert.match(professionalIdentityTool, /event\.key === "Escape"[\s\S]*setCoverLetterTemplateBrowserOpen\(false\)[\s\S]*event\.key !== "Tab"[\s\S]*last\.focus\(\)/, "Cover Letter template gallery must support Escape-to-close and basic focus trapping.");
+assert.match(appGlobals, /--overlay-backdrop:[\s\S]*--z-overlay-backdrop:[\s\S]*--z-overlay-modal:/, "PATHZY overlay layering must use global semantic overlay tokens instead of random page-specific z-index values.");
 assert.match(professionalIdentityTool, /Choose a recruiter-ready design[\s\S]*renderCoverLetterMiniPreview\(template\)[\s\S]*Best for: \{template\.bestFor\}/, "Cover Letter gallery must use My CV gallery architecture with real mini previews and best-for labels.");
 assert.match(professionalIdentityTool, /template\.architecture\.replace\("-", " "\)} letter[\s\S]*PDF ready/, "Cover Letter template cards must show attribute labels.");
 assert.doesNotMatch(professionalIdentityTool, /tool !== "cv" \? \([\s\S]*tool === "cover-letter" \? "lg:col-span-2"/, "Cover Letter must not use the old full-width generator card above the workspace.");
+assert.match(professionalIdentityTool, /Previous[\s\S]*Page \{coverLetterCurrentPage\} of \{coverLetterPreviewPageCount\}[\s\S]*Next[\s\S]*Fit Page[\s\S]*Fit Width|Fit Page[\s\S]*Fit Width[\s\S]*Previous[\s\S]*Page \{coverLetterCurrentPage\} of \{coverLetterPreviewPageCount\}[\s\S]*Next/, "Cover Letter preview must expose fit controls, page navigation, and current page count.");
+const coverLetterPreviewToolbarBlock = professionalIdentityTool.slice(
+  professionalIdentityTool.indexOf("function renderCoverLetterPreviewToolbar()"),
+  professionalIdentityTool.indexOf("function renderCoverLetterJobContextEntry()"),
+);
+assert.match(coverLetterPreviewToolbarBlock, /pathzy-dark-control-surface[\s\S]*Designed Preview[\s\S]*Fit Page[\s\S]*Fit Width[\s\S]*Previous[\s\S]*Page \{coverLetterCurrentPage\} of \{coverLetterPreviewPageCount\}[\s\S]*Next[\s\S]*pathzy-dark-control-indicator/, "Cover Letter preview toolbar controls must use the shared dark-surface control system.");
+assert.doesNotMatch(coverLetterPreviewToolbarBlock, /text-white\/(?:5|6|7|8)|disabled:opacity/, "Cover Letter preview toolbar must not rely on low-opacity white text or opacity-disabled labels on a dark surface.");
+assert.match(professionalIdentityTool, /onScroll=\{updateCoverLetterCurrentPageFromScroll\}/, "Cover Letter preview must update the current page from the scroll position.");
 assert.match(professionalIdentityLinkedInModel, /export type LinkedInProfileModel = \{[\s\S]*headline[\s\S]*about[\s\S]*openToWorkTargets[\s\S]*experience[\s\S]*education[\s\S]*skills[\s\S]*projects[\s\S]*certifications[\s\S]*licences[\s\S]*keywordStrategy[\s\S]*sourceMetadata/, "LinkedIn must have a normalized projection model separate from CV and page-local state.");
 assert.match(professionalIdentityLinkedInModel, /source: "professional_identity"/, "LinkedIn profile model must identify Professional Identity as its factual source.");
 assert.match(professionalIdentityLinkedInModel, /fullName: string;[\s\S]*professionalTitle: string;[\s\S]*profilePhotoAvailable: boolean;[\s\S]*linkedInUrl: string;[\s\S]*professionalLinks: string\[\]/, "LinkedIn model must carry profile-intro presentation data from Professional Identity.");
@@ -3089,8 +3740,13 @@ const cleanStructuredWriteValues = professionalIdentityWriteRuntime.cleanProfess
 assert.equal(Array.isArray(cleanStructuredWriteValues.experience), true, "Professional Identity write sanitizer must preserve structured experience arrays.");
 assert.equal(typeof cleanStructuredWriteValues.experience[0], "object", "Professional Identity write sanitizer must not convert structured experience records into strings.");
 assert.equal(cleanStructuredWriteValues.experience[0].role, "Founder & Product Owner", "Professional Identity write sanitizer must preserve structured experience fields.");
-assert.match(professionalIdentityCompletion, /experience: firstExperienceList\(answers\.experience_entries, answers\.experience_history, answers\.personal_background\)/, "Professional Identity read path must prefer canonical structured experience entries over legacy text compatibility.");
-assert.match(professionalIdentityWriteService, /experience_history: experienceEntries[\s\S]*experience_entries: experienceEntries[\s\S]*personal_background: ""/, "Professional Identity write path must not refresh a second full-text legacy experience copy.");
+assert.match(professionalIdentityCompletion, /experience: firstExperienceList\(answers\.experience_entries, answers\.experience, answers\.experience_history, answers\.personal_background\)/, "Professional Identity read path must prefer canonical structured experience entries before legacy Experience aliases.");
+assert.match(professionalIdentityCompletion, /firstExperienceList[\s\S]*selectCanonicalProfessionalIdentityExperiences/, "Professional Identity read path must delegate Experience precedence to the shared canonical selector.");
+assert.match(professionalIdentityCvModel, /selectCanonicalProfessionalIdentityExperiences\(identity\.experience\)/, "CV projection must use the shared canonical Experience selector.");
+assert.match(professionalIdentityLinkedInModel, /selectCanonicalProfessionalIdentityExperiences\(identity\.experience\)/, "LinkedIn projection must use the shared canonical Experience selector.");
+assert.match(coverLetterIntelligence, /selectCanonicalProfessionalIdentityExperiences\(identity\.experience\)/, "Cover Letter intelligence must use the shared canonical Experience selector.");
+assert.match(careerPassportProjection, /selectCanonicalProfessionalIdentityExperiences\(values\.experience\)/, "Career Passport projection must use the shared canonical Experience selector.");
+assert.match(professionalIdentityWriteService, /experience: experienceEntries[\s\S]*experience_history: experienceEntries[\s\S]*experience_entries: experienceEntries[\s\S]*personal_background: ""/, "Professional Identity write path must overwrite legacy Experience aliases with structured canonical entries instead of stale full-text copies.");
 assert.doesNotMatch(professionalIdentityWriteService, /personal_background: experienceEntries\.map\(experienceEntryToText\)\.join/, "Professional Identity write path must stop storing structured experience as a duplicate concatenated paragraph.");
 const knownInputValue = (value) => ({ value, provenance: "KNOWN" });
 const normalizedEmploymentInput = employmentIntelligenceEngineRuntime.normalizeEmploymentIntelligenceInput({
@@ -3145,6 +3801,26 @@ const normalizedEmploymentInput = employmentIntelligenceEngineRuntime.normalizeE
 }).input;
 assert.equal(normalizedEmploymentInput.professionalIdentity.experience.value.length, 2, "Employment Intelligence must receive each Professional Identity experience separately.");
 assert.equal(normalizedEmploymentInput.professionalIdentity.experience.value[1].company, "AVOLITO Beverages", "Employment Intelligence must preserve company data per experience record.");
+const normalizedEmploymentInputWithLegacyDuplicate = employmentIntelligenceEngineRuntime.normalizeEmploymentIntelligenceInput({
+  ...normalizedEmploymentInput,
+  professionalIdentity: {
+    ...normalizedEmploymentInput.professionalIdentity,
+    experience: knownInputValue([
+      ...structuredIdentityValues.experience,
+      "Founder & Product Owner - PATHZY - Johannesburg - 2025 - Present - Building an employment operating system for guided career support."
+    ])
+  }
+}).input;
+assert.equal(normalizedEmploymentInputWithLegacyDuplicate.professionalIdentity.experience.value.length, 2, "Employment Intelligence must use the shared canonical Experience selector and drop legacy composite duplicates.");
+const normalizedEmploymentInputWithAvolitoDuplicate = employmentIntelligenceEngineRuntime.normalizeEmploymentIntelligenceInput({
+  ...normalizedEmploymentInput,
+  professionalIdentity: {
+    ...normalizedEmploymentInput.professionalIdentity,
+    experience: knownInputValue(avolitoGreyDuplicateFixture)
+  }
+}).input;
+assert.equal(normalizedEmploymentInputWithAvolitoDuplicate.professionalIdentity.experience.value.length, 1, "Employment Intelligence must receive the cleaned AVOLITO Experience once.");
+assert.equal(normalizedEmploymentInputWithAvolitoDuplicate.professionalIdentity.experience.value[0].description.includes("Co-founder & Marketing Lead"), false, "Employment Intelligence must not receive a duplicate AVOLITO role inside the description.");
 assert.equal(structuredIdentityValues.education.length, 1, "Education collection must remain a separate record collection.");
 assert.equal(structuredIdentityValues.projects.length, 1, "Projects collection must remain a separate record collection.");
 assert.equal(structuredIdentityValues.achievements.length, 2, "Achievements collection must preserve separate records.");
@@ -3156,7 +3832,7 @@ assert.match(linkedInGeneration, /serializeLinkedInProfileModel\(model\)/, "Link
 assert.match(linkedInGeneration, /linkedinProfileModel: model[\s\S]*professionalIdentitySource: "canonical_professional_identity"[\s\S]*manualOverride: false/, "LinkedIn saved documents must persist source metadata and start without manual override.");
 assert.doesNotMatch(linkedInGeneration, /getLatestCvModel|cvModelFromUnknown|latestCv|cv_documents/, "LinkedIn generation must not use CV documents as the factual source of truth.");
 assert.match(professionalLinkedInPage, /getProfessionalIdentityReadModelSafe\(supabase, user, "linkedin professional identity"\)/, "LinkedIn page must read canonical Professional Identity before rendering.");
-assert.match(professionalLinkedInPage, /loadExistingLinkedInDocument\(supabase, user\.id, params\.documentId\)/, "LinkedIn page must preserve saved LinkedIn-specific documents opened by documentId.");
+assert.match(professionalLinkedInPage, /loadSavedProfessionalDocument\(supabase, user\.id, \{ tool: "linkedin", documentId: params\.documentId \}\)/, "LinkedIn page must preserve saved LinkedIn-specific documents across navigation, refresh and login.");
 assert.match(professionalLinkedInPage, /professionalIdentityLinkedInDocument\(identity\.values/, "LinkedIn page must seed new projections from Professional Identity automatically.");
 assert.match(professionalLinkedInPage, /professionalIdentityLinkedInSyncStatus\(identity\.values/, "LinkedIn page must expose Professional Identity sync status.");
 assert.match(professionalLinkedInPage, /linkedInSyncStatus=\{linkedInSyncStatus\}/, "LinkedIn page must pass source-of-truth sync status into the shared document workspace.");
@@ -3198,7 +3874,7 @@ assert.match(professionalIdentityTool, /READY TO USE YOUR PROFILE\?[\s\S]*Copy F
 assert.match(professionalIdentityTool, /tool === "cover-letter" \? \([\s\S]*Return to My CV[\s\S]*Optimise LinkedIn[\s\S]*Find Opportunities[\s\S]*Ask Your Mentor[\s\S]*Improve Cover Letter/, "Cover Letter next-actions must avoid linking back to the current page.");
 assert.doesNotMatch(professionalIdentityTool, /tool === "linkedin" \? \(/, "LinkedIn must not use the shared multi-button next-actions panel.");
 assert.doesNotMatch(professionalIdentityTool, /renderCoverLetterField\("Full name"|renderCoverLetterField\("Professional title"|renderCoverLetterField\("Email"|renderCoverLetterField\("Phone"|renderCoverLetterField\("City"|renderCoverLetterField\("Country"/, "Cover Letter editor must not expose editable duplicate Professional Identity profile fields.");
-assert.match(professionalIdentityTool, /Want to change something\?[\s\S]*Your Cover Letter uses your Professional Identity as its source of truth[\s\S]*routeBuilders\.professionalIdentityReview\(appRoutes\.professionalIdentityCoverLetter\)/, "Cover Letter correction strip must mirror My CV and preserve return-to-cover-letter context.");
+assert.match(professionalIdentityTool, /routeBuilders\.professionalIdentityReview\(appRoutes\.professionalIdentityCoverLetter\)[\s\S]*Update information/, "Cover Letter compact controls must preserve return-to-cover-letter context for Professional Identity edits.");
 assert.match(professionalIdentityTool, /routeBuilders\.professionalIdentityReview\(appRoutes\.professionalIdentityCoverLetter\)/, "Cover Letter factual corrections must route back to Professional Identity with return context.");
 for (const sectionName of ["2. Job / Application Details", "3. Greeting", "4. Opening Paragraph", "5. Motivation / Why This Role", "6. Evidence / Why Me", "7. Company Alignment", "8. Additional Paragraphs", "9. Closing Paragraph", "10. Sign-off"]) {
   assert.match(professionalIdentityTool, new RegExp(sectionName.replace(/[.]/g, "\\.")), `Cover Letter editor must include ${sectionName}.`);

@@ -26,8 +26,8 @@ export function DocumentInspectionSummary({ inspection }: { inspection: Document
     ["Confidence", percent(inspection.confidence.overall)]
   ];
   return (
-    <section className="mt-4 rounded-[18px] border border-[#39d98a]/20 bg-[#39d98a]/10 p-4" aria-label="Document inspection summary">
-      <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#b9f8d5]/75">Document Inspection Complete</p>
+    <section className="pathzy-status-success mt-4 rounded-[18px] border p-4" aria-label="Document inspection summary">
+      <p className="text-xs font-extrabold uppercase tracking-[0.14em]">Document Inspection Complete</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {rows.map(([label, value]) => (
           <div key={label} className="rounded-[14px] border border-white/10 bg-white/7 p-3">

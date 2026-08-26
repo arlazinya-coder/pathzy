@@ -421,6 +421,7 @@ The following are unacceptable regressions:
 - diagnosis answers being stored as duplicate identity facts
 - static one-size-fits-all diagnosis replacing adaptive, evidence-aware questioning
 - sensitive diagnosis answers being used without purpose, opt-out or privacy boundary
+- meaningful fixes or features shipping without regression protection against the same failure returning
 
 ## 18. Progress Preservation and Git Safety
 

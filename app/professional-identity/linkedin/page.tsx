@@ -5,39 +5,13 @@ import {
 } from "@/lib/professional-identity/professional-identity-linkedin-model";
 import { canCurrentUserExportProfessionalDocuments, canCurrentUserUseProfessionalIdentityTools } from "@/lib/professional-identity/professional-identity-service";
 import { getProfessionalIdentityReadModelSafe } from "@/lib/professional-identity/professional-identity-read-service";
-import type { GeneratedProfessionalDocument } from "@/lib/professional-identity/professional-identity-types";
+import { createCurrentProfessionalPhotoView } from "@/lib/professional-identity/professional-photo";
+import { loadSavedProfessionalDocument } from "@/lib/professional-identity/saved-professional-documents";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
 
 type LinkedInSearchParams = {
   documentId?: string;
 };
-
-async function loadExistingLinkedInDocument(
-  supabase: Awaited<ReturnType<typeof requireAuthenticatedUser>>["supabase"],
-  userId: string,
-  documentId?: string
-): Promise<GeneratedProfessionalDocument | null> {
-  if (!documentId) return null;
-  const { data, error } = await supabase
-    .from("user_documents")
-    .select("id,document_title,content_text,content_json,template_name,updated_at,created_at")
-    .eq("user_id", userId)
-    .eq("id", documentId)
-    .maybeSingle();
-  if (error || !data) return null;
-  const contentJson = data.content_json && typeof data.content_json === "object" ? data.content_json as Record<string, unknown> : null;
-  return {
-    id: data.id,
-    tool: "linkedin",
-    title: data.document_title ?? "LinkedIn profile optimization",
-    content: data.content_text ?? "",
-    contentJson,
-    template_name: data.template_name ?? null,
-    updated_at: data.updated_at ?? data.created_at ?? null,
-    created_at: data.created_at ?? null,
-    fields: contentJson && "fields" in contentJson ? contentJson.fields as GeneratedProfessionalDocument["fields"] : undefined
-  };
-}
 
 export default async function LinkedinPage({ searchParams }: { searchParams?: Promise<LinkedInSearchParams> }) {
   const { user, supabase } = await requireAuthenticatedUser("/professional-identity/linkedin");
@@ -46,9 +20,10 @@ export default async function LinkedinPage({ searchParams }: { searchParams?: Pr
     canCurrentUserUseProfessionalIdentityTools(supabase, user.id),
     canCurrentUserExportProfessionalDocuments(supabase, user.id),
     getProfessionalIdentityReadModelSafe(supabase, user, "linkedin professional identity"),
-    loadExistingLinkedInDocument(supabase, user.id, params.documentId)
+    loadSavedProfessionalDocument(supabase, user.id, { tool: "linkedin", documentId: params.documentId })
   ]);
   const manualOverride = Boolean(savedDocument?.contentJson && (savedDocument.contentJson as Record<string, unknown>).linkedInVersion && ((savedDocument.contentJson as Record<string, unknown>).linkedInVersion as Record<string, unknown>).manualOverride);
+  const canonicalProfessionalPhoto = await createCurrentProfessionalPhotoView(supabase, identity.values.professional_photo_asset, { userId: user.id, expiresIn: 600 });
   const initialDocument = savedDocument ?? professionalIdentityLinkedInDocument(identity.values, {
     lastUpdated: identity.profile?.updated_at ?? null,
     documentId: params.documentId,
@@ -72,6 +47,7 @@ export default async function LinkedinPage({ searchParams }: { searchParams?: Pr
         locked={!unlocked}
         exportLocked={!canExport}
         initialDocument={initialDocument}
+        canonicalProfessionalPhoto={canonicalProfessionalPhoto}
         linkedInSyncStatus={linkedInSyncStatus}
         guidance={firstMissing ? {
           recommendation: "Your LinkedIn profile needs a little more information.",

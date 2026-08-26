@@ -41,7 +41,7 @@ export default async function EmploymentCenterPage() {
   return (
     <main className="container page-pad">
       <section className="rounded-[34px] border border-[#e5e7eb] bg-white p-6 shadow-[0_18px_55px_rgba(17,24,39,.08)] md:p-8">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#2563EB]">Employment Center</p>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--brand-primary)]">Employment Center</p>
         <div className="mt-4 max-w-3xl">
           <h1 className="text-4xl font-semibold tracking-[-0.03em] text-[#111827] md:text-5xl">Build the materials employers will see.</h1>
           <p className="mt-4 text-base leading-7 text-[#6B7280]">
@@ -55,11 +55,11 @@ export default async function EmploymentCenterPage() {
           <Link
             key={tool.href}
             href={tool.href}
-            className="group rounded-[28px] border border-[#e5e7eb] bg-white p-6 shadow-[0_14px_42px_rgba(17,24,39,.06)] transition hover:-translate-y-0.5 hover:border-[#bfdbfe] hover:shadow-[0_18px_55px_rgba(37,99,235,.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#2563EB]"
+            className="group rounded-[28px] border border-[#e5e7eb] bg-white p-6 shadow-[0_14px_42px_rgba(17,24,39,.06)] transition hover:-translate-y-0.5 hover:border-[rgba(217,58,70,.32)] hover:shadow-[0_18px_55px_rgba(217,58,70,.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--focus-ring)]"
           >
             <h2 className="text-xl font-semibold tracking-[-0.01em] text-[#111827]">{tool.label}</h2>
             <p className="mt-3 text-sm leading-6 text-[#6B7280]">{tool.description}</p>
-            <span className="mt-5 inline-flex rounded-full bg-[#2563EB] px-4 py-2 text-sm font-bold text-white transition group-hover:bg-[#1D4ED8]">
+            <span className="mt-5 inline-flex rounded-full bg-[var(--brand-primary)] px-4 py-2 text-sm font-bold text-white transition group-hover:bg-[var(--brand-primary-hover)]">
               Open
             </span>
           </Link>

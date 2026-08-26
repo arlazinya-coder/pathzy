@@ -5,9 +5,9 @@ import { Card, ProgressBar } from "@/components/ui";
 import type { Mission, MissionState } from "@/lib/missions/types";
 
 function difficultyClass(difficulty: Mission["difficulty"]) {
-  if (difficulty === "Easy") return "bg-[#39d98a]/15 text-[#9df0c4]";
-  if (difficulty === "Medium") return "bg-[#5B8CFF]/18 text-[#c7d6ff]";
-  return "bg-[#7B5CFF]/22 text-[#ded6ff]";
+  if (difficulty === "Easy") return "bg-[color-mix(in_srgb,var(--status-success)_14%,transparent)] text-[var(--status-success)]";
+  if (difficulty === "Medium") return "bg-[color-mix(in_srgb,var(--brand-primary)_12%,transparent)] text-[var(--pathzy-red-dark)]";
+  return "bg-white/10 text-white/62";
 }
 
 const levelNames = [
@@ -47,7 +47,7 @@ function Confetti({ show }: { show: boolean }) {
           className="absolute top-8 h-2 w-2 animate-[pathzy-confetti_900ms_ease-out_forwards] rounded-sm"
           style={{
             left: `${8 + index * 4}%`,
-            background: index % 3 === 0 ? "#5B8CFF" : index % 3 === 1 ? "#39D98A" : "#FFD166",
+            background: index % 3 === 0 ? "var(--brand-primary)" : index % 3 === 1 ? "var(--status-success)" : "var(--status-warning)",
             animationDelay: `${index * 22}ms`
           }}
         />
@@ -105,12 +105,12 @@ export function MissionSystem({ initialState, canComplete = true }: { initialSta
           <h2 className="text-2xl font-black">Today&apos;s Next Step</h2>
             <p className="mt-2 text-white/58">Focused actions based on your career plan, documents, opportunities, and progress.</p>
           </div>
-          <span className="w-fit rounded-full bg-[#39d98a]/15 px-4 py-2 text-sm font-extrabold text-[#9df0c4]">{state.progress}% complete</span>
+          <span className="w-fit rounded-full bg-[color-mix(in_srgb,var(--status-success)_14%,transparent)] px-4 py-2 text-sm font-extrabold text-[var(--status-success)]">{state.progress}% complete</span>
         </div>
         {error ? <p className="mb-4 rounded-[16px] border border-[#ff6b6b]/30 bg-[#ff6b6b]/10 px-4 py-3 text-sm text-[#ffc5c5]">{error}</p> : null}
         <div className="grid gap-3">
           {state.dailyMissions.map((mission) => (
-            <article key={mission.id} className={`rounded-[22px] border p-4 transition duration-300 ${mission.completed ? "border-[#39d98a]/30 bg-[#39d98a]/8" : "border-white/10 bg-white/7 hover:bg-white/10"}`}>
+            <article key={mission.id} className={`rounded-[22px] border p-4 transition duration-300 ${mission.completed ? "border-[color-mix(in_srgb,var(--status-success)_28%,transparent)] bg-[color-mix(in_srgb,var(--status-success)_8%,transparent)]" : "border-white/10 bg-white/7 hover:bg-white/10"}`}>
               <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-start">
                 <div>
                   <div className="flex flex-wrap gap-2">
@@ -126,7 +126,7 @@ export function MissionSystem({ initialState, canComplete = true }: { initialSta
                   <button
                     disabled={!canComplete || mission.completed || busyId === mission.id}
                     onClick={() => complete(mission)}
-                    className="tap-target rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/70 transition hover:bg-white/14 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8fb0ff] disabled:cursor-not-allowed disabled:opacity-55"
+                    className="tap-target rounded-full bg-white/10 px-4 py-2 text-sm font-extrabold text-white/70 transition hover:bg-white/14 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-55"
                   >
                     {mission.completed ? "Completed" : busyId === mission.id ? "Saving" : "Mark Complete"}
                   </button>
@@ -173,7 +173,7 @@ export function MissionSystem({ initialState, canComplete = true }: { initialSta
           {state.weeklyGoal ? (
             <div className="mt-4 rounded-[20px] border border-white/10 bg-white/7 p-4">
               <div className="flex items-center justify-between gap-3">
-                <span className="rounded-full bg-[#7B5CFF]/22 px-3 py-1 text-xs font-extrabold text-[#ded6ff]">{state.weeklyGoal.xp_reward} XP</span>
+                <span className="rounded-full bg-[color-mix(in_srgb,var(--brand-primary)_12%,transparent)] px-3 py-1 text-xs font-extrabold text-[var(--pathzy-red-dark)]">{state.weeklyGoal.xp_reward} XP</span>
                 <button
                   disabled={!canComplete || state.weeklyGoal.completed || busyId === state.weeklyGoal.id}
                   onClick={() => state.weeklyGoal && complete(state.weeklyGoal)}
@@ -191,7 +191,7 @@ export function MissionSystem({ initialState, canComplete = true }: { initialSta
         <Card>
           <h2 className="text-2xl font-black">Suggested next step</h2>
           {suggestedNextMission ? (
-            <div className="mt-4 rounded-[20px] border border-[#5B8CFF]/22 bg-[#5B8CFF]/10 p-4">
+            <div className="pathzy-status-info mt-4 rounded-[20px] border p-4">
               <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold text-white/62">{suggestedNextMission.estimated_time}</span>
               <h3 className="mt-3 font-black">{suggestedNextMission.title}</h3>
               <p className="mt-2 text-sm leading-6 text-white/58">{suggestedNextMission.description}</p>
@@ -206,7 +206,7 @@ export function MissionSystem({ initialState, canComplete = true }: { initialSta
           <div className="mt-4 grid gap-3">
             {completedMissions.length ? (
               completedMissions.map((mission) => (
-                <div key={`completed-${mission.id}`} className="rounded-[18px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-4">
+                <div key={`completed-${mission.id}`} className="rounded-[18px] border border-[color-mix(in_srgb,var(--status-success)_25%,transparent)] bg-[color-mix(in_srgb,var(--status-success)_9%,transparent)] p-4">
                   <strong className="block">{mission.title}</strong>
                   <span className="mt-1 block text-sm text-white/56">+{mission.xp_reward} XP earned</span>
                 </div>
@@ -221,7 +221,7 @@ export function MissionSystem({ initialState, canComplete = true }: { initialSta
           <h2 className="text-2xl font-black">Milestones</h2>
           <div className="mt-4 grid gap-3">
             {state.achievements.slice(0, 4).map((achievement) => (
-              <div key={achievement.achievement_key} className="rounded-[18px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-4">
+              <div key={achievement.achievement_key} className="rounded-[18px] border border-[color-mix(in_srgb,var(--status-success)_25%,transparent)] bg-[color-mix(in_srgb,var(--status-success)_9%,transparent)] p-4">
                 <strong className="block">{achievement.title}</strong>
                 <span className="mt-1 block text-sm text-white/56">{achievement.description}</span>
               </div>

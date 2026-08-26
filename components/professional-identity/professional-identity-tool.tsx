@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { DocumentInspectionStatus } from "@/components/documents/DocumentInspectionStatus";
 import { DocumentInspectionSummary } from "@/components/documents/DocumentInspectionSummary";
@@ -12,18 +13,20 @@ import { DocumentReasoningSummary } from "@/components/documents/DocumentReasoni
 import { Card } from "@/components/ui";
 import { PremiumUpgradeCard } from "@/components/upgrade/premium-upgrade-card";
 import { TemplateMiniPreview } from "@/components/professional-identity/template-mini-preview";
+import { ProfessionalPhotoAvatar } from "@/components/professional-identity/professional-photo-avatar";
 import { coverLetterDataFromUnknown, coverLetterPdfFilename, coverLetterTemplateGallery, coverLetterTemplateMetadata, cvModelFromUnknown, cvModelWithMissing, downloadBlob, normalizeCoverLetterDataForExport, normalizeCoverLetterTemplate, normalizeCvModelForExport, pathzyFilename, renderAtsCvHtmlFromModel, renderCoverLetterHtmlFromData, renderCvHtml, renderCvHtmlFromModel, serializeCoverLetterData, serializeCvModel, simpleCoverLetterPdfDocument, simplePdfDocument, simplePdfDocumentFromModel } from "@/components/professional-identity/document-downloads";
 import type { CoverLetterData, CvModel } from "@/components/professional-identity/document-downloads";
 import { PATHZY_ROUTES, appRoutes, routeBuilders } from "@/lib/navigation/routes";
 import type { CoverLetterJobContext, ProfessionalIdentityCoverLetterSyncStatus } from "@/lib/professional-identity/professional-identity-cover-letter-model";
 import { professionalIdentityHrefForCvSection, type ProfessionalIdentityCvSyncStatus } from "@/lib/professional-identity/professional-identity-cv-model";
 import { serializeLinkedInProfileModel, type LinkedInEducationItem, type LinkedInExperienceItem, type LinkedInProfileModel, type ProfessionalIdentityLinkedInSyncStatus } from "@/lib/professional-identity/professional-identity-linkedin-model";
-import { documentTemplateGallery, normalizeDocumentTemplate, templateMetadata } from "@/lib/professional-identity/document-template-engine";
+import { documentTemplateGallery, normalizeDocumentTemplate, normalizeDocumentTemplatePalette, templateMetadata, templatePaletteMetadata } from "@/lib/professional-identity/document-template-engine";
 import type { DocumentInspectionResult } from "@/lib/documents/inspection";
 import type { VisualDocumentModel } from "@/lib/documents/visual";
 import type { SemanticDocumentModel } from "@/lib/documents/semantic";
 import type { ReasoningRunSummary } from "@/lib/documents/reasoning";
 import type { GeneratedProfessionalDocument, GenerateOptions, ProfessionalLanguage } from "@/lib/professional-identity/professional-identity-types";
+import type { ProfessionalPhotoAssetView } from "@/lib/professional-identity/professional-photo";
 import { currentCoreDocumentDownloadAccess } from "@/lib/access/core-document-download-access";
 
 type Field = {
@@ -157,6 +160,7 @@ function coverLetterHealthStatus(data: CoverLetterData | null) {
 }
 type CvVersionMetadata = {
   designSystem: string;
+  paletteId: string;
   versionName: string;
   createdAt: string;
   updatedAt: string;
@@ -188,15 +192,17 @@ type CvImportSummary = {
   reasoning?: ReasoningRunSummary | null;
 };
 
-function cvVersionFromDocument(document: GeneratedProfessionalDocument | null, fallbackDesign = "PATHZY Signature Professional"): CvVersionMetadata {
+function cvVersionFromDocument(document: GeneratedProfessionalDocument | null, fallbackDesign = "Atlas Professional"): CvVersionMetadata {
   const raw = document?.contentJson?.cvVersion;
   const source = raw && typeof raw === "object" ? raw as Partial<CvVersionMetadata> : {};
   const now = new Date().toISOString();
   const designSystem = normalizeDocumentTemplate(typeof source.designSystem === "string" && source.designSystem.trim()
     ? source.designSystem
     : document?.template_name || fallbackDesign);
+  const paletteId = normalizeDocumentTemplatePalette(designSystem, source.paletteId);
   return {
     designSystem,
+    paletteId,
     versionName: typeof source.versionName === "string" && source.versionName.trim() ? source.versionName : document?.title || `${designSystem} CV`,
     createdAt: typeof source.createdAt === "string" && source.createdAt ? source.createdAt : document?.created_at || now,
     updatedAt: typeof source.updatedAt === "string" && source.updatedAt ? source.updatedAt : document?.updated_at || now,
@@ -275,6 +281,7 @@ export function ProfessionalIdentityTool({
   coverLetterSyncStatus = null,
   coverLetterJobHref = appRoutes.opportunities,
   linkedInSyncStatus = null,
+  canonicalProfessionalPhoto = null,
   locked = false,
   exportLocked = false,
   trustNote,
@@ -290,6 +297,7 @@ export function ProfessionalIdentityTool({
   coverLetterSyncStatus?: ProfessionalIdentityCoverLetterSyncStatus | null;
   coverLetterJobHref?: string;
   linkedInSyncStatus?: ProfessionalIdentityLinkedInSyncStatus | null;
+  canonicalProfessionalPhoto?: ProfessionalPhotoAssetView | null;
   locked?: boolean;
   exportLocked?: boolean;
   trustNote: string;
@@ -302,8 +310,14 @@ export function ProfessionalIdentityTool({
     continueLabel: string;
   } | null;
 }) {
-  const [values, setValues] = useState<GenerateOptions>(defaultOptions ?? { language: "english" });
+  const [values, setValues] = useState<GenerateOptions>(() => {
+    const base = defaultOptions ?? { language: "english" as const };
+    if (tool !== "cv" || !initialDocument) return base;
+    const version = cvVersionFromDocument(initialDocument, initialDocument.template_name ?? base.templateName ?? "Atlas Professional");
+    return { ...base, templateName: version.designSystem, templatePalette: version.paletteId };
+  });
   const [document, setDocument] = useState<GeneratedProfessionalDocument | null>(initialDocument ?? null);
+  const initialDocumentIsPersisted = Boolean(initialDocument?.id && (tool === "cv" || tool === "cover-letter" || tool === "linkedin"));
   const initialCvModel = useMemo(() => tool === "cv" && initialDocument ? cvModelFromUnknown(initialDocument.contentJson?.cvModel, initialDocument.content) : null, [initialDocument, tool]);
   const initialCoverLetterData = useMemo(() => tool === "cover-letter" && initialDocument ? coverLetterDataFromUnknown(initialDocument.contentJson?.coverLetterData, initialDocument.content) : null, [initialDocument, tool]);
   const [cvModel, setCvModel] = useState<CvModel | null>(initialCvModel);
@@ -314,8 +328,8 @@ export function ProfessionalIdentityTool({
   const [exportUpgradeRequired, setExportUpgradeRequired] = useState(false);
   const [copied, setCopied] = useState(false);
   const [xpAwarded, setXpAwarded] = useState<number | null>(null);
-  const [saved, setSaved] = useState(Boolean(initialDocument && (tool === "cv" || tool === "cover-letter" || tool === "linkedin")));
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">(initialDocument && (tool === "cv" || tool === "cover-letter" || tool === "linkedin") ? "saved" : "idle");
+  const [saved, setSaved] = useState(initialDocumentIsPersisted);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">(initialDocumentIsPersisted ? "saved" : "idle");
   const [downloadState, setDownloadState] = useState<"idle" | "preparing" | "downloading" | "error">("idle");
   const [downloadNotice, setDownloadNotice] = useState("");
   const [oldCvNotice, setOldCvNotice] = useState("");
@@ -335,6 +349,7 @@ export function ProfessionalIdentityTool({
   const [cvPreviewScaleMode, setCvPreviewScaleMode] = useState<CvPreviewScaleMode>("fit_page");
   const [cvCustomScale, setCvCustomScale] = useState(0.82);
   const [cvPreviewScale, setCvPreviewScale] = useState(0.82);
+  const [coverLetterCurrentPage, setCoverLetterCurrentPage] = useState(1);
   const [cvTemplateFamily, setCvTemplateFamily] = useState("All");
   const [cvTemplateAtsFilter, setCvTemplateAtsFilter] = useState("All");
   const [cvTemplateSearch, setCvTemplateSearch] = useState("");
@@ -351,21 +366,27 @@ export function ProfessionalIdentityTool({
   const coverLetterPreviewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewScrollRef = useRef<HTMLDivElement | null>(null);
   const cvPreviewViewportRef = useRef<HTMLDivElement | null>(null);
+  const coverLetterTemplateBrowserDialogRef = useRef<HTMLDivElement | null>(null);
+  const coverLetterTemplateBrowserCloseRef = useRef<HTMLButtonElement | null>(null);
+  const coverLetterTemplateBrowserReturnFocusRef = useRef<HTMLElement | null>(null);
 
   const outputTitle = useMemo(() => document?.title ?? (tool === "cv" ? "Professional CV" : "Professional document"), [document, tool]);
   const recoveryKey = `pathzy-document-draft:${tool}`;
   const templateName = tool === "cover-letter" ? normalizeCoverLetterTemplate(values.templateName) : normalizeDocumentTemplate(values.templateName);
+  const cvPaletteId = tool === "cv" ? normalizeDocumentTemplatePalette(templateName, values.templatePalette) : "";
   const selectedTemplateMetadata = tool === "cover-letter" ? coverLetterTemplateMetadata(templateName) : templateMetadata(templateName);
   const coreDownloadsAllowed = currentCoreDocumentDownloadAccess === "allowed";
   const downloadBusy = downloadState === "preparing" || downloadState === "downloading";
   const selectedCvTemplateMetadata = useMemo(() => templateMetadata(templateName), [templateName]);
+  const selectedCvPalette = useMemo(() => templatePaletteMetadata(templateName, cvPaletteId), [cvPaletteId, templateName]);
   const parsedCv = useMemo(() => tool === "cv" && cvModel ? cvModelWithMissing(cvModel) : null, [cvModel, tool]);
   const health = useMemo(() => cvHealthScore(previewCvModel ?? cvModel), [previewCvModel, cvModel]);
   const coverLetterHealth = useMemo(() => coverLetterHealthStatus(previewCoverLetterData ?? coverLetterData), [previewCoverLetterData, coverLetterData]);
-  const cvPreviewHtml = useMemo(() => tool === "cv" && previewCvModel ? (cvPreviewMode === "ats" ? renderAtsCvHtmlFromModel(previewCvModel) : renderCvHtmlFromModel(previewCvModel, templateName, activeCvSection)) : "", [activeCvSection, cvPreviewMode, previewCvModel, templateName, tool]);
+  const cvPreviewHtml = useMemo(() => tool === "cv" && previewCvModel ? (cvPreviewMode === "ats" ? renderAtsCvHtmlFromModel(previewCvModel) : renderCvHtmlFromModel(previewCvModel, templateName, activeCvSection, canonicalProfessionalPhoto, cvPaletteId)) : "", [activeCvSection, canonicalProfessionalPhoto, cvPaletteId, cvPreviewMode, previewCvModel, templateName, tool]);
   const cvPreviewPageCount = useMemo(() => Math.max(1, (cvPreviewHtml.match(/<div class="cv-render-page-frame"/g) ?? []).length || (cvPreviewHtml ? 1 : 0)), [cvPreviewHtml]);
   const coverLetterPreviewHtml = useMemo(() => tool === "cover-letter" && previewCoverLetterData ? renderCoverLetterHtmlFromData(previewCoverLetterData) : "", [previewCoverLetterData, tool]);
   const coverLetterPreviewPageCount = useMemo(() => Math.max(1, (coverLetterPreviewHtml.match(/<div class="cv-render-page-frame"/g) ?? []).length || (coverLetterPreviewHtml ? 1 : 0)), [coverLetterPreviewHtml]);
+  const canDownloadPdf = tool === "cv" ? Boolean(cvModel) : Boolean(document?.content);
   const cvTemplateFamilies = useMemo(() => ["All", ...Array.from(new Set(documentTemplateGallery.map((template) => template.family)))], []);
   const cvTemplateAtsFilters = useMemo(() => ["All", "ATS HIGH", "ATS BALANCED", "VISUAL / RECRUITER-FIRST"], []);
   const filteredDocumentTemplates = useMemo(() => {
@@ -377,11 +398,12 @@ export function ProfessionalIdentityTool({
       return familyMatch && atsMatch && searchMatch;
     });
   }, [cvTemplateAtsFilter, cvTemplateFamily, cvTemplateSearch]);
+
   const recommendedDocumentTemplates = useMemo(() => {
     const selected = selectedCvTemplateMetadata;
     const recommendations = documentTemplateGallery.filter((template) =>
       template.name !== selected.name &&
-      (template.family === selected.family || template.atsClassification === "ATS HIGH" || ["Modern Professional", "ATS Essential", "Executive", "Graduate", "Technical / IT"].includes(template.family))
+      (template.family === selected.family || template.atsClassification === "ATS HIGH" || ["Corporate & Professional", "ATS & Minimal", "Executive & Leadership", "Graduate / Early Career", "Technical / IT / Engineering"].includes(template.family))
     );
     return [selected, ...recommendations].filter((template, index, list) => list.findIndex((item) => item.name === template.name) === index).slice(0, 6);
   }, [selectedCvTemplateMetadata]);
@@ -468,6 +490,50 @@ export function ProfessionalIdentityTool({
     };
   }, [coverLetterData, tool]);
 
+  useEffect(() => {
+    if (tool !== "cover-letter") return;
+    setCoverLetterCurrentPage((page) => Math.max(1, Math.min(coverLetterPreviewPageCount, page)));
+  }, [coverLetterPreviewPageCount, tool]);
+
+  useEffect(() => {
+    if (tool !== "cover-letter" || !coverLetterTemplateBrowserOpen) return;
+    const previousOverflow = globalThis.document.body.style.overflow;
+    globalThis.document.body.style.overflow = "hidden";
+    const frame = window.requestAnimationFrame(() => coverLetterTemplateBrowserCloseRef.current?.focus());
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setCoverLetterTemplateBrowserOpen(false);
+        window.setTimeout(() => coverLetterTemplateBrowserReturnFocusRef.current?.focus(), 0);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const dialog = coverLetterTemplateBrowserDialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((element) => element.offsetParent !== null || element === globalThis.document.activeElement);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && globalThis.document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && globalThis.document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      globalThis.document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [coverLetterTemplateBrowserOpen, tool]);
+
   function updateDocumentContent(content: string) {
     if (!document) return;
     const nextCoverLetterData = tool === "cover-letter" ? coverLetterDataFromUnknown(document.contentJson?.coverLetterData, content) : null;
@@ -491,12 +557,12 @@ export function ProfessionalIdentityTool({
   function setCvDocument(nextDocument: GeneratedProfessionalDocument, markSaved: boolean) {
     const nextModel = cvModelFromDocument(nextDocument);
     const content = serializeCvModel(nextModel);
-    const version = cvVersionFromDocument(nextDocument, nextDocument.template_name ?? values.templateName ?? "PATHZY Signature Professional");
+    const version = cvVersionFromDocument(nextDocument, nextDocument.template_name ?? values.templateName ?? "Atlas Professional");
     const next = { ...nextDocument, title: version.versionName, content, template_name: version.designSystem, contentJson: { ...(nextDocument.contentJson ?? {}), cvModel: nextModel, cvVersion: version } };
     setDocument(next);
     setCvModel(nextModel);
     setPreviewCvModel(nextModel);
-    setValues((current) => ({ ...current, templateName: version.designSystem as GenerateOptions["templateName"] }));
+    setValues((current) => ({ ...current, templateName: version.designSystem as GenerateOptions["templateName"], templatePalette: version.paletteId }));
     setSaved(markSaved);
     setSaveState(markSaved ? "saved" : "idle");
     setHasUnsavedChanges(!markSaved);
@@ -571,7 +637,7 @@ export function ProfessionalIdentityTool({
     return {
       fullName: typeof source.fullName === "string" ? source.fullName : "",
       professionalTitle: typeof source.professionalTitle === "string" ? source.professionalTitle : "",
-      profilePhotoAvailable: source.profilePhotoAvailable === true,
+      profilePhotoAvailable: source.profilePhotoAvailable === true || Boolean(canonicalProfessionalPhoto?.storagePath && canonicalProfessionalPhoto.photoStatus === "ready"),
       headline: typeof source.headline === "string" ? source.headline : "",
       headlineVariants: {
         recruiterFriendly: source.headlineVariants?.recruiterFriendly ?? source.headline ?? "",
@@ -720,7 +786,7 @@ export function ProfessionalIdentityTool({
   }
 
   function statusClasses(status: string) {
-    if (status === "Visible") return "border-[#39d98a]/25 bg-[#39d98a]/10 text-[#b9f8d5]";
+    if (status === "Visible") return "border-[color-mix(in_srgb,var(--status-success)_25%,transparent)] bg-[color-mix(in_srgb,var(--status-success)_10%,transparent)] text-[var(--status-success)]";
     if (status === "Empty") return "border-[#f8c45d]/25 bg-[#f8c45d]/10 text-[#ffe2a8]";
     return "border-white/12 bg-white/8 text-white/54";
   }
@@ -743,10 +809,24 @@ export function ProfessionalIdentityTool({
     return "Ready";
   }
 
+  function saveActionLabel() {
+    if (saveState === "saving") return "Saving...";
+    if (saveState === "error") return "Retry save";
+    if (hasUnsavedChanges) return "Save changes";
+    if (saved || saveState === "saved") return "✓ Saved";
+    return "Save to My Documents";
+  }
+
+  function saveFailureMessage() {
+    if (tool === "cv") return "We couldn't save your CV. Please try again.";
+    if (tool === "cover-letter") return "We couldn't save your Cover Letter. Please try again.";
+    return "We couldn't save this document. Please try again.";
+  }
+
   function saveStatusClasses() {
     if (saveState === "error") return "border-[#ff6b6b]/30 bg-[#ff6b6b]/10 text-[#ffc5c5]";
     if (saveState === "saving" || hasUnsavedChanges) return "border-[#f8c45d]/25 bg-[#f8c45d]/10 text-[#ffe2a8]";
-    return "border-[#39d98a]/25 bg-[#39d98a]/10 text-[#b9f8d5]";
+    return "border-[color-mix(in_srgb,var(--status-success)_25%,transparent)] bg-[color-mix(in_srgb,var(--status-success)_10%,transparent)] text-[var(--status-success)]";
   }
 
   function accordionId(section: string) {
@@ -993,30 +1073,9 @@ export function ProfessionalIdentityTool({
             <p className="text-sm font-extrabold text-white">{title}</p>
             <p className="mt-1 text-xs font-bold text-white/48">Changes update your cover letter data and preview.</p>
           </div>
-          <span className="w-fit rounded-full border border-[#39d98a]/25 bg-[#39d98a]/10 px-3 py-2 text-xs font-extrabold text-[#b9f8d5]">Editable</span>
+          <span className="w-fit rounded-full border border-[color-mix(in_srgb,var(--status-success)_25%,transparent)] bg-[color-mix(in_srgb,var(--status-success)_10%,transparent)] px-3 py-2 text-xs font-extrabold text-[var(--status-success)]">Editable</span>
         </div>
         <div className="mt-4 grid gap-3">{children}</div>
-      </div>
-    );
-  }
-
-  function renderCoverLetterIdentityCorrectionCard() {
-    return (
-      <div className="rounded-[20px] border border-[#7f1d1d]/20 bg-[#151110]/92 p-3">
-        <div className="flex flex-col gap-3 rounded-[16px] border border-white/8 bg-white/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#f2b8a2]/70">Want to change something?</p>
-            <p className="mt-1 max-w-3xl text-sm font-bold leading-6 text-white/68">
-              Your Cover Letter uses your Professional Identity as its source of truth. Update your information there, then return to this Cover Letter with your content synchronized.
-            </p>
-          </div>
-          <Link
-            href={routeBuilders.professionalIdentityReview(appRoutes.professionalIdentityCoverLetter)}
-            className="inline-flex w-fit rounded-full border border-[#f2b8a2]/24 bg-[#7f1d1d]/22 px-4 py-2 text-sm font-extrabold text-[#f2b8a2] transition hover:border-[#f2b8a2]/42 hover:bg-[#7f1d1d]/32 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2]"
-          >
-            Edit Information
-          </Link>
-        </div>
       </div>
     );
   }
@@ -1198,118 +1257,157 @@ export function ProfessionalIdentityTool({
     );
   }
 
+  function openCoverLetterTemplateBrowser() {
+    if (typeof globalThis.document !== "undefined" && globalThis.document.activeElement instanceof HTMLElement) {
+      coverLetterTemplateBrowserReturnFocusRef.current = globalThis.document.activeElement;
+    }
+    setCoverLetterTemplateBrowserOpen(true);
+  }
+
+  function closeCoverLetterTemplateBrowser() {
+    setCoverLetterTemplateBrowserOpen(false);
+    window.setTimeout(() => coverLetterTemplateBrowserReturnFocusRef.current?.focus(), 0);
+  }
+
   function renderCoverLetterTemplateGallery() {
     const selectTemplate = (name: string) => {
       updateValue("templateName", name);
-      setCoverLetterTemplateBrowserOpen(false);
+      closeCoverLetterTemplateBrowser();
     };
 
     return (
       <>
-        <Card className="overflow-hidden border-[#7f1d1d]/16 bg-[#111318]/94">
-          <div className="grid gap-4 rounded-[18px] border border-white/8 bg-[#1a1513]/58 p-4 lg:grid-cols-[minmax(240px,320px)_1fr_auto] lg:items-center">
-            <div>
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#f2b8a2]/62">Design</p>
-              <div className="mt-3 flex items-center gap-3">
-                <div className="w-14 shrink-0">
-                  {renderCoverLetterMiniPreview(selectedTemplateMetadata as (typeof coverLetterTemplateGallery)[number])}
-                </div>
-                <div>
-                  <h3 className="text-base font-black leading-5 text-white">{selectedTemplateMetadata.name}</h3>
-                  <p className="mt-1 text-xs font-bold leading-5 text-[#f2b8a2]/78">Recommended for: {selectedTemplateMetadata.bestFor}</p>
-                  <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.1em] text-white/42">{(selectedTemplateMetadata as (typeof coverLetterTemplateGallery)[number]).architecture.replace("-", " ")} letter</p>
-                </div>
-              </div>
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-white/38">Recommended designs</p>
-              <div className="mt-2 flex gap-2 overflow-x-auto pb-1" aria-label="Recommended Cover Letter templates">
-                {recommendedCoverLetterTemplates.map((template) => (
-                  <button
-                    key={template.name}
-                    type="button"
-                    onClick={() => selectTemplate(template.name)}
-                    className={`flex min-w-[170px] items-center gap-2 rounded-[14px] border p-2 text-left transition hover:-translate-y-0.5 ${templateName === template.name ? "border-[#f2b8a2]/70 bg-[#7f1d1d]/24" : "border-white/10 bg-white/5 hover:border-[#f2b8a2]/28"}`}
-                  >
-                    <div className="w-9 shrink-0">{renderCoverLetterMiniPreview(template)}</div>
-                    <div className="min-w-0">
-                      <p className="line-clamp-1 text-xs font-black text-white">{template.name}</p>
-                      <p className="mt-1 line-clamp-1 text-[10px] font-bold text-white/44">{template.architecture.replace("-", " ")} letter</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setCoverLetterTemplateBrowserOpen(true)}
-              className="h-11 rounded-full border border-[#f2b8a2]/24 bg-[#7f1d1d]/22 px-5 text-sm font-extrabold text-[#f2b8a2] transition hover:border-[#f2b8a2]/42 hover:bg-[#7f1d1d]/32 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2]"
-            >
-              Browse all templates
-            </button>
-          </div>
-        </Card>
-
-        {coverLetterTemplateBrowserOpen ? (
-          <div className="fixed inset-0 z-50 grid bg-black/72 p-3 backdrop-blur-sm sm:p-6" role="dialog" aria-modal="true" aria-labelledby="cover-letter-template-browser-title">
-            <div className="mx-auto grid h-full w-full max-w-6xl grid-rows-[auto_1fr] overflow-hidden rounded-[28px] border border-white/10 bg-[#111318] shadow-[0_28px_90px_rgba(0,0,0,.55)]">
-              <div className="border-b border-white/10 bg-[#18110f] p-4 sm:p-5">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                  <div>
-                    <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#f2b8a2]/62">Template gallery</p>
-                    <h3 id="cover-letter-template-browser-title" className="mt-1 text-2xl font-black text-white">Choose a recruiter-ready design</h3>
-                    <p className="mt-1 max-w-2xl text-sm leading-6 text-white/54">Browse letter-specific templates without expanding the page. Presentation changes only. Your candidate and job data stay the same.</p>
+        <div data-cover-letter-compact-design="true">
+          <Card className="overflow-hidden border-[#7f1d1d]/16 bg-[#111318]/94">
+            <div className="grid gap-4 rounded-[18px] border border-white/8 bg-[#1a1513]/58 p-4">
+              <div>
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#f2b8a2]/62">Design</p>
+                <div className="mt-3 flex items-center gap-3">
+                  <div className="w-14 shrink-0">
+                    {renderCoverLetterMiniPreview(selectedTemplateMetadata as (typeof coverLetterTemplateGallery)[number])}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setCoverLetterTemplateBrowserOpen(false)}
-                    className="w-fit rounded-full border border-white/12 bg-white/8 px-4 py-2 text-sm font-extrabold text-white/78 transition hover:bg-white/12 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2]"
-                  >
-                    Close
-                  </button>
-                </div>
-                <div className="mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="Cover Letter template categories">
-                  {coverLetterTemplateCategories.map((category) => (
-                    <button
-                      key={category}
-                      type="button"
-                      onClick={() => setCoverLetterTemplateCategory(category)}
-                      className={`shrink-0 rounded-full border px-4 py-2 text-xs font-extrabold transition ${coverLetterTemplateCategory === category ? "border-[#f2b8a2]/60 bg-[#7f1d1d]/28 text-white" : "border-white/10 bg-black/18 text-white/62 hover:border-[#f2b8a2]/28"}`}
-                    >
-                      {category}
-                    </button>
-                  ))}
+                  <div>
+                    <h3 className="text-base font-black leading-5 text-white">{selectedTemplateMetadata.name}</h3>
+                    <p className="mt-1 text-xs font-bold leading-5 text-[#f2b8a2]/78">Recommended for: {selectedTemplateMetadata.bestFor}</p>
+                    <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.1em] text-white/42">{(selectedTemplateMetadata as (typeof coverLetterTemplateGallery)[number]).architecture.replace("-", " ")} letter</p>
+                  </div>
                 </div>
               </div>
-              <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
-                <p className="mb-3 text-[11px] font-bold text-white/42">{filteredCoverLetterTemplates.length} cover letter template{filteredCoverLetterTemplates.length === 1 ? "" : "s"} shown</p>
-                <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(170px,1fr))]">
-                  {filteredCoverLetterTemplates.map((template) => (
+              <div className="min-w-0">
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-white/38">Recommended designs</p>
+                <div className="mt-2 flex gap-2 overflow-x-auto pb-1" aria-label="Recommended Cover Letter templates">
+                  {recommendedCoverLetterTemplates.map((template) => (
                     <button
                       key={template.name}
                       type="button"
                       onClick={() => selectTemplate(template.name)}
-                      className={`group flex min-h-[238px] flex-col rounded-[16px] border p-2.5 text-left transition hover:-translate-y-0.5 ${templateName === template.name ? "border-[#f2b8a2]/70 bg-[#7f1d1d]/24 shadow-[0_14px_34px_rgba(127,29,29,.24)]" : "border-white/10 bg-white/5 hover:border-[#f2b8a2]/26"}`}
+                      className={`flex min-w-[170px] items-center gap-2 rounded-[14px] border p-2 text-left transition hover:-translate-y-0.5 ${templateName === template.name ? "border-[#f2b8a2]/70 bg-[#7f1d1d]/24" : "border-white/10 bg-white/5 hover:border-[#f2b8a2]/28"}`}
                     >
-                      {renderCoverLetterMiniPreview(template)}
-                      <div className="mt-3 flex items-start justify-between gap-2">
-                        <p className="text-sm font-black leading-5 text-white">{template.name}</p>
-                        {templateName === template.name ? <span className="shrink-0 rounded-full bg-[#b4232a] px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-white">Selected</span> : null}
+                      <div className="w-9 shrink-0">{renderCoverLetterMiniPreview(template)}</div>
+                      <div className="min-w-0">
+                      <p className="line-clamp-1 text-xs font-black text-white">{template.name}</p>
+                      <p className="mt-1 line-clamp-1 text-[10px] font-bold text-white/44">{template.architecture.replace("-", " ")} letter</p>
+                      <div className="mt-1 flex gap-1" aria-label={`${template.name} palettes`}>
+                        {template.palettes.map((palette) => (
+                          <span key={palette.id} className="h-2.5 w-2.5 rounded-full border border-white/18" style={{ background: palette.accent }} />
+                        ))}
                       </div>
-                      <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-white/38">{template.architecture.replace("-", " ")} letter</p>
-                      <p className="mt-2 line-clamp-2 text-[11px] font-bold leading-4 text-[#f2b8a2]/82">Best for: {template.bestFor}</p>
-                      <div className="mt-auto flex flex-wrap gap-1.5 pt-2 text-[9px] font-extrabold uppercase tracking-[0.08em] text-white/64">
-                        <span className="rounded-full bg-[#7f1d1d]/24 px-2 py-1 text-[#f2b8a2]">Letter specific</span>
-                        <span className="rounded-full bg-white/8 px-2 py-1">PDF ready</span>
-                      </div>
-                    </button>
+                    </div>
+                  </button>
                   ))}
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={openCoverLetterTemplateBrowser}
+                className="h-11 rounded-full border border-[#f2b8a2]/24 bg-[#7f1d1d]/22 px-5 text-sm font-extrabold text-[#f2b8a2] transition hover:border-[#f2b8a2]/42 hover:bg-[#7f1d1d]/32 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2]"
+              >
+                Change design
+              </button>
+            </div>
+          </Card>
+        </div>
+
+        {renderCoverLetterTemplateBrowserOverlay(selectTemplate)}
+      </>
+    );
+  }
+
+  function renderCoverLetterTemplateBrowserOverlay(selectTemplate: (name: string) => void) {
+    if (!coverLetterTemplateBrowserOpen || typeof globalThis.document === "undefined") return null;
+
+    return createPortal(
+      <div
+        className="fixed inset-0 grid p-3 backdrop-blur-sm sm:p-6"
+        style={{ zIndex: "var(--z-overlay-modal)", background: "var(--overlay-backdrop)" }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cover-letter-template-browser-title"
+        data-cover-letter-template-browser-overlay="true"
+        data-overlay-layer="top"
+      >
+        <div
+          ref={coverLetterTemplateBrowserDialogRef}
+          className="mx-auto grid max-h-full w-full max-w-6xl grid-rows-[auto_1fr] overflow-hidden rounded-[28px] border border-white/10 bg-[#111318] shadow-[0_28px_90px_rgba(0,0,0,.55)]"
+        >
+          <div className="border-b border-white/10 bg-[#18110f] p-4 sm:p-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#f2b8a2]/62">Template gallery</p>
+                <h3 id="cover-letter-template-browser-title" className="mt-1 text-2xl font-black text-white">Choose a recruiter-ready design</h3>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-white/54">Browse letter-specific templates without expanding the page. Presentation changes only. Your candidate and job data stay the same.</p>
+              </div>
+              <button
+                ref={coverLetterTemplateBrowserCloseRef}
+                type="button"
+                onClick={closeCoverLetterTemplateBrowser}
+                className="w-fit rounded-full border border-white/12 bg-white/8 px-4 py-2 text-sm font-extrabold text-white/78 transition hover:bg-white/12 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2]"
+              >
+                Close
+              </button>
+            </div>
+            <div className="mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="Cover Letter template categories">
+              {coverLetterTemplateCategories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => setCoverLetterTemplateCategory(category)}
+                  className={`shrink-0 rounded-full border px-4 py-2 text-xs font-extrabold transition ${coverLetterTemplateCategory === category ? "border-[#f2b8a2]/60 bg-[#7f1d1d]/28 text-white" : "border-white/10 bg-black/18 text-white/62 hover:border-[#f2b8a2]/28"}`}
+                >
+                  {category}
+                </button>
+              ))}
             </div>
           </div>
-        ) : null}
-      </>
+          <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
+            <p className="mb-3 text-[11px] font-bold text-white/42">{filteredCoverLetterTemplates.length} cover letter template{filteredCoverLetterTemplates.length === 1 ? "" : "s"} shown</p>
+            <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(170px,1fr))]">
+              {filteredCoverLetterTemplates.map((template) => (
+                <button
+                  key={template.name}
+                  type="button"
+                  onClick={() => selectTemplate(template.name)}
+                  className={`group flex min-h-[238px] flex-col rounded-[16px] border p-2.5 text-left transition hover:-translate-y-0.5 ${templateName === template.name ? "border-[#f2b8a2]/70 bg-[#7f1d1d]/24 shadow-[0_14px_34px_rgba(127,29,29,.24)]" : "border-white/10 bg-white/5 hover:border-[#f2b8a2]/26"}`}
+                >
+                  {renderCoverLetterMiniPreview(template)}
+                  <div className="mt-3 flex items-start justify-between gap-2">
+                    <p className="text-sm font-black leading-5 text-white">{template.name}</p>
+                    {templateName === template.name ? <span className="shrink-0 rounded-full bg-[#b4232a] px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-white">Selected</span> : null}
+                  </div>
+                  <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-white/38">{template.architecture.replace("-", " ")} letter</p>
+                  <p className="mt-2 line-clamp-2 text-[11px] font-bold leading-4 text-[#f2b8a2]/82">Best for: {template.bestFor}</p>
+                  <div className="mt-auto flex flex-wrap gap-1.5 pt-2 text-[9px] font-extrabold uppercase tracking-[0.08em] text-white/64">
+                    <span className="rounded-full bg-[#7f1d1d]/24 px-2 py-1 text-[#f2b8a2]">Letter specific</span>
+                    <span className="rounded-full bg-white/8 px-2 py-1">PDF ready</span>
+                    <span className="rounded-full bg-white/8 px-2 py-1">3 palettes</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>,
+      globalThis.document.body
     );
   }
 
@@ -1317,6 +1415,9 @@ export function ProfessionalIdentityTool({
     const selectTemplate = (name: string) => {
       updateValue("templateName", name);
       setCvTemplateBrowserOpen(false);
+    };
+    const selectPalette = (paletteId: string) => {
+      updateValue("templatePalette", paletteId);
     };
     return (
       <>
@@ -1334,6 +1435,32 @@ export function ProfessionalIdentityTool({
                   <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.1em] text-white/42">{selectedCvTemplateMetadata.atsClassification}</p>
                 </div>
               </div>
+              <div className="mt-4 rounded-[14px] border border-white/10 bg-black/16 p-3">
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-white/42">Palette</p>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  {selectedCvTemplateMetadata.palettes.map((palette) => (
+                    <button
+                      key={palette.id}
+                      type="button"
+                      onClick={() => selectPalette(palette.id)}
+                      aria-pressed={cvPaletteId === palette.id}
+                      className={`flex items-center gap-2 rounded-[12px] border px-2.5 py-2 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2] ${cvPaletteId === palette.id ? "border-[#f2b8a2] bg-[#7f1d1d]/30 shadow-[0_0_0_1px_rgba(242,184,162,.28)]" : "border-white/14 bg-white/6 hover:border-[#f2b8a2]/40 hover:bg-white/9"}`}
+                    >
+                      <span className="flex shrink-0 overflow-hidden rounded-full border border-white/14" aria-hidden="true">
+                        <span className="h-5 w-5" style={{ background: palette.paper }} />
+                        <span className="h-5 w-5" style={{ background: palette.accent }} />
+                        <span className="h-5 w-5" style={{ background: palette.ink }} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs font-black text-white">{palette.name}</span>
+                        <span className="block truncate text-[10px] font-bold text-white/68">{palette.description}</span>
+                      </span>
+                      {cvPaletteId === palette.id ? <span className="ml-auto shrink-0 rounded-full bg-[#b4232a] px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.08em] text-white">Selected</span> : null}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-[10px] font-bold text-white/66">Selected: {selectedCvPalette.name}</p>
+              </div>
             </div>
             <div className="min-w-0">
               <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-white/38">Recommended designs</p>
@@ -1343,19 +1470,24 @@ export function ProfessionalIdentityTool({
                     key={template.name}
                     type="button"
                     onClick={() => selectTemplate(template.name)}
-                    className={`min-w-[150px] rounded-[14px] border p-2 text-left transition hover:-translate-y-0.5 ${templateName === template.name ? "border-[#f2b8a2]/70 bg-[#7f1d1d]/24" : "border-white/10 bg-white/5 hover:border-[#f2b8a2]/28"}`}
+                    className={`min-w-[150px] rounded-[14px] border p-2 text-left transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2] ${templateName === template.name ? "border-[#f2b8a2] bg-[#7f1d1d]/28 shadow-[0_0_0_1px_rgba(242,184,162,.22)]" : "border-white/14 bg-white/6 hover:border-[#f2b8a2]/34 hover:bg-white/9"}`}
                   >
                     <p className="line-clamp-1 text-xs font-black text-white">{template.name}</p>
-                    <p className="mt-1 line-clamp-1 text-[10px] font-bold text-white/44">{template.family}</p>
-                    <p className="mt-2 rounded-full bg-white/8 px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.08em] text-[#f2b8a2]">{template.atsClassification}</p>
-                  </button>
-                ))}
+                    <p className="mt-1 line-clamp-1 text-[10px] font-bold text-white/68">{template.family}</p>
+                      <p className="mt-2 rounded-full bg-white/8 px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.08em] text-[#f2b8a2]">{template.atsClassification}</p>
+                      <div className="mt-2 flex gap-1" aria-label={`${template.name} palettes`}>
+                        {template.palettes.map((palette) => (
+                          <span key={palette.id} className="h-3 w-3 rounded-full border border-white/18" style={{ background: palette.accent }} />
+                        ))}
+                      </div>
+                    </button>
+                  ))}
               </div>
             </div>
             <button
               type="button"
               onClick={() => setCvTemplateBrowserOpen(true)}
-              className="h-11 rounded-full border border-[#f2b8a2]/24 bg-[#7f1d1d]/22 px-5 text-sm font-extrabold text-[#f2b8a2] transition hover:border-[#f2b8a2]/42 hover:bg-[#7f1d1d]/32 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2]"
+              className="h-11 rounded-full border border-[#f2b8a2]/38 bg-[#7f1d1d]/28 px-5 text-sm font-extrabold text-[#ffe0d2] transition hover:border-[#f2b8a2]/60 hover:bg-[#7f1d1d]/38 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2]"
             >
               Browse all templates
             </button>
@@ -1375,7 +1507,7 @@ export function ProfessionalIdentityTool({
                   <button
                     type="button"
                     onClick={() => setCvTemplateBrowserOpen(false)}
-                    className="w-fit rounded-full border border-white/12 bg-white/8 px-4 py-2 text-sm font-extrabold text-white/78 transition hover:bg-white/12 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2]"
+                    className="w-fit rounded-full border border-white/16 bg-white/10 px-4 py-2 text-sm font-extrabold text-white transition hover:bg-white/14 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2]"
                   >
                     Close
                   </button>
@@ -1407,18 +1539,19 @@ export function ProfessionalIdentityTool({
                       key={template.name}
                       type="button"
                       onClick={() => selectTemplate(template.name)}
-                      className={`group flex min-h-[218px] flex-col rounded-[16px] border p-2.5 text-left transition hover:-translate-y-0.5 [&_.cv-template-mini-preview]:h-20 [&_.cv-template-mini-preview]:rounded-[12px] [&_.cv-template-mini-preview]:border-black/8 [&_.cv-template-mini-preview]:p-2 ${templateName === template.name ? "border-[#f2b8a2]/70 bg-[#7f1d1d]/24 shadow-[0_14px_34px_rgba(127,29,29,.24)]" : "border-white/10 bg-white/5 hover:border-[#f2b8a2]/26"}`}
+                      className={`group flex min-h-[218px] flex-col rounded-[16px] border p-2.5 text-left transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2] [&_.cv-template-mini-preview]:h-20 [&_.cv-template-mini-preview]:rounded-[12px] [&_.cv-template-mini-preview]:border-black/8 [&_.cv-template-mini-preview]:p-2 ${templateName === template.name ? "border-[#f2b8a2] bg-[#7f1d1d]/28 shadow-[0_14px_34px_rgba(127,29,29,.24)]" : "border-white/14 bg-white/6 hover:border-[#f2b8a2]/34 hover:bg-white/9"}`}
                     >
                       <TemplateMiniPreview template={template} />
                       <div className="mt-3 flex items-start justify-between gap-2">
                         <p className="text-sm font-black leading-5 text-white">{template.name}</p>
                         {templateName === template.name ? <span className="shrink-0 rounded-full bg-[#b4232a] px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-white">Selected</span> : null}
                       </div>
-                      <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-white/38">{template.family}</p>
+                      <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-white/60">{template.family}</p>
                       <p className="mt-2 line-clamp-2 text-[11px] font-bold leading-4 text-[#f2b8a2]/82">Best for: {template.bestFor}</p>
                       <div className="mt-auto flex flex-wrap gap-1.5 pt-2 text-[9px] font-extrabold uppercase tracking-[0.08em] text-white/64">
                         <span className="rounded-full bg-[#7f1d1d]/24 px-2 py-1 text-[#f2b8a2]">{template.atsClassification}</span>
-                        <span className="rounded-full bg-white/8 px-2 py-1">{template.atsCharacteristic}</span>
+                        <span className="rounded-full bg-white/10 px-2 py-1 text-white/78">{template.atsCharacteristic}</span>
+                        <span className="rounded-full bg-white/10 px-2 py-1 text-white/78">4 palettes</span>
                       </div>
                     </button>
                   ))}
@@ -1520,11 +1653,13 @@ export function ProfessionalIdentityTool({
   }
 
   function updateValue(name: keyof GenerateOptions, value: string) {
-    const nextValue = name === "templateName" ? (tool === "cover-letter" ? normalizeCoverLetterTemplate(value) : normalizeDocumentTemplate(value)) : value;
-    setValues((current) => ({ ...current, [name]: nextValue }));
-    if (document && name === "templateName" && tool === "cv" && cvModel) {
-      const version = { ...cvVersionFromDocument(document, nextValue), designSystem: nextValue, updatedAt: new Date().toISOString() };
-      const next = { ...document, template_name: nextValue, contentJson: { ...(document.contentJson ?? {}), cvModel, cvVersion: version } };
+    const nextValue = name === "templateName" ? (tool === "cover-letter" ? normalizeCoverLetterTemplate(value) : normalizeDocumentTemplate(value)) : name === "templatePalette" ? normalizeDocumentTemplatePalette(templateName, value) : value;
+    const nextPalette = name === "templateName" && tool === "cv" ? normalizeDocumentTemplatePalette(nextValue, undefined) : name === "templatePalette" ? normalizeDocumentTemplatePalette(templateName, nextValue) : cvPaletteId;
+    setValues((current) => ({ ...current, [name]: nextValue, ...(tool === "cv" && (name === "templateName" || name === "templatePalette") ? { templatePalette: nextPalette } : {}) }));
+    if (document && (name === "templateName" || name === "templatePalette") && tool === "cv" && cvModel) {
+      const designSystem = name === "templateName" ? nextValue : templateName;
+      const version = { ...cvVersionFromDocument(document, designSystem), designSystem, paletteId: nextPalette, updatedAt: new Date().toISOString() };
+      const next = { ...document, template_name: designSystem, contentJson: { ...(document.contentJson ?? {}), cvModel, cvVersion: version } };
       setDocument(next);
       setPreviewCvModel(cvModel);
       if (document.id) {
@@ -1590,6 +1725,7 @@ export function ProfessionalIdentityTool({
             ...source,
             versionName: copyName,
             designSystem: templateName,
+            paletteId: cvPaletteId,
             createdAt: now,
             updatedAt: now,
             lastDownloadedAt: null
@@ -1645,7 +1781,10 @@ export function ProfessionalIdentityTool({
         const latest = (data.documents ?? []).find((item: GeneratedProfessionalDocument & { template_name?: string }) => item.tool === tool);
         if (!cancelled && latest?.content) {
           setCvDocument({ id: latest.id, tool, title: latest.title, content: latest.content, contentJson: latest.contentJson ?? null }, true);
-          setValues((current) => ({ ...current, templateName: normalizeDocumentTemplate(latest.template_name ?? current.templateName ?? "PATHZY Signature Professional") }));
+          setValues((current) => {
+            const latestVersion = cvVersionFromDocument({ ...latest, contentJson: latest.contentJson ?? null }, latest.template_name ?? current.templateName ?? "Atlas Professional");
+            return { ...current, templateName: latestVersion.designSystem, templatePalette: latestVersion.paletteId };
+          });
           setCvEntryMode("profile");
           setViewMode("preview");
         }
@@ -1679,7 +1818,7 @@ export function ProfessionalIdentityTool({
     return () => {
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     };
-  }, [document?.content, document?.title, document?.id, hasUnsavedChanges, templateName]);
+  }, [document?.content, document?.title, document?.id, hasUnsavedChanges, templateName, cvPaletteId]);
 
   async function generate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1737,32 +1876,61 @@ export function ProfessionalIdentityTool({
   }
 
   async function saveDocument(silent = false) {
-    if (!document?.id) return false;
+    if (!document) return false;
     setError("");
     if (!silent) setSaved(false);
     setSaveState("saving");
+    const content = tool === "cover-letter" && coverLetterData ? serializeCoverLetterData(coverLetterData) : document.content;
+    const contentJson = tool === "cv" && cvModel
+      ? cvContentJson(document, cvModel, { ...cvVersionFromDocument(document, templateName), designSystem: templateName, paletteId: cvPaletteId, versionName: document.title, updatedAt: new Date().toISOString() })
+      : tool === "cover-letter" && coverLetterData
+        ? coverLetterContentJson(document, normalizeCoverLetterDataForExport(coverLetterData), false)
+        : tool === "linkedin"
+          ? linkedInContentJson(document, false)
+          : document.contentJson ?? undefined;
     try {
       const response = await fetch("/api/professional-identity", {
-        method: "PATCH",
+        method: document.id ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: document.id,
-          tool: document.tool,
-          title: document.title,
-          content: tool === "cover-letter" && coverLetterData ? serializeCoverLetterData(coverLetterData) : document.content,
-          contentJson: tool === "cv" && cvModel
-            ? cvContentJson(document, cvModel, { ...cvVersionFromDocument(document, templateName), designSystem: templateName, versionName: document.title, updatedAt: new Date().toISOString() })
-            : tool === "cover-letter" && coverLetterData
-              ? coverLetterContentJson(document, normalizeCoverLetterDataForExport(coverLetterData), false)
-              : tool === "linkedin"
-                ? linkedInContentJson(document, false)
-                : undefined,
-          templateName,
-          updateLinkedVersions: tool === "cv" ? updateLinkedCvVersions : false
-        })
+        body: JSON.stringify(document.id
+          ? {
+              id: document.id,
+              tool: document.tool,
+              title: document.title,
+              content,
+              contentJson,
+              templateName,
+              updateLinkedVersions: tool === "cv" ? updateLinkedCvVersions : false
+            }
+          : {
+              tool: document.tool,
+              persistDocument: {
+                title: document.title,
+                content,
+                contentJson,
+                templateName,
+                status: "draft"
+              }
+            })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Could not save this document.");
+      const persistedDocument = {
+        ...document,
+        id: data.document?.id ?? document.id,
+        title: data.document?.document_title ?? data.document?.title ?? document.title,
+        content: data.document?.content_text ?? data.document?.content ?? content,
+        contentJson: data.document?.content_json ?? data.document?.contentJson ?? contentJson ?? document.contentJson,
+        template_name: data.document?.template_name ?? data.document?.templateName ?? document.template_name,
+        status: data.document?.status ?? document.status,
+        version_number: data.document?.version_number ?? document.version_number,
+        created_at: data.document?.created_at ?? document.created_at,
+        updated_at: data.document?.updated_at ?? document.updated_at,
+        last_downloaded_at: data.document?.last_downloaded_at ?? document.last_downloaded_at
+      };
+      if (tool === "cv") setCvDocument(persistedDocument, true);
+      else if (tool === "cover-letter") setCoverLetterDocument(persistedDocument, true);
+      else setDocument(persistedDocument);
       setSaved(true);
       setSaveState("saved");
       setHasUnsavedChanges(false);
@@ -1770,36 +1938,20 @@ export function ProfessionalIdentityTool({
       return true;
     } catch (caught) {
       window.localStorage.setItem(recoveryKey, JSON.stringify(document));
+      void caught;
       setSaveState("error");
-      setError(caught instanceof Error ? caught.message : "Could not save this document.");
+      setError(saveFailureMessage());
       return false;
     }
   }
 
-  async function markDownloaded() {
-    if (!document?.id) return;
-    const downloadedAt = new Date().toISOString();
-    await fetch("/api/professional-identity", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: document.id,
-        tool: document.tool,
-        downloaded: true,
-        contentJson: tool === "cv" && cvModel
-          ? cvContentJson(document, cvModel, { ...cvVersionFromDocument(document, templateName), designSystem: templateName, lastDownloadedAt: downloadedAt, updatedAt: downloadedAt })
-          : undefined
-      })
-    });
-  }
-
   async function downloadPdf() {
     if (downloadBusy) return;
-    if (!document?.content) {
-      setError("Please generate your document before downloading.");
+    if (!document || !canDownloadPdf) {
+      setError(tool === "cv" ? "Please prepare your CV before downloading." : "Please generate your document before downloading.");
       return;
     }
-    if (tool !== "cover-letter" && (hasUnsavedChanges || saveState === "error" || !saved)) {
+    if (tool !== "cv" && (!document.id || hasUnsavedChanges || saveState === "error" || !saved)) {
       setError("Please save your document before downloading.");
       return;
     }
@@ -1811,27 +1963,21 @@ export function ProfessionalIdentityTool({
     setDownloadNotice("");
     setError("");
     try {
-      if (tool === "cover-letter" && coverLetterData && (hasUnsavedChanges || saveState === "error" || !saved)) {
-        const saveOk = await saveDocument(true);
-        if (!saveOk) {
-          setDownloadState("error");
-          return;
-        }
-      }
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
       setDownloadState("downloading");
       const exportCoverLetterData = coverLetterData ? normalizeCoverLetterDataForExport(coverLetterData) : null;
       const pdf = tool === "cv" && cvModel
-        ? simplePdfDocumentFromModel(document.title, cvModel, templateName)
+        ? simplePdfDocumentFromModel(document.title, normalizeCvModelForExport(cvModel), templateName, canonicalProfessionalPhoto, cvPaletteId)
         : tool === "cover-letter" && exportCoverLetterData
           ? simpleCoverLetterPdfDocument(exportCoverLetterData)
-          : simplePdfDocument(document.title, document.content, templateName, false);
+          : simplePdfDocument(document.title, document.content, templateName, false, cvPaletteId);
       downloadBlob(tool === "cover-letter" && exportCoverLetterData ? coverLetterPdfFilename(exportCoverLetterData) : pathzyFilename(tool === "cv" ? "CV" : "Document", document.title, "pdf"), "application/pdf", pdf);
-      await markDownloaded();
       setDownloadNotice("Your file has downloaded to your browser's Downloads folder.");
       setDownloadState("idle");
-    } catch {
+    } catch (caught) {
+      console.warn("[professional-identity] PDF download failed", caught instanceof Error ? caught.message : "Unknown PDF download failure");
       setDownloadState("error");
-      setError("Download failed. Your document is still saved. Please try again.");
+      setError(tool === "cv" ? "We couldn't download your CV. Please try again." : "We couldn't download your document. Your document is still saved. Please try again.");
     }
   }
 
@@ -1942,6 +2088,25 @@ export function ProfessionalIdentityTool({
     setCvPreviewScale(clamped);
   }
 
+  function coverLetterPageStep() {
+    return (cvA4Page.height + 28) * cvPreviewScale;
+  }
+
+  function updateCoverLetterCurrentPageFromScroll() {
+    const target = cvPreviewViewportRef.current;
+    if (!target) return;
+    const nextPage = Math.max(1, Math.min(coverLetterPreviewPageCount, Math.round(target.scrollTop / Math.max(1, coverLetterPageStep())) + 1));
+    setCoverLetterCurrentPage(nextPage);
+  }
+
+  function scrollCoverLetterPreviewPage(direction: -1 | 1) {
+    const target = cvPreviewViewportRef.current;
+    if (!target) return;
+    const nextPage = Math.max(1, Math.min(coverLetterPreviewPageCount, coverLetterCurrentPage + direction));
+    target.scrollTo({ top: (nextPage - 1) * coverLetterPageStep(), behavior: "smooth" });
+    setCoverLetterCurrentPage(nextPage);
+  }
+
   function renderCvDocumentBar() {
     const candidateName = previewCvModel?.fullName?.trim() || cvModel?.fullName?.trim() || "";
     const statusLabel = cvSyncStatus?.status === "needs_information" ? "Needs information" : hasUnsavedChanges ? "Unsaved changes" : "Synced / Up to date";
@@ -1955,18 +2120,21 @@ export function ProfessionalIdentityTool({
               Professional CV{candidateName ? ` - ${candidateName}` : ""}
             </h2>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-[#39d98a]/25 bg-[#39d98a]/10 px-3 py-1 text-xs font-extrabold text-[#b9f8d5]">Status: {statusLabel}</span>
+              <span className="rounded-full border border-[color-mix(in_srgb,var(--status-success)_25%,transparent)] bg-[color-mix(in_srgb,var(--status-success)_10%,transparent)] px-3 py-1 text-xs font-extrabold text-[var(--status-success)]">Status: {statusLabel}</span>
               <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 text-xs font-bold text-white/58">{cvPreviewPageCount} A4 page{cvPreviewPageCount === 1 ? "" : "s"}</span>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 lg:justify-end">
-            <button onClick={downloadPdf} disabled={!document?.content || downloadBusy} className="rounded-full bg-[#b4232a] px-5 py-3 text-sm font-extrabold text-white shadow-[0_12px_30px_rgba(127,29,29,.26)] transition hover:bg-[#961f25] disabled:cursor-not-allowed disabled:opacity-50">
-              {downloadBusy ? "Preparing..." : "Download PDF"}
+            <button type="button" onClick={() => saveDocument(false)} disabled={!document || saveState === "saving" || ((saved || saveState === "saved") && !hasUnsavedChanges)} className="rounded-full border border-white/16 bg-white/10 px-5 py-3 text-sm font-extrabold text-white transition hover:bg-white/14 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/6 disabled:text-white/68">
+              {saveActionLabel()}
             </button>
-            <Link href={routeBuilders.professionalIdentityReview(appRoutes.professionalIdentityCv)} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/78 transition hover:bg-white/12">
+            <button onClick={downloadPdf} disabled={!canDownloadPdf || downloadBusy} className="rounded-full bg-[#b4232a] px-5 py-3 text-sm font-extrabold text-white shadow-[0_12px_30px_rgba(127,29,29,.26)] transition hover:bg-[#961f25] disabled:cursor-not-allowed disabled:bg-[#5f1b1e] disabled:text-white/72 disabled:shadow-none">
+              {downloadBusy ? "Preparing PDF..." : "Download PDF"}
+            </button>
+            <Link href={routeBuilders.professionalIdentityReview(appRoutes.professionalIdentityCv)} className="rounded-full border border-white/16 bg-white/10 px-5 py-3 text-sm font-extrabold text-white transition hover:bg-white/14">
               Edit information
             </Link>
-            <button type="button" onClick={() => setCvPreviewMode("ats")} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/78 transition hover:bg-white/12">
+            <button type="button" onClick={() => setCvPreviewMode("ats")} className="rounded-full border border-white/16 bg-white/10 px-5 py-3 text-sm font-extrabold text-white transition hover:bg-white/14">
               ATS Preview
             </button>
           </div>
@@ -1977,30 +2145,30 @@ export function ProfessionalIdentityTool({
 
   function renderCvPreviewToolbar() {
     return (
-      <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 rounded-[18px] border border-[#7f1d1d]/25 bg-[#111318]/95 p-2 backdrop-blur" aria-label="CV preview controls">
+      <div className="pathzy-dark-control-surface sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 rounded-[18px] p-2 backdrop-blur" aria-label="CV preview controls">
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setCvPreviewMode("designed")} aria-pressed={cvPreviewMode === "designed"} className={`rounded-full border px-3 py-2 text-xs font-extrabold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2] ${cvPreviewMode === "designed" ? "border-[#f2b8a2]/60 bg-[#7f1d1d]/28 text-white" : "border-white/12 bg-white/8 text-white/72"}`}>
+          <button type="button" onClick={() => setCvPreviewMode("designed")} aria-pressed={cvPreviewMode === "designed"} data-active={cvPreviewMode === "designed"} className="pathzy-dark-control px-3 py-2 text-xs font-extrabold">
             Designed
           </button>
-          <button type="button" onClick={() => setCvPreviewMode("ats")} aria-pressed={cvPreviewMode === "ats"} className={`rounded-full border px-3 py-2 text-xs font-extrabold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2] ${cvPreviewMode === "ats" ? "border-[#f2b8a2]/60 bg-[#7f1d1d]/28 text-white" : "border-white/12 bg-white/8 text-white/72"}`}>
+          <button type="button" onClick={() => setCvPreviewMode("ats")} aria-pressed={cvPreviewMode === "ats"} data-active={cvPreviewMode === "ats"} className="pathzy-dark-control px-3 py-2 text-xs font-extrabold">
             ATS
           </button>
-          <button type="button" onClick={() => setCvPreviewScaleMode("fit_page")} aria-pressed={cvPreviewScaleMode === "fit_page"} className={`rounded-full border px-3 py-2 text-xs font-extrabold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2] ${cvPreviewScaleMode === "fit_page" ? "border-[#f2b8a2]/60 bg-[#7f1d1d]/28 text-white" : "border-white/12 bg-white/8 text-white/72"}`}>
+          <button type="button" onClick={() => setCvPreviewScaleMode("fit_page")} aria-pressed={cvPreviewScaleMode === "fit_page"} data-active={cvPreviewScaleMode === "fit_page"} className="pathzy-dark-control px-3 py-2 text-xs font-extrabold">
             Fit Page
           </button>
-          <button type="button" onClick={() => setCvPreviewScaleMode("fit_width")} aria-pressed={cvPreviewScaleMode === "fit_width"} className={`rounded-full border px-3 py-2 text-xs font-extrabold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2] ${cvPreviewScaleMode === "fit_width" ? "border-[#f2b8a2]/60 bg-[#7f1d1d]/28 text-white" : "border-white/12 bg-white/8 text-white/72"}`}>
+          <button type="button" onClick={() => setCvPreviewScaleMode("fit_width")} aria-pressed={cvPreviewScaleMode === "fit_width"} data-active={cvPreviewScaleMode === "fit_width"} className="pathzy-dark-control px-3 py-2 text-xs font-extrabold">
             Fit Width
           </button>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setCvZoom(cvPreviewScale - 0.08)} aria-label="Zoom Out" className="grid h-9 w-9 place-items-center rounded-full border border-white/12 bg-white/8 text-sm font-black text-white/78 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2]">
+          <button type="button" onClick={() => setCvZoom(cvPreviewScale - 0.08)} aria-label="Zoom Out" className="pathzy-dark-control grid h-9 w-9 place-items-center text-sm font-black">
             -
           </button>
-          <span className="min-w-[54px] text-center text-xs font-black text-white/72" aria-live="polite">{Math.round(cvPreviewScale * 100)}%</span>
-          <button type="button" onClick={() => setCvZoom(cvPreviewScale + 0.08)} aria-label="Zoom In" className="grid h-9 w-9 place-items-center rounded-full border border-white/12 bg-white/8 text-sm font-black text-white/78 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2]">
+          <span className="pathzy-dark-control-indicator min-w-[54px] px-3 py-2 text-center text-xs font-black" aria-live="polite">{Math.round(cvPreviewScale * 100)}%</span>
+          <button type="button" onClick={() => setCvZoom(cvPreviewScale + 0.08)} aria-label="Zoom In" className="pathzy-dark-control grid h-9 w-9 place-items-center text-sm font-black">
             +
           </button>
-          <span className="hidden rounded-full bg-white/8 px-3 py-2 text-xs font-extrabold text-white/54 sm:inline-flex">Page 1 of {cvPreviewPageCount}</span>
+          <span className="pathzy-dark-control-indicator hidden px-3 py-2 text-xs font-extrabold sm:inline-flex">Page 1 of {cvPreviewPageCount}</span>
         </div>
       </div>
     );
@@ -2052,60 +2220,89 @@ export function ProfessionalIdentityTool({
   function renderCoverLetterDocumentBar() {
     const jobTitle = previewCoverLetterData?.jobTitle?.trim() || coverLetterData?.jobTitle?.trim() || "";
     const company = previewCoverLetterData?.companyName?.trim() || coverLetterData?.companyName?.trim() || "";
-    const documentTitle = jobTitle && company ? `Professional Cover Letter - ${jobTitle} at ${company}` : jobTitle ? `Professional Cover Letter - ${jobTitle}` : "Professional Cover Letter";
-    const statusLabel = coverLetterSyncStatus?.status === "missing_information" ? "Needs information" : coverLetterSyncStatus?.status === "missing_job_context" ? "Needs job context" : hasUnsavedChanges ? "Unsaved changes" : "Synced / Up to date";
+    const contextTitle = jobTitle || "Job title needed";
+    const contextCompany = company || "Company needed";
+    const statusLabel = saveState === "saving"
+      ? "Saving..."
+      : saveState === "error"
+        ? "Save failed"
+        : hasUnsavedChanges
+          ? "Unsaved"
+          : saved || saveState === "saved"
+            ? "✓ Saved"
+            : coverLetterSyncStatus?.status === "missing_information"
+              ? "Needs information"
+              : coverLetterSyncStatus?.status === "missing_job_context"
+                ? "Needs job context"
+                : "Draft";
 
     return (
-      <Card className="overflow-hidden border-[#7f1d1d]/20 bg-[#111318]/96">
-        <div className="flex flex-col gap-4 rounded-[20px] border border-white/8 bg-[#18110f]/72 p-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#f2b8a2]/70">MY COVER LETTER</p>
-            <h2 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">{documentTitle}</h2>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-[#39d98a]/25 bg-[#39d98a]/10 px-3 py-1 text-xs font-extrabold text-[#b9f8d5]">Status: {statusLabel}</span>
-              <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 text-xs font-bold text-white/58">{coverLetterPreviewPageCount} A4 page{coverLetterPreviewPageCount === 1 ? "" : "s"}</span>
+      <div data-cover-letter-compact-header="true">
+        <Card className="overflow-hidden border-[#7f1d1d]/20 bg-[#111318]/96">
+          <div className="grid gap-4 rounded-[20px] border border-white/8 bg-[#18110f]/72 p-4">
+            <div>
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#f2b8a2]/70">MY COVER LETTER</p>
+              <h2 className="mt-1 text-2xl font-black tracking-tight text-white">Cover Letter</h2>
+              <p className="mt-2 text-sm font-extrabold leading-6 text-[#f2b8a2]">{contextTitle}</p>
+              <p className="text-sm font-bold leading-6 text-white/62">{contextCompany}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className={`rounded-full border px-3 py-1 text-xs font-extrabold ${saveStatusClasses()}`}>{statusLabel}</span>
+                <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 text-xs font-bold text-white/58">{coverLetterPreviewPageCount} A4 page{coverLetterPreviewPageCount === 1 ? "" : "s"}</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => saveDocument(false)} disabled={!document || saveState === "saving" || ((saved || saveState === "saved") && !hasUnsavedChanges)} className="rounded-full border border-white/12 bg-white/8 px-4 py-3 text-sm font-extrabold text-white/78 transition hover:bg-white/12 disabled:cursor-not-allowed disabled:opacity-50">
+                {saveActionLabel()}
+              </button>
+              <button type="button" onClick={downloadPdf} disabled={!canDownloadPdf || downloadBusy} className="rounded-full bg-[#b4232a] px-4 py-3 text-sm font-extrabold text-white shadow-[0_12px_30px_rgba(127,29,29,.26)] transition hover:bg-[#961f25] disabled:cursor-not-allowed disabled:opacity-50">
+                {downloadBusy ? "Preparing PDF..." : "Download PDF"}
+              </button>
+              <Link href={routeBuilders.professionalIdentityReview(appRoutes.professionalIdentityCoverLetter)} className="rounded-full border border-white/12 bg-white/8 px-4 py-3 text-center text-sm font-extrabold text-white/78 transition hover:bg-white/12">
+                Update information
+              </Link>
+              <button type="button" onClick={() => setCoverLetterJobContextMode("choose")} className="rounded-full border border-white/12 bg-white/8 px-4 py-3 text-sm font-extrabold text-white/78 transition hover:bg-white/12">
+                Change Job
+              </button>
+              <button type="button" onClick={openCoverLetterTemplateBrowser} className="rounded-full border border-white/12 bg-white/8 px-4 py-3 text-sm font-extrabold text-white/78 transition hover:bg-white/12">
+                Change design
+              </button>
+              <button type="button" onClick={() => cvPreviewViewportRef.current?.scrollIntoView({ block: "start", behavior: "smooth" })} className="rounded-full border border-white/12 bg-white/8 px-4 py-3 text-sm font-extrabold text-white/78 transition hover:bg-white/12">
+                Preview
+              </button>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 lg:justify-end">
-            <button onClick={downloadPdf} disabled={!document?.content || downloadBusy} className="rounded-full bg-[#b4232a] px-5 py-3 text-sm font-extrabold text-white shadow-[0_12px_30px_rgba(127,29,29,.26)] transition hover:bg-[#961f25] disabled:cursor-not-allowed disabled:opacity-50">
-              {downloadBusy ? "Preparing..." : "Download PDF"}
-            </button>
-            <Link href={routeBuilders.professionalIdentityReview(appRoutes.professionalIdentityCoverLetter)} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/78 transition hover:bg-white/12">
-              Edit Information
-            </Link>
-            <button type="button" onClick={() => setCoverLetterJobContextMode("choose")} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/78 transition hover:bg-white/12">
-              Change Job
-            </button>
-            <button type="button" onClick={() => cvPreviewViewportRef.current?.scrollIntoView({ block: "start", behavior: "smooth" })} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/78 transition hover:bg-white/12">
-              Preview
-            </button>
-          </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
     );
   }
 
   function renderCoverLetterPreviewToolbar() {
     return (
-      <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 rounded-[18px] border border-[#7f1d1d]/25 bg-[#111318]/95 p-2 backdrop-blur" aria-label="Cover Letter preview controls">
+      <div className="pathzy-dark-control-surface sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 rounded-[18px] p-2 backdrop-blur" aria-label="Cover Letter preview controls">
         <div className="flex flex-wrap gap-2">
-          <span className="rounded-full border border-[#f2b8a2]/60 bg-[#7f1d1d]/28 px-3 py-2 text-xs font-extrabold text-white">Designed Preview</span>
-          <button type="button" onClick={() => setCvPreviewScaleMode("fit_page")} aria-pressed={cvPreviewScaleMode === "fit_page"} className={`rounded-full border px-3 py-2 text-xs font-extrabold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2] ${cvPreviewScaleMode === "fit_page" ? "border-[#f2b8a2]/60 bg-[#7f1d1d]/28 text-white" : "border-white/12 bg-white/8 text-white/72"}`}>
+          <span className="pathzy-dark-control pathzy-dark-control-active px-3 py-2 text-xs font-extrabold">Designed Preview</span>
+          <button type="button" onClick={() => setCvPreviewScaleMode("fit_page")} aria-pressed={cvPreviewScaleMode === "fit_page"} data-active={cvPreviewScaleMode === "fit_page"} className="pathzy-dark-control px-3 py-2 text-xs font-extrabold">
             Fit Page
           </button>
-          <button type="button" onClick={() => setCvPreviewScaleMode("fit_width")} aria-pressed={cvPreviewScaleMode === "fit_width"} className={`rounded-full border px-3 py-2 text-xs font-extrabold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2] ${cvPreviewScaleMode === "fit_width" ? "border-[#f2b8a2]/60 bg-[#7f1d1d]/28 text-white" : "border-white/12 bg-white/8 text-white/72"}`}>
+          <button type="button" onClick={() => setCvPreviewScaleMode("fit_width")} aria-pressed={cvPreviewScaleMode === "fit_width"} data-active={cvPreviewScaleMode === "fit_width"} className="pathzy-dark-control px-3 py-2 text-xs font-extrabold">
             Fit Width
           </button>
         </div>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setCvZoom(cvPreviewScale - 0.08)} aria-label="Zoom Out" className="grid h-9 w-9 place-items-center rounded-full border border-white/12 bg-white/8 text-sm font-black text-white/78 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2]">
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => scrollCoverLetterPreviewPage(-1)} disabled={coverLetterCurrentPage <= 1} className="pathzy-dark-control px-3 py-2 text-xs font-extrabold">
+            Previous
+          </button>
+          <span className="pathzy-dark-control-indicator px-3 py-2 text-xs font-extrabold" aria-live="polite">Page {coverLetterCurrentPage} of {coverLetterPreviewPageCount}</span>
+          <button type="button" onClick={() => scrollCoverLetterPreviewPage(1)} disabled={coverLetterCurrentPage >= coverLetterPreviewPageCount} className="pathzy-dark-control px-3 py-2 text-xs font-extrabold">
+            Next
+          </button>
+          <button type="button" onClick={() => setCvZoom(cvPreviewScale - 0.08)} aria-label="Zoom Out" className="pathzy-dark-control grid h-9 w-9 place-items-center text-sm font-black">
             -
           </button>
-          <span className="min-w-[54px] text-center text-xs font-black text-white/72" aria-live="polite">{Math.round(cvPreviewScale * 100)}%</span>
-          <button type="button" onClick={() => setCvZoom(cvPreviewScale + 0.08)} aria-label="Zoom In" className="grid h-9 w-9 place-items-center rounded-full border border-white/12 bg-white/8 text-sm font-black text-white/78 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f2b8a2]">
+          <span className="pathzy-dark-control-indicator min-w-[54px] px-3 py-2 text-center text-xs font-black" aria-live="polite">{Math.round(cvPreviewScale * 100)}%</span>
+          <button type="button" onClick={() => setCvZoom(cvPreviewScale + 0.08)} aria-label="Zoom In" className="pathzy-dark-control grid h-9 w-9 place-items-center text-sm font-black">
             +
           </button>
-          <span className="hidden rounded-full bg-white/8 px-3 py-2 text-xs font-extrabold text-white/54 sm:inline-flex">Page 1 of {coverLetterPreviewPageCount}</span>
         </div>
       </div>
     );
@@ -2286,7 +2483,7 @@ export function ProfessionalIdentityTool({
               <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#f2d3c2]/72">Recommended</p>
               <h3 className="mt-2 text-lg font-black">{guidance.recommendation}</h3>
               <p className="mt-2 text-sm leading-6 text-white/62">{guidance.why}</p>
-              <p className="mt-2 text-sm font-extrabold text-[#9df0c4]">{guidance.impact}</p>
+              <p className="mt-2 text-sm font-extrabold text-[var(--status-success)]">{guidance.impact}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link href={guidance.followHref} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">
                   {guidance.followLabel}
@@ -2295,7 +2492,7 @@ export function ProfessionalIdentityTool({
               </div>
             </div>
           ) : null}
-          <p className="rounded-[16px] border border-[#39d98a]/20 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold leading-6 text-[#b9f8d5]">{trustNote}</p>
+          <p className="pathzy-status-success rounded-[16px] border px-4 py-3 text-sm font-bold leading-6">{trustNote}</p>
           {coverLetterData ? renderCoverLetterEditor() : null}
         </div>
       </details>
@@ -2325,6 +2522,7 @@ export function ProfessionalIdentityTool({
         {renderCoverLetterPreviewToolbar()}
         <div
           ref={cvPreviewViewportRef}
+          onScroll={updateCoverLetterCurrentPageFromScroll}
           className="overflow-auto rounded-[26px] border border-[#3f2a22]/50 bg-[#d8d0c4] p-3 text-black shadow-inner sm:p-6 lg:p-8"
           aria-label="Live Cover Letter A4 preview"
           data-cover-letter-document-stage="true"
@@ -2364,7 +2562,7 @@ export function ProfessionalIdentityTool({
         {renderLinkedInDocumentBar()}
         {renderLinkedInIdentityCorrectionCard()}
         {error ? <p className="rounded-[16px] border border-[#ff6b6b]/30 bg-[#ff6b6b]/10 px-4 py-3 text-sm text-[#ffc5c5]">{error}</p> : null}
-        {xpAwarded ? <p className="rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{celebrationCopy[tool]} +{xpAwarded} XP added to your PATHZY level.</p> : null}
+        {xpAwarded ? <p className="pathzy-status-success rounded-[16px] border px-4 py-3 text-sm font-bold">{celebrationCopy[tool]} +{xpAwarded} XP added to your PATHZY level.</p> : null}
         {saved || saveState !== "idle" ? <p className="rounded-[16px] border border-[#7f1d1d]/25 bg-[#7f1d1d]/10 px-4 py-3 text-sm font-bold text-[#f2b8a2]">{saveState === "saving" ? "Saving..." : saveState === "error" ? "Could not save. Retry." : copied ? "Copied - ready to paste into LinkedIn." : "Saved to My Documents."}</p> : null}
         {renderLinkedInStudio()}
         {renderDocumentNextActions()}
@@ -2381,13 +2579,13 @@ export function ProfessionalIdentityTool({
           <>
             <h2 className="text-2xl font-black">{title}</h2>
             <p className="mt-3 leading-7 text-white/62">{description}</p>
-            <p className="mt-4 rounded-[16px] border border-[#39d98a]/20 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold leading-6 text-[#b9f8d5]">{trustNote}</p>
+            <p className="pathzy-status-success mt-4 rounded-[16px] border px-4 py-3 text-sm font-bold leading-6">{trustNote}</p>
             {guidance ? (
               <div className="mt-4 rounded-[18px] border border-[#7f1d1d]/25 bg-[#7f1d1d]/10 p-4">
                 <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#f2b8a2]/72">Recommended</p>
                 <h3 className="mt-2 text-lg font-black">{guidance.recommendation}</h3>
                 <p className="mt-2 text-sm leading-6 text-white/62">{guidance.why}</p>
-                <p className="mt-2 text-sm font-extrabold text-[#9df0c4]">{guidance.impact}</p>
+                <p className="mt-2 text-sm font-extrabold text-[var(--status-success)]">{guidance.impact}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Link href={guidance.followHref} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">
                     {guidance.followLabel}
@@ -2445,13 +2643,27 @@ export function ProfessionalIdentityTool({
         </div>
 
         {error ? <p className="mt-5 rounded-[16px] border border-[#ff6b6b]/30 bg-[#ff6b6b]/10 px-4 py-3 text-sm text-[#ffc5c5]">{error}</p> : null}
-        {xpAwarded ? <p className="mt-5 rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{celebrationCopy[tool]} +{xpAwarded} XP added to your PATHZY level.</p> : null}
+        {xpAwarded ? <p className="pathzy-status-success mt-5 rounded-[16px] border px-4 py-3 text-sm font-bold">{celebrationCopy[tool]} +{xpAwarded} XP added to your PATHZY level.</p> : null}
         {saved || saveState !== "idle" ? <p className="mt-5 rounded-[16px] border border-[#7f1d1d]/25 bg-[#7f1d1d]/10 px-4 py-3 text-sm font-bold text-[#f2b8a2]">{saveState === "saving" ? "Saving..." : saveState === "error" ? "Could not save. Retry." : "Saved to My Documents."}</p> : null}
-        {downloadNotice ? <p className="mt-5 rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{downloadNotice}</p> : null}
+        {downloadNotice ? <p className="pathzy-status-success mt-5 rounded-[16px] border px-4 py-3 text-sm font-bold">{downloadNotice}</p> : null}
 
         {viewMode === "preview" && document?.content ? (
           <div className="mt-5 overflow-hidden rounded-[22px] bg-white p-2 text-black">
-            <div dangerouslySetInnerHTML={{ __html: renderCvHtml(document.content, templateName) }} />
+            {tool === "career-passport" && canonicalProfessionalPhoto ? (
+              <div className="mb-3 flex items-center gap-4 rounded-[18px] bg-[#fffaf4] p-4 text-[#111827]">
+                <ProfessionalPhotoAvatar
+                  photo={canonicalProfessionalPhoto}
+                  alt="Professional profile photo"
+                  fallback={(document.title || title || "P").charAt(0).toUpperCase()}
+                  className="flex h-20 w-20 shrink-0 overflow-hidden rounded-[22px] border border-[#d8c7ba] bg-[#efe3d6] text-xl font-black text-[#7f1d1d]"
+                />
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-[#7f1d1d]">Professional Identity Photo</p>
+                  <p className="mt-1 text-sm leading-6 text-[#4b5563]">Using the saved Professional Identity image for this Career Passport preview.</p>
+                </div>
+              </div>
+            ) : null}
+            <div dangerouslySetInnerHTML={{ __html: renderCvHtml(document.content, templateName, undefined, cvPaletteId) }} />
           </div>
         ) : (
           <textarea
@@ -2469,8 +2681,8 @@ export function ProfessionalIdentityTool({
           <button onClick={() => saveDocument(false)} disabled={!document?.id} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">
             {saveState === "saving" ? "Saving..." : "Save Draft"}
           </button>
-          <button onClick={downloadPdf} disabled={!document?.content || downloadBusy} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">
-            {downloadBusy ? "Preparing..." : "Download PDF"}
+          <button onClick={downloadPdf} disabled={!canDownloadPdf || downloadBusy} className="rounded-full border border-white/12 bg-white/8 px-5 py-3 text-sm font-extrabold text-white/82 disabled:cursor-not-allowed disabled:opacity-50">
+            {downloadBusy ? "Preparing PDF..." : "Download PDF"}
           </button>
         </div>
       </Card>
@@ -2493,12 +2705,12 @@ export function ProfessionalIdentityTool({
               </div>
               <div className="flex flex-wrap gap-2 lg:justify-end">
                 <form onSubmit={generate}>
-                  <button disabled={loading} className="rounded-full border border-white/12 bg-white/8 px-4 py-2 text-xs font-extrabold text-white/72 disabled:cursor-not-allowed disabled:opacity-60">
+                  <button disabled={loading} className="rounded-full border border-white/16 bg-white/10 px-4 py-2 text-xs font-extrabold text-white transition hover:bg-white/14 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/6 disabled:text-white/68">
                     {loading ? "Syncing" : "Refresh from Identity"}
                   </button>
                 </form>
                 <details className="relative">
-                  <summary className="list-none rounded-full border border-white/12 bg-white/8 px-4 py-2 text-xs font-extrabold text-white/72 cursor-pointer">More</summary>
+                  <summary className="list-none rounded-full border border-white/16 bg-white/10 px-4 py-2 text-xs font-extrabold text-white cursor-pointer transition hover:bg-white/14">More</summary>
                   <div className="absolute right-0 z-20 mt-2 w-56 rounded-[18px] border border-white/10 bg-[#18110f] p-2 shadow-[0_18px_58px_rgba(0,0,0,.42)]">
                     <button type="button" onClick={() => setCvEntryMode(cvEntryMode === "upload" ? "profile" : "upload")} className="w-full rounded-[12px] px-3 py-2 text-left text-xs font-extrabold text-white/76 hover:bg-white/8">
                       {cvEntryMode === "upload" ? "Use Profile" : "Upload CV"}
@@ -2526,8 +2738,8 @@ export function ProfessionalIdentityTool({
                 </div>
               </div>
             ) : null}
-            {xpAwarded ? <p className="rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{celebrationCopy[tool]} +{xpAwarded} XP added to your PATHZY level.</p> : null}
-            {downloadNotice ? <p className="rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{downloadNotice}</p> : null}
+            {xpAwarded ? <p className="pathzy-status-success rounded-[16px] border px-4 py-3 text-sm font-bold">{celebrationCopy[tool]} +{xpAwarded} XP added to your PATHZY level.</p> : null}
+            {downloadNotice ? <p className="pathzy-status-success rounded-[16px] border px-4 py-3 text-sm font-bold">{downloadNotice}</p> : null}
             {sectionNotice ? <p className="rounded-[16px] border border-[#7f1d1d]/30 bg-[#7f1d1d]/14 px-4 py-3 text-sm font-bold text-[#f2b8a2]">{sectionNotice}</p> : null}
           </div>
           {cvEntryMode === "upload" ? (
@@ -2553,16 +2765,16 @@ export function ProfessionalIdentityTool({
               <DocumentSemanticUnderstandingSummary semanticReading={cvImportSummary?.semanticReading} />
               <DocumentReasoningSummary reasoning={cvImportSummary?.reasoning} />
               {cvImportStatus === "ready" && pendingImportedCv ? (
-                <div id="imported-cv-review" className="mt-4 rounded-[18px] border border-[#39d98a]/25 bg-[#39d98a]/10 p-4">
+                <div id="imported-cv-review" className="pathzy-status-success mt-4 rounded-[18px] border p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="text-sm font-black text-white">{cvImportSummary?.message ?? "Your imported CV is ready for review."}</p>
                       {cvImportSummary?.counts ? (
-                        <p className="mt-1 text-sm leading-6 text-[#b9f8d5]">
+                        <p className="mt-1 text-sm leading-6">
                           We found {cvImportSummary.counts.workExperiences} work experiences, {cvImportSummary.counts.educationRecords} education records, {cvImportSummary.counts.skills} skills, {cvImportSummary.counts.certifications} qualifications, {cvImportSummary.counts.languages} languages, and {cvImportSummary.counts.references} references.
                         </p>
                       ) : (
-                        <p className="mt-1 text-sm leading-6 text-[#b9f8d5]">PATHZY prepared your imported CV. Review it before saving it as your draft.</p>
+                        <p className="mt-1 text-sm leading-6">PATHZY prepared your imported CV. Review it before saving it as your draft.</p>
                       )}
                       {cvImportSummary?.counts.unclassifiedItems ? (
                         <p className="mt-2 text-xs font-bold text-[#ffe2a8]">{cvImportSummary.counts.unclassifiedItems} item{cvImportSummary.counts.unclassifiedItems === 1 ? "" : "s"} stayed unclassified for review instead of being guessed.</p>
@@ -2573,7 +2785,7 @@ export function ProfessionalIdentityTool({
                       {cvImportSummary?.reviewItems.length ? (
                         <p className="mt-2 text-xs font-bold text-[#ffe2a8]">{cvImportSummary.reviewItems.length} item{cvImportSummary.reviewItems.length === 1 ? "" : "s"} may need your review.</p>
                       ) : (
-                        <p className="mt-2 text-xs font-bold text-[#b9f8d5]">Imported details are ready for review.</p>
+                        <p className="mt-2 text-xs font-bold">Imported details are ready for review.</p>
                       )}
                     </div>
                     <button
@@ -2593,48 +2805,53 @@ export function ProfessionalIdentityTool({
       ) : null}
 
       {tool === "cover-letter" ? (
-        renderCoverLetterDocumentBar()
-      ) : null}
-
-      {tool === "cover-letter" ? renderCoverLetterIdentityCorrectionCard() : null}
-
-      {tool === "cover-letter" ? renderCoverLetterTemplateGallery() : null}
-
-      {tool === "cover-letter" ? (
-        <Card className="overflow-hidden border-[#7f1d1d]/18 bg-[#101318]/96">
-          <div className="mb-4 grid gap-3" data-cover-letter-document-studio="true">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-white/42">Document studio</p>
-                <h2 className="mt-1 text-2xl font-black text-white">Designed Preview</h2>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-white/58">Designed Preview shows the print-ready A4 cover letter that the PDF export uses.</p>
-              </div>
-              <div className="flex flex-wrap gap-2 lg:justify-end">
-                <form onSubmit={generate}>
-                  <button disabled={loading} className="rounded-full border border-white/12 bg-white/8 px-4 py-2 text-xs font-extrabold text-white/72 disabled:cursor-not-allowed disabled:opacity-60">
-                    {loading ? "Syncing" : "Refresh from Identity"}
-                  </button>
-                </form>
-              </div>
-            </div>
+        <div
+          className="grid gap-5 pb-24 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] lg:items-start"
+          data-cover-letter-workspace-layout="compact-controls-large-preview"
+          data-cover-letter-workspace-inert={coverLetterTemplateBrowserOpen ? "true" : "false"}
+          aria-hidden={coverLetterTemplateBrowserOpen}
+          inert={coverLetterTemplateBrowserOpen ? true : undefined}
+        >
+          <aside className="grid gap-4 lg:sticky lg:top-24" data-cover-letter-compact-control-area="true">
+            {renderCoverLetterDocumentBar()}
+            {renderCoverLetterTemplateGallery()}
             {renderCoverLetterJobAndEditorDisclosure()}
-          </div>
-          <div className="grid gap-3">
-            {error ? (
-              <div className="rounded-[16px] border border-[#ff6b6b]/30 bg-[#ff6b6b]/10 px-4 py-3 text-sm text-[#ffc5c5]">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <span>{error}</span>
-                  {saveState === "error" ? <button type="button" onClick={() => saveDocument(false)} className="w-fit rounded-full border border-white/12 bg-white/8 px-3 py-2 text-xs font-extrabold text-white">Retry</button> : null}
+            <div className="grid gap-3">
+              {error ? (
+                <div className="rounded-[16px] border border-[#ff6b6b]/30 bg-[#ff6b6b]/10 px-4 py-3 text-sm text-[#ffc5c5]">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <span>{error}</span>
+                    {saveState === "error" ? <button type="button" onClick={() => saveDocument(false)} className="w-fit rounded-full border border-white/12 bg-white/8 px-3 py-2 text-xs font-extrabold text-white">Retry</button> : null}
+                  </div>
+                </div>
+              ) : null}
+              {xpAwarded ? <p className="pathzy-status-success rounded-[16px] border px-4 py-3 text-sm font-bold">{celebrationCopy[tool]} +{xpAwarded} XP added to your PATHZY level.</p> : null}
+              {downloadNotice ? <p className="pathzy-status-success rounded-[16px] border px-4 py-3 text-sm font-bold">{downloadNotice}</p> : null}
+              {saved || saveState !== "idle" ? <p className="rounded-[16px] border border-[#7f1d1d]/25 bg-[#7f1d1d]/10 px-4 py-3 text-sm font-bold text-[#f2b8a2]">{saveState === "saving" ? "Saving..." : saveState === "error" ? "Could not save. Retry." : "✓ Saved"}</p> : null}
+              {sectionNotice ? <p className="rounded-[16px] border border-[#7f1d1d]/30 bg-[#7f1d1d]/14 px-4 py-3 text-sm font-bold text-[#f2b8a2]">{sectionNotice}</p> : null}
+            </div>
+          </aside>
+
+          <div data-cover-letter-document-studio="true">
+            <Card className="min-w-0 overflow-hidden border-[#7f1d1d]/18 bg-[#101318]/96">
+              <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div className="min-w-0">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-white/42">Document studio</p>
+                  <h2 className="mt-1 text-2xl font-black text-white">Designed Preview</h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-white/58">Designed Preview shows the print-ready A4 cover letter that the PDF export uses.</p>
+                </div>
+                <div className="flex flex-wrap gap-2 lg:justify-end">
+                  <form onSubmit={generate}>
+                    <button disabled={loading} className="rounded-full border border-white/12 bg-white/8 px-4 py-2 text-xs font-extrabold text-white/72 disabled:cursor-not-allowed disabled:opacity-60">
+                      {loading ? "Syncing" : "Refresh from Identity"}
+                    </button>
+                  </form>
                 </div>
               </div>
-            ) : null}
-            {xpAwarded ? <p className="rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{celebrationCopy[tool]} +{xpAwarded} XP added to your PATHZY level.</p> : null}
-            {downloadNotice ? <p className="rounded-[16px] border border-[#39d98a]/25 bg-[#39d98a]/10 px-4 py-3 text-sm font-bold text-[#b9f8d5]">{downloadNotice}</p> : null}
-            {saved || saveState !== "idle" ? <p className="rounded-[16px] border border-[#7f1d1d]/25 bg-[#7f1d1d]/10 px-4 py-3 text-sm font-bold text-[#f2b8a2]">{saveState === "saving" ? "Saving..." : saveState === "error" ? "Could not save. Retry." : "Saved to My Documents."}</p> : null}
-            {sectionNotice ? <p className="rounded-[16px] border border-[#7f1d1d]/30 bg-[#7f1d1d]/14 px-4 py-3 text-sm font-bold text-[#f2b8a2]">{sectionNotice}</p> : null}
+              {renderCoverLetterPreviewViewer()}
+            </Card>
           </div>
-          {renderCoverLetterPreviewViewer()}
-        </Card>
+        </div>
       ) : null}
 
       {renderDocumentNextActions()}
@@ -2656,7 +2873,7 @@ export function ProfessionalIdentityTool({
             <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#f2b8a2]/72">MY LINKEDIN</p>
             <h2 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">LinkedIn Professional Profile</h2>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-[#39d98a]/22 bg-[#17251c] px-3 py-1 text-xs font-extrabold text-[#b9f8d5]">{statusLabel}</span>
+              <span className="rounded-full border border-[color-mix(in_srgb,var(--status-success)_22%,transparent)] bg-[color-mix(in_srgb,var(--status-success)_10%,transparent)] px-3 py-1 text-xs font-extrabold text-[var(--status-success)]">{statusLabel}</span>
               <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 text-xs font-bold text-white/70">Profile Strength: {model?.completeness.label ?? "Ready to prepare"}</span>
               <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 text-xs font-bold text-white/70">Target Role: {targetRole}</span>
             </div>
@@ -2749,6 +2966,7 @@ export function ProfessionalIdentityTool({
     const activeVariant = headlineVariants.find(([variant]) => variant === linkedInHeadlineVariant) ?? headlineVariants[0];
     const recommendations = model?.profileOptimization.recommendations ?? [];
     const incompleteDimensions = model?.completeness.dimensions.filter((item) => !item.complete) ?? [];
+    const avatarInitial = (model?.fullName || mainHeadline || "P").charAt(0).toUpperCase();
     const improvementItems = recommendations.length
       ? recommendations.map((item) => ({ label: item.label, why: item.why, href: item.href, priority: item.priority }))
       : incompleteDimensions.map((item) => ({ label: item.label, why: item.recommendation, href: routeBuilders.professionalIdentityReview(appRoutes.professionalIdentityLinkedin), priority: "REVIEW" }));
@@ -2782,9 +3000,12 @@ export function ProfessionalIdentityTool({
         <section className="overflow-hidden rounded-[20px] border border-[#d8c7ba] bg-[#f8f3ed] text-[#111827] shadow-[0_16px_50px_rgba(15,23,42,.12)]" data-linkedin-section="headline">
           <div className="h-14 bg-gradient-to-r from-[#111318] via-[#2a1714] to-[#7f1d1d]" />
           <div className="px-5 pb-5 pt-0 sm:px-7">
-            <div className="-mt-7 mb-4 flex h-16 w-16 items-center justify-center rounded-full border-4 border-[#f8f3ed] bg-[#efe3d6] text-lg font-black text-[#7f1d1d] shadow-md">
-              {model?.profilePhotoAvailable ? "Photo" : (model?.fullName || mainHeadline).charAt(0).toUpperCase()}
-            </div>
+            <ProfessionalPhotoAvatar
+              photo={canonicalProfessionalPhoto}
+              alt={`${model?.fullName || "Professional"} professional profile photo`}
+              fallback={avatarInitial}
+              className="-mt-7 mb-4 flex h-16 w-16 overflow-hidden rounded-full border-4 border-[#f8f3ed] bg-[#efe3d6] text-lg font-black text-[#7f1d1d] shadow-md"
+            />
             <div className="min-w-0">
               <p className="text-xs font-black uppercase tracking-[0.14em] text-[#7f1d1d]">HEADLINE</p>
               {model?.fullName ? <h3 className="mt-3 text-[clamp(1.45rem,3vw,2.1rem)] font-black leading-[1.12] text-[#111827] [overflow-wrap:anywhere]">{model.fullName}</h3> : null}
@@ -2966,7 +3187,7 @@ export function ProfessionalIdentityTool({
               <summary className="cursor-pointer text-xs font-extrabold uppercase tracking-[0.12em] text-[#f2b8a2]">See full analysis</summary>
               <div className="mt-3 grid gap-3 md:grid-cols-2">
                 <div className="rounded-[14px] border border-white/10 bg-white/6 p-3">
-                  <p className="text-xs font-black uppercase tracking-[0.12em] text-[#b9f8d5]">Supported keywords</p>
+                  <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--status-success)]">Supported keywords</p>
                   <p className="mt-2 text-sm leading-6 text-white/68">{model.keywordStrategy.supported.length ? model.keywordStrategy.supported.join(", ") : "Add supported keywords through Professional Identity."}</p>
                 </div>
                 <div className="rounded-[14px] border border-white/10 bg-white/6 p-3">

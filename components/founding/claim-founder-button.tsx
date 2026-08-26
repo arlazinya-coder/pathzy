@@ -36,7 +36,7 @@ export function ClaimFounderButton({ disabled = false }: { disabled?: boolean })
         type="button"
         onClick={claim}
         disabled={disabled || loading}
-        className="tap-target rounded-full blue-purple px-7 py-4 text-sm font-extrabold text-white shadow-[0_16px_42px_rgba(91,140,255,.32)] disabled:cursor-not-allowed disabled:opacity-55"
+        className="tap-target rounded-full blue-purple px-7 py-4 text-sm font-extrabold text-white shadow-[0_16px_42px_rgba(217,58,70,.26)] disabled:cursor-not-allowed disabled:opacity-55"
       >
         {disabled ? "Join Waiting List" : loading ? "Claiming..." : "Claim Founder Spot"}
       </button>

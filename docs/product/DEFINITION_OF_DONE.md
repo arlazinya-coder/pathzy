@@ -5,6 +5,14 @@ Created: 2026-07-28
 
 A feature must not be called complete merely because the page renders, typecheck passes, or the build succeeds.
 
+Permanent rule:
+
+**No meaningful PATHZY fix or feature is complete until it is protected against regression.**
+
+PATHZY follows: **Fix once -> protect permanently.**
+
+Regression protection is part of implementation, not optional cleanup. This applies to bug fixes, UI changes, responsive work, data models, Professional Identity, persistence, authentication, onboarding, CV, Cover Letter, LinkedIn, Career Passport, My Documents, jobs, applications, interview preparation, Mentor, navigation, localization, APIs, Supabase, migrations, storage, document rendering, PDF export, templates, new features and refactors.
+
 ## 1. Product Behaviour
 
 Done means:
@@ -118,7 +126,19 @@ Done means:
 
 ## 12. Tests
 
-Done means the relevant checks pass for the change scope.
+Done means the relevant checks pass for the change scope and the change is protected against silent recurrence.
+
+For every meaningful bug fix:
+
+1. identify the root cause
+2. reproduce the failure where practical
+3. fix the root cause
+4. add or update a regression test that would have failed before the fix
+5. run the regression suite
+6. perform any manual or visual acceptance test required by the defect
+7. report exactly what now prevents recurrence
+
+Do not delete, weaken, skip, ignore or rewrite existing regression tests merely to make new code pass. If product behaviour legitimately changes, replace the old assertion with equivalent or stronger protection and explain why.
 
 Common commands:
 
@@ -129,6 +149,13 @@ Common commands:
 - `git diff --check`
 
 Documentation-only changes require at minimum a formatting check such as `git diff --check`, unless the task asks for broader validation.
+
+If a defect reveals a missing failure class in the regression suite, add that class permanently where practical. Examples:
+
+- PDF clipping bug -> document export regression coverage
+- stale Professional Identity bug -> canonical refresh and downstream propagation coverage
+- mobile overflow bug -> responsive shell or layout protection
+- duplicate content bug -> one-record-one-render coverage
 
 ## 13. Internationalisation
 
@@ -192,6 +219,8 @@ Done means:
 - empty sections are hidden
 - ATS compatibility does not destroy visual quality
 - exported files do not include internal PATHZY guidance
+- document rendering changes include regression protection against duplicated content, overlap, clipping, broken pagination, missing fields, preview/PDF differences, template/palette persistence, failed downloads and duplicate document records where practical
+- visual defects are verified visually; automated tests alone are not sufficient for layout, responsiveness, colour/contrast, overlapping elements, hidden text, templates, PDF rendering or preview/export parity
 
 ## 19. Git Commits
 
@@ -224,3 +253,20 @@ Stop and report when:
 - a secret could be exposed
 - a task would require unapproved architecture
 - product acceptance cannot be met
+- a meaningful change has no practical regression protection and no explicit reason why it cannot be automated
+
+## 22. Final Engineering Report
+
+For every meaningful implementation, the final report must state:
+
+1. root cause
+2. implementation
+3. regression test added or updated
+4. why that test prevents recurrence
+5. typecheck result
+6. regression-suite result
+7. production-build result
+8. manual or visual QA performed
+9. anything still not automatically testable
+
+Do not report only "Tests passed." PATHZY reports must explain the protection now guarding the corrected behaviour.

@@ -443,7 +443,7 @@ export async function createImportedCvDraft(
   imported: ImportedCvResult,
   templateNameInput?: string
 ): Promise<GeneratedProfessionalDocument> {
-  const templateName = normalizeTemplate(templateNameInput ?? "PATHZY Signature Professional");
+  const templateName = normalizeTemplate(templateNameInput ?? "Atlas Professional");
   const cvModel = normalizeCvModelForExport(imported.cvModel);
   const content = serializeCvModel(cvModel);
   const now = new Date().toISOString();

@@ -227,14 +227,14 @@ export function MentorChat() {
       <Card className="h-fit">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-2xl font-black">Mentor memory</h2>
-          <span className="rounded-full bg-[#39d98a]/15 px-3 py-1 text-xs font-extrabold text-[#9df0c4]">Live support</span>
+          <span className="rounded-full bg-[color-mix(in_srgb,var(--status-success)_14%,transparent)] px-3 py-1 text-xs font-extrabold text-[var(--status-success)]">Live support</span>
         </div>
         <p className="mt-3 text-sm leading-6 text-white/58">
           PATHZY uses your Discovery answers, career plan, missions, and progress to give personal guidance.
         </p>
         {returnTarget ? (
-          <div className="mt-4 rounded-[18px] border border-[#5B8CFF]/25 bg-[#5B8CFF]/10 p-4">
-            <p className="text-sm font-bold text-[#c7d6ff]">You came from {returnTarget.label.replace("Back to ", "")}.</p>
+          <div className="pathzy-status-info mt-4 rounded-[18px] border p-4">
+            <p className="text-sm font-bold text-[var(--text-secondary)]">You came from {returnTarget.label.replace("Back to ", "")}.</p>
             <Link href={returnTarget.href} className="mt-3 inline-flex rounded-full border border-white/12 bg-white/10 px-4 py-2 text-sm font-extrabold text-white">
               {returnTarget.label}
             </Link>
@@ -263,7 +263,7 @@ export function MentorChat() {
                   onClick={() => loadConversation(conversation.id)}
                   className={`rounded-[18px] border px-4 py-3 text-left text-sm font-bold transition ${
                     conversation.id === activeConversationId
-                      ? "border-[#5B8CFF]/60 bg-[#5B8CFF]/16 text-white"
+                      ? "border-[rgba(217,58,70,.6)] bg-[rgba(217,58,70,.16)] text-white"
                       : "border-white/10 bg-white/7 text-white/66 hover:bg-white/10"
                   }`}
                 >
@@ -291,7 +291,7 @@ export function MentorChat() {
                 <div
                   key={message.id}
                   className={`max-w-[92%] rounded-[22px] px-5 py-4 text-sm leading-7 md:text-base ${
-                    message.role === "assistant" ? "bg-white/8 text-white/76" : "justify-self-end blue-purple text-white shadow-[0_16px_38px_rgba(91,140,255,.25)]"
+                    message.role === "assistant" ? "bg-white/8 text-white/76" : "justify-self-end blue-purple text-white shadow-[0_16px_38px_rgba(217,58,70,.22)]"
                   }`}
                 >
                   {message.streaming && !message.content ? (

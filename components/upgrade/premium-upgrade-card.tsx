@@ -32,7 +32,7 @@ export function PremiumUpgradeCard({
     <section className="surface overflow-hidden rounded-[28px] p-5 md:p-8">
       <div className="grid gap-6 lg:grid-cols-[1fr_.82fr] lg:items-center">
         <div>
-          <span className="inline-flex rounded-full bg-[#39d98a]/15 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-[#9df0c4]">
+          <span className="inline-flex rounded-full bg-[color-mix(in_srgb,var(--status-success)_14%,transparent)] px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-[var(--status-success)]">
             Premium unlock
           </span>
           <h2 className="mt-5 text-3xl font-black leading-tight md:text-5xl">
@@ -41,7 +41,7 @@ export function PremiumUpgradeCard({
           <p className="mt-4 max-w-2xl text-base leading-7 text-white/66 md:text-lg">{subtitle}</p>
           <p className="mt-3 text-sm font-bold text-white/48">Free users get limited Mentor messages each day. No credit card required.</p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Link href="/billing" className="inline-flex min-h-12 items-center justify-center rounded-full blue-purple px-6 py-3 text-sm font-extrabold text-white shadow-[0_16px_42px_rgba(91,140,255,.32)] transition hover:-translate-y-0.5">
+            <Link href="/billing" className="inline-flex min-h-12 items-center justify-center rounded-full blue-purple px-6 py-3 text-sm font-extrabold text-white shadow-[0_16px_42px_rgba(217,58,70,.26)] transition hover:-translate-y-0.5">
               {primaryLabel}
             </Link>
             <button

@@ -11,7 +11,7 @@ export function AuthNotice() {
   if (isSupabaseConfigured()) return null;
 
   return (
-    <div className="mb-5 rounded-[20px] border border-[#ffd166]/25 bg-[#ffd166]/10 p-4 text-sm font-bold leading-6 text-[#ffe3a3]">
+    <div className="pathzy-status-warning mb-5 rounded-[20px] border p-4 text-sm font-bold leading-6">
       {pathzyPhase2T(language, "auth.notice.message")}{" "}
       <Link href="/settings" className="text-white underline underline-offset-4">
         {pathzyPhase2T(language, "auth.notice.settings")}

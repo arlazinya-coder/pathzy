@@ -14,8 +14,8 @@ export async function PricingContent() {
       <PageHeader eyebrow="Pricing" title="Start strong. Upgrade as your future gets clearer.">
         Start free. Experience PATHZY first. Upgrade only when you need downloads, advanced optimization, interview coaching, and deeper employment support.
       </PageHeader>
-      <Card className="mb-6 border-[#39d98a]/30 bg-[#39d98a]/10">
-        <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-[#9df0c4]">Private Launch Offer</span>
+      <Card className="pathzy-status-success mb-6 border">
+        <span className="rounded-full bg-white/10 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em]">Private Launch Offer</span>
         <div className="mt-5 grid gap-5 lg:grid-cols-2">
           <div>
             <h2 className="text-2xl font-black">First 20: Founding Testers</h2>
@@ -31,7 +31,7 @@ export async function PricingContent() {
       </Card>
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {pricingPlans.filter((plan) => plan.name !== "Founder").map((plan) => (
-          <Card key={plan.name} className={plan.featured ? "relative overflow-hidden border-[#7B5CFF]/50 bg-[linear-gradient(145deg,rgba(91,140,255,.20),rgba(123,92,255,.24))]" : ""}>
+          <Card key={plan.name} className={plan.featured ? "relative overflow-hidden border-[rgba(217,58,70,.42)] bg-[linear-gradient(145deg,rgba(217,58,70,.18),rgba(169,33,48,.22))]" : ""}>
             {plan.featured ? <span className="mb-4 inline-flex rounded-full bg-white px-3 py-1 text-xs font-black text-[#0B1020]">Most popular</span> : null}
             <h2 className="text-2xl font-black">{plan.name}</h2>
             <p className="mt-2 min-h-12 text-white/58">{plan.description}</p>

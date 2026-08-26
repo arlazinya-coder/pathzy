@@ -11,7 +11,6 @@ import type {
   ProfileMatchEvidence,
   ProfileRequirementMatch,
   SemanticJobUnderstanding,
-  TargetedDocumentDraft,
   TargetedDocumentType,
   TargetedDocumentPackage,
   TargetedDocumentStrategy
@@ -33,6 +32,13 @@ function sentence(value: string) {
   const clean = value.trim().replace(/\s+/g, " ");
   if (!clean) return "";
   return /[.!?]$/.test(clean) ? clean : `${clean}.`;
+}
+
+function conciseEvidenceText(value: string) {
+  const firstClause = sentence(value).split(/[.;]/)[0]?.trim() ?? "";
+  const clean = firstClause.replace(/\s+/g, " ");
+  if (clean.length <= 140) return clean;
+  return `${clean.slice(0, 137).replace(/\s+\S*$/, "")}...`;
 }
 
 function selectedEvidence(matches: ProfileRequirementMatch[]) {
@@ -306,11 +312,17 @@ function targetedCvDocument(input: {
 
 function letterContent(input: { profile: CanonicalProfessionalIdentity; job: SemanticJobUnderstanding; evidence: ProfileMatchEvidence[]; language: ProfessionalDocumentLanguage }) {
   const name = valueText(input.profile.identity.fullName);
-  const strongest = input.evidence.slice(0, 3).map((item) => item.evidenceText.split(/[.;]/)[0]).filter(Boolean);
+  const strongest = unique(input.evidence.slice(0, 4).map((item) => conciseEvidenceText(item.evidenceText)).filter(Boolean)).slice(0, 3);
+  const primaryRequirements = input.job.requirements
+    .filter((requirement) => requirement.importance === "mandatory" || requirement.importance === "preferred")
+    .map((requirement) => requirement.normalizedConcept || requirement.sourceText)
+    .filter(Boolean)
+    .slice(0, 3);
+  const requirementFocus = primaryRequirements.length ? primaryRequirements.join(", ") : input.job.title;
   return {
-    opening: createPresentationField({ value: `I am applying for the ${input.job.title} opportunity${input.job.organization ? ` at ${input.job.organization}` : ""}.`, sourceType: "targeted_generated", approvalState: "suggested", userApproved: false, generatedForTargetJobId: input.job.id, language: input.language }),
-    evidence: createPresentationField({ value: strongest.length ? `The strongest confirmed evidence for this role is ${strongest.join("; ")}.` : "My Professional Identity is ready for review against this role before submission.", sourceType: "targeted_generated", approvalState: "suggested", userApproved: false, generatedForTargetJobId: input.job.id, sourceFactIds: input.evidence.slice(0, 3).map((item) => item.canonicalEntityId), language: input.language }),
-    motivation: createPresentationField({ value: "This application is focused on the reviewed job requirements and the evidence already confirmed in my professional profile.", sourceType: "targeted_generated", approvalState: "suggested", userApproved: false, generatedForTargetJobId: input.job.id, language: input.language }),
+    opening: createPresentationField({ value: `I am applying for the ${input.job.title} opportunity${input.job.organization ? ` at ${input.job.organization}` : ""}, with this letter focused on the reviewed requirements for this role.`, sourceType: "targeted_generated", approvalState: "suggested", userApproved: false, generatedForTargetJobId: input.job.id, language: input.language }),
+    evidence: createPresentationField({ value: strongest.length ? `The most relevant confirmed evidence is ${strongest.join("; ")}.` : "My Professional Identity should be reviewed against this role before any claims are made.", sourceType: "targeted_generated", approvalState: "suggested", userApproved: false, generatedForTargetJobId: input.job.id, sourceFactIds: input.evidence.slice(0, 4).map((item) => item.canonicalEntityId), language: input.language }),
+    motivation: createPresentationField({ value: `The application should stay focused on ${requirementFocus} and avoid unsupported claims about requirements that are not yet confirmed.`, sourceType: "targeted_generated", approvalState: "suggested", userApproved: false, generatedForTargetJobId: input.job.id, language: input.language }),
     closing: createPresentationField({ value: "I would welcome the opportunity to discuss how my confirmed background can support this role.", sourceType: "targeted_generated", approvalState: "suggested", userApproved: false, generatedForTargetJobId: input.job.id, language: input.language }),
     signature: createPresentationField({ value: name, canonicalFieldPath: "identity.fullName", sourceType: "canonical", userApproved: true, approvalState: "accepted", language: input.language })
   };

@@ -1,5 +1,6 @@
-import { normalizeDocumentTemplate, templateMetadata } from "@/lib/professional-identity/document-template-engine";
+import { normalizeDocumentTemplate, templateMetadata, templatePaletteMetadata } from "@/lib/professional-identity/document-template-engine";
 import type { PremiumDocumentTemplate } from "@/lib/professional-identity/document-template-engine";
+import type { ProfessionalPhotoAssetView } from "@/lib/professional-identity/professional-photo";
 
 export type CvTemplateName = PremiumDocumentTemplate;
 
@@ -125,7 +126,76 @@ export type CoverLetterTemplateMetadata = {
   accent: string;
   background: string;
   architecture: "executive" | "ats" | "product" | "enterprise" | "consulting" | "signature" | "global" | "technical" | "creative" | "graduate";
+  palettes: [CoverLetterTemplatePalette, CoverLetterTemplatePalette, CoverLetterTemplatePalette];
 };
+
+export type CoverLetterTemplatePalette = {
+  id: string;
+  name: string;
+  paper: string;
+  accent: string;
+  ink: string;
+  pageBackground: string;
+  primaryText: string;
+  secondaryText: string;
+  headingText: string;
+  candidateNameText: string;
+  divider: string;
+  linkContactText: string;
+};
+
+const coverLetterDarkText = "#111827";
+const coverLetterLightText = "#fffdfa";
+
+function coverLetterRelativeLuminance(hex: string) {
+  const channel = (value: number) => value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  const [red, green, blue] = hexToRgb(hex).map(channel);
+  return red * 0.2126 + green * 0.7152 + blue * 0.0722;
+}
+
+export function coverLetterContrastRatio(foreground: string, background: string) {
+  const lighter = Math.max(coverLetterRelativeLuminance(foreground), coverLetterRelativeLuminance(background));
+  const darker = Math.min(coverLetterRelativeLuminance(foreground), coverLetterRelativeLuminance(background));
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function readableCoverLetterText(preferred: string, background: string, fallbacks: string[] = [], minimumRatio = 4.5) {
+  const candidates = [preferred, ...fallbacks, coverLetterDarkText, coverLetterLightText].filter(Boolean);
+  return candidates
+    .map((color) => ({ color, ratio: coverLetterContrastRatio(color, background) }))
+    .sort((left, right) => right.ratio - left.ratio)
+    .find((item) => item.ratio >= minimumRatio)?.color ?? candidates[0] ?? coverLetterDarkText;
+}
+
+function semanticCoverLetterPalette(id: string, name: string, paper: string, accent: string, ink: string): CoverLetterTemplatePalette {
+  const primaryText = readableCoverLetterText(ink, paper);
+  const secondaryText = readableCoverLetterText(lightSurface(paper) ? "#4b5563" : "#e7ded0", paper, [primaryText]);
+  const headingText = readableCoverLetterText(accent, paper, [primaryText]);
+  const candidateNameText = readableCoverLetterText(headingText, paper, [primaryText, accent]);
+  const linkContactText = readableCoverLetterText(accent, paper, [secondaryText, primaryText]);
+  return {
+    id,
+    name,
+    paper,
+    accent,
+    ink: primaryText,
+    pageBackground: paper,
+    primaryText,
+    secondaryText,
+    headingText,
+    candidateNameText,
+    divider: accent,
+    linkContactText
+  };
+}
+
+function coverLetterPalettes(baseId: string, background: string, accent: string): [CoverLetterTemplatePalette, CoverLetterTemplatePalette, CoverLetterTemplatePalette] {
+  return [
+    semanticCoverLetterPalette(`${baseId}-signature`, "Signature", background, accent, "#111827"),
+    semanticCoverLetterPalette(`${baseId}-ivory`, "Warm Ivory", "#fffdfa", "#7f1d1d", "#171717"),
+    semanticCoverLetterPalette(`${baseId}-charcoal`, "Charcoal", "#ffffff", "#1f2937", "#111827")
+  ];
+}
 
 export const coverLetterTemplateGallery: CoverLetterTemplateMetadata[] = [
   {
@@ -134,7 +204,8 @@ export const coverLetterTemplateGallery: CoverLetterTemplateMetadata[] = [
     description: "Benchmark PATHZY letter with warm paper, disciplined typography, and a formal recruiter-ready hierarchy.",
     accent: "#7f1d1d",
     background: "#fffdfa",
-    architecture: "signature"
+    architecture: "signature",
+    palettes: coverLetterPalettes("pathzy-signature-letter", "#fffdfa", "#7f1d1d")
   },
   {
     name: "Executive Black",
@@ -142,7 +213,8 @@ export const coverLetterTemplateGallery: CoverLetterTemplateMetadata[] = [
     description: "High-contrast executive letter with a premium boardroom identity and restrained black accent.",
     accent: "#c9a35b",
     background: "#111111",
-    architecture: "executive"
+    architecture: "executive",
+    palettes: coverLetterPalettes("executive-black-letter", "#111111", "#c9a35b")
   },
   {
     name: "Modern ATS",
@@ -150,7 +222,8 @@ export const coverLetterTemplateGallery: CoverLetterTemplateMetadata[] = [
     description: "Extremely clean single-column structure with strong spacing and ATS-conscious hierarchy.",
     accent: "#243044",
     background: "#fffdfa",
-    architecture: "ats"
+    architecture: "ats",
+    palettes: coverLetterPalettes("modern-ats-letter", "#fffdfa", "#243044")
   },
   {
     name: "Google Style",
@@ -158,7 +231,8 @@ export const coverLetterTemplateGallery: CoverLetterTemplateMetadata[] = [
     description: "Minimal product-minded document with bright whitespace and restrained ink accent rhythm.",
     accent: "#2f3a4f",
     background: "#fffdfa",
-    architecture: "product"
+    architecture: "product",
+    palettes: coverLetterPalettes("google-style-letter", "#fffdfa", "#2f3a4f")
   },
   {
     name: "Microsoft Professional",
@@ -166,7 +240,8 @@ export const coverLetterTemplateGallery: CoverLetterTemplateMetadata[] = [
     description: "Polished enterprise letter with structured header hierarchy and disciplined spacing.",
     accent: "#182234",
     background: "#fffdfa",
-    architecture: "enterprise"
+    architecture: "enterprise",
+    palettes: coverLetterPalettes("microsoft-professional-letter", "#fffdfa", "#182234")
   },
   {
     name: "Deloitte Consulting",
@@ -174,7 +249,8 @@ export const coverLetterTemplateGallery: CoverLetterTemplateMetadata[] = [
     description: "Sharp consulting layout with compact professional rhythm and strong subject treatment.",
     accent: "#86bc25",
     background: "#f8fff8",
-    architecture: "consulting"
+    architecture: "consulting",
+    palettes: coverLetterPalettes("deloitte-consulting-letter", "#f8fff8", "#4d7c0f")
   },
   {
     name: "Executive Signature",
@@ -182,7 +258,8 @@ export const coverLetterTemplateGallery: CoverLetterTemplateMetadata[] = [
     description: "Elegant editorial letter with signature-led closing and generous premium whitespace.",
     accent: "#a67c52",
     background: "#fffaf3",
-    architecture: "signature"
+    architecture: "signature",
+    palettes: coverLetterPalettes("executive-signature-letter", "#fffaf3", "#a67c52")
   },
   {
     name: "Global Corporate",
@@ -190,7 +267,8 @@ export const coverLetterTemplateGallery: CoverLetterTemplateMetadata[] = [
     description: "Formal international corporate composition with restrained accent and clear hierarchy.",
     accent: "#1e3a8a",
     background: "#f8fafc",
-    architecture: "global"
+    architecture: "global",
+    palettes: coverLetterPalettes("global-corporate-letter", "#f8fafc", "#334155")
   },
   {
     name: "Tech Minimal",
@@ -198,7 +276,8 @@ export const coverLetterTemplateGallery: CoverLetterTemplateMetadata[] = [
     description: "Ultra-clean technical letter with precise typography and compact breathable structure.",
     accent: "#06b6d4",
     background: "#f8fafc",
-    architecture: "technical"
+    architecture: "technical",
+    palettes: coverLetterPalettes("tech-minimal-letter", "#f8fafc", "#0f766e")
   },
   {
     name: "Creative Professional",
@@ -206,7 +285,8 @@ export const coverLetterTemplateGallery: CoverLetterTemplateMetadata[] = [
     description: "Editorial professional letter with distinct visual rhythm without sacrificing readability.",
     accent: "#16a34a",
     background: "#fffbeb",
-    architecture: "creative"
+    architecture: "creative",
+    palettes: coverLetterPalettes("creative-professional-letter", "#fffbeb", "#9a3412")
   },
   {
     name: "Graduate First Step",
@@ -214,7 +294,8 @@ export const coverLetterTemplateGallery: CoverLetterTemplateMetadata[] = [
     description: "Fresh confident letter that emphasizes potential, education, projects, and transferable skills.",
     accent: "#7c3aed",
     background: "#f6f7ff",
-    architecture: "graduate"
+    architecture: "graduate",
+    palettes: coverLetterPalettes("graduate-first-step-letter", "#fffafa", "#7f1d1d")
   }
 ];
 
@@ -284,7 +365,20 @@ type RoundedElement = {
   sectionId?: string;
 };
 
-type LayoutElement = TextElement | RectElement | LineElement | CircleElement | RoundedElement;
+type ImageElement = {
+  kind: "image";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  src: string;
+  alt: string;
+  radius?: number;
+  borderColor?: string;
+  objectPosition?: string;
+};
+
+type LayoutElement = TextElement | RectElement | LineElement | CircleElement | RoundedElement | ImageElement;
 
 type LayoutPage = {
   elements: LayoutElement[];
@@ -793,24 +887,29 @@ function resolveTemplateDensity(name: string, atsClassification: string) {
   return "balanced";
 }
 
-function resolveCvTemplateDesign(templateName?: string): CvDesignSystem {
+function resolveCvTemplateDesign(templateName?: string, paletteId?: string): CvDesignSystem {
   const metadata = templateMetadata(templateName);
   const base = pathzyEliteDesignSystem[baseTemplateForLayout(metadata.thumbnail.layout)] ?? pathzyEliteDesignSystem["Modern ATS"];
+  const palette = templatePaletteMetadata(metadata.name, paletteId);
   const density = resolveTemplateDensity(metadata.name, metadata.atsClassification);
   const compact = density === "compact";
   const airy = density === "airy";
-  const accent = metadata.thumbnail.accent;
-  const surface = lightSurface(metadata.thumbnail.background) ? metadata.thumbnail.background : base.paper;
+  const accent = palette.accent;
+  const surface = lightSurface(palette.paper) ? palette.paper : base.paper;
 
   return {
     ...base,
     name: normalizeDocumentTemplate(metadata.name),
     identity: identityForLayout(metadata.thumbnail.layout),
+    ink: palette.ink,
+    muted: palette.muted,
+    heroText: palette.hero,
+    heroMuted: palette.heroMuted,
     blue: accent,
     sky: surface === "#ffffff" ? base.sky : surface,
-    line: accent === base.blue ? base.line : compact ? "#d7dde6" : base.line,
+    line: palette.line || (accent === base.blue ? base.line : compact ? "#d7dde6" : base.line),
     paper: surface,
-    sidebar: lightSurface(metadata.thumbnail.background) ? metadata.thumbnail.background : base.sidebar,
+    sidebar: lightSurface(palette.sidebar) ? palette.sidebar : base.sidebar,
     cardBorder: compact ? "#d7dde6" : base.cardBorder,
     headerHeight: Math.max(160, Math.min(218, base.headerHeight + (airy ? 12 : compact ? -14 : 0))),
     sidebarWidth: Math.max(176, Math.min(242, base.sidebarWidth + (airy ? 10 : compact ? -12 : 0))),
@@ -827,6 +926,35 @@ function resolveCvTemplateDesign(templateName?: string): CvDesignSystem {
     titleLetterSpacing: metadata.atsClassification === "ATS HIGH" ? Math.min(base.titleLetterSpacing, 1.2) : base.titleLetterSpacing,
     showHeroOrnaments: metadata.atsClassification === "VISUAL / RECRUITER-FIRST" ? base.showHeroOrnaments : false
   };
+}
+
+function professionalPhotoForCvTemplate(templateName: string | undefined, photo?: ProfessionalPhotoAssetView | null) {
+  const capability = templateMetadata(templateName).photoCapability;
+  if (capability.photoMode === "none") return null;
+  if (photo?.photoStatus !== "ready" || !photo.signedUrl || !photo.storagePath) return null;
+  return photo;
+}
+
+function professionalPhotoObjectPosition(photo: ProfessionalPhotoAssetView) {
+  const focalX = typeof photo.crop?.focalPointX === "number" ? Math.max(0, Math.min(1, photo.crop.focalPointX)) : 0.5;
+  const focalY = typeof photo.crop?.focalPointY === "number" ? Math.max(0, Math.min(1, photo.crop.focalPointY)) : 0.5;
+  return `${Math.round(focalX * 100)}% ${Math.round(focalY * 100)}%`;
+}
+
+function addProfessionalPhoto(elements: LayoutElement[], photo: ProfessionalPhotoAssetView | null, x: number, y: number, width: number, height: number, radius: number, borderColor: string) {
+  if (!photo?.signedUrl) return;
+  elements.push({
+    kind: "image",
+    x,
+    y,
+    width,
+    height,
+    src: photo.signedUrl,
+    alt: "Professional profile photo",
+    radius,
+    borderColor,
+    objectPosition: professionalPhotoObjectPosition(photo)
+  });
 }
 
 type CoverLetterDesign = {
@@ -1132,6 +1260,70 @@ function resolveCoverLetterDesign(templateName?: string): CoverLetterDesign {
     recipientInset: 20,
     subjectStyle: "boxed"
   };
+}
+
+function coverLetterTemplatePalette(templateName?: string, paletteId?: string) {
+  const template = coverLetterTemplateMetadata(templateName);
+  return template.palettes.find((palette) => palette.id === paletteId) ?? template.palettes[0];
+}
+
+function coverLetterSurfaceForPalette(palette: CoverLetterTemplatePalette) {
+  return lightSurface(palette.pageBackground) ? "#ffffff" : "#1f2937";
+}
+
+function coverLetterPremiumTemplateForPalette(coverDesign: CoverLetterDesign, palette: CoverLetterTemplatePalette): CvDesignSystem {
+  const base = resolveCvTemplateDesign(coverDesign.cvTemplate);
+  const surface = coverLetterSurfaceForPalette(palette);
+  return {
+    ...base,
+    ink: palette.primaryText,
+    muted: palette.secondaryText,
+    blue: palette.accent,
+    line: palette.divider,
+    paper: palette.pageBackground,
+    card: surface,
+    cream: surface,
+    sky: surface,
+    amber: palette.accent,
+    heroText: palette.candidateNameText,
+    heroMuted: palette.linkContactText
+  };
+}
+
+function coverLetterHeaderBackground(headerStyle: CoverLetterDesign["headerStyle"], template: CvDesignSystem, palette: CoverLetterTemplatePalette) {
+  if (headerStyle === "executive" || headerStyle === "band") return template.navy;
+  if (headerStyle === "accented" || headerStyle === "fresh") return template.sky;
+  if (headerStyle === "creative") return template.cream;
+  return palette.pageBackground;
+}
+
+export function coverLetterPaletteContrastChecks() {
+  return coverLetterTemplateGallery.flatMap((template) => {
+    const design = resolveCoverLetterDesign(template.name);
+    return template.palettes.flatMap((palette) => {
+      const templateDesign = coverLetterPremiumTemplateForPalette(design, palette);
+      const headerBackground = coverLetterHeaderBackground(design.headerStyle, templateDesign, palette);
+      const surfaceBackground = coverLetterSurfaceForPalette(palette);
+      const checks = [
+        { field: "candidate-name text", foreground: readableCoverLetterText(palette.candidateNameText, headerBackground, [palette.headingText, palette.primaryText]), background: headerBackground },
+        { field: "contact text", foreground: readableCoverLetterText(palette.linkContactText, headerBackground, [palette.secondaryText, palette.primaryText]), background: headerBackground },
+        { field: "role/title text", foreground: readableCoverLetterText(palette.headingText, headerBackground, [palette.accent, palette.primaryText]), background: headerBackground },
+        { field: "body text", foreground: readableCoverLetterText(palette.primaryText, palette.pageBackground), background: palette.pageBackground },
+        { field: "section heading text", foreground: readableCoverLetterText(palette.headingText, palette.pageBackground, [palette.primaryText]), background: palette.pageBackground },
+        { field: "surface heading text", foreground: readableCoverLetterText(palette.headingText, surfaceBackground, [palette.primaryText]), background: surfaceBackground }
+      ];
+      return checks.map((check) => {
+        const ratio = coverLetterContrastRatio(check.foreground, check.background);
+        return {
+          template: template.name,
+          palette: palette.id,
+          ...check,
+          ratio,
+          pass: ratio >= 4.5
+        };
+      });
+    });
+  });
 }
 
 const headings = new Map([
@@ -1720,16 +1912,14 @@ function cvModelToRenderModel(input: CvModel): CvRenderModel {
   push("Core Competencies / Skills", cv.coreSkills);
   push("Technical Skills", cv.technicalSkills);
   push("Professional Skills", cv.professionalSkills);
-  push("Professional Experience", cv.professionalExperience.map((item) => compactLine([
-    item.role,
-    item.company,
-    item.location,
-    compactLine([item.startDate, item.current ? "Present" : item.endDate]),
-    ...item.achievements
+  push("Professional Experience", signatureExperienceEntries(cv).map((item) => compactLine([
+    compactUniqueLine([item.role, item.company]),
+    compactUniqueLine([item.location, item.dateText]),
+    ...item.details
   ])));
-  push("Projects", cv.projects.map((item) => compactLine([item.projectName, item.role, item.tools.join(", "), item.description, item.impact])));
-  push("Education", cv.education.map((item) => compactLine([item.qualification, item.institution, item.fieldOfStudy, item.year, item.status])));
-  push("Certifications", cv.certifications.map((item) => compactLine([item.name, item.provider, item.year, item.credentialUrl])));
+  push("Projects", cv.projects.map((item) => compactUniqueLine([item.projectName, item.role, item.tools.join(", "), item.description, item.impact])));
+  push("Education", signatureEducationEntries(cv).map((item) => compactUniqueLine([item.title, item.institution, item.meta])));
+  push("Certifications", signatureCertificationItems(cv));
   push("Achievements", cv.achievements);
   push("Languages", cv.languages.map((item) => compactLine([item.language, item.level])));
   push("References", [...cv.references.items, cv.references.availableUponRequest ? "Available upon request" : ""]);
@@ -1917,8 +2107,9 @@ function skillSection(title: string) {
 }
 
 function estimateMainItemHeight(title: string, item: string, width: number) {
-  if (timelineSection(title)) return Math.max(46, wrapText(item, width - 44, premiumTemplate.bodySize - 0.3).length * (premiumTemplate.bodyLineHeight - 1.5) + 24) + 14;
-  return wrapText(item, width - 14, premiumTemplate.bodySize).length * premiumTemplate.bodyLineHeight + 27;
+  const safetyPadding = timelineSection(title) ? 28 : 18;
+  if (timelineSection(title)) return Math.max(58, wrapText(item, width - 62, premiumTemplate.bodySize - 0.3).length * (premiumTemplate.bodyLineHeight - 1.2) + safetyPadding) + 18;
+  return wrapText(item, width - 18, premiumTemplate.bodySize).length * premiumTemplate.bodyLineHeight + 31;
 }
 
 function chunkLines(lines: string[], maxLines: number) {
@@ -1943,18 +2134,18 @@ function drawMainSection(layout: CvLayout, pageEntry: LayoutPage, cursor: number
     if (timeline) {
       const itemSize = premiumTemplate.bodySize - 0.3;
       const itemLineHeight = premiumTemplate.bodyLineHeight - 1.5;
-      const lines = wrapText(item, width - 44, itemSize);
-      const maxLinesPerCard = Math.max(1, Math.floor((pageBottom - continuedPageTop - 42) / itemLineHeight));
+      const lines = wrapText(item, width - 62, itemSize);
+      const maxLinesPerCard = Math.max(1, Math.floor((pageBottom - continuedPageTop - 56) / itemLineHeight));
       for (const [chunkIndex, chunk] of chunkLines(lines, maxLinesPerCard).entries()) {
-        const cardHeight = Math.max(46, chunk.length * itemLineHeight + 24);
-        ensure(cardHeight + 18);
+        const cardHeight = Math.max(58, chunk.length * itemLineHeight + 28);
+        ensure(cardHeight + 22);
         currentPage.elements.push({ kind: "line", x: x + 11, y: y + 12, width: cardHeight - 8, color: premiumTemplate.line, thickness: 1, orientation: "vertical" });
         currentPage.elements.push({ kind: "circle", x: x + 11, y: y + 12, radius: 5, color: premiumTemplate.blue });
         currentPage.elements.push({ kind: "rounded", x: x + 30, y: y - 6, width: width - 30, height: cardHeight, radius: premiumTemplate.cardRadius, color: premiumTemplate.card, borderColor: premiumTemplate.cardBorder });
         chunk.forEach((line, index) => {
           currentPage.elements.push({ kind: "text", x: x + 46, y: y + 10 + index * itemLineHeight, width: width - 62, text: line, size: itemSize, color: premiumTemplate.ink, weight: chunkIndex === 0 && index === 0 ? "bold" : "regular" });
         });
-        y += cardHeight + 14;
+        y += cardHeight + 18;
       }
     } else {
       const lines = wrapText(item, width - 14, premiumTemplate.bodySize);
@@ -2037,23 +2228,26 @@ function drawSingleColumnSection(layout: CvLayout, pageEntry: LayoutPage, cursor
   return { pageEntry: currentPage, y: y + 10 };
 }
 
-function buildSingleColumnCvLayout(cvInput: CvModel, activeSection?: string): CvLayout {
+function buildSingleColumnCvLayout(cvInput: CvModel, activeSection?: string, professionalPhoto?: ProfessionalPhotoAssetView | null): CvLayout {
   const cv = cvModelToRenderModel(cvInput);
   const layout: CvLayout = { width: page.width, height: page.height, pages: [] };
   let currentPage = addPage(layout);
   const marginX = premiumTemplate.identity === "ats" ? 64 : 72;
   const contentW = page.width - marginX * 2;
   const headerTop = premiumTemplate.identity === "ats" ? 58 : 64;
+  const headerPhoto = professionalPhotoForCvTemplate(premiumTemplate.name, professionalPhoto);
+  const headerTextW = headerPhoto ? contentW - 104 : contentW;
   if (premiumTemplate.identity !== "ats") currentPage.elements.push({ kind: "line", x: marginX, y: 44, width: contentW, color: premiumTemplate.blue, thickness: 4 });
   if (isActiveCvSection(activeSection, "Professional Header")) currentPage.elements.push({ kind: "rounded", x: marginX - 12, y: headerTop - 18, width: contentW + 24, height: 126, radius: premiumTemplate.cardRadius, color: premiumTemplate.sky, borderColor: premiumTemplate.blue, className: "cv-active-section", sectionId: "cv-section-active" });
-  currentPage.elements.push({ kind: "text", x: marginX, y: headerTop, width: contentW, text: cv.name || "", size: premiumTemplate.nameSize, color: premiumTemplate.ink, weight: "bold" });
+  addProfessionalPhoto(currentPage.elements, headerPhoto, marginX + contentW - 82, headerTop - 8, 82, 82, 12, premiumTemplate.line);
+  currentPage.elements.push({ kind: "text", x: marginX, y: headerTop, width: headerTextW, text: cv.name || "", size: premiumTemplate.nameSize, color: premiumTemplate.ink, weight: "bold" });
   let y = headerTop + 46;
   if (cv.targetRole) {
-    currentPage.elements.push({ kind: "text", x: marginX, y, width: contentW, text: cv.targetRole, size: premiumTemplate.roleSize, color: premiumTemplate.muted, weight: "bold", uppercase: premiumTemplate.identity === "international", letterSpacing: premiumTemplate.identity === "international" ? 1.1 : 0 });
+    currentPage.elements.push({ kind: "text", x: marginX, y, width: headerTextW, text: cv.targetRole, size: premiumTemplate.roleSize, color: premiumTemplate.muted, weight: "bold", uppercase: premiumTemplate.identity === "international", letterSpacing: premiumTemplate.identity === "international" ? 1.1 : 0 });
     y += 24;
   }
   if (cv.contact.length) {
-    y = pushWrappedText(currentPage.elements, cv.contact.join("  |  "), marginX, y, contentW, 9.2, premiumTemplate.muted, 13);
+    y = pushWrappedText(currentPage.elements, cv.contact.join("  |  "), marginX, y, headerTextW, 9.2, premiumTemplate.muted, 13);
     y += 18;
   }
   currentPage.elements.push({ kind: "line", x: marginX, y, width: contentW, color: premiumTemplate.line, thickness: 1 });
@@ -2262,19 +2456,19 @@ function buildSignatureCvLayout(cvInput: CvModel, activeSection?: string): CvLay
   return layout;
 }
 
-function buildCvLayoutFromModel(cvInput: CvModel, templateName?: string, activeSection?: string): CvLayout {
+function buildCvLayoutFromModel(cvInput: CvModel, templateName?: string, activeSection?: string, professionalPhoto?: ProfessionalPhotoAssetView | null, paletteId?: string): CvLayout {
   const previousTemplate = premiumTemplate;
-  premiumTemplate = resolveCvTemplateDesign(templateName);
+  premiumTemplate = resolveCvTemplateDesign(templateName, paletteId);
   try {
-    return buildCvLayoutFromModelWithDesign(cvInput, activeSection);
+    return buildCvLayoutFromModelWithDesign(cvInput, activeSection, professionalPhoto);
   } finally {
     premiumTemplate = previousTemplate;
   }
 }
 
-function buildCvLayoutFromModelWithDesign(cvInput: CvModel, activeSection?: string): CvLayout {
+function buildCvLayoutFromModelWithDesign(cvInput: CvModel, activeSection?: string, professionalPhoto?: ProfessionalPhotoAssetView | null): CvLayout {
   if (premiumTemplate.identity === "signature") return buildSignatureCvLayout(cvInput, activeSection);
-  if (premiumTemplate.identity === "ats" || premiumTemplate.identity === "international") return buildSingleColumnCvLayout(cvInput, activeSection);
+  if (premiumTemplate.identity === "ats" || premiumTemplate.identity === "international") return buildSingleColumnCvLayout(cvInput, activeSection, professionalPhoto);
   const cv = cvModelToRenderModel(cvInput);
   const layout: CvLayout = { width: page.width, height: page.height, pages: [] };
   const first = addPage(layout);
@@ -2284,6 +2478,7 @@ function buildCvLayoutFromModelWithDesign(cvInput: CvModel, activeSection?: stri
   const mainX = rightRail ? 58 : sidebarX + sidebarW + premiumTemplate.columnGap;
   const mainW = rightRail ? sidebarX - mainX - premiumTemplate.columnGap : page.width - mainX - 58;
   const headerHeight = premiumTemplate.headerHeight;
+  const sidebarPhoto = professionalPhotoForCvTemplate(premiumTemplate.name, professionalPhoto);
 
   first.elements.push({ kind: "rect", x: 0, y: 0, width: page.width, height: headerHeight, color: premiumTemplate.navy });
   first.elements.push({ kind: "rect", x: rightRail ? sidebarX - 24 : 0, y: 0, width: sidebarW + 62, height: headerHeight, color: premiumTemplate.navyAlt });
@@ -2306,6 +2501,11 @@ function buildCvLayoutFromModelWithDesign(cvInput: CvModel, activeSection?: stri
   });
 
   let sideY = headerHeight + 68;
+  if (sidebarPhoto) {
+    const photoSize = premiumTemplate.identity === "creative" ? 106 : 88;
+    addProfessionalPhoto(first.elements, sidebarPhoto, sidebarX + (sidebarW - photoSize) / 2, headerHeight + 48, photoSize, photoSize, premiumTemplate.identity === "creative" ? 999 : 14, premiumTemplate.cardBorder);
+    sideY += photoSize + 34;
+  }
   const sideOverflow: CvSection[] = [];
   for (const side of sideSections(cv)) {
     const split = splitSideSectionToFit(side, sidebarW, 1038 - sideY);
@@ -2328,8 +2528,8 @@ function buildCvLayoutFromModelWithDesign(cvInput: CvModel, activeSection?: stri
   return layout;
 }
 
-function buildCvLayout(content: string, templateName?: string, activeSection?: string): CvLayout {
-  return buildCvLayoutFromModel(cvModelFromContent(content), templateName, activeSection);
+function buildCvLayout(content: string, templateName?: string, activeSection?: string, paletteId?: string): CvLayout {
+  return buildCvLayoutFromModel(cvModelFromContent(content), templateName, activeSection, undefined, paletteId);
 }
 
 function elementHtml(element: LayoutElement) {
@@ -2341,17 +2541,20 @@ function elementHtml(element: LayoutElement) {
   }
   if (element.kind === "line") return `<div class="cv-el" style="left:${element.x}px;top:${element.y}px;width:${element.orientation === "vertical" ? element.thickness ?? 1 : element.width}px;height:${element.orientation === "vertical" ? element.width : element.thickness ?? 1}px;background:${element.color};"></div>`;
   if (element.kind === "circle") return `<div class="cv-el" style="left:${element.x - element.radius}px;top:${element.y - element.radius}px;width:${element.radius * 2}px;height:${element.radius * 2}px;border-radius:999px;background:${element.color};"></div>`;
+  if (element.kind === "image") {
+    return `<img class="cv-el" src="${escapeHtml(element.src)}" alt="${escapeHtml(element.alt)}" style="left:${element.x}px;top:${element.y}px;width:${element.width}px;height:${element.height}px;border-radius:${element.radius ?? 0}px;object-fit:cover;object-position:${escapeHtml(element.objectPosition ?? "50% 50%")};${element.borderColor ? `border:1px solid ${element.borderColor};` : ""}" />`;
+  }
   const text = element.uppercase ? element.text.toUpperCase() : element.text;
   return `<div class="cv-el cv-text" style="left:${element.x}px;top:${element.y}px;width:${element.width}px;font-size:${element.size}px;color:${element.color};font-weight:${element.weight === "bold" ? 800 : 450};letter-spacing:${element.letterSpacing ?? 0}px;">${escapeHtml(text)}</div>`;
 }
 
-export function renderCvHtml(content: string, templateName?: string, activeSection?: string) {
-  const layout = buildCvLayout(content, templateName, activeSection);
+export function renderCvHtml(content: string, templateName?: string, activeSection?: string, paletteId?: string) {
+  const layout = buildCvLayout(content, templateName, activeSection, paletteId);
   return renderCvLayoutHtml(layout);
 }
 
-export function renderCvHtmlFromModel(cv: CvModel, templateName?: string, activeSection?: string) {
-  return renderCvLayoutHtml(buildCvLayoutFromModel(cv, templateName, activeSection));
+export function renderCvHtmlFromModel(cv: CvModel, templateName?: string, activeSection?: string, professionalPhoto?: ProfessionalPhotoAssetView | null, paletteId?: string) {
+  return renderCvLayoutHtml(buildCvLayoutFromModel(cv, templateName, activeSection, professionalPhoto, paletteId));
 }
 
 export function renderAtsCvHtmlFromModel(cvInput: CvModel) {
@@ -2386,7 +2589,7 @@ function renderCvLayoutHtml(layout: CvLayout) {
       .cv-render-page-frame{container-type:inline-size;position:relative;width:min(100%,${layout.width}px);aspect-ratio:210/297;filter:drop-shadow(0 28px 64px rgba(15,23,42,.28))}
       .cv-render-page{position:absolute;left:0;top:0;width:${layout.width}px;height:${layout.height}px;background:#fff;overflow:hidden;font-family:Inter,Arial,Helvetica,sans-serif;transform-origin:top left;transform:scale(calc(100cqw / ${layout.width}px))}
       .cv-el{position:absolute;box-sizing:border-box}
-      .cv-text{line-height:1.25;white-space:normal}
+      .cv-text{line-height:1.25;white-space:normal;overflow-wrap:anywhere;word-break:normal}
       .cv-active-section{box-shadow:0 0 0 3px rgba(47,128,237,.28),0 18px 46px rgba(47,128,237,.18);animation:cvSectionPulse 1.15s ease-out 1}
       @keyframes cvSectionPulse{0%{transform:scale(.985);opacity:.74}55%{transform:scale(1.01);opacity:1}100%{transform:scale(1);opacity:1}}
       @media(max-width:640px){.cv-render-shell{gap:18px;padding:8px;border-radius:18px}.cv-render-page-frame{width:100%}}
@@ -2410,6 +2613,14 @@ function coverLetterContactLines(data: CoverLetterData) {
   return [
     data.phone,
     data.email,
+    data.linkedIn,
+    [data.city, data.country].filter(Boolean).join(", ")
+  ].filter(Boolean);
+}
+
+function coverLetterContactGroups(data: CoverLetterData) {
+  return [
+    [data.phone, data.email].filter(Boolean).join("  |  "),
     data.linkedIn,
     [data.city, data.country].filter(Boolean).join(", ")
   ].filter(Boolean);
@@ -2458,7 +2669,8 @@ function buildCoverLetterLayoutFromData(input: CoverLetterData): CvLayout {
   const previousTemplate = premiumTemplate;
   const cover = normalizeCoverLetterData(input);
   const coverDesign = resolveCoverLetterDesign(cover.designSystem);
-  premiumTemplate = resolveCvTemplateDesign(coverDesign.cvTemplate);
+  const coverPalette = coverLetterTemplatePalette(cover.designSystem);
+  premiumTemplate = coverLetterPremiumTemplateForPalette(coverDesign, coverPalette);
   try {
     const layout: CvLayout = { width: page.width, height: page.height, pages: [] };
     const marginX = coverDesign.marginX;
@@ -2466,12 +2678,28 @@ function buildCoverLetterLayoutFromData(input: CoverLetterData): CvLayout {
     const bodyWidth = coverDesign.headerStyle === "executive" ? contentW - 6 : contentW;
     let currentPage = addPage(layout);
     let y = coverDesign.firstPageTop;
+    const coverColors = {
+      pageBackground: coverPalette.pageBackground,
+      primaryText: coverPalette.primaryText,
+      secondaryText: coverPalette.secondaryText,
+      headingText: coverPalette.headingText,
+      candidateNameText: coverPalette.candidateNameText,
+      accent: coverPalette.accent,
+      divider: coverPalette.divider,
+      linkContactText: coverPalette.linkContactText
+    };
+    const textOn = (preferred: string, background: string, fallbacks: string[] = []) => readableCoverLetterText(preferred, background, fallbacks);
+    const primaryColor = (background: string) => textOn(coverColors.primaryText, background);
+    const secondaryColor = (background: string) => textOn(coverColors.secondaryText, background, [coverColors.primaryText]);
+    const headingColor = (background: string) => textOn(coverColors.headingText, background, [coverColors.primaryText]);
+    const contactColor = (background: string) => textOn(coverColors.linkContactText, background, [coverColors.secondaryText, coverColors.primaryText]);
+    const candidateNameColor = (background: string) => textOn(coverColors.candidateNameText, background, [coverColors.headingText, coverColors.primaryText]);
 
     const addContinuationPage = () => {
       currentPage = addPage(layout);
       currentPage.elements.push({ kind: "rect", x: 0, y: 0, width: page.width, height: 18, color: premiumTemplate.cream });
       currentPage.elements.push({ kind: "line", x: marginX, y: coverDesign.continuedTop - 24, width: contentW, orientation: "horizontal", color: premiumTemplate.line, thickness: 1 });
-      if (cover.fullName) currentPage.elements.push({ kind: "text", x: marginX, y: coverDesign.continuedTop - 48, width: contentW, text: cover.fullName, size: 10, color: premiumTemplate.muted, weight: "bold" });
+      if (cover.fullName) currentPage.elements.push({ kind: "text", x: marginX, y: coverDesign.continuedTop - 48, width: contentW, text: cover.fullName, size: 10, color: secondaryColor(premiumTemplate.paper), weight: "bold" });
       y = coverDesign.continuedTop;
     };
 
@@ -2480,7 +2708,7 @@ function buildCoverLetterLayoutFromData(input: CoverLetterData): CvLayout {
       addContinuationPage();
     };
 
-    const pushTextLines = (text: string, x: number, width: number, size: number, lineHeight: number, color = premiumTemplate.ink, weight?: TextElement["weight"]) => {
+    const pushTextLines = (text: string, x: number, width: number, size: number, lineHeight: number, color = primaryColor(premiumTemplate.paper), weight?: TextElement["weight"]) => {
       const lines = wrapText(text, width, size);
       lines.forEach((line, index) => currentPage.elements.push({ kind: "text", x, y: y + index * lineHeight, width, text: line, size, color, weight }));
       y += lines.length * lineHeight;
@@ -2495,102 +2723,143 @@ function buildCoverLetterLayoutFromData(input: CoverLetterData): CvLayout {
     };
 
     const drawHeader = () => {
-      const contacts = coverLetterContactLines(cover).join("  |  ");
+      const contactGroups = coverLetterContactGroups(cover);
       const titleLine = cover.professionalTitle || cover.jobTitle;
+      const contactLineHeight = Math.max(11, coverDesign.contactSize + 2.8);
+      const contactGroupGap = 2;
+      const contactBlockHeight = (width: number) => contactGroups.reduce((height, group) => height + wrapText(group, width, coverDesign.contactSize).length * contactLineHeight + contactGroupGap, 0);
+      const drawContactBlock = (x: number, top: number, width: number, color: string) => {
+        let cursor = top;
+        contactGroups.forEach((group) => {
+          const lines = wrapText(group, width, coverDesign.contactSize);
+          lines.forEach((line, index) => currentPage.elements.push({ kind: "text", x, y: cursor + index * contactLineHeight, width, text: line, size: coverDesign.contactSize, color }));
+          cursor += lines.length * contactLineHeight + contactGroupGap;
+        });
+        return cursor - contactGroupGap;
+      };
       if (coverDesign.headerStyle === "minimal") {
+        const contactTop = y + (titleLine ? 49 : 36);
+        const contactBottom = contactGroups.length ? contactTop + contactBlockHeight(contentW) : contactTop;
         currentPage.elements.push({ kind: "line", x: marginX, y: 48, width: contentW, orientation: "horizontal", color: premiumTemplate.blue, thickness: coverDesign.accentWidth });
-        currentPage.elements.push({ kind: "text", x: marginX, y, width: contentW, text: cover.fullName, size: coverDesign.nameSize, color: premiumTemplate.heroText, weight: "bold" });
-        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX, y: y + 31, width: contentW, text: titleLine, size: coverDesign.metaSize, color: premiumTemplate.blue, weight: "bold" });
-        if (contacts) currentPage.elements.push({ kind: "text", x: marginX, y: y + (titleLine ? 49 : 36), width: contentW, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
-        y += contacts || titleLine ? coverDesign.headerHeight : coverDesign.headerHeight - 18;
+        currentPage.elements.push({ kind: "text", x: marginX, y, width: contentW, text: cover.fullName, size: coverDesign.nameSize, color: candidateNameColor(premiumTemplate.paper), weight: "bold" });
+        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX, y: y + 31, width: contentW, text: titleLine, size: coverDesign.metaSize, color: headingColor(premiumTemplate.paper), weight: "bold" });
+        if (contactGroups.length) drawContactBlock(marginX, contactTop, contentW, contactColor(premiumTemplate.paper));
+        y = Math.max(y + (contactGroups.length || titleLine ? coverDesign.headerHeight : coverDesign.headerHeight - 18), contactBottom + 28);
         currentPage.elements.push({ kind: "line", x: marginX, y: y - 28, width: contentW, orientation: "horizontal", color: premiumTemplate.line, thickness: 1 });
         return;
       }
 
       if (coverDesign.headerStyle === "accented") {
-        currentPage.elements.push({ kind: "rounded", x: marginX - 16, y: 46, width: contentW + 32, height: 88, radius: 18, color: premiumTemplate.sky, borderColor: premiumTemplate.line });
-        currentPage.elements.push({ kind: "rect", x: marginX - 16, y: 46, width: coverDesign.accentWidth, height: 88, color: premiumTemplate.blue });
-        currentPage.elements.push({ kind: "text", x: marginX + 10, y: 72, width: contentW - 20, text: cover.fullName, size: coverDesign.nameSize, color: premiumTemplate.navy, weight: "bold" });
-        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX + 10, y: 105, width: contentW - 20, text: titleLine, size: coverDesign.metaSize, color: premiumTemplate.blue, weight: "bold" });
-        if (contacts) currentPage.elements.push({ kind: "text", x: marginX + 10, y: titleLine ? 122 : 108, width: contentW - 20, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
-        y = 162;
+        const headerBackground = premiumTemplate.sky;
+        const contactTop = titleLine ? 122 : 108;
+        const contactWidth = contentW - 20;
+        const cardHeight = Math.max(88, contactGroups.length ? contactTop + contactBlockHeight(contactWidth) - 46 + 16 : 88);
+        currentPage.elements.push({ kind: "rounded", x: marginX - 16, y: 46, width: contentW + 32, height: cardHeight, radius: 18, color: headerBackground, borderColor: premiumTemplate.line });
+        currentPage.elements.push({ kind: "rect", x: marginX - 16, y: 46, width: coverDesign.accentWidth, height: cardHeight, color: premiumTemplate.blue });
+        currentPage.elements.push({ kind: "text", x: marginX + 10, y: 72, width: contentW - 20, text: cover.fullName, size: coverDesign.nameSize, color: candidateNameColor(headerBackground), weight: "bold" });
+        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX + 10, y: 105, width: contentW - 20, text: titleLine, size: coverDesign.metaSize, color: headingColor(headerBackground), weight: "bold" });
+        if (contactGroups.length) drawContactBlock(marginX + 10, contactTop, contactWidth, contactColor(headerBackground));
+        y = Math.max(162, 46 + cardHeight + 28);
         return;
       }
 
       if (coverDesign.headerStyle === "executive") {
-        currentPage.elements.push({ kind: "rect", x: 0, y: 0, width: page.width, height: coverDesign.headerHeight, color: premiumTemplate.navy });
-        currentPage.elements.push({ kind: "rect", x: 0, y: coverDesign.headerHeight - 7, width: page.width, height: 7, color: premiumTemplate.amber });
+        const headerBackground = premiumTemplate.navy;
+        const contactTop = titleLine ? 120 : 106;
+        const headerHeight = Math.max(coverDesign.headerHeight, contactGroups.length ? contactTop + contactBlockHeight(contentW) + 18 : coverDesign.headerHeight);
+        currentPage.elements.push({ kind: "rect", x: 0, y: 0, width: page.width, height: headerHeight, color: headerBackground });
+        currentPage.elements.push({ kind: "rect", x: 0, y: headerHeight - 7, width: page.width, height: 7, color: premiumTemplate.amber });
         currentPage.elements.push({ kind: "line", x: marginX, y: 45, width: 74, orientation: "horizontal", color: premiumTemplate.amber, thickness: 2 });
-        currentPage.elements.push({ kind: "text", x: marginX, y: 66, width: contentW, text: cover.fullName, size: coverDesign.nameSize, color: premiumTemplate.heroText, weight: "bold" });
-        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX, y: 101, width: contentW, text: titleLine, size: coverDesign.metaSize, color: premiumTemplate.amber, weight: "bold" });
-        if (contacts) currentPage.elements.push({ kind: "text", x: marginX, y: titleLine ? 120 : 106, width: contentW, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.heroMuted });
-        y = 172;
+        currentPage.elements.push({ kind: "text", x: marginX, y: 66, width: contentW, text: cover.fullName, size: coverDesign.nameSize, color: candidateNameColor(headerBackground), weight: "bold" });
+        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX, y: 101, width: contentW, text: titleLine, size: coverDesign.metaSize, color: textOn(coverColors.accent, headerBackground, [coverColors.linkContactText, coverColors.primaryText]), weight: "bold" });
+        if (contactGroups.length) drawContactBlock(marginX, contactTop, contentW, contactColor(headerBackground));
+        y = Math.max(172, headerHeight + 40);
         return;
       }
 
       if (coverDesign.headerStyle === "fresh") {
-        currentPage.elements.push({ kind: "rounded", x: marginX - 10, y: 44, width: contentW + 20, height: 92, radius: 24, color: premiumTemplate.sky });
+        const headerBackground = premiumTemplate.sky;
+        const contactTop = titleLine ? 121 : 106;
+        const contactWidth = contentW - 78;
+        const cardHeight = Math.max(92, contactGroups.length ? contactTop + contactBlockHeight(contactWidth) - 44 + 16 : 92);
+        currentPage.elements.push({ kind: "rounded", x: marginX - 10, y: 44, width: contentW + 20, height: cardHeight, radius: 24, color: headerBackground });
         currentPage.elements.push({ kind: "circle", x: page.width - marginX - 38, y: 78, radius: 24, color: premiumTemplate.blue });
-        currentPage.elements.push({ kind: "text", x: marginX + 8, y: 70, width: contentW - 78, text: cover.fullName, size: coverDesign.nameSize, color: premiumTemplate.navy, weight: "bold" });
-        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX + 8, y: 104, width: contentW - 78, text: titleLine, size: coverDesign.metaSize, color: premiumTemplate.blue, weight: "bold" });
-        if (contacts) currentPage.elements.push({ kind: "text", x: marginX + 8, y: titleLine ? 121 : 106, width: contentW - 78, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
-        y = 162;
+        currentPage.elements.push({ kind: "text", x: marginX + 8, y: 70, width: contentW - 78, text: cover.fullName, size: coverDesign.nameSize, color: candidateNameColor(headerBackground), weight: "bold" });
+        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX + 8, y: 104, width: contentW - 78, text: titleLine, size: coverDesign.metaSize, color: headingColor(headerBackground), weight: "bold" });
+        if (contactGroups.length) drawContactBlock(marginX + 8, contactTop, contactWidth, contactColor(headerBackground));
+        y = Math.max(162, 44 + cardHeight + 26);
         return;
       }
 
       if (coverDesign.headerStyle === "signature") {
+        const contactX = marginX + contentW * 0.58;
+        const contactTop = 72;
+        const contactWidth = contentW * 0.42;
+        const contactBottom = contactGroups.length ? drawContactBlock(contactX, contactTop, contactWidth, contactColor(premiumTemplate.paper)) : contactTop;
         currentPage.elements.push({ kind: "line", x: marginX, y: 48, width: contentW, orientation: "horizontal", color: premiumTemplate.amber, thickness: 1.6 });
-        currentPage.elements.push({ kind: "text", x: marginX, y: 70, width: contentW * 0.72, text: cover.fullName, size: coverDesign.nameSize, color: premiumTemplate.navy, weight: "bold" });
-        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX, y: 108, width: contentW * 0.72, text: titleLine, size: coverDesign.metaSize, color: premiumTemplate.muted, weight: "bold" });
-        if (contacts) currentPage.elements.push({ kind: "text", x: marginX + contentW * 0.58, y: 72, width: contentW * 0.42, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
-        currentPage.elements.push({ kind: "line", x: marginX, y: 142, width: 96, orientation: "horizontal", color: premiumTemplate.amber, thickness: 3 });
-        y = 174;
+        currentPage.elements.push({ kind: "text", x: marginX, y: 70, width: contentW * 0.72, text: cover.fullName, size: coverDesign.nameSize, color: candidateNameColor(premiumTemplate.paper), weight: "bold" });
+        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX, y: 108, width: contentW * 0.72, text: titleLine, size: coverDesign.metaSize, color: secondaryColor(premiumTemplate.paper), weight: "bold" });
+        currentPage.elements.push({ kind: "line", x: marginX, y: Math.max(142, contactBottom + 12), width: 96, orientation: "horizontal", color: premiumTemplate.amber, thickness: 3 });
+        y = Math.max(174, contactBottom + 42);
         return;
       }
 
       if (coverDesign.headerStyle === "global") {
+        const contactX = marginX + contentW * 0.62;
+        const contactTop = 44;
+        const contactWidth = contentW * 0.38;
+        const contactBottom = contactGroups.length ? drawContactBlock(contactX, contactTop, contactWidth, contactColor(premiumTemplate.paper)) : contactTop;
         currentPage.elements.push({ kind: "rect", x: 0, y: 0, width: page.width, height: 28, color: premiumTemplate.navy });
         currentPage.elements.push({ kind: "line", x: marginX, y: 72, width: contentW, orientation: "horizontal", color: premiumTemplate.line, thickness: 1 });
-        currentPage.elements.push({ kind: "text", x: marginX, y: 42, width: contentW * 0.58, text: cover.fullName, size: coverDesign.nameSize, color: premiumTemplate.navy, weight: "bold" });
-        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX, y: 76, width: contentW * 0.58, text: titleLine, size: coverDesign.metaSize, color: premiumTemplate.blue, weight: "bold" });
-        if (contacts) currentPage.elements.push({ kind: "text", x: marginX + contentW * 0.62, y: 44, width: contentW * 0.38, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
-        y = 136;
+        currentPage.elements.push({ kind: "text", x: marginX, y: 42, width: contentW * 0.58, text: cover.fullName, size: coverDesign.nameSize, color: candidateNameColor(premiumTemplate.paper), weight: "bold" });
+        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX, y: 76, width: contentW * 0.58, text: titleLine, size: coverDesign.metaSize, color: headingColor(premiumTemplate.paper), weight: "bold" });
+        y = Math.max(136, contactBottom + 28);
         return;
       }
 
       if (coverDesign.headerStyle === "technical") {
+        const contactTop = titleLine ? 109 : 96;
+        const contactWidth = contentW - 24;
+        const contactBottom = contactGroups.length ? contactTop + contactBlockHeight(contactWidth) : contactTop;
         currentPage.elements.push({ kind: "rect", x: marginX - 12, y: 42, width: 8, height: 82, color: premiumTemplate.blue });
-        currentPage.elements.push({ kind: "line", x: marginX, y: 126, width: contentW, orientation: "horizontal", color: premiumTemplate.line, thickness: 1 });
-        currentPage.elements.push({ kind: "text", x: marginX + 12, y: 58, width: contentW - 24, text: cover.fullName, size: coverDesign.nameSize, color: premiumTemplate.navy, weight: "bold" });
-        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX + 12, y: 91, width: contentW - 24, text: titleLine, size: coverDesign.metaSize, color: premiumTemplate.blue, weight: "bold" });
-        if (contacts) currentPage.elements.push({ kind: "text", x: marginX + 12, y: titleLine ? 109 : 96, width: contentW - 24, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
-        y = 154;
+        currentPage.elements.push({ kind: "text", x: marginX + 12, y: 58, width: contentW - 24, text: cover.fullName, size: coverDesign.nameSize, color: candidateNameColor(premiumTemplate.paper), weight: "bold" });
+        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX + 12, y: 91, width: contentW - 24, text: titleLine, size: coverDesign.metaSize, color: headingColor(premiumTemplate.paper), weight: "bold" });
+        if (contactGroups.length) drawContactBlock(marginX + 12, contactTop, contactWidth, contactColor(premiumTemplate.paper));
+        currentPage.elements.push({ kind: "line", x: marginX, y: Math.max(126, contactBottom + 12), width: contentW, orientation: "horizontal", color: premiumTemplate.line, thickness: 1 });
+        y = Math.max(154, contactBottom + 40);
         return;
       }
 
       if (coverDesign.headerStyle === "creative") {
-        currentPage.elements.push({ kind: "rounded", x: marginX - 18, y: 42, width: contentW + 36, height: 100, radius: 22, color: premiumTemplate.cream, borderColor: premiumTemplate.line });
-        currentPage.elements.push({ kind: "rect", x: marginX - 18, y: 42, width: coverDesign.accentWidth, height: 100, color: premiumTemplate.blue });
+        const headerBackground = premiumTemplate.cream;
+        const contactTop = titleLine ? 124 : 110;
+        const contactWidth = contentW - 90;
+        const cardHeight = Math.max(100, contactGroups.length ? contactTop + contactBlockHeight(contactWidth) - 42 + 16 : 100);
+        currentPage.elements.push({ kind: "rounded", x: marginX - 18, y: 42, width: contentW + 36, height: cardHeight, radius: 22, color: headerBackground, borderColor: premiumTemplate.line });
+        currentPage.elements.push({ kind: "rect", x: marginX - 18, y: 42, width: coverDesign.accentWidth, height: cardHeight, color: premiumTemplate.blue });
         currentPage.elements.push({ kind: "circle", x: page.width - marginX - 38, y: 74, radius: 22, color: premiumTemplate.blue });
-        currentPage.elements.push({ kind: "text", x: marginX + 14, y: 70, width: contentW - 90, text: cover.fullName, size: coverDesign.nameSize, color: premiumTemplate.navy, weight: "bold" });
-        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX + 14, y: 106, width: contentW - 90, text: titleLine, size: coverDesign.metaSize, color: premiumTemplate.muted, weight: "bold" });
-        if (contacts) currentPage.elements.push({ kind: "text", x: marginX + 14, y: titleLine ? 124 : 110, width: contentW - 90, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
-        y = 174;
+        currentPage.elements.push({ kind: "text", x: marginX + 14, y: 70, width: contentW - 90, text: cover.fullName, size: coverDesign.nameSize, color: candidateNameColor(headerBackground), weight: "bold" });
+        if (titleLine) currentPage.elements.push({ kind: "text", x: marginX + 14, y: 106, width: contentW - 90, text: titleLine, size: coverDesign.metaSize, color: secondaryColor(headerBackground), weight: "bold" });
+        if (contactGroups.length) drawContactBlock(marginX + 14, contactTop, contactWidth, contactColor(headerBackground));
+        y = Math.max(174, 42 + cardHeight + 32);
         return;
       }
 
+      const contactTop = titleLine ? 103 : 88;
+      const contactBottom = contactGroups.length ? contactTop + contactBlockHeight(contentW) : contactTop;
+      const headerHeight = Math.max(76, contactBottom + 16);
       currentPage.elements.push({ kind: "rect", x: 0, y: 0, width: page.width, height: 76, color: premiumTemplate.navy });
       currentPage.elements.push({ kind: "rect", x: 0, y: 76, width: page.width, height: coverDesign.accentWidth, color: premiumTemplate.blue });
-      currentPage.elements.push({ kind: "text", x: marginX, y: 36, width: contentW, text: cover.fullName, size: coverDesign.nameSize, color: premiumTemplate.heroText, weight: "bold" });
-      if (titleLine) currentPage.elements.push({ kind: "text", x: marginX, y: 84, width: contentW, text: titleLine, size: coverDesign.metaSize, color: premiumTemplate.blue, weight: "bold" });
-      if (contacts) currentPage.elements.push({ kind: "text", x: marginX, y: titleLine ? 103 : 88, width: contentW, text: contacts, size: coverDesign.contactSize, color: premiumTemplate.muted });
-      y = 142;
+      currentPage.elements.push({ kind: "text", x: marginX, y: 36, width: contentW, text: cover.fullName, size: coverDesign.nameSize, color: candidateNameColor(premiumTemplate.navy), weight: "bold" });
+      if (titleLine) currentPage.elements.push({ kind: "text", x: marginX, y: 84, width: contentW, text: titleLine, size: coverDesign.metaSize, color: headingColor(premiumTemplate.paper), weight: "bold" });
+      if (contactGroups.length) drawContactBlock(marginX, contactTop, contentW, contactColor(premiumTemplate.paper));
+      y = Math.max(142, headerHeight + 32);
     };
 
     const pushMetaLine = (text: string, spacing = coverDesign.blockSpacing) => {
       const lines = wrapText(text, bodyWidth, coverDesign.metaSize);
       ensure(lines.length * (coverDesign.lineHeight - 1) + spacing);
-      pushTextLines(text, marginX, bodyWidth, coverDesign.metaSize, coverDesign.lineHeight - 1, premiumTemplate.muted);
+      pushTextLines(text, marginX, bodyWidth, coverDesign.metaSize, coverDesign.lineHeight - 1, secondaryColor(premiumTemplate.paper));
       y += spacing;
     };
 
@@ -2604,7 +2873,7 @@ function buildCoverLetterLayoutFromData(input: CoverLetterData): CvLayout {
         const savedY = y;
         y += coverDesign.blockSpacing;
         lines.forEach((line) => {
-          currentPage.elements.push({ kind: "text", x: marginX + coverDesign.recipientInset, y, width: bodyWidth - coverDesign.recipientInset, text: line, size: coverDesign.metaSize, color: premiumTemplate.ink });
+          currentPage.elements.push({ kind: "text", x: marginX + coverDesign.recipientInset, y, width: bodyWidth - coverDesign.recipientInset, text: line, size: coverDesign.metaSize, color: primaryColor(premiumTemplate.cream) });
           y += 15;
         });
         y = savedY + blockHeight + 16;
@@ -2626,7 +2895,8 @@ function buildCoverLetterLayoutFromData(input: CoverLetterData): CvLayout {
       } else if (coverDesign.subjectStyle === "rule") {
         currentPage.elements.push({ kind: "line", x: marginX, y: y - 8, width: bodyWidth, orientation: "horizontal", color: premiumTemplate.line, thickness: 1 });
       }
-      lines.forEach((line, index) => currentPage.elements.push({ kind: "text", x: marginX + (coverDesign.subjectStyle === "accent" ? 16 : 10), y: y + index * 15, width: bodyWidth - 24, text: line, size: coverDesign.metaSize + 0.6, color: premiumTemplate.navy, weight: "bold" }));
+      const subjectBackground = coverDesign.subjectStyle === "boxed" ? premiumTemplate.sky : premiumTemplate.paper;
+      lines.forEach((line, index) => currentPage.elements.push({ kind: "text", x: marginX + (coverDesign.subjectStyle === "accent" ? 16 : 10), y: y + index * 15, width: bodyWidth - 24, text: line, size: coverDesign.metaSize + 0.6, color: headingColor(subjectBackground), weight: "bold" }));
       y += lines.length * 15 + 24;
     };
 
@@ -2640,14 +2910,14 @@ function buildCoverLetterLayoutFromData(input: CoverLetterData): CvLayout {
     if (signature) {
       ensure(coverDesign.signatureSpacing + 42);
       y += coverDesign.signatureSpacing - 20;
-      currentPage.elements.push({ kind: "text", x: marginX, y, width: bodyWidth, text: cover.closingPhrase || "Kind regards,", size: coverDesign.bodySize, color: premiumTemplate.ink });
+      currentPage.elements.push({ kind: "text", x: marginX, y, width: bodyWidth, text: cover.closingPhrase || "Kind regards,", size: coverDesign.bodySize, color: primaryColor(premiumTemplate.paper) });
       y += 30;
-      currentPage.elements.push({ kind: "text", x: marginX, y, width: bodyWidth, text: signature, size: coverDesign.bodySize + 1.5, color: premiumTemplate.navy, weight: "bold" });
+      currentPage.elements.push({ kind: "text", x: marginX, y, width: bodyWidth, text: signature, size: coverDesign.bodySize + 1.5, color: candidateNameColor(premiumTemplate.paper), weight: "bold" });
     }
 
     layout.pages.forEach((pageEntry, index) => {
       pageEntry.elements.push({ kind: "line", x: marginX, y: 1071, width: contentW, orientation: "horizontal", color: premiumTemplate.line, thickness: 0.8 });
-      pageEntry.elements.push({ kind: "text", x: 700, y: 1084, width: 40, text: String(index + 1), size: 8, color: "#98a2b3" });
+      pageEntry.elements.push({ kind: "text", x: 700, y: 1084, width: 40, text: String(index + 1), size: 8, color: secondaryColor(premiumTemplate.paper) });
     });
     return layout;
   } finally {
@@ -2722,17 +2992,18 @@ function pdfElement(element: LayoutElement) {
     return `${pdfColor(element.color, true)} ${element.thickness ?? 1} w ${element.x} ${page.height - element.y} m ${endX} ${endY} l S`;
   }
   if (element.kind === "circle") return `${pdfColor(element.color)} ${circlePath(element.x, element.y, element.radius)} f`;
+  if (element.kind === "image") return "";
   return pdfText(element, element.weight === "bold" ? "F2" : "F1");
 }
 
-export function simplePdfDocument(title: string, content: string, templateName?: string, forceCvLayout = false) {
+export function simplePdfDocument(title: string, content: string, templateName?: string, forceCvLayout = false, paletteId?: string) {
   const parsed = parseCvContent(content);
   if (!forceCvLayout && !cvModelToRenderModel(parsed).sections.length) return simpleTextPdfDocument(title, content);
-  return pdfFromLayout(buildCvLayoutFromModel(parsed, templateName));
+  return pdfFromLayout(buildCvLayoutFromModel(parsed, templateName, undefined, undefined, paletteId));
 }
 
-export function simplePdfDocumentFromModel(title: string, cv: CvModel, templateName?: string) {
-  return pdfFromLayout(buildCvLayoutFromModel(cv, templateName));
+export function simplePdfDocumentFromModel(title: string, cv: CvModel, templateName?: string, professionalPhoto?: ProfessionalPhotoAssetView | null, paletteId?: string) {
+  return pdfFromLayout(buildCvLayoutFromModel(cv, templateName, undefined, professionalPhoto, paletteId));
 }
 
 export function simpleCoverLetterPdfDocument(data: CoverLetterData) {
@@ -2880,14 +3151,23 @@ export function createDocxDocument(title: string, content: string, templateName?
 
 export function downloadBlob(filename: string, type: string, content: BlobPart) {
   const blob = new Blob([content], { type });
+  if (blob.size <= 0) {
+    throw new Error("Cannot download an empty file.");
+  }
+  if (type === "application/pdf" && typeof content === "string" && !content.startsWith("%PDF-")) {
+    throw new Error("Generated PDF content is invalid.");
+  }
   const url = URL.createObjectURL(blob);
   const anchor = window.document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
+  anchor.rel = "noopener noreferrer";
   window.document.body.appendChild(anchor);
   anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => {
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }, 1000);
 }
 
 export function pathzyFilename(kind: string, title: string, extension: "pdf" | "docx") {

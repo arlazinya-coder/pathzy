@@ -34,10 +34,10 @@ const journeyItems = [
 function StatusBadge({ status }: { status: QaStatus }) {
   const classes =
     status === "pass"
-      ? "bg-[#39d98a]/15 text-[#9df0c4]"
+      ? "bg-[color-mix(in_srgb,var(--status-success)_14%,transparent)] text-[var(--status-success)]"
       : status === "fail"
         ? "bg-[#ff6b6b]/15 text-[#ffc5c5]"
-        : "bg-[#FFD166]/15 text-[#ffe2a3]";
+        : "bg-[color-mix(in_srgb,var(--status-warning)_14%,transparent)] text-[var(--status-warning)]";
 
   return <span className={`rounded-full px-3 py-1 text-xs font-extrabold capitalize ${classes}`}>{status === "manual" ? "Needs manual test" : status}</span>;
 }

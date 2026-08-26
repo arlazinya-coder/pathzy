@@ -65,7 +65,7 @@ export default async function DiagnosisResultsPage() {
         </Card>
       ) : status === "not_generated" ? (
         <Card>
-          <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#93c5fd]">{language === "fr" ? "Préparation" : "Preparing"}</p>
+          <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[var(--brand-primary)]">{language === "fr" ? "Préparation" : "Preparing"}</p>
           <h2 className="mt-2 text-3xl font-black text-white">{t.preparingTitle}</h2>
           <p className="mt-3 max-w-2xl text-sm font-bold leading-6 text-white/64">{t.preparingBody}</p>
           <div className="mt-5">

@@ -44,10 +44,10 @@ export default async function AchievementsPage() {
             {achievementCatalog.map((achievement) => {
               const unlocked = unlockedKeys.has(achievement.achievement_key);
               return (
-                <article key={achievement.achievement_key} className={`rounded-[22px] border p-5 transition ${unlocked ? "border-[#39d98a]/30 bg-[#39d98a]/10" : "border-white/10 bg-white/7"}`}>
+                <article key={achievement.achievement_key} className={`rounded-[22px] border p-5 transition ${unlocked ? "border-[color-mix(in_srgb,var(--status-success)_28%,transparent)] bg-[color-mix(in_srgb,var(--status-success)_9%,transparent)]" : "border-white/10 bg-white/7"}`}>
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="text-lg font-black">{achievement.title}</h3>
-                    <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${unlocked ? "bg-[#39d98a]/18 text-[#9df0c4]" : "bg-white/10 text-white/45"}`}>
+                    <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${unlocked ? "bg-[color-mix(in_srgb,var(--status-success)_16%,transparent)] text-[var(--status-success)]" : "bg-white/10 text-white/45"}`}>
                       {unlocked ? "Unlocked" : `${achievement.xp_reward} XP`}
                     </span>
                   </div>

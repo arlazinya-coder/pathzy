@@ -4,6 +4,7 @@ import { inputProvenanceStates, type InputProvenanceState } from "../domain/evid
 import { genericCountryEmploymentContext } from "../domain/country-context";
 import type { NormalizationReport } from "./engine-types";
 import { createConfidenceAssessment } from "./calculate-confidence";
+import { selectCanonicalProfessionalIdentityExperiences } from "../../professional-identity/professional-identity-experience";
 
 function isProvenance(value: unknown): value is InputProvenanceState {
   return typeof value === "string" && inputProvenanceStates.includes(value as InputProvenanceState);
@@ -54,7 +55,8 @@ export function normalizeEmploymentIntelligenceInput(input: EmploymentIntelligen
   for (const key of ["education", "experience", "skills", "projects", "achievements", "certificates", "licences", "languages", "references", "portfolio", "socialProfiles"] as const) {
     const current = professionalIdentity[key] as ProvenancedValue<unknown[]>;
     if (Array.isArray(current.value)) {
-      const serialized = Array.from(new Map(current.value.map((item) => [JSON.stringify(item), item])).values());
+      const canonicalValue = key === "experience" ? selectCanonicalProfessionalIdentityExperiences(current.value) : current.value;
+      const serialized = Array.from(new Map(canonicalValue.map((item) => [JSON.stringify(item), item])).values());
       if (serialized.length !== current.value.length) report.duplicateFieldsNormalized.push(`professionalIdentity.${key}`);
       professionalIdentity[key] = { ...current, value: serialized };
     }

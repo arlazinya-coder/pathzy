@@ -787,3 +787,18 @@ Affected areas: `/roadmap`, `/discovery/results`, `/roadmap/career-plan`, Employ
 Migration implications: None in Phase 3G.
 
 Review trigger: Review before Phase 3H or any Career Coach conversation integration.
+
+## DEC-045
+
+Decision ID: DEC-045
+Date: 2026-08-26
+Title: Meaningful PATHZY changes require regression protection
+Status: Accepted
+Context: PATHZY has repeatedly repaired defects in routing, Professional Identity persistence, multilingual rendering, document layout, preview/PDF parity and dark-surface contrast. The project needs a permanent engineering rule that prevents fixed defects from silently returning.
+Final decision: No meaningful PATHZY fix, feature, refactor, UI change, data-model change, persistence change, document-rendering change, migration, storage change or API change is complete until it includes appropriate automated regression protection. Visual and document-rendering defects also require practical manual or rendered visual QA. Existing tests are protected and may not be deleted, weakened, skipped or ignored to make new code pass.
+Rejected alternatives: Treat regression tests as optional cleanup; rely on screenshots alone; remove failing tests when implementation changes; defer critical journey tests until release stabilization; accept green typecheck/build as sufficient proof.
+Reason: PATHZY's Professional Identity, documents, employment intelligence and persistence layers are interconnected. A local page fix without regression protection can reintroduce data loss, duplication, unreadable UI, broken routing, stale profile state or PDF/export defects elsewhere.
+Affected areas: All application code, shared engines, UI, routes, localization, APIs, Supabase migrations, storage, document rendering, PDF export, tests and final reporting.
+Migration implications: None. This is an engineering and release-quality rule.
+Lock status: Locked.
+Review trigger: Review only when PATHZY adopts a stronger automated quality gate or a replacement test architecture with equal or better protection.

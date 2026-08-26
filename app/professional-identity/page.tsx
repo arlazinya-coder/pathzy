@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Card, PageHeader, ProgressBar } from "@/components/ui";
+import { ProfessionalPhotoAvatar } from "@/components/professional-identity/professional-photo-avatar";
 import { ProfileActionEditor, ProfessionalIdentityReviewActions, type ProfessionalIdentityValues, type ProfileActionRow } from "@/components/professional-identity/profile-action-editor";
 import { professionalIdentityReviewHref, professionalIdentitySectionHref, resolvePathzyNextRoute } from "@/lib/navigation/auth-routing";
 import { getProfessionalIdentityReadModel } from "@/lib/professional-identity/professional-identity-read-service";
 import { normalizeLanguageCode } from "@/lib/language/language-preferences";
 import { pathzyPhase2T, pathzyT, professionalIdentityImportanceLabel, professionalIdentitySectionText, professionalIdentityStepText } from "@/lib/language/pathzy-i18n";
 import { appRoutes, routeBuilders, type ProfessionalIdentityOnboardingStage } from "@/lib/navigation/routes";
-import { professionalPhotoStorageContract } from "@/lib/professional-identity/professional-photo";
+import { createCurrentProfessionalPhotoView } from "@/lib/professional-identity/professional-photo";
 import { currentSituationDisplayLabel } from "@/lib/professional-identity/current-situation";
-import { experienceEntryDateLabel, normalizeProfessionalIdentityExperienceEntries, type ProfessionalIdentityExperienceEntry } from "@/lib/professional-identity/professional-identity-experience";
+import { experienceEntryDateLabel, selectCanonicalProfessionalIdentityExperiences, type ProfessionalIdentityExperienceEntry } from "@/lib/professional-identity/professional-identity-experience";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
 
 type SummaryStatus = "Required" | "Recommended" | "Optional";
@@ -29,7 +30,7 @@ function experienceDisplayTitle(entry: ProfessionalIdentityExperienceEntry) {
 
 function renderReviewValue(section: { editSection: string; value: unknown }, interfaceLanguage: "en" | "fr") {
   if (section.editSection === "experience") {
-    const entries = normalizeProfessionalIdentityExperienceEntries(section.value);
+    const entries = selectCanonicalProfessionalIdentityExperiences(section.value);
     if (!entries.length) return null;
     return (
       <div className="mt-3 grid gap-3">
@@ -75,7 +76,7 @@ function initialsFor(name: string, email?: string | null) {
 
 function statusClasses(status: SummaryStatus, hasValue: boolean) {
   if (status === "Required") return hasValue ? "bg-[#ecfdf5] text-[#047857]" : "bg-[#fef2f2] text-[#b91c1c]";
-  if (status === "Recommended") return hasValue ? "bg-[#eff6ff] text-[#2563EB]" : "bg-[#fffbeb] text-[#92400e]";
+  if (status === "Recommended") return hasValue ? "bg-[rgba(217,58,70,.12)] text-[var(--brand-primary)]" : "bg-[#fffbeb] text-[#92400e]";
   return hasValue ? "bg-[#f3f4f6] text-[#374151]" : "bg-[#f9fafb] text-[#9CA3AF]";
 }
 
@@ -107,20 +108,12 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
   ];
   const requiredComplete = requiredChecks.every((item) => item.complete);
   const setupComplete = Boolean(profile?.onboarding_completed);
-  const professionalPhotoAsset = professionalIdentityValues.professional_photo_asset;
-  let professionalPhotoSignedUrl = "";
-  if (professionalPhotoAsset?.storagePath && professionalPhotoAsset.photoStatus === "ready") {
-    const { data } = await supabase.storage.from(professionalPhotoStorageContract.bucketName).createSignedUrl(professionalPhotoAsset.storagePath, 600);
-    professionalPhotoSignedUrl = data?.signedUrl ?? "";
-    if (professionalPhotoSignedUrl) {
-      editorInitialValues = {
-        ...editorInitialValues,
-        professional_photo_asset: {
-          ...professionalPhotoAsset,
-          signedUrl: professionalPhotoSignedUrl
-        }
-      };
-    }
+  const professionalPhotoView = await createCurrentProfessionalPhotoView(supabase, professionalIdentityValues.professional_photo_asset, { userId: user.id, expiresIn: 600 });
+  if (professionalPhotoView?.signedUrl) {
+    editorInitialValues = {
+      ...editorInitialValues,
+      professional_photo_asset: professionalPhotoView
+    };
   }
   const showReview = !params.section && params.review === "1";
   const reviewSections: Array<{ label: string; status: SummaryStatus; value: unknown; editSection: string }> = [
@@ -236,16 +229,15 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
           <Card>
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-4">
-                {professionalPhotoSignedUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={professionalPhotoSignedUrl} alt={sectionName("photo", "Photo")} className="h-16 w-16 shrink-0 rounded-3xl object-cover" />
-                ) : (
-                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-3xl bg-[#eff6ff] text-xl font-semibold text-[#2563EB]">
-                    {initialsFor(profile?.full_name ?? "", user.email)}
-                  </div>
-                )}
+                <ProfessionalPhotoAvatar
+                  photo={professionalPhotoView}
+                  alt={sectionName("photo", "Photo")}
+                  fallback={initialsFor(profile?.full_name ?? "", user.email)}
+                  className="h-16 w-16 shrink-0 overflow-hidden rounded-3xl bg-[rgba(217,58,70,.12)] text-xl font-semibold text-[var(--brand-primary)]"
+                  fallbackClassName="grid h-full w-full place-items-center"
+                />
                 <div>
-                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#2563EB]">{requiredComplete ? phase2T("identity.review.requiredComplete") : phase2T("identity.review.requiredNeedsAttention")}</p>
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-[var(--brand-primary)]">{requiredComplete ? phase2T("identity.review.requiredComplete") : phase2T("identity.review.requiredNeedsAttention")}</p>
                   <h2 className="mt-2 text-3xl font-semibold tracking-[-0.02em] text-[#111827]">{profile?.full_name || phase2T("identity.review.defaultName")}</h2>
                   <p className="mt-2 text-[#6B7280]">{[profile?.career_goal ?? profile?.preferred_path, profile?.city, profile?.country].filter(Boolean).join(" - ") || phase2T("identity.review.defaultBody")}</p>
                 </div>
@@ -293,7 +285,7 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
                       </div>
                       {value ? renderReviewValue(section, interfaceLanguage) : <p className="mt-2 text-sm leading-6 text-[#6B7280]">{section.status === "Required" ? phase2T("identity.review.addRequired") : phase2T("identity.review.improveLater")}</p>}
                     </div>
-                    <Link href={professionalIdentitySectionHref(section.editSection as never, "review")} aria-label={`${phase2T("identity.review.editSection")}: ${section.label}`} className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-[#d1d5db] bg-white px-4 py-2 text-sm font-bold text-[#374151] transition hover:border-[#2563EB] hover:text-[#2563EB]">
+                    <Link href={professionalIdentitySectionHref(section.editSection as never, "review")} aria-label={`${phase2T("identity.review.editSection")}: ${section.label}`} className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-[#d1d5db] bg-white px-4 py-2 text-sm font-bold text-[#374151] transition hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)]">
                       {phase2T("identity.review.editSection")}
                     </Link>
                   </div>
@@ -313,7 +305,7 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
                 </div>
               </div>
             ) : null}
-            <div className="mt-6 rounded-[22px] border border-[#dbeafe] bg-[#eff6ff] p-4 text-sm leading-6 text-[#1e3a8a]">
+            <div className="mt-6 rounded-[22px] border border-[rgba(217,58,70,.22)] bg-[rgba(217,58,70,.1)] p-4 text-sm leading-6 text-[#7f1d1d]">
               <p className="font-bold">{phase2T("identity.sync.changed")}</p>
               <p>{phase2T("identity.sync.mayNeedUpdates")}</p>
               <p className="mt-2 font-semibold">{phase2T("identity.sync.dependents")}</p>
@@ -326,13 +318,13 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
           {!showFocusedSetup ? (
             <div className="mb-6 grid gap-5 lg:grid-cols-[.72fr_1fr]">
               <Card>
-                <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#2563EB]">{phase2T("identity.review.progressTitle")}</p>
+                <p className="text-sm font-bold uppercase tracking-[0.14em] text-[var(--brand-primary)]">{phase2T("identity.review.progressTitle")}</p>
                 <strong className="mt-3 block text-6xl font-semibold text-[#111827]">{completionPercent}<span className="text-xl text-[#9CA3AF]">%</span></strong>
                 <p className="mt-3 text-lg font-semibold text-[#6B7280]">{requiredComplete ? phase2T("identity.ui.reviewBeforeHome") : phase2T("identity.review.keepGoing")}</p>
                 <div className="mt-5"><ProgressBar value={completionPercent} /></div>
               </Card>
               <Card>
-                <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#2563EB]">{phase2T("identity.review.why")}</p>
+                <p className="text-sm font-bold uppercase tracking-[0.14em] text-[var(--brand-primary)]">{phase2T("identity.review.why")}</p>
                 <p className="mt-3 text-2xl font-semibold leading-9 text-[#111827]">{phase2T("identity.review.whyTitle")}</p>
                 <p className="mt-3 leading-7 text-[#6B7280]">{phase2T("identity.review.whyBody")}</p>
               </Card>
@@ -364,26 +356,25 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
           <Card>
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-4">
-                {professionalPhotoSignedUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={professionalPhotoSignedUrl} alt={sectionName("photo", "Photo")} className="h-16 w-16 shrink-0 rounded-3xl object-cover" />
-                ) : (
-                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-3xl bg-[#eff6ff] text-xl font-semibold text-[#2563EB]">
-                    {initialsFor(profile?.full_name ?? "", user.email)}
-                  </div>
-                )}
+                <ProfessionalPhotoAvatar
+                  photo={professionalPhotoView}
+                  alt={sectionName("photo", "Photo")}
+                  fallback={initialsFor(profile?.full_name ?? "", user.email)}
+                  className="h-16 w-16 shrink-0 overflow-hidden rounded-3xl bg-[rgba(217,58,70,.12)] text-xl font-semibold text-[var(--brand-primary)]"
+                  fallbackClassName="grid h-full w-full place-items-center"
+                />
                 <div>
-                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#2563EB]">{setupComplete ? phase2T("identity.overview.setupComplete") : phase2T("identity.overview.setupInProgress")}</p>
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-[var(--brand-primary)]">{setupComplete ? phase2T("identity.overview.setupComplete") : phase2T("identity.overview.setupInProgress")}</p>
                   <h2 className="mt-2 text-3xl font-semibold tracking-[-0.02em] text-[#111827]">{profile?.full_name || phase2T("identity.review.defaultName")}</h2>
                   <p className="mt-2 text-[#6B7280]">{[profile?.career_goal ?? profile?.preferred_path, profile?.city, profile?.country].filter(Boolean).join(" - ") || phase2T("identity.review.defaultBody")}</p>
                 </div>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Link href={reviewHref} className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#2563EB] px-6 py-3 text-sm font-bold text-white shadow-[0_16px_34px_rgba(37,99,235,.22)] transition hover:bg-[#1D4ED8]">
+                <Link href={reviewHref} className="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--brand-primary)] px-6 py-3 text-sm font-bold text-white shadow-[0_16px_34px_rgba(217,58,70,.22)] transition hover:bg-[var(--brand-primary-hover)]">
                   {t("onboarding.review")}
                 </Link>
                 {!requiredComplete ? (
-                  <Link href={resumeHref} className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#d1d5db] bg-white px-6 py-3 text-sm font-bold text-[#374151] transition hover:border-[#2563EB] hover:text-[#2563EB]">
+                  <Link href={resumeHref} className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#d1d5db] bg-white px-6 py-3 text-sm font-bold text-[#374151] transition hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)]">
                     {phase2T("identity.overview.resumeSetup")}
                   </Link>
                 ) : null}
@@ -412,10 +403,10 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
           <Card>
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#2563EB]">{phase2T("identity.overview.sectionsTitle")}</p>
+                <p className="text-sm font-bold uppercase tracking-[0.14em] text-[var(--brand-primary)]">{phase2T("identity.overview.sectionsTitle")}</p>
                 <p className="mt-2 text-sm leading-6 text-[#6B7280]">{phase2T("identity.overview.sectionsBody")}</p>
               </div>
-              <Link href={reviewHref} className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#d1d5db] bg-white px-5 py-2 text-sm font-bold text-[#374151] transition hover:border-[#2563EB] hover:text-[#2563EB]">
+              <Link href={reviewHref} className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#d1d5db] bg-white px-5 py-2 text-sm font-bold text-[#374151] transition hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)]">
                 {t("onboarding.review")}
               </Link>
             </div>
@@ -429,7 +420,7 @@ export default async function ProfessionalIdentityPage({ searchParams }: { searc
                       <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClasses(section.status, Boolean(value))}`}>{sectionStatus(section)}</span>
                     </div>
                     <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#6B7280]">{value || (section.status === "Required" ? phase2T("identity.review.addRequired") : phase2T("identity.review.improveLater"))}</p>
-                    <Link href={professionalIdentitySectionHref(section.editSection as never)} aria-label={`${phase2T("identity.review.editSection")}: ${section.label}`} className="mt-3 inline-flex min-h-10 items-center justify-center rounded-full border border-[#d1d5db] bg-white px-4 py-2 text-sm font-bold text-[#374151] transition hover:border-[#2563EB] hover:text-[#2563EB]">
+                    <Link href={professionalIdentitySectionHref(section.editSection as never)} aria-label={`${phase2T("identity.review.editSection")}: ${section.label}`} className="mt-3 inline-flex min-h-10 items-center justify-center rounded-full border border-[#d1d5db] bg-white px-4 py-2 text-sm font-bold text-[#374151] transition hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)]">
                       {phase2T("identity.review.editSection")}
                     </Link>
                   </div>

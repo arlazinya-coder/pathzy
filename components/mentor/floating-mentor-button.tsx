@@ -29,7 +29,7 @@ export function FloatingMentorButton() {
   return (
     <Link
       href={`/mentor?context=${encodeURIComponent(context)}`}
-      className="fixed bottom-5 right-5 z-50 inline-flex min-h-14 items-center justify-center rounded-full blue-purple px-5 py-3 text-sm font-extrabold text-white shadow-[0_18px_48px_rgba(91,140,255,.38)] transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8fb0ff]"
+      className="fixed bottom-5 right-5 z-50 inline-flex min-h-14 items-center justify-center rounded-full blue-purple px-5 py-3 text-sm font-extrabold text-white shadow-[0_18px_48px_rgba(217,58,70,.3)] transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--focus-ring)]"
     >
       Your Mentor
     </Link>
