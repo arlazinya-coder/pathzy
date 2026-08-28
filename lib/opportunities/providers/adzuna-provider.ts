@@ -1,5 +1,5 @@
 import type { Opportunity, OpportunityCategory } from "@/lib/opportunities/types";
-import type { JobProvider, JobProviderSearchInput, JobProviderSearchResult } from "./types";
+import type { JobProvider, JobProviderDiagnostics, JobProviderSearchInput, JobProviderSearchResult } from "./types";
 
 type AdzunaJob = {
   id?: string | number;
@@ -190,6 +190,27 @@ export class AdzunaJobProvider implements JobProvider {
   ) {}
 
   async search(input: JobProviderSearchInput): Promise<JobProviderSearchResult> {
+    const country = countryCode(input.country);
+    const page = Math.max(1, input.page ?? 1);
+    const query = cleanText(input.query);
+    const location = cleanText(input.location);
+    const url = new URL(`${adzunaEndpointRoot}/${country}/search/${page}`);
+    url.searchParams.set("results_per_page", String(Math.max(1, Math.min(input.resultsPerPage ?? 20, 50))));
+    url.searchParams.set("content-type", "application/json");
+    if (query) url.searchParams.set("what", query);
+    if (location) url.searchParams.set("where", location);
+    const diagnosticUrl = url.toString();
+
+    const diagnostics = (patch: Partial<JobProviderDiagnostics> = {}): JobProviderDiagnostics => ({
+      country,
+      query,
+      location,
+      requestUrl: diagnosticUrl,
+      rawCount: 0,
+      normalizedCount: 0,
+      ...patch
+    });
+
     if (!this.appId || !this.appKey) {
       return {
         opportunities: [],
@@ -197,21 +218,13 @@ export class AdzunaJobProvider implements JobProvider {
           status: "provider_unavailable",
           provider: this.id,
           message: "Adzuna is not configured. Add ADZUNA_APP_ID and ADZUNA_APP_KEY on the server."
-        }
+        },
+        diagnostics: diagnostics()
       };
     }
 
-    const country = countryCode(input.country);
-    const page = Math.max(1, input.page ?? 1);
-    const url = new URL(`${adzunaEndpointRoot}/${country}/search/${page}`);
     url.searchParams.set("app_id", this.appId);
     url.searchParams.set("app_key", this.appKey);
-    url.searchParams.set("results_per_page", String(Math.max(1, Math.min(input.resultsPerPage ?? 20, 50))));
-    url.searchParams.set("content-type", "application/json");
-    const query = cleanText(input.query);
-    const location = cleanText(input.location);
-    if (query) url.searchParams.set("what", query);
-    if (location) url.searchParams.set("where", location);
 
     try {
       const response = await this.fetcher(url, { headers: { Accept: "application/json" }, cache: "no-store" });
@@ -222,7 +235,8 @@ export class AdzunaJobProvider implements JobProvider {
             status: "provider_unavailable",
             provider: this.id,
             message: `Adzuna returned ${response.status}. Try again later.`
-          }
+          },
+          diagnostics: diagnostics({ responseStatus: response.status })
         };
       }
       const data = await response.json() as AdzunaSearchResponse;
@@ -233,7 +247,8 @@ export class AdzunaJobProvider implements JobProvider {
             status: "invalid_provider_response",
             provider: this.id,
             message: "Adzuna returned a response PATHZY could not read."
-          }
+          },
+          diagnostics: diagnostics({ responseStatus: response.status })
         };
       }
       const verifiedAt = new Date().toISOString();
@@ -244,7 +259,12 @@ export class AdzunaJobProvider implements JobProvider {
         opportunities,
         status: opportunities.length
           ? { status: "available", provider: this.id }
-          : { status: "no_jobs_found", provider: this.id, message: "No real jobs were found for this search. Try a broader role or location." }
+          : { status: "no_jobs_found", provider: this.id, message: "No real jobs were found for this search. Try a broader role or location." },
+        diagnostics: diagnostics({
+          responseStatus: response.status,
+          rawCount: data.results.length,
+          normalizedCount: opportunities.length
+        })
       };
     } catch {
       return {
@@ -253,7 +273,8 @@ export class AdzunaJobProvider implements JobProvider {
           status: "provider_unavailable",
           provider: this.id,
           message: "PATHZY could not reach Adzuna right now. Try again later."
-        }
+        },
+        diagnostics: diagnostics()
       };
     }
   }

@@ -51,6 +51,8 @@ export type Opportunity = {
   fitReason: string;
 };
 
+export type NormalizedOpportunity = Opportunity;
+
 export type OpportunityRequirementImportance = "MANDATORY" | "PREFERRED" | "ADVANTAGEOUS" | "UNKNOWN";
 
 export type OpportunityEligibilityStatus = "COMPATIBLE" | "CHECK_NEEDED" | "BLOCKED" | "UNKNOWN";

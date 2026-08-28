@@ -2462,8 +2462,12 @@ assert.doesNotMatch(
   /#5B8CFF|#7B5CFF|#7C5CFF|#9D5BFF|#2563EB|#93c5fd|#FFD166|#ffd166|#ffe2a3|#ffe7a3|#aac1ff|#39d98a|#9df0c4|#b9f8d5|#c7d6ff|#ded6ff|bg-blue|border-blue|text-blue/,
   "Authenticated workspace components must use PATHZY tokens/classes instead of retired blue, purple, yellow or ad hoc success palettes."
 );
-assert.match(opportunitiesHub, /pathzy-control-primary[\s\S]*Inspect Job/, "Job Intelligence primary actions must use the shared PATHZY red control utility.");
-assert.match(opportunitiesHub, /pathzy-status-info[\s\S]*Job Import/, "Job Import workspace must use a shared neutral information surface instead of a page-specific blue theme.");
+assert.match(opportunitiesHub, /pathzy-control-primary[\s\S]*opportunities\.import\.inspect/, "Job Intelligence primary actions must use the shared PATHZY red control utility and localized copy.");
+assert.match(opportunitiesHub, /pathzy-status-info[\s\S]*opportunities\.import\.eyebrow/, "Job Import workspace must use a shared neutral information surface and localized copy instead of a page-specific blue theme.");
+assert.match(opportunitiesHub, /usePathzyLanguage\(\)[\s\S]*pathzyPhase2T\(language, key\)/, "Opportunities must read interface language from the shared PATHZY language provider.");
+assert.match(opportunitiesHub, /opportunityTabs[\s\S]*opportunities\.tabs\.recommended[\s\S]*opportunities\.tabs\.all/, "Opportunities tabs must be rendered from localized tab keys.");
+assert.match(pathzyI18n, /"opportunities\.title": "Opportunities for you"[\s\S]*"opportunities\.title": "Opportunités pour vous"/, "Opportunities workspace must include English and French interface copy.");
+assert.match(appShell, /app\.shell\.tagline[\s\S]*public\.footer\.disclaimer/, "The shared app shell footer must render through centralized language copy.");
 assert.match(employmentIntelligenceUiSource, /mergeDuplicateEvidenceRecords[\s\S]*uniqueByCode[\s\S]*secondaryActions/, "Phase 3G view models must de-duplicate persisted strength, barrier, dimension and action collections before rendering.");
 assert.match(generateRoadmapApi, /recomputeEmploymentIntelligence[\s\S]*trigger: "diagnosis_completed"[\s\S]*redirectTo: appRoutes\.diagnosisResults/, "Diagnosis completion must persist Employment Intelligence through Phase 3F and route to Diagnosis Results.");
 for (const saveStatusCopy of [
@@ -3966,18 +3970,24 @@ for (const label of ["Inspect a job advert", "Analyser une offre d'emploi", "Pas
 assert.match(opportunitiesPage, /getOrCreateCanonicalProfile\(supabase, user\.id\)/, "Opportunities must read the canonical profile before job analysis.");
 assert.match(opportunitiesPage, /analyzeJobAgainstCanonicalProfile\(\{ profile: canonicalProfile, job, userId: user\.id \}\)/, "Opportunities must use the shared Job Intelligence matcher.");
 assert.match(jobProviderTypes, /export type JobProvider = \{[\s\S]*search\(input: JobProviderSearchInput\): Promise<JobProviderSearchResult>/, "Real job providers must use a reusable JobProvider abstraction.");
+assert.match(jobProviderTypes, /JobProviderDiagnostics[\s\S]*requestUrl: string;[\s\S]*rawCount: number;[\s\S]*normalizedCount: number;/, "Real job providers must expose sanitized diagnostics without credentials.");
 for (const field of ["source", "externalId", "employer", "employmentType", "applicationUrl", "sourceUrl", "lastVerifiedAt"]) {
   assert.match(opportunitiesTypes, new RegExp(`${field}\\??: `), `Normalized opportunities must expose ${field} in the production provider contract.`);
 }
+assert.match(opportunitiesTypes, /export type NormalizedOpportunity = Opportunity;/, "Jobs must expose a canonical normalized Opportunity model for providers and matching.");
 assert.match(opportunitiesTypes, /remoteType: "REMOTE" \| "HYBRID" \| "ON_SITE" \| "UNKNOWN";[\s\S]*responsibilities: string\[];[\s\S]*requirements: string\[];[\s\S]*requiredSkills: string\[];[\s\S]*preferredSkills: string\[];/, "Normalized opportunities must preserve structured requirements and work arrangement.");
 assert.match(opportunitiesTypes, /status: "ACTIVE" \| "CLOSING_SOON" \| "EXPIRED" \| "UNKNOWN";/, "Opportunity freshness must use the canonical uppercase status model.");
 assert.match(opportunitiesTypes, /OpportunityMatchExplanation[\s\S]*suitabilityLabel[\s\S]*eligibilityStatus[\s\S]*unknowns[\s\S]*recommendation/, "Opportunity matching must expose suitability, eligibility and unknown information separately.");
 assert.match(adzunaProviderSource, /process\.env\.ADZUNA_APP_ID[\s\S]*process\.env\.ADZUNA_APP_KEY/, "Adzuna credentials must be read from server environment variables.");
 assert.doesNotMatch(adzunaProviderSource + opportunitiesPage + opportunitiesHub, /NEXT_PUBLIC_ADZUNA|ADZUNA_APP_KEY[^;\n]*client/i, "Adzuna credentials must not be exposed through public client variables.");
 assert.match(adzunaProviderSource, /https:\/\/api\.adzuna\.com\/v1\/api\/jobs[\s\S]*\/\$\{country\}\/search\/\$\{page\}[\s\S]*app_id[\s\S]*app_key/, "Adzuna provider must call the official search endpoint with app_id and app_key.");
+assert.match(adzunaProviderSource, /const diagnosticUrl = url\.toString\(\);[\s\S]*url\.searchParams\.set\("app_id", this\.appId\);[\s\S]*url\.searchParams\.set\("app_key", this\.appKey\);/, "Adzuna diagnostics must capture a request URL before credentials are attached.");
 assert.match(jobProviderServerSource, /getProductionJobProvider[\s\S]*new AdzunaJobProvider\(\)/, "The production job provider must be selected behind a server provider factory.");
-assert.match(opportunitiesPage, /fetchProductionOpportunities\(\{ \.\.\.search, resultsPerPage: 20 \}\)/, "Jobs page must fetch normalized provider opportunities.");
+assert.match(opportunitiesPage, /searchParams/, "Jobs page must accept route search params for controlled live QA.");
+assert.match(opportunitiesPage, /query: paramText\(params\.query\)[\s\S]*location: paramText\(params\.location\)[\s\S]*country: paramText\(params\.country\)/, "Jobs page must support controlled server-side provider query, location and country values.");
+assert.match(opportunitiesPage, /const \{ filters, \.\.\.providerSearch \} = search;[\s\S]*fetchProductionOpportunities\(\{ \.\.\.providerSearch, resultsPerPage: 20 \}\)/, "Jobs page must fetch normalized provider opportunities without leaking client-only filters into the provider.");
 assert.match(opportunitiesPage, /personalizeRealOpportunities\(\{[\s\S]*profile: canonicalProfile[\s\S]*actions:/, "Jobs page must rank real opportunities through the shared Professional Identity matcher.");
+assert.match(opportunitiesPage, /pipelineCounts[\s\S]*raw: providerResult\.diagnostics\?\.rawCount[\s\S]*allJobs: personalizedOpportunities\.length[\s\S]*recommended:[\s\S]*nearReach:/, "Jobs page must trace raw, normalized, All Jobs, Recommended and Near Reach counts.");
 assert.doesNotMatch(opportunitiesPage, /personalizeOpportunities|opportunityCatalog|discovery_responses|personalizeProviderOpportunities/, "Jobs page must not use the static sample catalog, discovery data, or page-local matching for production vacancies.");
 assert.match(opportunitiesMatching, /normalizeOpportunityFreshness[\s\S]*status !== "EXPIRED"/, "Expired jobs must be removed from active recommendations.");
 assert.match(opportunitiesMatching, /deduplicateOpportunities[\s\S]*sourceUrl[\s\S]*applicationUrl/, "Opportunity matching must deduplicate vacancies by source, URL and content signals.");
@@ -3989,10 +3999,24 @@ assert.match(opportunitiesMatching, /requiredSkills[\s\S]*preferredSkills/, "Man
 for (const providerState of ["providerStatus", "provider_unavailable", "no_jobs_found", "invalid_provider_response"]) {
   assert.match(opportunitiesHub, new RegExp(providerState), `Opportunities UI must handle ${providerState}.`);
 }
-assert.match(opportunitiesHub, /PATHZY never substitutes fake vacancies[\s\S]*No fake vacancies are shown|No fake vacancies are shown[\s\S]*PATHZY never substitutes fake vacancies/, "Opportunities UI must never substitute fake vacancies.");
-assert.match(opportunitiesHub, /Recommended[\s\S]*Near Reach[\s\S]*Saved[\s\S]*All Jobs/, "Jobs page must expose the simple Recommended, Near Reach, Saved and All Jobs tabs.");
-assert.match(opportunitiesHub, /View Job[\s\S]*Save[\s\S]*Prepare Application[\s\S]*Apply on source site/, "Job cards must expose view, save, prepare and real application actions.");
-assert.match(opportunitiesHub, /Why PATHZY recommends this[\s\S]*What to check[\s\S]*About the job[\s\S]*Source/, "Job details must explain fit, checks, job content and source.");
+assert.doesNotMatch(opportunitiesHub, /ADZUNA_APP_ID|ADZUNA_APP_KEY|NEXT_PUBLIC_ADZUNA/, "Jobs UI must never expose provider credential variable names to users.");
+assert.match(opportunitiesHub, /opportunities\.provider\.unavailableMessage[\s\S]*opportunities\.inspectAdvert/, "Provider-unavailable state must be user-facing and actionable.");
+assert.match(opportunitiesHub, /hasOpportunityProgress[\s\S]*opportunities\.progress\.empty/, "Jobs UI must avoid a giant zero-progress bar when no job actions exist.");
+assert.match(opportunitiesHub, /pathzy-readable-workspace/, "Jobs workspace must inherit the shared dark-surface readability system.");
+assert.match(pathzyI18n, /PATHZY never substitutes fake vacancies[\s\S]*No fake vacancies are shown/, "Opportunities UI must never substitute fake vacancies.");
+assert.match(opportunitiesHub, /opportunities\.tabs\.recommended[\s\S]*opportunities\.tabs\.near[\s\S]*opportunities\.tabs\.saved[\s\S]*opportunities\.tabs\.all/, "Jobs page must expose the simple Recommended, Near Reach, Saved and All Jobs tabs.");
+assert.match(opportunitiesHub, /if \(tab === "all"\) return true;/, "All Jobs must not depend on match quality.");
+assert.match(opportunitiesHub, /role="tab"[\s\S]*aria-selected=\{activeTab === tab\.id\}[\s\S]*pathzy-dark-control/, "Jobs tabs must use readable accessible dark-surface controls.");
+assert.match(opportunitiesHub, /method="GET"[\s\S]*action=\{appRoutes\.opportunities\}[\s\S]*opportunities\.filters\.keyword[\s\S]*name="query"[\s\S]*opportunities\.filters\.location[\s\S]*name="location"[\s\S]*opportunities\.filters\.search[\s\S]*opportunities\.filters\.advanced[\s\S]*opportunities\.filters\.employmentType[\s\S]*opportunities\.filters\.workMode[\s\S]*opportunities\.filters\.salaryFrom[\s\S]*opportunities\.filters\.datePosted[\s\S]*opportunities\.filters\.seniority/, "Jobs page must expose server-backed search with progressive advanced filters.");
+assert.match(opportunitiesHub, /opportunities\.bestMatch[\s\S]*opportunities\.actions\.view/, "Jobs page must identify a best match without relying on fake precision.");
+assert.match(opportunitiesHub, /opportunities\.stats\.pipelinePrefix[\s\S]*pipelineCounts\.allJobs[\s\S]*opportunities\.stats\.pipelineSuffix/, "Jobs page must show safe pipeline counts for live provider QA.");
+assert.match(opportunitiesHub, /STRONG_MATCH: t\("opportunities\.match\.strong"\)[\s\S]*GOOD_MATCH: t\("opportunities\.match\.good"\)[\s\S]*POSSIBLE_MATCH: t\("opportunities\.match\.possible"\)[\s\S]*STRETCH_OPPORTUNITY: t\("opportunities\.match\.stretch"\)/, "Jobs page must translate internal suitability codes into user-facing labels.");
+assert.match(opportunitiesHub, /opportunities\.actions\.view[\s\S]*opportunities\.actions\.save[\s\S]*opportunities\.actions\.prepare[\s\S]*opportunities\.actions\.viewOriginal/, "Job cards must expose view, save, prepare and original-source actions.");
+assert.doesNotMatch(opportunitiesHub, /Apply on source site/, "Jobs page must not imply PATHZY can apply directly from the card.");
+assert.match(opportunitiesHub, /opportunities\.detail\.basics[\s\S]*opportunities\.detail\.match[\s\S]*opportunities\.detail\.whyMatch[\s\S]*opportunities\.detail\.partial[\s\S]*opportunities\.detail\.missing[\s\S]*opportunities\.detail\.eligibility[\s\S]*opportunities\.detail\.beforeApply[\s\S]*opportunities\.detail\.originalPreserved/, "Job details must explain fit, evidence state, eligibility, next steps and original source.");
+assert.match(appGlobals, /--text-on-light-primary[\s\S]*--text-on-light-secondary[\s\S]*--text-on-light-muted[\s\S]*\.pathzy-jobs-surface[\s\S]*color: var\(--text-on-light-primary\)/, "Jobs light surfaces must use readable light-surface semantic text tokens.");
+assert.match(appGlobals, /:is\(\.pathzy-jobs-surface, \.pathzy-applications-surface \.pathzy-card\)[\s\S]*color: var\(--text-on-light-primary\)/, "Jobs and Applications warm cards must share one surface-aware readable text boundary.");
+assert.match(appGlobals, /:is\(\.pathzy-jobs-surface, \.pathzy-applications-surface \.pathzy-card\) \.pathzy-dark-control[\s\S]*color: var\(--text-on-light-primary\)/, "Applications controls on warm cards must not inherit dark-surface pale text.");
 assert.doesNotMatch(opportunitiesHub, /sample opportunities for testing|Sample opportunity for testing/, "Production Opportunities UI must not label provider listings as samples.");
 assert.match(opportunitiesPrepareApi, /createJobImport\(supabase, user\.id,[\s\S]*sourceType: "existing_opportunity"[\s\S]*opportunityToJobImportText\(opportunity\)/, "Prepare Application must preserve the selected normalized Opportunity as Job Context.");
 assert.match(opportunitiesPrepareApi, /pathzy_static_catalog[\s\S]*Only real or verified opportunities/, "Prepare Application must reject production use of the old static catalog source.");
@@ -4069,9 +4093,9 @@ const unavailableAdzunaResult = await new adzunaProviderRuntime.AdzunaJobProvide
 assert.equal(unavailableAdzunaResult.status.status, "provider_unavailable", "Missing Adzuna server credentials must produce a provider unavailable state.");
 assert.match(opportunitiesHub, /JobIntelligencePanel/, "Opportunities UI must display more than a single match percentage.");
 assert.match(opportunitiesHub, /User reviews before applying/, "Opportunities UI must keep the user in control.");
-assert.match(opportunitiesHub, /Inspect a job advert/, "Opportunities UI must expose the Phase 8A job import flow.");
-assert.match(opportunitiesHub, /Paste text[\s\S]*Manual entry[\s\S]*Upload file[\s\S]*Job link/, "Job import UI must support pasted, manual, uploaded and URL input modes.");
-assert.match(opportunitiesHub, /Review imported job[\s\S]*Save Job Review/, "Job import UI must show a review action after successful import.");
+assert.match(opportunitiesHub, /opportunities\.import\.title/, "Opportunities UI must expose the Phase 8A job import flow.");
+assert.match(opportunitiesHub, /opportunities\.import\.paste[\s\S]*opportunities\.import\.manual[\s\S]*opportunities\.import\.upload[\s\S]*opportunities\.import\.link/, "Job import UI must support pasted, manual, uploaded and URL input modes.");
+assert.match(opportunitiesHub, /opportunities\.import\.review[\s\S]*opportunities\.import\.saveReview/, "Job import UI must show a review action after successful import.");
 assert.match(opportunitiesHub, /disabled=\{isBusy\}/, "Job import buttons must avoid duplicate submissions while processing.");
 assert.match(opportunitiesHub, /aria-pressed=\{mode === item\.id\}/, "Job import method controls must expose accessible selected state.");
 assert.match(jobIntelligenceTypes, /export type JobUnderstandingRequirementType =[\s\S]*"skill"[\s\S]*"experience"[\s\S]*"education"[\s\S]*"certification"[\s\S]*"licence"[\s\S]*"language"[\s\S]*"work_authorization"[\s\S]*"technical"[\s\S]*"behavioural"/, "Phase 8B must define a broad semantic requirement type model.");
@@ -4101,9 +4125,9 @@ for (const label of ["Job Analysis", "Responsibilities", "Mandatory Requirements
   assert.match(jobIntelligenceTranslations, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `Phase 8B translations must include ${label}.`);
 }
 assert.match(opportunitiesHub, /JobUnderstandingReview/, "Opportunities UI must expose the Phase 8B job analysis review.");
-assert.match(opportunitiesHub, /Review the job analysis[\s\S]*Confirm Job Analysis/, "Phase 8B UI must let the user review and confirm the analysis.");
-assert.match(opportunitiesHub, /No match score is created in Phase 8B/, "Phase 8B UI must not introduce matching or scoring.");
-assert.match(opportunitiesHub, /Add requirement[\s\S]*Importance[\s\S]*Mandatory[\s\S]*Preferred[\s\S]*Optional[\s\S]*Unclear/, "Phase 8B UI must let users add and move requirements between importance categories.");
+assert.match(opportunitiesHub, /opportunities\.analysis\.title[\s\S]*opportunities\.analysis\.confirm/, "Phase 8B UI must let the user review and confirm the analysis.");
+assert.match(opportunitiesHub, /opportunities\.analysis\.noPhase8B/, "Phase 8B UI must not introduce matching or scoring.");
+assert.match(opportunitiesHub, /opportunities\.analysis\.addRequirement[\s\S]*opportunities\.analysis\.importance[\s\S]*opportunities\.analysis\.mandatory[\s\S]*opportunities\.analysis\.preferred[\s\S]*opportunities\.analysis\.optional[\s\S]*opportunities\.analysis\.unclear/, "Phase 8B UI must let users add and move requirements between importance categories.");
 assert.match(jobIntelligenceTypes, /export type RequirementMatchStatus = "confirmed_match" \| "partial_match" \| "transferable_match" \| "not_confirmed" \| "confirmed_gap" \| "unclear" \| "not_applicable"/, "Phase 8C must separate direct, partial, transferable, unclear and gap states.");
 assert.match(jobIntelligenceTypes, /export type ProfileJobMatchAnalysis = \{[\s\S]*jobUnderstandingId: string;[\s\S]*canonicalProfileId: string;[\s\S]*canonicalProfileVersion: number;[\s\S]*fitScore\?: number;[\s\S]*analysisConfidence: number;[\s\S]*recommendations: MatchRecommendation\[];/, "Phase 8C must define an explainable profile-job match model.");
 assert.match(profileJobMatchEngine, /export function analyzeConfirmedJobAgainstProfile/, "Phase 8C must compare confirmed job understanding against Canonical Professional Identity.");
@@ -4217,6 +4241,17 @@ assert.match(employmentTrackerPage, /application_timeline_events[\s\S]*eq\("user
 assert.match(employmentTrackerClient, /APPLICATION_TRACKER_VIEWS/, "Phase 9B UI must render shared tracker views.");
 assert.match(employmentTrackerClient, /Search applications/, "Phase 9B UI must provide application search.");
 assert.match(employmentTrackerClient, /Follow-Up Needed/, "Phase 9B UI must expose the follow-up-needed view.");
+assert.match(employmentTrackerClient, /isAddApplicationOpen/, "Applications must keep Add Application behind controlled state.");
+assert.match(employmentTrackerClient, /AddApplicationForm/, "Applications must render the add form through a dedicated controlled flow.");
+assert.match(employmentTrackerClient, /aria-expanded=\{isAddApplicationOpen\}/, "Add Application trigger must expose its expanded state.");
+assert.match(employmentTrackerClient, /dateFieldsForStatus[\s\S]*planning[\s\S]*assessment[\s\S]*interview_scheduled[\s\S]*offer_received/, "Add Application must show stage-appropriate date fields.");
+assert.match(employmentTrackerClient, /showContactFields/, "Application contacts must be controlled by local disclosure state.");
+assert.match(employmentTrackerClient, /Add optional contact/, "Application contacts must be optional in the add flow.");
+assert.match(employmentTrackerClient, /aria-expanded=\{showContactFields\}/, "Optional contact disclosure must expose its expanded state.");
+assert.match(employmentTrackerClient, /hasApplications[\s\S]*Application signals will appear here later[\s\S]*One clear analytics state is enough/, "Zero-application analytics must show one premium empty state instead of repeated insufficient-data blocks.");
+assert.match(employmentTrackerClient, /pathzy-readable-workspace/, "Applications workspace must inherit the shared dark-surface readability system.");
+assert.match(employmentTrackerClient, /pathzy-applications-surface/, "Applications workspace must opt into shared warm-card readability for nested cards and controls.");
+assert.match(employmentTrackerClient, /role="tab"[\s\S]*aria-selected=\{activeView === view\}[\s\S]*pathzy-dark-control/, "Application board tabs must use readable accessible dark-surface controls.");
 assert.match(employmentTrackerClient, /Next Action[\s\S]*Closing date[\s\S]*Interview date[\s\S]*Contacts[\s\S]*Timeline/, "Phase 9B cards must show next actions, dates, contacts, and timeline.");
 assert.match(jobIntelligenceTranslations, /Applications[\s\S]*Preparing[\s\S]*Ready to Apply[\s\S]*Add Note[\s\S]*Candidatures[\s\S]*En préparation[\s\S]*Prêt à postuler[\s\S]*Ajouter une note/, "Phase 9B must include English and French tracker copy.");
 for (const type of ["screening", "behavioural", "technical", "panel", "case_study", "presentation", "final", "unknown"]) {

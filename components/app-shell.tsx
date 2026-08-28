@@ -3,7 +3,7 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { LanguageSelector, PathzyLanguageProvider } from "@/components/language/language-selector";
 import { FloatingMentorButton } from "@/components/mentor/floating-mentor-button";
 import { getUserEntitlements } from "@/lib/access/entitlements";
-import { pathzyNavigationLabel } from "@/lib/language/pathzy-i18n";
+import { pathzyNavigationLabel, pathzyPhase2T, pathzyT } from "@/lib/language/pathzy-i18n";
 import { getServerInterfaceLanguage } from "@/lib/language/server-language";
 import { resolvePathzyNextRoute } from "@/lib/navigation/auth-routing";
 import { appRoutes } from "@/lib/navigation/routes";
@@ -90,17 +90,17 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                     {pathzyNavigationLabel(interfaceLanguage, "Home")}
                   </Link>
                 ) : (
-                  <span className="hidden rounded-full border border-white/12 bg-white/8 px-4 py-2 text-sm font-semibold text-white/72 sm:inline-flex">Setup in progress</span>
+                  <span className="hidden rounded-full border border-white/12 bg-white/8 px-4 py-2 text-sm font-semibold text-white/72 sm:inline-flex">{pathzyPhase2T(interfaceLanguage, "app.shell.setupInProgress")}</span>
                 )}
                 <LogoutButton />
               </>
             ) : (
               <>
                 <Link href={appRoutes.login} className="hidden rounded-full px-4 py-2 text-sm font-semibold text-white/72 transition hover:text-white sm:inline-flex">
-                  Login
+                  {pathzyT(interfaceLanguage, "public.nav.login")}
                 </Link>
                 <Link href={appRoutes.signup} className="rounded-full bg-[var(--pathzy-red)] px-5 py-3 text-sm font-extrabold text-white shadow-[0_14px_34px_rgba(217,58,70,.22)]">
-                  Start Free
+                  {pathzyT(interfaceLanguage, "public.nav.start")}
                 </Link>
               </>
             )}
@@ -117,12 +117,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {user && !focusedOnboarding ? <FloatingMentorButton /> : null}
       <main>{children}</main>
       <footer className="container border-t border-white/10 py-8 text-center text-sm text-white/58">
-        <p>PATHZY is The Employment Support System. From Potential to Employment.</p>
+        <p>{pathzyPhase2T(interfaceLanguage, "app.shell.tagline")}</p>
         <div className="mt-4 flex flex-wrap justify-center gap-4">
-          <Link href="/privacy" className="hover:text-[var(--pathzy-ivory)]">Privacy</Link>
-          <Link href="/terms" className="hover:text-[var(--pathzy-ivory)]">Terms</Link>
-          <Link href="/contact" className="hover:text-[var(--pathzy-ivory)]">Contact</Link>
-          <Link href="/disclaimer" className="hover:text-[var(--pathzy-ivory)]">Disclaimer</Link>
+          <Link href="/privacy" className="hover:text-[var(--pathzy-ivory)]">{pathzyPhase2T(interfaceLanguage, "public.footer.privacy")}</Link>
+          <Link href="/terms" className="hover:text-[var(--pathzy-ivory)]">{pathzyPhase2T(interfaceLanguage, "public.footer.terms")}</Link>
+          <Link href="/contact" className="hover:text-[var(--pathzy-ivory)]">{pathzyPhase2T(interfaceLanguage, "public.footer.contact")}</Link>
+          <Link href="/disclaimer" className="hover:text-[var(--pathzy-ivory)]">{pathzyPhase2T(interfaceLanguage, "public.footer.disclaimer")}</Link>
         </div>
       </footer>
     </div>

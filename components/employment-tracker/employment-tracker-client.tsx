@@ -98,6 +98,37 @@ function followUpStatusLabel(status: FollowUpStatus | string) {
   return String(status).split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
 }
 
+function dateFieldsForStatus(status: string) {
+  const normalized = normalizeApplicationStatus(status);
+  if (normalized === "planning" || normalized === "preparing") {
+    return ["planned_application_date", "closing_date", "next_action_date"] as const;
+  }
+  if (normalized === "assessment") {
+    return ["application_date", "assessment_deadline", "next_action_date"] as const;
+  }
+  if (normalized === "interview_scheduled" || normalized === "interview_completed") {
+    return ["application_date", "interview_date", "follow_up_date", "expected_response_date"] as const;
+  }
+  if (normalized === "offer_received" || normalized === "offer_accepted" || normalized === "offer_declined") {
+    return ["application_date", "expected_response_date", "next_action_date"] as const;
+  }
+  if (normalized === "applied" || normalized === "viewed" || normalized === "screening") {
+    return ["application_date", "follow_up_date", "expected_response_date"] as const;
+  }
+  return ["application_date", "closing_date", "next_action_date"] as const;
+}
+
+const dateFieldLabels: Record<string, string> = {
+  planned_application_date: "Planned application date",
+  closing_date: "Closing date",
+  application_date: "Applied date",
+  follow_up_date: "Follow-up date",
+  assessment_deadline: "Assessment deadline",
+  interview_date: "Interview date",
+  expected_response_date: "Expected response date",
+  next_action_date: "Next action date"
+};
+
 const viewLabels: Record<ApplicationTrackerView, string> = {
   all: "All",
   preparing: "Preparing",
@@ -187,6 +218,10 @@ export function EmploymentTrackerClient({
 }) {
   const searchParams = useSearchParams();
   const [applications, setApplications] = useState(initialApplications);
+  const hasPrefilledApplication = Boolean(searchParams?.get("company") || searchParams?.get("role"));
+  const [isAddApplicationOpen, setIsAddApplicationOpen] = useState(hasPrefilledApplication);
+  const [newApplicationStatus, setNewApplicationStatus] = useState<ApplicationStatus>("planning");
+  const [showContactFields, setShowContactFields] = useState(false);
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState("");
@@ -287,6 +322,9 @@ export function EmploymentTrackerClient({
       setApplications((current) => [data.application, ...current]);
       if (normalizeApplicationStatus(data.application.status) === "applied") setCelebration("First application tracked. That counts.");
       event.currentTarget.reset();
+      setNewApplicationStatus("planning");
+      setShowContactFields(false);
+      setIsAddApplicationOpen(false);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not add application.");
     } finally {
@@ -469,80 +507,84 @@ export function EmploymentTrackerClient({
   }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[.38fr_1fr]">
-      <Card className="h-fit">
-        <h2 className="text-2xl font-black">Add application</h2>
-        <p className="mt-3 text-sm leading-6 text-white/58">Track planning, documents, applications, interviews, offers, notes, contacts, and follow-ups in one operational view.</p>
-        {error ? <p className="mt-4 rounded-[16px] border border-[#ff6b6b]/30 bg-[#ff6b6b]/10 px-4 py-3 text-sm text-[#ffc5c5]">{error}</p> : null}
-        <form onSubmit={addApplication} className="mt-5 grid gap-4">
-          <label className="label">Company name<input className="field" name="company_name" defaultValue={searchParams?.get("company") ?? ""} required /></label>
-          <label className="label">Role<input className="field" name="role" defaultValue={searchParams?.get("role") ?? ""} required /></label>
-          <label className="label">Opportunity type<input className="field" name="opportunity_type" defaultValue={searchParams?.get("type") ?? "job"} /></label>
-          <label className="label">Source<input className="field" name="source" placeholder="LinkedIn, referral, company site" /></label>
-          <label className="label">
-            Status
-            <select className="field" name="status" defaultValue="planning">
-              {statuses.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
-            </select>
-          </label>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="label">Planned date<input className="field" name="planned_application_date" type="date" /></label>
-            <label className="label">Closing date<input className="field" name="closing_date" type="date" /></label>
-            <label className="label">Applied date<input className="field" name="application_date" type="date" /></label>
-            <label className="label">Follow-up date<input className="field" name="follow_up_date" type="date" /></label>
-            <label className="label">Assessment deadline<input className="field" name="assessment_deadline" type="date" /></label>
-            <label className="label">Interview date<input className="field" name="interview_date" type="datetime-local" /></label>
-            <label className="label">Expected response<input className="field" name="expected_response_date" type="date" /></label>
-            <label className="label">Next action date<input className="field" name="next_action_date" type="date" /></label>
+    <div className="pathzy-readable-workspace pathzy-applications-surface grid gap-5">
+        <Card className="pathzy-applications-summary">
+          {celebration ? <p className="pathzy-status-success mb-4 rounded-[16px] border px-4 py-3 text-sm font-bold">{celebration}</p> : null}
+          {error ? <p className="pathzy-status-danger mb-4 rounded-[16px] border px-4 py-3 text-sm">{error}</p> : null}
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="pathzy-eyebrow-accent text-xs font-extrabold uppercase tracking-[0.14em]">Applications</p>
+              <h2 className="mt-2 text-2xl font-black">Your application board</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--text-on-dark-secondary)]">Track every role clearly without turning the page into a form. Add an application when you are ready.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsAddApplicationOpen((current) => !current)}
+              aria-expanded={isAddApplicationOpen}
+              className="pathzy-control-primary inline-flex w-fit items-center justify-center px-5 py-3 text-sm font-extrabold"
+            >
+              {isAddApplicationOpen ? "Close Add Application" : "Add Application"}
+            </button>
           </div>
-          <label className="label">Next Action<input className="field" name="next_action" placeholder="Prepare documents, send follow-up, practise interview" /></label>
-          <label className="label">Follow-up state<input className="field" name="follow_up_state" placeholder="Not due, due today, sent, waiting" /></label>
-          <div className="rounded-[18px] border border-white/10 bg-white/5 p-3">
-            <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-white/42">Contact</p>
-            <div className="mt-3 grid gap-3">
-              <label className="label">Type<select className="field" name="contact_type" defaultValue="recruiter"><option value="recruiter">Recruiter</option><option value="hiring_manager">Hiring manager</option><option value="referral_contact">Referral contact</option><option value="interviewer">Interviewer</option></select></label>
-              <label className="label">Name<input className="field" name="contact_name" /></label>
-              <label className="label">Email<input className="field" name="contact_email" type="email" /></label>
-              <label className="label">Contact notes<textarea className="field" name="contact_notes" /></label>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <SummaryTile label="Active applications" value={summary.activeApplications} />
+            <SummaryTile label="Follow-ups due" value={summary.followUpsDue} />
+            <SummaryTile label="Interviews" value={summary.interviews} />
+            <div className="rounded-[18px] border border-white/10 bg-white/7 p-4">
+              <p className="text-sm font-bold text-[var(--text-on-dark-muted)]">Next Action</p>
+              <strong className="mt-1 block text-base font-black text-[var(--text-on-dark-primary)]">{applications.length ? summary.nextAction.label : "Add your first application"}</strong>
             </div>
           </div>
-          <label className="label">Notes<textarea className="field" name="notes" placeholder="What did you submit? Who should you follow up with?" /></label>
-          <button disabled={busyId === "new"} className="rounded-full blue-purple px-6 py-3 text-sm font-extrabold text-white disabled:opacity-50">
-            {busyId === "new" ? "Saving" : "Add to tracker"}
-          </button>
-        </form>
-      </Card>
-
-      <div className="grid gap-5">
-        <Card>
-          {celebration ? <p className="pathzy-status-success mb-4 rounded-[16px] border px-4 py-3 text-sm font-bold">{celebration}</p> : null}
-          <div className="grid gap-3 sm:grid-cols-4">
-            <div><p className="text-sm text-white/48">Active applications</p><strong className="text-3xl font-black">{summary.activeApplications}</strong></div>
-            <div><p className="text-sm text-white/48">Follow-ups due</p><strong className="text-3xl font-black">{summary.followUpsDue}</strong></div>
-            <div><p className="text-sm text-white/48">Interviews</p><strong className="text-3xl font-black">{summary.interviews}</strong></div>
-            <div><p className="text-sm text-white/48">Next Action</p><strong className="text-base font-black">{summary.nextAction.label}</strong></div>
-          </div>
-          <div className="mt-5"><ProgressBar value={progress} /></div>
+          {applications.length ? (
+            <div className="mt-5 max-w-lg">
+              <div className="mb-2 flex justify-between text-xs font-extrabold uppercase tracking-[0.14em] text-[var(--text-on-dark-muted)]">
+                <span>Tracked progress</span>
+                <span>{progress}%</span>
+              </div>
+              <ProgressBar value={progress} />
+            </div>
+          ) : (
+            <p className="mt-5 rounded-[16px] border border-dashed border-white/14 bg-black/14 p-4 text-sm font-semibold leading-6 text-[var(--text-on-dark-secondary)]">
+              No applications yet. Add a role manually or save a real opportunity when you are ready.
+            </p>
+          )}
         </Card>
 
-        <CareerAnalyticsDashboard
-          analytics={careerAnalytics}
-          activePeriod={analyticsPeriod}
-          onPeriodChange={setAnalyticsPeriod}
-          customStart={analyticsCustomStart}
-          customEnd={analyticsCustomEnd}
-          onCustomStartChange={setAnalyticsCustomStart}
-          onCustomEndChange={setAnalyticsCustomEnd}
-        />
+        {isAddApplicationOpen ? (
+          <Card className="pathzy-add-application-panel">
+            <AddApplicationForm
+              busy={busyId === "new"}
+              status={newApplicationStatus}
+              setStatus={setNewApplicationStatus}
+              showContactFields={showContactFields}
+              setShowContactFields={setShowContactFields}
+              onSubmit={addApplication}
+              initialCompany={searchParams?.get("company") ?? ""}
+              initialRole={searchParams?.get("role") ?? ""}
+              initialType={searchParams?.get("type") ?? "job"}
+              onCancel={() => setIsAddApplicationOpen(false)}
+            />
+          </Card>
+        ) : null}
 
         <Card>
-          <h2 className="text-2xl font-black">Application board</h2>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h2 className="text-2xl font-black">Application board</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-on-dark-secondary)]">Search, filter, update status, and keep private notes in one place.</p>
+            </div>
+            {!applications.length ? (
+              <button type="button" onClick={() => setIsAddApplicationOpen(true)} className="pathzy-dark-control inline-flex w-fit items-center justify-center px-4 py-2 text-sm font-extrabold">
+                Add application
+              </button>
+            ) : null}
+          </div>
           <div className="mt-4 grid gap-3">
             <label className="label">
               Search applications
               <input className="field" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by title, organization, contact or private notes" />
             </label>
-            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Application views">
+            <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Application views">
               {APPLICATION_TRACKER_VIEWS.map((view) => (
                 <button
                   key={view}
@@ -550,7 +592,7 @@ export function EmploymentTrackerClient({
                   role="tab"
                   aria-selected={activeView === view}
                   onClick={() => setActiveView(view)}
-                  className={`rounded-full px-4 py-2 text-xs font-extrabold ${activeView === view ? "blue-purple text-white" : "bg-white/10 text-white/62"}`}
+                  className={`pathzy-dark-control whitespace-nowrap px-4 py-2 text-xs font-extrabold ${activeView === view ? "pathzy-dark-control-active" : ""}`}
                 >
                   {viewLabels[view]}
                 </button>
@@ -681,11 +723,130 @@ export function EmploymentTrackerClient({
               <div className="grid place-items-center rounded-[22px] border border-dashed border-white/14 bg-white/5 p-8 text-center">
                 <h3 className="text-xl font-black">{applications.length ? "No applications match this view." : "No applications yet."}</h3>
                 <p className="mt-2 max-w-md text-sm leading-6 text-white/56">{applications.length ? "Try another view or search term." : "Save one opportunity or add a role manually. Your journey will update as soon as you track progress."}</p>
+                {!applications.length ? (
+                  <button type="button" onClick={() => setIsAddApplicationOpen(true)} className="pathzy-control-primary mt-4 px-5 py-3 text-sm font-extrabold">
+                    Add application
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </div>
         </Card>
+
+        <CareerAnalyticsDashboard
+          analytics={careerAnalytics}
+          activePeriod={analyticsPeriod}
+          onPeriodChange={setAnalyticsPeriod}
+          customStart={analyticsCustomStart}
+          customEnd={analyticsCustomEnd}
+          onCustomStartChange={setAnalyticsCustomStart}
+          onCustomEndChange={setAnalyticsCustomEnd}
+          hasApplications={applications.length > 0}
+        />
+    </div>
+  );
+}
+
+function SummaryTile({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-[18px] border border-white/10 bg-white/7 p-4">
+      <p className="text-sm font-bold text-[var(--text-on-dark-muted)]">{label}</p>
+      <strong className="mt-1 block text-3xl font-black text-[var(--text-on-dark-primary)]">{value}</strong>
+    </div>
+  );
+}
+
+function AddApplicationForm({
+  busy,
+  status,
+  setStatus,
+  showContactFields,
+  setShowContactFields,
+  onSubmit,
+  initialCompany,
+  initialRole,
+  initialType,
+  onCancel
+}: {
+  busy: boolean;
+  status: ApplicationStatus;
+  setStatus: (status: ApplicationStatus) => void;
+  showContactFields: boolean;
+  setShowContactFields: (show: boolean) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  initialCompany: string;
+  initialRole: string;
+  initialType: string;
+  onCancel: () => void;
+}) {
+  const visibleDateFields = dateFieldsForStatus(status);
+
+  return (
+    <div>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="pathzy-eyebrow-accent text-xs font-extrabold uppercase tracking-[0.14em]">Add Application</p>
+          <h2 className="mt-2 text-2xl font-black">Add the essentials first</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-on-dark-secondary)]">Start with the role, company, source, and status. PATHZY will show only the dates that fit this stage.</p>
+        </div>
+        <button type="button" onClick={onCancel} className="pathzy-dark-control w-fit px-4 py-2 text-sm font-extrabold">Close</button>
       </div>
+
+      <form onSubmit={onSubmit} className="mt-5 grid gap-4">
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="label">Company name<input className="field" name="company_name" defaultValue={initialCompany} required /></label>
+          <label className="label">Role<input className="field" name="role" defaultValue={initialRole} required /></label>
+          <label className="label">Opportunity type<input className="field" name="opportunity_type" defaultValue={initialType} /></label>
+          <label className="label">Source<input className="field" name="source" placeholder="LinkedIn, referral, company site" /></label>
+          <label className="label md:col-span-2">
+            Status
+            <select className="field" name="status" value={status} onChange={(event) => setStatus(event.target.value as ApplicationStatus)}>
+              {statuses.map((item) => <option key={item} value={item}>{statusLabel(item)}</option>)}
+            </select>
+          </label>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {visibleDateFields.map((name) => (
+            <label key={name} className="label">
+              {dateFieldLabels[name]}
+              <input className="field" name={name} type={name === "interview_date" ? "datetime-local" : "date"} />
+            </label>
+          ))}
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="label">Next Action<input className="field" name="next_action" placeholder="Prepare documents, send follow-up, practise interview" /></label>
+          <label className="label">Follow-up state<input className="field" name="follow_up_state" placeholder="Not due, due today, sent, waiting" /></label>
+        </div>
+
+        <div className="rounded-[18px] border border-white/10 bg-black/14 p-4">
+          <button
+            type="button"
+            onClick={() => setShowContactFields(!showContactFields)}
+            aria-expanded={showContactFields}
+            className="pathzy-dark-control px-4 py-2 text-sm font-extrabold"
+          >
+            {showContactFields ? "Hide optional contact" : "Add optional contact"}
+          </button>
+          {showContactFields ? (
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <label className="label">Type<select className="field" name="contact_type" defaultValue="recruiter"><option value="recruiter">Recruiter</option><option value="hiring_manager">Hiring manager</option><option value="referral_contact">Referral contact</option><option value="interviewer">Interviewer</option></select></label>
+              <label className="label">Name<input className="field" name="contact_name" /></label>
+              <label className="label">Email<input className="field" name="contact_email" type="email" /></label>
+              <label className="label">Contact notes<textarea className="field" name="contact_notes" /></label>
+            </div>
+          ) : null}
+        </div>
+
+        <label className="label">Private notes<textarea className="field" name="notes" placeholder="What did you submit? Who should you follow up with?" /></label>
+        <div className="flex flex-wrap gap-2">
+          <button disabled={busy} className="pathzy-control-primary px-6 py-3 text-sm font-extrabold disabled:opacity-50">
+            {busy ? "Saving" : "Add to tracker"}
+          </button>
+          <button type="button" onClick={onCancel} className="pathzy-dark-control px-5 py-3 text-sm font-extrabold">Cancel</button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -697,7 +858,8 @@ function CareerAnalyticsDashboard({
   customStart,
   customEnd,
   onCustomStartChange,
-  onCustomEndChange
+  onCustomEndChange,
+  hasApplications
 }: {
   analytics: ReturnType<typeof buildCareerAnalytics>;
   activePeriod: AnalyticsPeriod;
@@ -706,6 +868,7 @@ function CareerAnalyticsDashboard({
   customEnd: string;
   onCustomStartChange: (value: string) => void;
   onCustomEndChange: (value: string) => void;
+  hasApplications: boolean;
 }) {
   const periods: Array<{ key: AnalyticsPeriod; label: string }> = [
     { key: "7d", label: "7 days" },
@@ -725,6 +888,23 @@ function CareerAnalyticsDashboard({
     ["accepted", "Accepted"]
   ] as const;
   const maxFunnel = Math.max(...Object.values(analytics.funnel), 1);
+
+  if (!hasApplications) {
+    return (
+      <div id="career-analytics" className="scroll-mt-28">
+        <Card>
+          <p className="pathzy-eyebrow-accent text-xs font-extrabold uppercase tracking-[0.14em]">Career Analytics</p>
+          <h2 className="mt-2 text-2xl font-black">Application signals will appear here later.</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--text-on-dark-secondary)]">
+            Add your first application and PATHZY will begin showing careful, private job-search patterns. Unknown outcomes are not treated as rejection.
+          </p>
+          <p className="mt-4 rounded-[16px] border border-dashed border-white/14 bg-black/14 p-4 text-sm font-semibold leading-6 text-[var(--text-on-dark-secondary)]">
+            Not Enough Data Yet. One clear analytics state is enough until real tracker data exists.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div id="career-analytics" className="scroll-mt-28">

@@ -11,30 +11,56 @@ function firstText(values: Array<string | undefined>) {
   return values.map((value) => value?.trim()).find(Boolean) ?? "";
 }
 
-function opportunitySearchFromProfile(canonicalProfile: CanonicalProfessionalIdentity) {
+type OpportunitiesSearchParams = {
+  query?: string;
+  location?: string;
+  country?: string;
+  employmentType?: string;
+  workMode?: string;
+  minimumSalary?: string;
+  postedWithin?: string;
+  seniority?: string;
+};
+
+function paramText(value: string | string[] | undefined) {
+  return (Array.isArray(value) ? value[0] : value)?.trim() ?? "";
+}
+
+function opportunitySearchFromProfile(canonicalProfile: CanonicalProfessionalIdentity, params: OpportunitiesSearchParams = {}) {
   return {
-    query: firstText([
+    query: paramText(params.query) || firstText([
       valueText(canonicalProfile.professionalProfile.headline),
       ...canonicalProfile.professionalProfile.targetRoles.map(valueText),
       ...(canonicalProfile.careerPreferences?.targetRoles.map(valueText) ?? []),
       valueText(canonicalProfile.identity.professionalHeadline)
     ]) || "entry level",
-    location: firstText([
+    location: paramText(params.location) || firstText([
       valueText(canonicalProfile.contact.city),
       ...(canonicalProfile.careerPreferences?.preferredLocations.map(valueText) ?? [])
     ]),
-    country: firstText([valueText(canonicalProfile.contact.country)]) || "South Africa"
+    country: paramText(params.country) || firstText([valueText(canonicalProfile.contact.country)]) || "South Africa",
+    filters: {
+      keyword: paramText(params.query),
+      location: paramText(params.location),
+      employmentType: paramText(params.employmentType),
+      workMode: paramText(params.workMode),
+      minimumSalary: paramText(params.minimumSalary),
+      postedWithin: paramText(params.postedWithin),
+      seniority: paramText(params.seniority)
+    }
   };
 }
 
-export default async function OpportunitiesPage() {
+export default async function OpportunitiesPage({ searchParams }: { searchParams?: Promise<OpportunitiesSearchParams> }) {
   const { user, supabase } = await requireAuthenticatedUser("/opportunities");
+  const params = searchParams ? await searchParams : {};
 
   const canonicalProfile = await getOrCreateCanonicalProfile(supabase, user.id);
-  const search = opportunitySearchFromProfile(canonicalProfile);
+  const search = opportunitySearchFromProfile(canonicalProfile, params);
+  const { filters, ...providerSearch } = search;
   const [{ data: actions }, providerResult] = await Promise.all([
     supabase.from("user_opportunity_actions").select("opportunity_id,saved,applied,completed,hidden").eq("user_id", user.id),
-    fetchProductionOpportunities({ ...search, resultsPerPage: 20 })
+    fetchProductionOpportunities({ ...providerSearch, resultsPerPage: 20 })
   ]);
 
   const personalizedOpportunities = personalizeRealOpportunities({
@@ -42,6 +68,13 @@ export default async function OpportunitiesPage() {
     profile: canonicalProfile,
     actions: (actions ?? []) as OpportunityAction[]
   });
+  const pipelineCounts = {
+    raw: providerResult.diagnostics?.rawCount ?? providerResult.opportunities.length,
+    normalized: providerResult.diagnostics?.normalizedCount ?? providerResult.opportunities.length,
+    allJobs: personalizedOpportunities.length,
+    recommended: personalizedOpportunities.filter((opportunity) => opportunity.match.recommendation === "WORTH_APPLYING").length,
+    nearReach: personalizedOpportunities.filter((opportunity) => opportunity.match.recommendation === "PREPARE_FIRST" || opportunity.match.recommendation === "APPLY_AFTER_CHECKING").length
+  };
   let jobIntelligence: Record<string, JobMatchAnalysis> = {};
 
   try {
@@ -65,10 +98,10 @@ export default async function OpportunitiesPage() {
 
   return (
     <div className="container page-pad">
-      <PageHeader eyebrow="Find Opportunities" title="Find chances that match your career plan.">
-        PATHZY brings in real vacancies, then compares them with your confirmed Professional Identity before you decide what to do next.
+      <PageHeader eyebrow="Find Opportunities" title="Find opportunities that fit where you're going.">
+        PATHZY compares real vacancies with your Professional Identity, career direction and employment preferences before you decide what to do next.
       </PageHeader>
-      <OpportunitiesHub initialOpportunities={personalizedOpportunities} initialJobIntelligence={jobIntelligence} providerStatus={providerResult.status} />
+      <OpportunitiesHub initialOpportunities={personalizedOpportunities} initialJobIntelligence={jobIntelligence} providerStatus={providerResult.status} initialFilters={filters} pipelineCounts={pipelineCounts} />
     </div>
   );
 }

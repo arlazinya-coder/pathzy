@@ -8,9 +8,20 @@ export type JobProviderSearchInput = {
   resultsPerPage?: number;
 };
 
+export type JobProviderDiagnostics = {
+  country: string;
+  query: string;
+  location: string;
+  requestUrl: string;
+  responseStatus?: number;
+  rawCount: number;
+  normalizedCount: number;
+};
+
 export type JobProviderSearchResult = {
   opportunities: Opportunity[];
   status: JobProviderStatus;
+  diagnostics?: JobProviderDiagnostics;
 };
 
 export type JobProvider = {
