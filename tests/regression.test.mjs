@@ -30,6 +30,8 @@ const onboardingFlow = readFileSync("components/onboarding/onboarding-flow.tsx",
 const supabaseMiddleware = readFileSync("lib/supabase/middleware.ts", "utf8");
 const rootLayout = readFileSync("app/layout.tsx", "utf8");
 const appGlobals = readFileSync("app/globals.css", "utf8");
+const envExample = readFileSync(".env.example", "utf8");
+const gitignore = readFileSync(".gitignore", "utf8");
 const roadmapLayout = readFileSync("app/roadmap/layout.tsx", "utf8");
 const professionalIdentityLayout = readFileSync("app/professional-identity/layout.tsx", "utf8");
 const opportunitiesLayout = readFileSync("app/opportunities/layout.tsx", "utf8");
@@ -3978,8 +3980,13 @@ assert.match(opportunitiesTypes, /export type NormalizedOpportunity = Opportunit
 assert.match(opportunitiesTypes, /remoteType: "REMOTE" \| "HYBRID" \| "ON_SITE" \| "UNKNOWN";[\s\S]*responsibilities: string\[];[\s\S]*requirements: string\[];[\s\S]*requiredSkills: string\[];[\s\S]*preferredSkills: string\[];/, "Normalized opportunities must preserve structured requirements and work arrangement.");
 assert.match(opportunitiesTypes, /status: "ACTIVE" \| "CLOSING_SOON" \| "EXPIRED" \| "UNKNOWN";/, "Opportunity freshness must use the canonical uppercase status model.");
 assert.match(opportunitiesTypes, /OpportunityMatchExplanation[\s\S]*suitabilityLabel[\s\S]*eligibilityStatus[\s\S]*unknowns[\s\S]*recommendation/, "Opportunity matching must expose suitability, eligibility and unknown information separately.");
+assert.match(envExample, /^ADZUNA_APP_ID=$/m, "Adzuna app id must be documented as an empty server-side environment variable.");
+assert.match(envExample, /^ADZUNA_APP_KEY=$/m, "Adzuna app key must be documented as an empty server-side environment variable.");
+assert.match(gitignore, /^\.env\.local\s*$/m, ".env.local must remain ignored so local Adzuna secrets cannot be committed.");
+assert.match(gitignore, /^\.env\*\.local\s*$/m, ".env*.local must remain ignored so environment-specific local secrets cannot be committed.");
 assert.match(adzunaProviderSource, /process\.env\.ADZUNA_APP_ID[\s\S]*process\.env\.ADZUNA_APP_KEY/, "Adzuna credentials must be read from server environment variables.");
 assert.doesNotMatch(adzunaProviderSource + opportunitiesPage + opportunitiesHub, /NEXT_PUBLIC_ADZUNA|ADZUNA_APP_KEY[^;\n]*client/i, "Adzuna credentials must not be exposed through public client variables.");
+assert.doesNotMatch(envExample + adzunaProviderSource + opportunitiesPage + opportunitiesHub, /NEXT_PUBLIC_ADZUNA_APP_ID|NEXT_PUBLIC_ADZUNA_APP_KEY/, "Adzuna credentials must never use browser-exposed NEXT_PUBLIC variables.");
 assert.match(adzunaProviderSource, /https:\/\/api\.adzuna\.com\/v1\/api\/jobs[\s\S]*\/\$\{country\}\/search\/\$\{page\}[\s\S]*app_id[\s\S]*app_key/, "Adzuna provider must call the official search endpoint with app_id and app_key.");
 assert.match(adzunaProviderSource, /const diagnosticUrl = url\.toString\(\);[\s\S]*url\.searchParams\.set\("app_id", this\.appId\);[\s\S]*url\.searchParams\.set\("app_key", this\.appKey\);/, "Adzuna diagnostics must capture a request URL before credentials are attached.");
 assert.match(jobProviderServerSource, /getProductionJobProvider[\s\S]*new AdzunaJobProvider\(\)/, "The production job provider must be selected behind a server provider factory.");
@@ -4089,8 +4096,17 @@ assert.equal(adzunaSearchResult.opportunities[0].remoteType, "ON_SITE", "Provide
 assert.ok(adzunaSearchResult.opportunities[0].requiredSkills.length >= 1, "Provider descriptions must produce structured requirement signals where possible.");
 const invalidAdzunaResult = await new adzunaProviderRuntime.AdzunaJobProvider("app-id", "app-key", async () => ({ ok: true, status: 200, json: async () => ({}) })).search({});
 assert.equal(invalidAdzunaResult.status.status, "invalid_provider_response", "Invalid provider responses must not create fake opportunities.");
-const unavailableAdzunaResult = await new adzunaProviderRuntime.AdzunaJobProvider("", "", async () => ({ ok: true, status: 200, json: async () => ({ results: [] }) })).search({});
+assert.doesNotMatch(JSON.stringify(adzunaSearchResult.diagnostics), /app-id|app-key/, "Provider diagnostics returned to the browser must not contain Adzuna credential values.");
+assert.doesNotMatch(JSON.stringify(adzunaSearchResult.status), /app-id|app-key/, "Provider status returned to the browser must not contain Adzuna credential values.");
+let missingCredentialFetchCalled = false;
+const unavailableAdzunaResult = await new adzunaProviderRuntime.AdzunaJobProvider("", "", async () => {
+  missingCredentialFetchCalled = true;
+  return { ok: true, status: 200, json: async () => ({ results: [] }) };
+}).search({});
 assert.equal(unavailableAdzunaResult.status.status, "provider_unavailable", "Missing Adzuna server credentials must produce a provider unavailable state.");
+assert.equal(missingCredentialFetchCalled, false, "Missing Adzuna credentials must stop before any provider request is attempted.");
+assert.equal(unavailableAdzunaResult.opportunities.length, 0, "Missing Adzuna credentials must not activate fake or static opportunity fallback data.");
+assert.doesNotMatch(JSON.stringify(unavailableAdzunaResult), /pathzy_static_catalog|Junior Product Designer|Remote Digital Marketing Assistant/, "Provider-unavailable results must not return legacy static opportunity records.");
 assert.match(opportunitiesHub, /JobIntelligencePanel/, "Opportunities UI must display more than a single match percentage.");
 assert.match(opportunitiesHub, /User reviews before applying/, "Opportunities UI must keep the user in control.");
 assert.match(opportunitiesHub, /opportunities\.import\.title/, "Opportunities UI must expose the Phase 8A job import flow.");
