@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathzyLanguage } from "@/components/language/language-selector";
 import { Card, ProgressBar } from "@/components/ui";
 import type { SmartApplicationRecord } from "@/lib/applications/smart-application.types";
 import { jobIntelligenceCopy, targetedDocumentsCopy } from "@/lib/job-intelligence/job-intelligence-translations";
 import { type Phase2TranslationKey, pathzyPhase2T } from "@/lib/language/pathzy-i18n";
-import { appRoutes } from "@/lib/navigation/routes";
+import { appRoutes, routeBuilders } from "@/lib/navigation/routes";
 import type {
   JobImportPreliminaryDetails,
   JobImportRecord,
@@ -21,10 +21,10 @@ import type {
   StructuredJobResponsibility
 } from "@/lib/job-intelligence/job-intelligence.types";
 import { getOpportunityStats } from "@/lib/opportunities/data";
+import { opportunityCountForTab, opportunityHasMissingLocationReview, opportunityTabMatches, selectInitialOpportunityTab, type OpportunityTab } from "@/lib/opportunities/opportunity-tabs";
 import type { JobProviderStatus, OpportunityAction, OpportunityEligibilityStatus, OpportunitySuitabilityLabel, PersonalizedOpportunity } from "@/lib/opportunities/types";
 import type { SupportedLanguageCode } from "@/lib/language/language-preferences";
 
-type OpportunityTab = "recommended" | "near" | "saved" | "all";
 type PostedWithinFilter = "any" | "7" | "30";
 
 type OpportunityFilterState = {
@@ -70,13 +70,6 @@ function eligibilityLabel(status: OpportunityEligibilityStatus, t: OpportunityT)
     BLOCKED: t("opportunities.eligibility.blocked"),
     UNKNOWN: t("opportunities.eligibility.unknown")
   }[status];
-}
-
-function opportunityTabMatches(opportunity: PersonalizedOpportunity, tab: OpportunityTab) {
-  if (tab === "all") return true;
-  if (tab === "saved") return opportunity.action.saved;
-  if (tab === "near") return opportunity.match.recommendation === "PREPARE_FIRST" || opportunity.match.recommendation === "APPLY_AFTER_CHECKING";
-  return opportunity.match.recommendation === "WORTH_APPLYING";
 }
 
 function displayDate(value: string | undefined, language: SupportedLanguageCode, unknownLabel: string) {
@@ -174,7 +167,7 @@ export function OpportunitiesHub({
   const { language } = usePathzyLanguage();
   const t: OpportunityT = (key) => pathzyPhase2T(language, key);
   const [opportunities, setOpportunities] = useState(initialOpportunities);
-  const [activeTab, setActiveTab] = useState<OpportunityTab>("recommended");
+  const [activeTab, setActiveTab] = useState<OpportunityTab>(() => selectInitialOpportunityTab(initialOpportunities));
   const [expandedId, setExpandedId] = useState("");
   const [busyId, setBusyId] = useState("");
   const [preparingId, setPreparingId] = useState("");
@@ -213,6 +206,12 @@ export function OpportunitiesHub({
   const [smartApplication, setSmartApplication] = useState<SmartApplicationRecord | null>(null);
   const [smartApplicationStatus, setSmartApplicationStatus] = useState<"idle" | "processing" | "ready" | "failed">("idle");
   const [smartApplicationMessage, setSmartApplicationMessage] = useState("");
+
+  useEffect(() => {
+    setOpportunities(initialOpportunities);
+    setActiveTab(selectInitialOpportunityTab(initialOpportunities));
+  }, [initialOpportunities]);
+
   const stats = useMemo(() => getOpportunityStats(opportunities), [opportunities]);
   const hasOpportunityProgress = stats.saved + stats.applied + stats.completed > 0;
   const filterOptions = useMemo(
@@ -231,6 +230,9 @@ export function OpportunitiesHub({
     () => filteredOpportunities.filter((item) => opportunityTabMatches(item, activeTab)),
     [activeTab, filteredOpportunities]
   );
+  const recommendedCount = useMemo(() => opportunityCountForTab(filteredOpportunities, "recommended"), [filteredOpportunities]);
+  const fallbackTabNotice = providerStatus?.status === "available" && filteredOpportunities.length > 0 && recommendedCount === 0 && activeTab !== "recommended";
+  const missingLocationNotice = fallbackTabNotice && opportunityHasMissingLocationReview(filteredOpportunities);
   const bestMatch = useMemo(
     () => filteredOpportunities.find((item) => item.match.suitabilityLabel === "STRONG_MATCH" && !item.action.hidden),
     [filteredOpportunities]
@@ -608,6 +610,16 @@ export function OpportunitiesHub({
             </button>
           ))}
         </div>
+        {fallbackTabNotice ? (
+          <div className="pathzy-status-info mt-4 rounded-[18px] border px-4 py-3 text-sm font-semibold">
+            <p>{t("opportunities.recommendationFallback.message")}</p>
+            {missingLocationNotice ? (
+              <Link href={routeBuilders.professionalIdentitySection("location", appRoutes.opportunities)} className="mt-2 inline-flex font-extrabold text-[var(--brand-primary)] underline-offset-4 hover:underline">
+                {t("opportunities.recommendationFallback.location")}
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="mt-5 grid grid-cols-3 gap-3 md:max-w-md">
           <div className="rounded-[18px] border border-white/10 bg-white/7 p-3"><p className="text-xs font-bold text-white/45">{t("opportunities.stats.saved")}</p><strong className="mt-1 block text-2xl font-black">{stats.saved}</strong></div>

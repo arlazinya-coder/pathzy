@@ -356,6 +356,7 @@ const opportunitiesPage = readFileSync("app/opportunities/page.tsx", "utf8");
 const opportunitiesHub = readFileSync("components/opportunities/opportunities-hub.tsx", "utf8");
 const opportunitiesTypes = readFileSync("lib/opportunities/types.ts", "utf8");
 const opportunitiesMatching = readFileSync("lib/opportunities/matching.ts", "utf8");
+const opportunityTabsSource = readFileSync("lib/opportunities/opportunity-tabs.ts", "utf8");
 const opportunitiesPrepareApi = readFileSync("app/api/opportunities/prepare/route.ts", "utf8");
 const jobProviderTypes = readFileSync("lib/opportunities/providers/types.ts", "utf8");
 const adzunaProviderSource = readFileSync("lib/opportunities/providers/adzuna-provider.ts", "utf8");
@@ -446,6 +447,7 @@ const errorNormalizationRuntime = loadProductionTsModule("lib/errors/error-norma
 const authorizationRuntime = loadProductionTsModule("lib/access/authorization.ts");
 const authSessionRuntime = loadProductionTsModule("lib/auth/session-safety.ts");
 const currentSituationRuntime = loadProductionTsModule("lib/professional-identity/current-situation.ts");
+const canonicalProfileServiceRuntime = loadProductionTsModule("lib/canonical-profile/canonical-profile-service.ts");
 const professionalIdentityCompletionRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-completion.ts");
 const professionalIdentityExperienceRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-experience.ts");
 const professionalIdentityCvModelRuntime = loadProductionTsModule("lib/professional-identity/professional-identity-cv-model.ts");
@@ -4012,7 +4014,8 @@ assert.match(opportunitiesHub, /hasOpportunityProgress[\s\S]*opportunities\.prog
 assert.match(opportunitiesHub, /pathzy-readable-workspace/, "Jobs workspace must inherit the shared dark-surface readability system.");
 assert.match(pathzyI18n, /PATHZY never substitutes fake vacancies[\s\S]*No fake vacancies are shown/, "Opportunities UI must never substitute fake vacancies.");
 assert.match(opportunitiesHub, /opportunities\.tabs\.recommended[\s\S]*opportunities\.tabs\.near[\s\S]*opportunities\.tabs\.saved[\s\S]*opportunities\.tabs\.all/, "Jobs page must expose the simple Recommended, Near Reach, Saved and All Jobs tabs.");
-assert.match(opportunitiesHub, /if \(tab === "all"\) return true;/, "All Jobs must not depend on match quality.");
+assert.match(opportunityTabsSource, /if \(tab === "all"\) return true;/, "All Jobs must not depend on match quality.");
+assert.match(opportunitiesHub, /selectInitialOpportunityTab\(initialOpportunities\)/, "Jobs page must select a non-empty initial tab when real opportunities exist outside Recommended.");
 assert.match(opportunitiesHub, /role="tab"[\s\S]*aria-selected=\{activeTab === tab\.id\}[\s\S]*pathzy-dark-control/, "Jobs tabs must use readable accessible dark-surface controls.");
 assert.match(opportunitiesHub, /method="GET"[\s\S]*action=\{appRoutes\.opportunities\}[\s\S]*opportunities\.filters\.keyword[\s\S]*name="query"[\s\S]*opportunities\.filters\.location[\s\S]*name="location"[\s\S]*opportunities\.filters\.search[\s\S]*opportunities\.filters\.advanced[\s\S]*opportunities\.filters\.employmentType[\s\S]*opportunities\.filters\.workMode[\s\S]*opportunities\.filters\.salaryFrom[\s\S]*opportunities\.filters\.datePosted[\s\S]*opportunities\.filters\.seniority/, "Jobs page must expose server-backed search with progressive advanced filters.");
 assert.match(opportunitiesHub, /opportunities\.bestMatch[\s\S]*opportunities\.actions\.view/, "Jobs page must identify a best match without relying on fake precision.");
@@ -4030,6 +4033,8 @@ assert.match(opportunitiesPrepareApi, /pathzy_static_catalog[\s\S]*Only real or 
 assert.match(opportunitiesPrepareApi, /coverLetterUrl: routeBuilders\.coverLetterWorkspace\(\{ jobId: jobImport\.id \}\)/, "Prepare Application must route to Cover Letter with the saved job context.");
 assert.match(professionalCoverLetterPage, /loadJobImportContext[\s\S]*from\("job_imports"\)[\s\S]*requirements: jsonList\(inspection\.requirements\)[\s\S]*responsibilities: jsonList\(inspection\.responsibilities\)/, "Cover Letter must resolve prepared Opportunity job imports automatically.");
 const adzunaProviderRuntime = loadProductionTsModule("lib/opportunities/providers/adzuna-provider.ts");
+const opportunityTabsRuntime = loadProductionTsModule("lib/opportunities/opportunity-tabs.ts");
+const opportunitiesMatchingRuntime = loadProductionTsModule("lib/opportunities/matching.ts");
 let capturedAdzunaUrl = "";
 const adzunaProvider = new adzunaProviderRuntime.AdzunaJobProvider("app-id", "app-key", async (url) => {
   capturedAdzunaUrl = url.toString();
@@ -4107,6 +4112,161 @@ assert.equal(unavailableAdzunaResult.status.status, "provider_unavailable", "Mis
 assert.equal(missingCredentialFetchCalled, false, "Missing Adzuna credentials must stop before any provider request is attempted.");
 assert.equal(unavailableAdzunaResult.opportunities.length, 0, "Missing Adzuna credentials must not activate fake or static opportunity fallback data.");
 assert.doesNotMatch(JSON.stringify(unavailableAdzunaResult), /pathzy_static_catalog|Junior Product Designer|Remote Digital Marketing Assistant/, "Provider-unavailable results must not return legacy static opportunity records.");
+const opportunityForTab = (id, recommendation, unknowns = []) => ({
+  id,
+  action: { saved: false, applied: false, completed: false, hidden: false },
+  match: { recommendation, unknowns }
+});
+const recommendedDefaultCase = [
+  ...Array.from({ length: 17 }, (_, index) => opportunityForTab(`worth-${index}`, "WORTH_APPLYING")),
+  ...Array.from({ length: 3 }, (_, index) => opportunityForTab(`check-${index}`, "APPLY_AFTER_CHECKING", ["PATHZY needs your location or remote-work preference."]))
+];
+assert.equal(opportunityTabsRuntime.selectInitialOpportunityTab(recommendedDefaultCase), "recommended", "Recommended must open first when at least one real opportunity is worth applying for.");
+assert.equal(opportunityTabsRuntime.opportunityCountForTab(recommendedDefaultCase, "recommended"), 17, "Recommended must keep only WORTH_APPLYING jobs.");
+assert.equal(opportunityTabsRuntime.opportunityCountForTab(recommendedDefaultCase, "near"), 3, "Near Reach must preserve APPLY_AFTER_CHECKING jobs without relabelling them as recommended.");
+const missingLocationNearReachCase = Array.from({ length: 20 }, (_, index) => opportunityForTab(`missing-location-${index}`, "APPLY_AFTER_CHECKING", ["PATHZY needs your location or remote-work preference."]));
+assert.equal(opportunityTabsRuntime.selectInitialOpportunityTab(missingLocationNearReachCase), "near", "Older accounts with real jobs but no Recommended jobs must open Near Reach instead of an empty Recommended tab.");
+assert.equal(opportunityTabsRuntime.opportunityCountForTab(missingLocationNearReachCase, "near"), 20, "Near Reach must keep every real APPLY_AFTER_CHECKING job visible.");
+assert.equal(missingLocationNearReachCase.every((opportunity) => opportunity.match.recommendation === "APPLY_AFTER_CHECKING"), true, "The fallback tab must not weaken matching by reclassifying uncertain jobs.");
+assert.equal(opportunityTabsRuntime.opportunityHasMissingLocationReview(missingLocationNearReachCase), true, "Missing-location uncertainty must remain visible and actionable.");
+assert.doesNotMatch(JSON.stringify(missingLocationNearReachCase), /pathzy_static_catalog|Junior Product Designer|Remote Digital Marketing Assistant/, "The non-empty default tab must not introduce fake or static fallback jobs.");
+assert.equal(opportunityTabsRuntime.selectInitialOpportunityTab([]), "recommended", "A genuine provider zero-result response must remain a true zero-jobs state.");
+
+const emptyCanonicalProfile = {
+  id: "profile-old",
+  userId: "user-old",
+  version: 1,
+  status: "draft",
+  identity: {},
+  contact: { otherLinks: [] },
+  professionalProfile: { targetRoles: [], industries: [], workPreferences: [] },
+  employment: [],
+  education: [],
+  certifications: [],
+  licences: [],
+  skills: [],
+  languages: [],
+  projects: [],
+  achievements: [],
+  awards: [],
+  memberships: [],
+  publications: [],
+  volunteering: [],
+  references: [],
+  careerPreferences: { targetRoles: [], targetIndustries: [], preferredLocations: [] },
+  careerTimeline: [],
+  completion: { percentage: 0, missingSections: [], reviewNeededCount: 0 },
+  confidence: { overall: 0, identity: 0, contact: 0, employment: 0, education: 0, skills: 0, consistency: 1 },
+  unresolvedIssues: [],
+  createdAt: "2026-08-01T00:00:00.000Z",
+  updatedAt: "2026-08-01T00:00:00.000Z"
+};
+const legacyLocationHydration = canonicalProfileServiceRuntime.profileWithLegacyLocationFallback(
+  emptyCanonicalProfile,
+  { city: "Johannesburg", country: "South Africa" },
+  "2026-08-31T10:00:00.000Z"
+);
+assert.equal(legacyLocationHydration.changed, true, "Older canonical profiles missing contact location must hydrate from valid legacy location data.");
+assert.equal(JSON.stringify(legacyLocationHydration.hydratedFields), JSON.stringify(["city", "country"]), "Legacy location hydration must report the exact fields it backfilled.");
+assert.equal(legacyLocationHydration.profile.contact.city.value, "Johannesburg", "Legacy Johannesburg city must hydrate canonical contact.city.");
+assert.equal(legacyLocationHydration.profile.contact.country.value, "South Africa", "Legacy South Africa country must hydrate canonical contact.country.");
+assert.equal(legacyLocationHydration.profile.careerPreferences.preferredLocations.length, 0, "Legacy contact hydration must not invent career-preference filters.");
+const idempotentHydration = canonicalProfileServiceRuntime.profileWithLegacyLocationFallback(
+  legacyLocationHydration.profile,
+  { city: "Johannesburg", country: "South Africa" },
+  "2026-08-31T10:05:00.000Z"
+);
+assert.equal(idempotentHydration.changed, false, "Legacy location hydration must be idempotent after canonical contact fields exist.");
+const canonicalWinsHydration = canonicalProfileServiceRuntime.profileWithLegacyLocationFallback(
+  legacyLocationHydration.profile,
+  { city: "Pretoria", country: "South Africa" },
+  "2026-08-31T10:10:00.000Z"
+);
+assert.equal(canonicalWinsHydration.changed, false, "Existing canonical location must not be overwritten by older legacy profile fields.");
+assert.equal(canonicalWinsHydration.profile.contact.city.value, "Johannesburg", "Canonical saved location must remain authoritative for matching.");
+const opportunityCanonicalValue = (value) => ({
+  value,
+  status: "confirmed",
+  confidence: 0.98,
+  sourceReferences: [],
+  createdAt: "2026-08-31T10:00:00.000Z",
+  updatedAt: "2026-08-31T10:00:00.000Z"
+});
+const matchingProfileBase = {
+  ...emptyCanonicalProfile,
+  professionalProfile: {
+    targetRoles: [opportunityCanonicalValue("IT Support")],
+    industries: [],
+    workPreferences: []
+  },
+  skills: [{ canonicalName: opportunityCanonicalValue("Microsoft Excel") }],
+  employment: [
+    {
+      canonicalTitle: opportunityCanonicalValue("IT Support Technician"),
+      employer: opportunityCanonicalValue("PATHZY"),
+      responsibilities: [{ statement: opportunityCanonicalValue("Microsoft Excel reporting and user support") }],
+      achievements: []
+    }
+  ]
+};
+const realJohannesburgOpportunity = {
+  id: "adzuna:za:regression-it-support",
+  source: "adzuna",
+  externalId: "regression-it-support",
+  sourceUrl: "https://www.adzuna.co.za/details/regression-it-support",
+  applicationUrl: "https://www.adzuna.co.za/details/regression-it-support",
+  title: "IT Support Technician",
+  employer: "Example Employer",
+  provider: "Example Employer",
+  description: "Provide IT Support and Microsoft Excel reporting for users in Johannesburg.",
+  category: "Recommended jobs",
+  country: "ZA",
+  location: "Johannesburg, Gauteng",
+  remoteType: "ON_SITE",
+  mode: "On-site",
+  employmentType: "Full-time",
+  lastVerifiedAt: "2026-08-31T10:00:00.000Z",
+  responsibilities: ["Provide IT Support"],
+  requirements: ["Microsoft Excel"],
+  requiredSkills: ["Microsoft Excel"],
+  preferredSkills: [],
+  requiredEducation: [],
+  preferredEducation: [],
+  licences: [],
+  certifications: [],
+  languages: [],
+  status: "ACTIVE",
+  level: "Intermediate",
+  deadline: "Check advert",
+  careerTags: ["IT Support"],
+  skillTags: ["Microsoft Excel"],
+  outcome: "Job application",
+  fitReason: "Real vacancy from Adzuna."
+};
+const missingLocationMatchedJobs = opportunitiesMatchingRuntime.personalizeRealOpportunities({
+  opportunities: [realJohannesburgOpportunity],
+  profile: matchingProfileBase,
+  actions: [],
+  now: new Date("2026-08-31T10:00:00.000Z")
+});
+assert.equal(missingLocationMatchedJobs[0].match.recommendation, "APPLY_AFTER_CHECKING", "Missing canonical location must preserve check-needed matching instead of falsely recommending the job.");
+assert.equal(missingLocationMatchedJobs[0].match.unknowns.some((unknown) => /location/i.test(unknown)), true, "Missing canonical location must remain visible in matching unknowns.");
+const completeSouthAfricanProfile = {
+  ...matchingProfileBase,
+  contact: {
+    ...matchingProfileBase.contact,
+    city: opportunityCanonicalValue("Johannesburg"),
+    country: opportunityCanonicalValue("South Africa")
+  }
+};
+const completeProfileMatchedJobs = opportunitiesMatchingRuntime.personalizeRealOpportunities({
+  opportunities: [realJohannesburgOpportunity],
+  profile: completeSouthAfricanProfile,
+  actions: [],
+  now: new Date("2026-08-31T10:00:00.000Z")
+});
+assert.equal(completeProfileMatchedJobs[0].match.recommendation, "WORTH_APPLYING", "Complete South African canonical city/country must allow matching to recommend a real compatible Adzuna job.");
+assert.equal(completeProfileMatchedJobs[0].match.unknowns.some((unknown) => /location/i.test(unknown)), false, "Canonical city/country must clear the missing-location uncertainty for Opportunities matching.");
 assert.match(opportunitiesHub, /JobIntelligencePanel/, "Opportunities UI must display more than a single match percentage.");
 assert.match(opportunitiesHub, /User reviews before applying/, "Opportunities UI must keep the user in control.");
 assert.match(opportunitiesHub, /opportunities\.import\.title/, "Opportunities UI must expose the Phase 8A job import flow.");

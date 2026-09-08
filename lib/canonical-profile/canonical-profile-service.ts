@@ -143,6 +143,37 @@ function profileFromLegacyRow(row: any, userId: string, profileId: string, creat
   return profile;
 }
 
+export function profileWithLegacyLocationFallback(
+  profile: CanonicalProfessionalIdentity,
+  legacyProfile: { city?: unknown; country?: unknown } | null | undefined,
+  now = canonicalNow()
+): { profile: CanonicalProfessionalIdentity; changed: boolean; hydratedFields: Array<"city" | "country"> } {
+  const missingCity = !valueText(profile.contact.city);
+  const missingCountry = !valueText(profile.contact.country);
+  const legacyCity = cleanText(legacyProfile?.city);
+  const legacyCountry = cleanText(legacyProfile?.country);
+  const hydratedFields: Array<"city" | "country"> = [];
+
+  if ((!missingCity || !legacyCity) && (!missingCountry || !legacyCountry)) {
+    return { profile, changed: false, hydratedFields };
+  }
+
+  const contact = { ...profile.contact, otherLinks: profile.contact.otherLinks ?? [] };
+
+  if (missingCity && legacyCity) {
+    contact.city = createCanonicalValue(legacyCity, { status: "provisionally_accepted", confidence: 0.8, sourceReferences: legacySource(legacyCity), createdAt: now, updatedAt: now });
+    hydratedFields.push("city");
+  }
+
+  if (missingCountry && legacyCountry) {
+    contact.country = createCanonicalValue(legacyCountry, { status: "provisionally_accepted", confidence: 0.8, sourceReferences: legacySource(legacyCountry), createdAt: now, updatedAt: now });
+    hydratedFields.push("country");
+  }
+
+  const nextProfile = { ...profile, contact, updatedAt: now };
+  return { profile: nextProfile, changed: hydratedFields.length > 0, hydratedFields };
+}
+
 function normalizeProfileRow(row: any, employments: any[] = [], education: any[] = [], skills: any[] = [], timeline: any[] = []): CanonicalProfessionalIdentity {
   const createdAt = row.created_at ?? canonicalNow();
   const profile = emptyIdentity(row.user_id, row.id, createdAt);
@@ -161,6 +192,13 @@ function normalizeProfileRow(row: any, employments: any[] = [], education: any[]
     industries: professionalProfile.industries ?? [],
     workPreferences: professionalProfile.workPreferences ?? []
   };
+  const careerPreferences = (row.career_preferences_json ?? {}) as Partial<NonNullable<CanonicalProfessionalIdentity["careerPreferences"]>>;
+  profile.careerPreferences = {
+    ...careerPreferences,
+    targetRoles: careerPreferences?.targetRoles ?? [],
+    targetIndustries: careerPreferences?.targetIndustries ?? [],
+    preferredLocations: careerPreferences?.preferredLocations ?? []
+  };
   profile.employment = employments.map((item) => (item.entity_json ?? item.metadata_json ?? {}) as CanonicalProfessionalIdentity["employment"][number]);
   profile.education = education.map((item) => (item.entity_json ?? item.metadata_json ?? {}) as CanonicalProfessionalIdentity["education"][number]);
   profile.skills = skills.map((item) => (item.entity_json ?? item.metadata_json ?? {}) as CanonicalProfessionalIdentity["skills"][number]);
@@ -171,6 +209,56 @@ function normalizeProfileRow(row: any, employments: any[] = [], education: any[]
   profile.updatedAt = row.updated_at ?? createdAt;
   profile.lastConfirmedAt = row.last_confirmed_at ?? undefined;
   return profile;
+}
+
+async function hydrateMissingLegacyContactLocation(supabase: Supabase, profile: CanonicalProfessionalIdentity): Promise<CanonicalProfessionalIdentity> {
+  if (valueText(profile.contact.city) && valueText(profile.contact.country)) return profile;
+
+  const { data: legacyProfile, error } = await supabase
+    .from("user_profiles")
+    .select("city,country")
+    .or(`user_id.eq.${profile.userId},id.eq.${profile.userId}`)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("[canonical-profile] legacy location hydration skipped", {
+      userId: profile.userId,
+      code: error.code ?? "unknown",
+      message: error.message ?? "Unable to read legacy profile location."
+    });
+    return profile;
+  }
+
+  const hydrated = profileWithLegacyLocationFallback(profile, legacyProfile);
+  if (!hydrated.changed) return profile;
+
+  const quality = {
+    completion: calculateCanonicalCompletion(hydrated.profile),
+    confidence: calculateCanonicalConfidence(hydrated.profile)
+  };
+
+  const { error: updateError } = await supabase
+    .from("canonical_professional_profiles")
+    .update({
+      contact_json: hydrated.profile.contact,
+      completion_percentage: quality.completion.percentage,
+      completion_json: quality.completion,
+      overall_confidence: quality.confidence.overall,
+      confidence_json: quality.confidence,
+      updated_at: hydrated.profile.updatedAt
+    })
+    .eq("user_id", profile.userId)
+    .eq("id", profile.id);
+
+  if (updateError) {
+    console.warn("[canonical-profile] legacy location hydration was read-through only", {
+      userId: profile.userId,
+      code: updateError.code ?? "unknown",
+      message: updateError.message ?? "Unable to persist legacy profile location."
+    });
+  }
+
+  return { ...hydrated.profile, completion: quality.completion, confidence: quality.confidence };
 }
 
 async function persistProfileSnapshot(supabase: Supabase, profile: CanonicalProfessionalIdentity) {
@@ -216,7 +304,7 @@ export async function getOrCreateCanonicalProfile(supabase: Supabase, userId: st
       supabase.from("canonical_skills").select("*").eq("user_id", userId).eq("profile_id", existing.id).is("archived_at", null).order("canonical_name", { ascending: true }),
       supabase.from("canonical_timeline_events").select("*").eq("user_id", userId).eq("profile_id", existing.id).order("sort_date", { ascending: true })
     ]);
-    return normalizeProfileRow(existing, employments ?? [], education ?? [], skills ?? [], timeline ?? []);
+    return hydrateMissingLegacyContactLocation(supabase, normalizeProfileRow(existing, employments ?? [], education ?? [], skills ?? [], timeline ?? []));
   }
 
   const { data: legacyProfile } = await supabase
