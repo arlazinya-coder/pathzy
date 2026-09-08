@@ -6,5 +6,31 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"]
+  matcher: [
+    "/login",
+    "/register",
+    "/signup",
+    "/auth/reset-password",
+    "/auth/update-password",
+    "/dashboard/:path*",
+    "/onboarding/:path*",
+    "/discovery/:path*",
+    "/roadmap/:path*",
+    "/missions/:path*",
+    "/achievements/:path*",
+    "/mentor/:path*",
+    "/skills/:path*",
+    "/progress/:path*",
+    "/billing/:path*",
+    "/settings/:path*",
+    "/opportunities/:path*",
+    "/applications/:path*",
+    "/employment-center/:path*",
+    "/professional-identity/:path*",
+    "/cv-builder/:path*",
+    "/employment-tracker/:path*",
+    "/interview/:path*",
+    "/profile/:path*",
+    "/founding-members/:path*"
+  ]
 };

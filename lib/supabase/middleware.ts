@@ -5,12 +5,28 @@ import { appRoutes, isAuthRoute, isProtectedRoute } from "@/lib/navigation/route
 import { redirectToLogin } from "@/lib/navigation/redirects";
 import { isSupabaseConfigured, supabaseAnonKey, supabaseUrl } from "@/lib/supabase/config";
 
+const STATIC_FILE_EXTENSION_PATTERN = /\.(?:avif|bmp|css|csv|gif|ico|jpeg|jpg|js|json|map|otf|pdf|png|svg|txt|webmanifest|webp|woff|woff2|xml)$/i;
+
+function isStaticLikeRequest(pathname: string) {
+  return pathname.startsWith("/_next/") || pathname === "/favicon.ico" || STATIC_FILE_EXTENSION_PATTERN.test(pathname);
+}
+
 export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
+  let response = NextResponse.next({ request });
+
+  if (isStaticLikeRequest(path)) {
+    return response;
+  }
+
   const intendedPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
   const isProtected = isProtectedRoute(path);
   const isAuthPage = isAuthRoute(path);
-  let response = NextResponse.next({ request });
+  const needsSessionHandling = isProtected || isAuthPage;
+
+  if (!needsSessionHandling) {
+    return response;
+  }
 
   if (!isSupabaseConfigured() || !supabaseUrl || !supabaseAnonKey) {
     if (isProtected) {

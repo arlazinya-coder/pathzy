@@ -27,6 +27,7 @@ const authCallback = readFileSync("app/auth/callback/route.ts", "utf8");
 const onboardingPage = readFileSync("app/onboarding/page.tsx", "utf8");
 const onboardingApi = readFileSync("app/api/onboarding/route.ts", "utf8");
 const onboardingFlow = readFileSync("components/onboarding/onboarding-flow.tsx", "utf8");
+const rootMiddleware = readFileSync("middleware.ts", "utf8");
 const supabaseMiddleware = readFileSync("lib/supabase/middleware.ts", "utf8");
 const rootLayout = readFileSync("app/layout.tsx", "utf8");
 const appGlobals = readFileSync("app/globals.css", "utf8");
@@ -1709,6 +1710,18 @@ assert.match(authRouting, /pathname === appRoutes\.home[\s\S]*return fallback/, 
 assert.match(authRouting, /routeMatches\(destinationPathname, appRoutes\.billing\)[\s\S]*appRoutes\.foundingMembers[\s\S]*appRoutes\.pricing[\s\S]*return appRoutes\.authenticatedHome/, "Founder, pricing, and billing routes must not intercept post-auth defaults.");
 assert.match(supabaseMiddleware, /const intendedPath = `\$\{request\.nextUrl\.pathname\}\$\{request\.nextUrl\.search\}`/, "Protected route redirects must preserve the intended path and query string.");
 assert.match(supabaseMiddleware, /isProtected && user && path !== appRoutes\.professionalIdentity[\s\S]*getPostAuthDestination\(supabase, user, intendedPath\)/, "Protected authenticated routes must use centralized Professional Identity completion coverage.");
+assert.doesNotMatch(rootMiddleware, /\/\(\(\?\!_next\/static/, "Root middleware matcher must not use the old broad negative matcher that catches public pages, APIs and bot/static probes.");
+assert.doesNotMatch(rootMiddleware, /"\/api\/:path\*"/, "API routes must not invoke Supabase auth middleware.");
+assert.doesNotMatch(rootMiddleware, /robots\.txt|sitemap\.xml|manifest\.json|\.pdf|\.xml|\.json|\.ico/, "Metadata and file-extension paths must stay out of the middleware matcher.");
+for (const protectedMatcher of ["/professional-identity/:path*", "/opportunities/:path*", "/applications/:path*", "/employment-center/:path*", "/roadmap/:path*", "/discovery/:path*"]) {
+  assert.match(rootMiddleware, new RegExp(`"${protectedMatcher.replaceAll("/", "\\/").replace("*", "\\*")}"`), `${protectedMatcher} must remain covered by auth middleware.`);
+}
+for (const authMatcher of ["/login", "/signup", "/register", "/auth/reset-password", "/auth/update-password"]) {
+  assert.match(rootMiddleware, new RegExp(`"${authMatcher.replaceAll("/", "\\/")}"`), `${authMatcher} must remain covered for authenticated redirect handling.`);
+}
+assert.match(supabaseMiddleware, /const needsSessionHandling = isProtected \|\| isAuthPage[\s\S]*if \(!needsSessionHandling\) \{[\s\S]*return response;[\s\S]*\}[\s\S]*const supabase = createServerClient/, "Supabase auth middleware must bail out before creating the Supabase client when a path does not require auth/session handling.");
+assert.match(supabaseMiddleware, /STATIC_FILE_EXTENSION_PATTERN[\s\S]*txt[\s\S]*xml[\s\S]*isStaticLikeRequest\(path\)[\s\S]*return response;[\s\S]*const intendedPath/, "Static, metadata and file-extension probes must bail out before Supabase auth route resolution.");
+assert.match(supabaseMiddleware, /if \(isProtected && !user\)[\s\S]*redirectToLogin\(intendedPath\)/, "Protected unauthenticated routes must still redirect safely to login.");
 assert.match(professionalIdentityPage, /searchParams[\s\S]*resolvedSection = params\.section \?\? \(routeDecision\.currentState === "identity_in_progress" \? routeDecision\.resumeSection : undefined\)[\s\S]*initialSection=\{resolvedSection\}/, "Professional Identity must pass the canonical resume section to the existing editor.");
 assert.match(professionalIdentityPage, /professionalIdentityIntroStages[\s\S]*"welcome"[\s\S]*"interfaceLanguage"[\s\S]*"documentLanguage"[\s\S]*"careerCoach"[\s\S]*"professionalIdentityIntroduction"/, "Professional Identity page must recognize every focused onboarding stage.");
 assert.match(professionalIdentityPage, /routeDecision = resolvePathzyNextRoute[\s\S]*setupRouteStates[\s\S]*diagnosis_pending[\s\S]*home_ready[\s\S]*redirect\(routeDecision\.destination\)/, "Professional Identity page must redirect setup-complete users through the canonical diagnosis/home resolver instead of rendering a stale overview.");
@@ -1853,6 +1866,10 @@ assert.doesNotMatch(timeline, /Coming soon/, "Timeline must not label normal jou
 assert.match(appShell, /key=\{`\$\{item\.href\}-\$\{item\.label\}`\}/, "Navigation links must use a unique key fallback.");
 assert.match(appShell, /<Link href=\{user \? appRoutes\.roadmap : appRoutes\.home\}/, "PATHZY logo must send logged-out visitors home and logged-in users to My Employment Journey.");
 assert.match(appShell, /<Link href=\{appRoutes\.roadmap\}[\s\S]*Home[\s\S]*<\/Link>/, "Authenticated pages must provide a clear universal return action to Home.");
+assert.match(appShell, /<Link href=\{user \? appRoutes\.roadmap : appRoutes\.home\} prefetch=\{user \? false : undefined\}/, "Authenticated logo navigation must not prefetch protected Home in the background.");
+assert.match(appShell, /primaryNavigation\.map[\s\S]*href=\{item\.href\}[\s\S]*prefetch=\{user \? false : undefined\}/, "Authenticated desktop navigation must avoid protected-route prefetch request amplification.");
+assert.match(appShell, /<Link href=\{appRoutes\.roadmap\} prefetch=\{false\}/, "Authenticated universal Home action must avoid background protected-route prefetch.");
+assert.match(appShell, /mobileNavigation\.map[\s\S]*href=\{item\.href\}[\s\S]*prefetch=\{user \? false : undefined\}/, "Authenticated mobile navigation must avoid protected-route prefetch request amplification.");
 assert.match(operatingSystem, /export const PATHZY_OPERATING_AREAS/, "Phase 9F must centralize the unified employment operating-system map.");
 for (const label of ["Home", "Professional Identity", "Employment Center", "Jobs", "Applications", "Interview Preparation", "Career Plan", "Career Analytics", "Coach", "Settings"]) {
   assert.match(operatingSystem, new RegExp(`label: "${label}"`), `Unified navigation must include ${label}.`);

@@ -59,7 +59,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     <div className="pathzy-page-shell pathzy-auth-shell">
       <header className="sticky top-0 z-40 border-b border-[var(--border-default)] bg-[color-mix(in_srgb,var(--background-elevated)_92%,transparent)] backdrop-blur-2xl">
         <nav className="container flex min-h-20 items-center justify-between gap-4">
-          <Link href={user ? appRoutes.roadmap : appRoutes.home} className="flex items-center gap-3 text-lg font-black tracking-tight text-white">
+          <Link href={user ? appRoutes.roadmap : appRoutes.home} prefetch={user ? false : undefined} className="flex items-center gap-3 text-lg font-black tracking-tight text-white">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[var(--pathzy-red)] text-white shadow-[0_14px_34px_rgba(217,58,70,.22)]">
               P
             </span>
@@ -70,6 +70,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={`${item.href}-${item.label}`}
                 href={item.href}
+                prefetch={user ? false : undefined}
                 className="rounded-full px-4 py-2 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white"
               >
                 {pathzyNavigationLabel(interfaceLanguage, item.label)}
@@ -86,7 +87,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                   </span>
                 ) : null}
                 {!focusedOnboarding ? (
-                <Link href={appRoutes.roadmap} className="hidden rounded-full border border-white/12 bg-white/8 px-4 py-2 text-sm font-semibold text-white/78 shadow-sm transition hover:bg-white/12 hover:text-white sm:inline-flex">
+                <Link href={appRoutes.roadmap} prefetch={false} className="hidden rounded-full border border-white/12 bg-white/8 px-4 py-2 text-sm font-semibold text-white/78 shadow-sm transition hover:bg-white/12 hover:text-white sm:inline-flex">
                     {pathzyNavigationLabel(interfaceLanguage, "Home")}
                   </Link>
                 ) : (
@@ -108,7 +109,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
         {mobileNavigation.length ? <div className="container flex flex-wrap gap-2 pb-3 lg:hidden">
           {mobileNavigation.map((item) => (
-            <Link key={`${item.href}-${item.label}`} href={item.href} className="min-h-10 min-w-0 rounded-full border border-white/12 bg-white/8 px-3 py-2 text-xs font-semibold leading-5 text-white/72 shadow-sm [overflow-wrap:anywhere]">
+            <Link key={`${item.href}-${item.label}`} href={item.href} prefetch={user ? false : undefined} className="min-h-10 min-w-0 rounded-full border border-white/12 bg-white/8 px-3 py-2 text-xs font-semibold leading-5 text-white/72 shadow-sm [overflow-wrap:anywhere]">
               {pathzyNavigationLabel(interfaceLanguage, item.label)}
             </Link>
           ))}
