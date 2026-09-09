@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import "./adzuna-diagnostics.test.mjs";
+import "./profile-role-search.test.mjs";
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";

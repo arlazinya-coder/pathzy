@@ -201,7 +201,12 @@ export class AdzunaJobProvider implements JobProvider {
     if (location) url.searchParams.set("where", location);
     const diagnosticUrl = url.toString();
 
-    const diagnostics = (patch: Partial<JobProviderDiagnostics> = {}): JobProviderDiagnostics => ({
+    let failureCategory = "MISSING_CONFIG";
+    let outboundFetchAttempted = false;
+    let httpStatus: number | undefined;
+    let duplicateCount = 0;
+    const diagnostics = (patch: Partial<JobProviderDiagnostics> = {}): JobProviderDiagnostics => {
+      const result = {
       country,
       query,
       location,
@@ -209,7 +214,17 @@ export class AdzunaJobProvider implements JobProvider {
       rawCount: 0,
       normalizedCount: 0,
       ...patch
-    });
+      };
+      // Deliberately exclude URLs, exception text, credentials and user/session data.
+      console.info("[adzuna-provider]", JSON.stringify({
+        provider: this.id, query, country, location,
+        configPresent: Boolean(this.appId && this.appKey), outboundFetchAttempted,
+        httpStatus: httpStatus ?? null, failureCategory,
+        rawCount: result.rawCount, normalizedCount: result.normalizedCount,
+        rejectedCount: result.rawCount - result.normalizedCount, duplicateCount
+      }));
+      return result;
+    };
 
     if (!this.appId || !this.appKey) {
       return {
@@ -227,8 +242,12 @@ export class AdzunaJobProvider implements JobProvider {
     url.searchParams.set("app_key", this.appKey);
 
     try {
+      failureCategory = "FETCH_EXCEPTION";
+      outboundFetchAttempted = true;
       const response = await this.fetcher(url, { headers: { Accept: "application/json" }, cache: "no-store" });
+      httpStatus = response.status;
       if (!response.ok) {
+        failureCategory = "HTTP_ERROR";
         return {
           opportunities: [],
           status: {
@@ -239,7 +258,9 @@ export class AdzunaJobProvider implements JobProvider {
           diagnostics: diagnostics({ responseStatus: response.status })
         };
       }
+      failureCategory = "INVALID_JSON";
       const data = await response.json() as AdzunaSearchResponse;
+      failureCategory = "INVALID_RESPONSE";
       if (!data || !Array.isArray(data.results)) {
         return {
           opportunities: [],
@@ -255,6 +276,8 @@ export class AdzunaJobProvider implements JobProvider {
       const opportunities = data.results
         .map((job) => normalizedOpportunity(job, country, verifiedAt))
         .filter((job): job is Opportunity => Boolean(job));
+      duplicateCount = opportunities.length - new Set(opportunities.map((job) => job.externalId)).size;
+      failureCategory = data.results.length === 0 ? "EMPTY_PROVIDER_RESULTS" : "SUCCESS";
       return {
         opportunities,
         status: opportunities.length

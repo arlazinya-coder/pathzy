@@ -5,6 +5,7 @@ import { analyzeJobAgainstCanonicalProfile, inspectJobAdvertisement, type JobMat
 import { opportunityToJobImportText, personalizeRealOpportunities } from "@/lib/opportunities/matching";
 import type { OpportunityAction } from "@/lib/opportunities/types";
 import { fetchProductionOpportunities } from "@/lib/opportunities/providers";
+import { fetchProfileRoleOpportunities } from "@/lib/opportunities/profile-search";
 import { requireAuthenticatedUser } from "@/lib/supabase/server";
 
 function firstText(values: Array<string | undefined>) {
@@ -58,9 +59,17 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
   const canonicalProfile = await getOrCreateCanonicalProfile(supabase, user.id);
   const search = opportunitySearchFromProfile(canonicalProfile, params);
   const { filters, ...providerSearch } = search;
+  const fetchOpportunities = () => paramText(params.query)
+    ? fetchProductionOpportunities({ ...providerSearch, resultsPerPage: 20 })
+    : fetchProfileRoleOpportunities({ ...providerSearch, resultsPerPage: 20 }, [
+      ...canonicalProfile.professionalProfile.targetRoles.map(valueText),
+      ...(canonicalProfile.careerPreferences?.targetRoles.map(valueText) ?? []),
+      valueText(canonicalProfile.professionalProfile.headline),
+      valueText(canonicalProfile.identity.professionalHeadline)
+    ], fetchProductionOpportunities);
   const [{ data: actions }, providerResult] = await Promise.all([
     supabase.from("user_opportunity_actions").select("opportunity_id,saved,applied,completed,hidden").eq("user_id", user.id),
-    fetchProductionOpportunities({ ...providerSearch, resultsPerPage: 20 })
+    fetchOpportunities()
   ]);
 
   const personalizedOpportunities = personalizeRealOpportunities({
@@ -75,6 +84,12 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
     recommended: personalizedOpportunities.filter((opportunity) => opportunity.match.recommendation === "WORTH_APPLYING").length,
     nearReach: personalizedOpportunities.filter((opportunity) => opportunity.match.recommendation === "PREPARE_FIRST" || opportunity.match.recommendation === "APPLY_AFTER_CHECKING").length
   };
+  console.info("[opportunities-page]", JSON.stringify({
+    provider: providerResult.status.provider,
+    query: providerSearch.query, country: providerResult.diagnostics?.country,
+    location: providerSearch.location, status: providerResult.status.status,
+    ...pipelineCounts
+  }));
   let jobIntelligence: Record<string, JobMatchAnalysis> = {};
 
   try {
